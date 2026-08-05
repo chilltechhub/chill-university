@@ -15,17 +15,17 @@ const ChildDashboard = ({ route }) => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('children')
-        .select(
-          `
-          id, name, grade, 
-          goals_completed, total_goals, 
-          missions_completed, total_missions, 
-          xp, rank, streak_days
-        `
-        )
-        .eq('id', childId)
-        .single();
+  .from('profiles')
+  .select(`
+    id, display_name, grade,
+    goals_completed, total_goals,
+    missions_completed, total_missions,
+    xp, rank, streak_days
+  `)
+  .eq('id', childId)
+  .eq('role', 'child')
+  .single();
+
 
       if (error) throw error;
       setChildData(data);
@@ -43,7 +43,7 @@ const ChildDashboard = ({ route }) => {
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.header}>{childData.name}'s Dashboard</Text>
+      <Text style={styles.header}>{childData.display_name}'s Dashboard</Text>
 
       <View style={styles.section}>
         <Text style={styles.label}>Grade:</Text>

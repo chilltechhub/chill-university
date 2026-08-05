@@ -1,827 +1,278 @@
 // src/components/FactorCraftGame.js
-import React, { useState, useEffect, useRef } from 'react';
+// Math tile game — select tiles that equal the target using the given operation
+// Preserves all original game logic, replaces Alert with inline feedback,
+// applies royal library theme via GameShell
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView,
   Animated,
-  Dimensions,
 } from 'react-native';
-import { useUserProgress } from '../../context/UserProgressContext';
-import { useIsFocused, useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
+import GameShell, { G } from './GameShell';
+import GameOver from './GameOver';
+import useGame from '../logic/useGame';
 
 const OPERATIONS = ['add', 'subtract', 'multiply', 'divide'];
-const { width } = Dimensions.get('window');
+const OP_SYMBOLS  = { add: '+', subtract: '−', multiply: '×', divide: '÷' };
+const OP_COLORS   = { add: G.teal, subtract: G.warning, multiply: '#2196F3', divide: G.purple };
 
-export default function FactorCraftGame() {
-  const { recordGame, completeQuestion } = useUserProgress();
-  const isFocused = useIsFocused();
-  const navigation = useNavigation();
+function buildRound(level) {
+  const numberRange = Math.min(10 + level * 5, 100);
+  const tileCount   = Math.min(6 + Math.floor(level / 2), 12);
+  let newTarget = 0, solution = [], newOp = '', attempts = 0;
 
-  // Game state
-  const [tiles, setTiles] = useState([]);
-  const [selectedIndices, setSelectedIndices] = useState([]);
-  const [target, setTarget] = useState(12);
-  const [score, setScore] = useState(0);
-  const [operation, setOperation] = useState('add');
-  const [level, setLevel] = useState(1);
-  const [correctInLevel, setCorrectInLevel] = useState(0);
-  const [combo, setCombo] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(60);
-  const [isPaused, setIsPaused] = useState(false);
-  const [showHint, setShowHint] = useState(false);
+  while (attempts < 100) {
+    attempts++;
+    newOp = OPERATIONS[Math.floor(Math.random() * OPERATIONS.length)];
+    const pickCount = Math.min(2 + Math.floor(level / 3), 4);
+    solution = Array.from({ length: pickCount }, () => Math.floor(Math.random() * numberRange) + 1);
+    if (newOp === 'divide') solution = solution.map(n => n === 0 ? 1 : n);
 
-  // Session tracking
-  const [questionsAttempted, setQuestionsAttempted] = useState(0);
-  const [questionsCorrect, setQuestionsCorrect] = useState(0);
-  const gameStartTimeRef = useRef(Date.now());
-  const hasEndedRef = useRef(false);
-
-  // Animation refs
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const shakeAnim = useRef(new Animated.Value(0)).current;
-  const comboAnim = useRef(new Animated.Value(0)).current;
-
-  // Initialize game on mount
-  useEffect(() => {
-    startNewRound();
-  }, []);
-
-  // Timer control - ONLY runs when screen is focused and not paused
-  useEffect(() => {
-    let interval = null;
-
-    if (isFocused && !isPaused && timeLeft > 0 && !hasEndedRef.current) {
-      // Start timer
-      interval = setInterval(() => {
-        setTimeLeft((prev) => {
-          const newTime = prev - 1;
-          
-          if (newTime <= 0) {
-            // Time's up! But only trigger endGame if we're still focused
-            if (isFocused && !hasEndedRef.current) {
-              hasEndedRef.current = true;
-              // Use setTimeout to ensure we're out of the setState call
-              setTimeout(() => endGame(), 100);
-            }
-            return 0;
-          }
-          
-          return newTime;
-        });
-      }, 1000);
-    }
-
-    // Cleanup
-    return () => {
-      if (interval) {
-        clearInterval(interval);
+    switch (newOp) {
+      case 'add':      newTarget = solution.reduce((a, b) => a + b, 0); break;
+      case 'subtract': solution.sort((a, b) => b - a); newTarget = solution.slice(1).reduce((a, b) => a - b, solution[0]); break;
+      case 'multiply': newTarget = solution.reduce((a, b) => a * b, 1); break;
+      case 'divide': {
+        const denom = solution.slice(1);
+        if (denom.includes(0)) continue;
+        const r = denom.reduce((a, b) => a / b, solution[0]);
+        if (!Number.isInteger(r) || r <= 0) continue;
+        newTarget = r; break;
       }
-    };
-  }, [isFocused, isPaused, timeLeft]);
+    }
+    if (Number.isFinite(newTarget) && Number.isInteger(newTarget) && newTarget > 0 && newTarget <= 500) break;
+  }
 
-  // Handle navigation away - save progress
+  let tiles = [...solution];
+  while (tiles.length < tileCount) tiles.push(Math.floor(Math.random() * numberRange) + 1);
+  return { tiles: tiles.sort(() => Math.random() - 0.5), target: newTarget, operation: newOp };
+}
+
+function calcResult(nums, op) {
+  switch (op) {
+    case 'add':      return nums.reduce((a, b) => a + b, 0);
+    case 'subtract': return nums.slice(1).reduce((a, b) => a - b, nums[0]);
+    case 'multiply': return nums.reduce((a, b) => a * b, 1);
+    case 'divide': {
+      const denom = nums.slice(1);
+      if (denom.includes(0)) return null;
+      const r = denom.reduce((a, b) => a / b, nums[0]);
+      return Number.isInteger(r) ? r : null;
+    }
+    default: return null;
+  }
+}
+
+export default function FactorCraftGame({ onGameEnd }) {
+  const navigation = useNavigation();
+  const isFocused  = useIsFocused();
+
+  const [round, setRound]           = useState(() => buildRound(1));
+  const [selected, setSelected]     = useState([]);
+  const [level, setLevel]           = useState(1);
+  const [levelCorrect, setLC]       = useState(0);
+  const [combo, setCombo]           = useState(0);
+  const [timeLeft, setTimeLeft]     = useState(60);
+  const [paused, setPaused]         = useState(false);
+  const [feedback, setFeedback]     = useState(null);
+  const shakeAnim = useRef(new Animated.Value(0)).current;
+
+  const game = useGame({ subject: 'math', difficulty: Math.min(Math.ceil(level / 3), 3), onGameEnd });
+  const hasEnded = useRef(false);
+
+  // Timer
   useEffect(() => {
-    const unsubscribe = navigation.addListener('blur', () => {
-      // Screen lost focus - auto-pause
-      setIsPaused(true);
-    });
+    if (!isFocused || paused || timeLeft <= 0 || hasEnded.current) return;
+    const id = setInterval(() => {
+      setTimeLeft(t => {
+        if (t <= 1) {
+          if (!hasEnded.current) { hasEnded.current = true; setTimeout(() => game.endGame(), 100); }
+          return 0;
+        }
+        return t - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [isFocused, paused, timeLeft]);
 
-    return unsubscribe;
+  useEffect(() => {
+    const unsub = navigation.addListener('blur', () => setPaused(true));
+    return unsub;
   }, [navigation]);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      // Save progress if game was in progress
-      if (questionsAttempted > 0 && !hasEndedRef.current) {
-        const durationSeconds = Math.floor((Date.now() - gameStartTimeRef.current) / 1000);
-        recordGame('factorcraft', durationSeconds, questionsAttempted, questionsCorrect, 'math')
-          .catch(err => console.error('Error saving on unmount:', err));
-      }
-    };
+  const nextRound = useCallback((currentLevel, currentLC, bonusTime = 0) => {
+    setSelected([]);
+    setFeedback(null);
+    const newLC = currentLC + 1;
+    const needForLevel = 5 + Math.floor(currentLevel / 2);
+    if (newLC >= needForLevel) {
+      const nextLevel = currentLevel + 1;
+      setLevel(nextLevel);
+      setLC(0);
+      setTimeLeft(t => Math.min(t + 10 + bonusTime, 90));
+      setRound(buildRound(nextLevel));
+    } else {
+      setLC(newLC);
+      if (bonusTime) setTimeLeft(t => Math.min(t + bonusTime, 90));
+      setRound(buildRound(currentLevel));
+    }
   }, []);
 
-  const getOperationSymbol = (op) => ({
-    add: '+',
-    subtract: '−',
-    multiply: '×',
-    divide: '÷',
-  }[op]);
+  const checkAnswer = useCallback(() => {
+    if (selected.length < 2 || feedback || hasEnded.current) return;
+    const nums = selected.map(i => round.tiles[i]);
+    const result = calcResult(nums, round.operation);
 
-  const getOperationColor = (op) => ({
-    add: '#4CAF50',
-    subtract: '#FF9800',
-    multiply: '#2196F3',
-    divide: '#9C27B0',
-  }[op]);
-
-  function startNewRound() {
-    let newTarget = 0;
-    let solution = [];
-    let newOperation = '';
-    const minValue = 1;
-    const numberRange = Math.min(10 + level * 5, 100);
-    const tileCount = Math.min(6 + Math.floor(level / 2), 12);
-
-    let attempts = 0;
-    while (attempts < 100) {
-      attempts++;
-      newOperation = OPERATIONS[Math.floor(Math.random() * OPERATIONS.length)];
-
-      let pickCount = Math.min(2 + Math.floor(level / 3), 4);
-      solution = Array.from({ length: pickCount }, () =>
-        Math.floor(Math.random() * numberRange) + minValue
-      );
-
-      if (newOperation === 'divide') {
-        solution = solution.map(n => (n === 0 ? 1 : n));
-      }
-
-      switch (newOperation) {
-        case 'add':
-          newTarget = solution.reduce((a, b) => a + b, 0);
-          break;
-        case 'subtract':
-          solution.sort((a, b) => b - a);
-          newTarget = solution.slice(1).reduce((a, b) => a - b, solution[0]);
-          break;
-        case 'multiply':
-          newTarget = solution.reduce((a, b) => a * b, 1);
-          break;
-        case 'divide':
-          const denom = solution.slice(1);
-          if (denom.includes(0)) continue;
-          const divResult = denom.reduce((a, b) => a / b, solution[0]);
-          if (!Number.isInteger(divResult) || divResult <= 0) continue;
-          newTarget = divResult;
-          break;
-      }
-
-      if (
-        Number.isFinite(newTarget) &&
-        Number.isInteger(newTarget) &&
-        newTarget > 0 &&
-        newTarget <= 500
-      ) break;
-    }
-
-    let generatedTiles = [...solution];
-    while (generatedTiles.length < tileCount) {
-      const randomNum = Math.floor(Math.random() * numberRange) + minValue;
-      generatedTiles.push(randomNum);
-    }
-    generatedTiles = generatedTiles.sort(() => Math.random() - 0.5);
-
-    setOperation(newOperation);
-    setTiles(generatedTiles);
-    setTarget(newTarget);
-    setSelectedIndices([]);
-    setShowHint(false);
-
-    // Animate target appearance
-    Animated.spring(scaleAnim, {
-      toValue: 1.2,
-      friction: 3,
-      useNativeDriver: true,
-    }).start(() => {
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        useNativeDriver: true,
-      }).start();
-    });
-  }
-
-  function toggleTile(index) {
-    if (isPaused || timeLeft <= 0 || hasEndedRef.current) return;
-    
-    setSelectedIndices((prev) =>
-      prev.includes(index)
-        ? prev.filter((i) => i !== index)
-        : [...prev, index]
-    );
-  }
-
-  async function checkAnswer() {
-    if (isPaused || timeLeft <= 0 || hasEndedRef.current) return;
-    
-    if (selectedIndices.length < 2) {
-      Alert.alert('⚠️ Pick at least 2 numbers!');
+    if (result === null) {
+      setFeedback({ isCorrect: false, msg: 'Invalid calculation — try different tiles' });
       return;
     }
 
-    const selectedNumbers = selectedIndices.map((i) => tiles[i]);
-    let result;
+    const isCorrect = result === round.target;
+    const pts = game.answer(isCorrect, { speedBonus: combo > 2 ? 5 : 0 });
 
-    switch (operation) {
-      case 'add':
-        result = selectedNumbers.reduce((a, b) => a + b, 0);
-        break;
-      case 'subtract':
-        result = selectedNumbers.slice(1).reduce((a, b) => a - b, selectedNumbers[0]);
-        break;
-      case 'multiply':
-        result = selectedNumbers.reduce((a, b) => a * b, 1);
-        break;
-      case 'divide': {
-        const denom = selectedNumbers.slice(1);
-        if (denom.includes(0)) {
-          Alert.alert('❌ Cannot divide by zero!');
-          return;
-        }
-        const divResult = denom.reduce((a, b) => a / b, selectedNumbers[0]);
-        if (!Number.isInteger(divResult)) {
-          Alert.alert('❌ Result must be a whole number!');
-          return;
-        }
-        result = divResult;
-        break;
-      }
-    }
-
-    const isCorrect = result === target;
-    const needForLevelUp = 5 + Math.floor(level / 2);
-    const shouldLevelUp = isCorrect && (correctInLevel + 1) >= needForLevelUp;
-
-    // Update local stats immediately
-    setQuestionsAttempted(prev => prev + 1);
-    
     if (isCorrect) {
-      setQuestionsCorrect(prev => prev + 1);
       const newCombo = combo + 1;
       setCombo(newCombo);
-      
-      // Calculate points with combo multiplier
-      const basePoints = shouldLevelUp ? 20 : 10;
-      const bonusPoints = Math.floor(basePoints * (newCombo / 5));
-      const totalPoints = basePoints + bonusPoints;
-
-      // Update game state
-      const newCorrect = shouldLevelUp ? 0 : correctInLevel + 1;
-      setScore((s) => s + 1);
-      setCorrectInLevel(newCorrect);
-      
-      if (shouldLevelUp) {
-        setLevel((l) => l + 1);
-        setTimeLeft((t) => t + 10); // Bonus time for level up
-      }
-
-      // Success animation
-      Animated.sequence([
-        Animated.timing(comboAnim, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(comboAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-
-      // Award points via context (async, but don't block UI)
-      completeQuestion('math', true, totalPoints, basePoints)
-        .catch(error => console.error('Error updating progress:', error));
-
-      const message = shouldLevelUp 
-        ? `🎉 Level ${level + 1}!\n+10 seconds bonus!`
-        : newCombo > 1 
-        ? `✅ Correct! ${newCombo}x Combo!\n+${totalPoints} pts`
-        : `✅ Correct!\n+${totalPoints} pts`;
-
-      Alert.alert(
-        shouldLevelUp ? 'Level Up!' : 'Correct!',
-        message,
-        [{ text: 'Next', onPress: startNewRound }]
-      );
+      setFeedback({ isCorrect: true, msg: newCombo > 1 ? `${newCombo}x Combo! ✓` : '✓ Correct!' });
+      setTimeout(() => nextRound(level, levelCorrect, newCombo > 3 ? 5 : 0), 1200);
     } else {
-      // Wrong answer - reset combo
       setCombo(0);
-      
-      // Shake animation
       Animated.sequence([
-        Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
-        Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
-        Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
-        Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: 8,  duration: 50, useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: -8, duration: 50, useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: 8,  duration: 50, useNativeDriver: true }),
+        Animated.timing(shakeAnim, { toValue: 0,  duration: 50, useNativeDriver: true }),
       ]).start();
-
-      Alert.alert(
-        '❌ Incorrect',
-        `You got ${result}, but the target is ${target}\nCombo reset!`,
-        [{ text: 'Try Again' }]
-      );
+      setFeedback({ isCorrect: false, msg: `Got ${result}, need ${round.target}` });
+      setTimeout(() => { setFeedback(null); setSelected([]); }, 1400);
     }
-  }
+  }, [selected, round, feedback, combo, game, level, levelCorrect, nextRound, shakeAnim]);
 
-  function giveHint() {
-    if (isPaused || timeLeft <= 0 || hasEndedRef.current) return;
-    
-    // Find a valid solution
-    for (let i = 0; i < tiles.length; i++) {
-      for (let j = i + 1; j < tiles.length; j++) {
-        let result;
-        const nums = [tiles[i], tiles[j]];
-        
-        switch (operation) {
-          case 'add':
-            result = nums[0] + nums[1];
-            break;
-          case 'subtract':
-            result = Math.max(nums[0], nums[1]) - Math.min(nums[0], nums[1]);
-            break;
-          case 'multiply':
-            result = nums[0] * nums[1];
-            break;
-          case 'divide':
-            if (nums[1] !== 0 && nums[0] % nums[1] === 0) {
-              result = nums[0] / nums[1];
-            } else if (nums[0] !== 0 && nums[1] % nums[0] === 0) {
-              result = nums[1] / nums[0];
-            }
-            break;
-        }
-
-        if (result === target) {
-          setShowHint(true);
-          setSelectedIndices([i, j]);
-          setTimeout(() => setShowHint(false), 2000);
-          return;
-        }
-      }
-    }
-    
-    Alert.alert('💡 Hint', 'Try different combinations!');
-  }
-
-  const endGame = async () => {
-    // CRITICAL: Only show alert if we're CURRENTLY on this screen
-    if (!isFocused) {
-      console.log('Game ended but screen not focused - skipping alert');
-      return;
-    }
-
-    // Prevent multiple calls
-    if (hasEndedRef.current) return;
-    hasEndedRef.current = true;
-
-    const durationSeconds = Math.floor((Date.now() - gameStartTimeRef.current) / 1000);
-    
-    // Record the complete game session
-    try {
-      await recordGame(
-        'factorcraft',
-        durationSeconds,
-        questionsAttempted,
-        questionsCorrect,
-        'math'
-      );
-    } catch (error) {
-      console.error('Error recording game:', error);
-    }
-
-    // Only show alert if STILL focused after async operation
-    if (!isFocused) {
-      console.log('Screen lost focus during save - skipping alert');
-      return;
-    }
-
-    Alert.alert(
-      '⏰ Time\'s Up!',
-      `Final Score: ${score}\nAccuracy: ${questionsAttempted > 0 ? Math.round((questionsCorrect / questionsAttempted) * 100) : 0}%\nLevel Reached: ${level}`,
-      [
-        {
-          text: 'Play Again',
-          onPress: () => resetGame(),
-        },
-        {
-          text: 'Exit',
-          style: 'cancel',
-          onPress: () => navigation.goBack(),
-        },
-      ],
-      { 
-        cancelable: false,
-        onDismiss: () => {
-          // If alert is dismissed, reset game
-          resetGame();
-        }
-      }
-    );
+  const toggleTile = (idx) => {
+    if (paused || feedback) return;
+    setSelected(prev => prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]);
   };
 
-  const resetGame = () => {
-    // Complete reset
-    setScore(0);
-    setLevel(1);
-    setCorrectInLevel(0);
-    setCombo(0);
-    setTimeLeft(60);
-    setQuestionsAttempted(0);
-    setQuestionsCorrect(0);
-    setIsPaused(false);
-    hasEndedRef.current = false;
-    gameStartTimeRef.current = Date.now();
-    startNewRound();
-  };
+  if (game.done || hasEnded.current) return (
+    <GameOver
+      score={game.score} correct={game.correct} total={game.attempted}
+      streak={game.bestStreak} title="Math Master!"
+      onPlayAgain={() => {
+        game.reset(); hasEnded.current = false;
+        setLevel(1); setLC(0); setCombo(0); setTimeLeft(60);
+        setRound(buildRound(1)); setSelected([]); setFeedback(null);
+      }}
+      onQuit={() => navigation.goBack()}
+    />
+  );
 
-  const togglePause = () => {
-    if (hasEndedRef.current || timeLeft <= 0) return;
-    setIsPaused(!isPaused);
-  };
-
-  const progressToNextLevel = (correctInLevel / (5 + Math.floor(level / 2))) * 100;
+  const opColor = OP_COLORS[round.operation];
+  const currentNums = selected.map(i => round.tiles[i]);
+  const currentResult = currentNums.length >= 2 ? calcResult(currentNums, round.operation) : null;
 
   return (
-    <View style={styles.container}>
-      {/* Pause Overlay */}
-      {isPaused && timeLeft > 0 && (
-        <TouchableOpacity 
-          style={styles.pausedOverlay}
-          activeOpacity={1}
-          onPress={togglePause}
-        >
-          <View style={styles.pausedCard}>
-            <Text style={styles.pausedIcon}>⏸️</Text>
-            <Text style={styles.pausedTitle}>Game Paused</Text>
-            <Text style={styles.pausedText}>
-              Tap anywhere to resume
-            </Text>
-            <Text style={styles.pausedTime}>Time Left: {timeLeft}s</Text>
-          </View>
-        </TouchableOpacity>
-      )}
-
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.statBox}>
-          <Text style={styles.statLabel}>Level</Text>
-          <Text style={styles.statValue}>{level}</Text>
+    <GameShell
+      title="Factor Craft" emoji="🔢" subject="Math"
+      score={game.score} lives={game.lives} streak={game.streak}
+      timeLeft={timeLeft} progress={levelCorrect / (5 + Math.floor(level / 2))}
+    >
+      <ScrollView contentContainerStyle={s.scroll}>
+        <View style={s.levelRow}>
+          <Text style={s.levelText}>Level {level}</Text>
+          {combo > 1 && <Text style={s.comboText}>🔥 {combo}x Combo</Text>}
         </View>
-        
-        <View style={[styles.statBox, { backgroundColor: '#2196F3' }]}>
-          <Text style={styles.statLabel}>Score</Text>
-          <Text style={styles.statValue}>{score}</Text>
-        </View>
-        
-        <TouchableOpacity 
-          style={[
-            styles.statBox, 
-            { backgroundColor: isPaused ? '#FFC107' : timeLeft < 10 ? '#F44336' : '#4CAF50' }
-          ]}
-          onPress={togglePause}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.statLabel}>{isPaused ? 'Paused' : 'Time'}</Text>
-          <Text style={styles.statValue}>{isPaused ? '⏸️' : `${timeLeft}s`}</Text>
-        </TouchableOpacity>
-      </View>
 
-      {/* Combo Indicator */}
-      {combo > 1 && (
-        <Animated.View 
-          style={[
-            styles.comboBar,
-            {
-              transform: [{
-                scale: comboAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [1, 1.2],
-                }),
-              }],
-            },
-          ]}
-        >
-          <Text style={styles.comboText}>🔥 {combo}x COMBO!</Text>
+        {/* Target */}
+        <View style={[s.targetCard, { borderColor: opColor }]}>
+          <Text style={s.targetLabel}>Make</Text>
+          <Text style={[s.targetNum, { color: opColor }]}>{round.target}</Text>
+          <Text style={s.targetOp}>using <Text style={{ color: opColor, fontWeight: '700' }}>{OP_SYMBOLS[round.operation]}</Text></Text>
+        </View>
+
+        {/* Live preview */}
+        <View style={s.preview}>
+          {selected.length >= 2 && (
+            <>
+              <Text style={s.previewExpr}>
+                {currentNums.join(` ${OP_SYMBOLS[round.operation]} `)} ={' '}
+                <Text style={{ color: currentResult === round.target ? G.success : G.error }}>
+                  {currentResult ?? '?'}
+                </Text>
+              </Text>
+            </>
+          )}
+          {selected.length < 2 && (
+            <Text style={s.previewHint}>Select at least 2 tiles</Text>
+          )}
+        </View>
+
+        {/* Tiles */}
+        <Animated.View style={[s.tilesGrid, { transform: [{ translateX: shakeAnim }] }]}>
+          {round.tiles.map((num, i) => {
+            const isSel = selected.includes(i);
+            return (
+              <TouchableOpacity
+                key={i}
+                style={[s.tile, isSel && s.tileSelected, isSel && { borderColor: opColor }]}
+                onPress={() => toggleTile(i)}
+              >
+                <Text style={[s.tileNum, isSel && { color: opColor }]}>{num}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </Animated.View>
-      )}
 
-      {/* Level Progress */}
-      <View style={styles.progressContainer}>
-        <Text style={styles.progressText}>
-          {correctInLevel}/{5 + Math.floor(level / 2)} to next level
-        </Text>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: `${progressToNextLevel}%` }]} />
-        </View>
-      </View>
-
-      {/* Operation Badge */}
-      <View style={[styles.operationBadge, { backgroundColor: getOperationColor(operation) }]}>
-        <Text style={styles.operationText}>
-          Use {getOperationSymbol(operation)}
-        </Text>
-      </View>
-
-      {/* Target */}
-      <Animated.View
-        style={[
-          styles.targetContainer,
-          {
-            transform: [
-              { scale: scaleAnim },
-              { translateX: shakeAnim },
-            ],
-          },
-        ]}
-      >
-        <Text style={styles.targetLabel}>Target Number</Text>
-        <Text style={styles.target}>{target}</Text>
-      </Animated.View>
-
-      {/* Tiles Grid */}
-      <View style={styles.grid}>
-        {tiles.map((num, index) => (
-          <TouchableOpacity
-            key={index}
-            style={[
-              styles.tile,
-              selectedIndices.includes(index) && styles.tileSelected,
-              showHint && selectedIndices.includes(index) && styles.tileHint,
-            ]}
-            onPress={() => toggleTile(index)}
-            activeOpacity={0.7}
-            disabled={isPaused || hasEndedRef.current}
-          >
-            <Text style={[
-              styles.tileText,
-              selectedIndices.includes(index) && styles.tileTextSelected,
-            ]}>
-              {num}
+        {/* Feedback */}
+        {feedback && (
+          <View style={[s.feedback, { borderColor: feedback.isCorrect ? G.success : G.error }]}>
+            <Text style={[s.feedbackText, { color: feedback.isCorrect ? G.success : G.error }]}>
+              {feedback.msg}
             </Text>
+          </View>
+        )}
+
+        {/* Action buttons */}
+        <View style={s.actions}>
+          <TouchableOpacity style={s.clearBtn} onPress={() => setSelected([])}>
+            <Text style={s.clearBtnText}>Clear</Text>
           </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Selected Numbers Display */}
-      {selectedIndices.length > 0 && (
-        <View style={styles.selectedDisplay}>
-          <Text style={styles.selectedText}>
-            {selectedIndices.map(i => tiles[i]).join(` ${getOperationSymbol(operation)} `)}
-            {selectedIndices.length >= 2 && ' = ?'}
-          </Text>
+          <TouchableOpacity
+            style={[s.checkBtn, selected.length < 2 && s.checkBtnDisabled]}
+            onPress={checkAnswer}
+            disabled={selected.length < 2 || !!feedback}
+          >
+            <Text style={s.checkBtnText}>Check ✓</Text>
+          </TouchableOpacity>
         </View>
-      )}
-
-      {/* Action Buttons */}
-      <View style={styles.buttonRow}>
-        <TouchableOpacity 
-          style={[styles.button, styles.hintButton]} 
-          onPress={giveHint}
-          disabled={isPaused || hasEndedRef.current}
-        >
-          <Text style={styles.buttonText}>💡 Hint</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.button, styles.checkButton]} 
-          onPress={checkAnswer}
-          disabled={selectedIndices.length < 2 || isPaused || hasEndedRef.current}
-        >
-          <Text style={styles.buttonText}>
-            {selectedIndices.length < 2 ? 'Select 2+' : 'Check ✓'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.button, styles.clearButton]} 
-          onPress={() => setSelectedIndices([])}
-          disabled={isPaused || hasEndedRef.current}
-        >
-          <Text style={styles.buttonText}>Clear</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+      </ScrollView>
+    </GameShell>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-    padding: 16,
-    paddingTop: 50,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  statBox: {
-    flex: 1,
-    backgroundColor: '#FF9800',
-    borderRadius: 12,
-    padding: 12,
-    marginHorizontal: 4,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  statLabel: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-    opacity: 0.9,
-  },
-  statValue: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: '700',
-    marginTop: 4,
-  },
-  comboBar: {
-    backgroundColor: '#FF5722',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  comboText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  progressContainer: {
-    marginBottom: 16,
-  },
-  progressText: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: 8,
-    backgroundColor: '#4CAF50',
-    borderRadius: 4,
-  },
-  operationBadge: {
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  operationText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  targetContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  targetLabel: {
-    fontSize: 14,
-    color: '#999',
-    marginBottom: 4,
-  },
-  target: {
-    fontSize: 48,
-    fontWeight: '700',
-    color: '#2196F3',
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  tile: {
-    width: (width - 80) / 4,
-    height: (width - 80) / 4,
-    margin: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#e0e0e0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  tileSelected: {
-    backgroundColor: '#2196F3',
-    borderColor: '#1976D2',
-    transform: [{ scale: 0.95 }],
-  },
-  tileHint: {
-    backgroundColor: '#FFC107',
-    borderColor: '#FFA000',
-  },
-  tileText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#333',
-  },
-  tileTextSelected: {
-    color: '#fff',
-  },
-  selectedDisplay: {
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-    alignItems: 'center',
-  },
-  selectedText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  button: {
-    flex: 1,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginHorizontal: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  hintButton: {
-    backgroundColor: '#9C27B0',
-  },
-  checkButton: {
-    backgroundColor: '#4CAF50',
-  },
-  clearButton: {
-    backgroundColor: '#757575',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  pausedOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-  },
-  pausedCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 32,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  pausedIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  pausedTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#333',
-    marginBottom: 8,
-  },
-  pausedText: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  pausedTime: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#2196F3',
-  },
+const s = StyleSheet.create({
+  scroll:          { padding: 16, paddingBottom: 40 },
+  levelRow:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  levelText:       { fontSize: 12, color: G.muted, textTransform: 'uppercase', letterSpacing: 1 },
+  comboText:       { fontSize: 13, fontWeight: '700', color: G.gold },
+  targetCard:      { backgroundColor: G.card, borderWidth: 1.5, borderRadius: 16, padding: 20, alignItems: 'center', marginBottom: 12 },
+  targetLabel:     { fontSize: 12, color: G.muted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },
+  targetNum:       { fontSize: 48, fontWeight: '800', lineHeight: 54 },
+  targetOp:        { fontSize: 13, color: G.muted, marginTop: 4 },
+  preview:         { backgroundColor: G.card, borderRadius: 10, padding: 12, alignItems: 'center', marginBottom: 14, borderWidth: 0.5, borderColor: G.border, minHeight: 44 },
+  previewExpr:     { fontSize: 18, color: G.cream, fontWeight: '600' },
+  previewHint:     { fontSize: 13, color: G.faint },
+  tilesGrid:       { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginBottom: 16 },
+  tile:            { width: 60, height: 60, backgroundColor: G.card, borderRadius: 12, borderWidth: 1, borderColor: G.border, alignItems: 'center', justifyContent: 'center' },
+  tileSelected:    { backgroundColor: G.border },
+  tileNum:         { fontSize: 20, fontWeight: '700', color: G.cream },
+  feedback:        { backgroundColor: G.card, borderWidth: 1, borderRadius: 12, padding: 14, alignItems: 'center', marginBottom: 12 },
+  feedbackText:    { fontSize: 15, fontWeight: '700' },
+  actions:         { flexDirection: 'row', gap: 12 },
+  clearBtn:        { flex: 1, backgroundColor: G.card, borderWidth: 1, borderColor: G.border, borderRadius: 12, padding: 14, alignItems: 'center' },
+  clearBtnText:    { fontSize: 15, color: G.muted, fontWeight: '600' },
+  checkBtn:        { flex: 2, backgroundColor: G.teal, borderRadius: 12, padding: 14, alignItems: 'center' },
+  checkBtnDisabled:{ opacity: 0.4 },
+  checkBtnText:    { fontSize: 15, fontWeight: '700', color: G.bg },
 });

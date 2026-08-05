@@ -1,170 +1,139 @@
 // src/components/TopBar.js
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { useUserProgress } from '../../context/UserProgressContext';
+import React, { useState } from 'react';
+import {
+  View, Text, StyleSheet, TouchableOpacity,
+  ActivityIndicator, Modal,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useUserProgress } from '../../context/UserProgressContext';
+import { useTheme } from '../../context/ThemeContext';
+import { RANK_LABELS } from '../theme';
+import LoginScreen from '../screens/LoginScreen';
 
 export default function TopBar() {
-  const { points, rank, progress, loading, pendingRewards, streakDays } = useUserProgress();
+  const { user, points, rank, progress, loading, pendingRewards, streakDays } = useUserProgress();
+  const { colors, typography, spacing, shadows } = useTheme();
   const navigation = useNavigation();
+  const [showLogin, setShowLogin] = useState(false);
+
+  const s = makeStyles(colors, typography, spacing, shadows);
+  const rankInfo = RANK_LABELS[rank] || RANK_LABELS[20];
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="small" color="#4CAF50" />
+      <View style={s.container}>
+        <ActivityIndicator size="small" color={colors.gold} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      {/* Streak Display */}
-      {streakDays > 0 && (
-        <View style={styles.streakBadge}>
-          <Text style={styles.streakIcon}>🔥</Text>
-          <Text style={styles.streakText}>{streakDays}</Text>
-        </View>
-      )}
+    <>
+      <View style={s.container}>
+        {/* Streak */}
+        {streakDays > 0 && (
+          <View style={s.streak}>
+            <Text style={s.streakText}>🔥 {streakDays}</Text>
+          </View>
+        )}
 
-      {/* Rank Section */}
-      <TouchableOpacity 
-        style={styles.rankSection}
-        onPress={() => navigation.navigate('Profile')}
-      >
-        <View style={styles.rankHeader}>
-          <Text style={styles.rankText}>Rank {rank}</Text>
-          <Text style={styles.progressText}>{Math.round(progress)}%</Text>
-        </View>
-        <View style={styles.barBackground}>
-          <View style={[styles.barFill, { width: `${progress}%` }]} />
-        </View>
-      </TouchableOpacity>
-
-      {/* Points Display */}
-      <View style={styles.pointsSection}>
-        <Text style={styles.pointsText}>{points.toLocaleString()}</Text>
-        <Text style={styles.pointsLabel}>pts</Text>
-      </View>
-
-      {/* Rewards Notification */}
-      {pendingRewards && pendingRewards.length > 0 && (
-        <TouchableOpacity 
-          style={styles.rewardsBadge}
-          onPress={() => navigation.navigate('Profile', { tab: 'rewards' })}
+        {/* Rank + progress */}
+        <TouchableOpacity
+          style={s.rankSection}
+          onPress={() => user ? navigation.navigate('Profile') : setShowLogin(true)}
+          activeOpacity={0.7}
         >
-          <Text style={styles.rewardsIcon}>🎁</Text>
-          <View style={styles.rewardsCount}>
-            <Text style={styles.rewardsCountText}>{pendingRewards.length}</Text>
+          <View style={s.rankRow}>
+            <Text style={s.rankName}>
+              {rankInfo.emoji} {rankInfo.label}
+              {user ? ` · ${rank}` : ''}
+            </Text>
+            <Text style={s.rankPct}>
+              {user ? `${Math.round(progress)}%` : 'Guest'}
+            </Text>
+          </View>
+          <View style={s.barBg}>
+            <View style={[s.barFill, { width: user ? `${Math.min(progress, 100)}%` : '0%' }]} />
           </View>
         </TouchableOpacity>
-      )}
-    </View>
+
+        {/* Points or Sign In */}
+        {user ? (
+          <View style={s.ptsSection}>
+            <Text style={s.ptsNum}>{points.toLocaleString()}</Text>
+            <Text style={s.ptsLabel}>pts</Text>
+          </View>
+        ) : (
+          <TouchableOpacity style={s.signInBtn} onPress={() => setShowLogin(true)}>
+            <Ionicons name="person-circle-outline" size={14} color="#fff" />
+            <Text style={s.signInText}>Sign In</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Pending rewards */}
+        {user && pendingRewards?.length > 0 && (
+          <TouchableOpacity
+            style={s.rewardBtn}
+            onPress={() => navigation.navigate('Profile', { tab: 'rewards' })}
+          >
+            <Text style={{ fontSize: 20 }}>🎁</Text>
+            <View style={s.rewardDot}>
+              <Text style={s.rewardDotText}>{pendingRewards.length}</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <Modal visible={showLogin} animationType="slide" onRequestClose={() => setShowLogin(false)}>
+        <LoginScreen onSuccess={() => setShowLogin(false)} onClose={() => setShowLogin(false)} />
+      </Modal>
+    </>
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (c, t, s, sh) => StyleSheet.create({
   container: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#fff',
+    paddingHorizontal: s.lg,
+    paddingVertical: s.sm + 2,
+    backgroundColor: c.headerBg,
     borderBottomWidth: 1,
-    borderColor: '#e0e0e0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    borderBottomColor: c.border,
+    ...sh.sm,
   },
-  streakBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF3E0',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginRight: 8,
-  },
-  streakIcon: {
-    fontSize: 14,
-    marginRight: 4,
-  },
-  streakText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#F57C00',
-  },
-  rankSection: {
-    flex: 1,
-    marginRight: 12,
-  },
-  rankHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  rankText: {
-    fontWeight: '700',
-    fontSize: 14,
-    color: '#333',
-  },
-  progressText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#666',
-  },
-  barBackground: {
-    height: 8,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  barFill: {
-    height: 8,
-    backgroundColor: '#4CAF50',
-    borderRadius: 4,
-    transition: 'width 0.3s ease',
-  },
-  pointsSection: {
-    alignItems: 'flex-end',
-    marginLeft: 8,
-  },
-  pointsText: {
-    fontWeight: '700',
-    fontSize: 18,
-    color: '#4CAF50',
-  },
-  pointsLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#999',
-    textTransform: 'uppercase',
-  },
-  rewardsBadge: {
-    marginLeft: 12,
-    position: 'relative',
-  },
-  rewardsIcon: {
-    fontSize: 24,
-  },
-  rewardsCount: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: '#F44336',
+  streak: {
+    backgroundColor: c.goldLight,
+    borderWidth: 0.5,
+    borderColor: c.gold,
     borderRadius: 10,
-    minWidth: 18,
-    height: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: s.sm,
+    paddingVertical: 4,
+    marginRight: s.sm,
   },
-  rewardsCountText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '700',
+  streakText: { fontSize: t.xs, fontWeight: t.bold, color: c.gold },
+  rankSection: { flex: 1, marginRight: s.sm },
+  rankRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 },
+  rankName: { fontSize: t.xs + 1, fontWeight: t.bold, color: c.gold },
+  rankPct: { fontSize: t.xs, color: c.text3 },
+  barBg: { height: 5, backgroundColor: c.bg2, borderRadius: 3, overflow: 'hidden' },
+  barFill: { height: 5, backgroundColor: c.goldMid, borderRadius: 3 },
+  ptsSection: { alignItems: 'flex-end' },
+  ptsNum: { fontSize: t.lg, fontWeight: t.bold, color: c.gold },
+  ptsLabel: { fontSize: 9, color: c.text4, textTransform: 'uppercase', letterSpacing: 1 },
+  signInBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: c.teal, borderRadius: 14,
+    paddingHorizontal: s.sm + 2, paddingVertical: 6,
   },
+  signInText: { fontSize: t.xs, color: '#fff', fontWeight: t.semibold },
+  rewardBtn: { marginLeft: s.sm, position: 'relative' },
+  rewardDot: {
+    position: 'absolute', top: -3, right: -3,
+    backgroundColor: c.error, borderRadius: 9,
+    minWidth: 16, height: 16,
+    justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3,
+  },
+  rewardDotText: { color: '#fff', fontSize: 9, fontWeight: t.bold },
 });

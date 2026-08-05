@@ -1,197 +1,156 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import { MaterialCommunityIcons, FontAwesome, Ionicons } from '@expo/vector-icons';
+// src/components/WordTypeGame.js
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import GameShell, { G } from './GameShell';
+import GameOver from './GameOver';
+import useGame from '../logic/useGame';
 
-// Question bank
 const QUESTIONS = [
-  { id: 1, question: "What type of word is 'quickly'?", word: "quickly", sentence: "The rabbit ran quickly through the garden.", correct: "adverb", options: ["noun", "verb", "adverb", "adjective"], explanation: "'Quickly' describes HOW the rabbit ran. Words that describe verbs are adverbs!" },
-  { id: 2, question: "What type of word is 'happy'?", word: "happy", sentence: "The happy dog wagged its tail.", correct: "adjective", options: ["noun", "verb", "adverb", "adjective"], explanation: "'Happy' describes the dog. Words that describe nouns are adjectives!" },
-  { id: 3, question: "What type of word is 'playground'?", word: "playground", sentence: "The children played at the playground.", correct: "noun", options: ["noun", "verb", "adverb", "adjective"], explanation: "'Playground' is a person, place, or thing. That makes it a noun!" },
-  { id: 4, question: "What type of word is 'jumped'?", word: "jumped", sentence: "The frog jumped over the log.", correct: "verb", options: ["noun", "verb", "adverb", "adjective"], explanation: "'Jumped' is an action word. Action words are verbs!" },
-  { id: 5, question: "What type of word is 'colorful'?", word: "colorful", sentence: "She painted a colorful picture.", correct: "adjective", options: ["noun", "verb", "adverb", "adjective"], explanation: "'Colorful' describes the picture. Describing words are adjectives!" },
-  { id: 6, question: "What type of word is 'teacher'?", word: "teacher", sentence: "Our teacher reads us stories every day.", correct: "noun", options: ["noun", "verb", "adverb", "adjective"], explanation: "'Teacher' is a person. People are nouns!" },
-  { id: 7, question: "What type of word is 'slowly'?", word: "slowly", sentence: "The turtle moved slowly across the path.", correct: "adverb", options: ["noun", "verb", "adverb", "adjective"], explanation: "'Slowly' tells us HOW the turtle moved. These words are adverbs!" },
-  { id: 8, question: "What type of word is 'giggled'?", word: "giggled", sentence: "The baby giggled at the funny face.", correct: "verb", options: ["noun", "verb", "adverb", "adjective"], explanation: "'Giggled' is something the baby did. Action words are verbs!" }
+  { word: 'quickly',    sentence: 'The rabbit ran quickly through the garden.',   correct: 'adverb',    options: ['noun','verb','adverb','adjective'],    explanation: "'Quickly' describes HOW the rabbit ran — that makes it an adverb." },
+  { word: 'happy',      sentence: 'The happy dog wagged its tail.',                correct: 'adjective', options: ['noun','verb','adverb','adjective'],    explanation: "'Happy' describes the dog — describing words are adjectives." },
+  { word: 'playground', sentence: 'The children played at the playground.',        correct: 'noun',      options: ['noun','verb','adverb','adjective'],    explanation: "'Playground' is a place — places are nouns." },
+  { word: 'jumped',     sentence: 'The frog jumped over the log.',                 correct: 'verb',      options: ['noun','verb','adverb','adjective'],    explanation: "'Jumped' is an action — action words are verbs." },
+  { word: 'colorful',   sentence: 'She painted a colorful picture.',               correct: 'adjective', options: ['noun','verb','adverb','adjective'],    explanation: "'Colorful' describes the picture — adjective." },
+  { word: 'teacher',    sentence: 'Our teacher reads us stories every day.',       correct: 'noun',      options: ['noun','verb','adverb','adjective'],    explanation: "'Teacher' is a person — people are nouns." },
+  { word: 'slowly',     sentence: 'The turtle moved slowly across the path.',      correct: 'adverb',    options: ['noun','verb','adverb','adjective'],    explanation: "'Slowly' tells HOW the turtle moved — adverb." },
+  { word: 'giggled',    sentence: 'The baby giggled at the funny face.',           correct: 'verb',      options: ['noun','verb','adverb','adjective'],    explanation: "'Giggled' is something the baby did — verb." },
+  { word: 'ancient',    sentence: 'We visited an ancient castle.',                 correct: 'adjective', options: ['noun','verb','adverb','adjective'],    explanation: "'Ancient' describes the castle — adjective." },
+  { word: 'mountain',   sentence: 'The mountain was covered in snow.',             correct: 'noun',      options: ['noun','verb','adverb','adjective'],    explanation: "'Mountain' is a place — noun." },
 ];
 
-const WordDetectiveGame = ({ onGameEnd = () => {} }) => {
-  const [gameState, setGameState] = useState('playing'); // playing, finished
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [score, setScore] = useState(0);
-  const [lives, setLives] = useState(3);
-  const [streak, setStreak] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState(null);
-  const [showFeedback, setShowFeedback] = useState(false);
-  const [isCorrect, setIsCorrect] = useState(false);
-  const [answeredQuestions, setAnsweredQuestions] = useState([]);
+const OPTION_COLORS = {
+  noun: '#2bb5a0', verb: '#c9a84c', adverb: '#8b4fc4', adjective: '#e05858',
+};
+
+export default function WordTypeGame({ onGameEnd }) {
+  const navigation = useNavigation();
+  const [idx, setIdx]         = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [feedback, setFeedback] = useState(null);
   const [startTime, setStartTime] = useState(Date.now());
-  const [responseTimes, setResponseTimes] = useState([]);
-  const [questionStartTime, setQuestionStartTime] = useState(Date.now());
 
-  const currentQuestion = QUESTIONS[currentQuestionIndex];
-  const totalQuestions = QUESTIONS.length;
-  const correctAnswers = answeredQuestions.filter(q => q.correct).length;
-  const accuracy = answeredQuestions.length > 0 
-    ? Math.round((correctAnswers / answeredQuestions.length) * 100) 
-    : 0;
+  const game = useGame({ subject: 'language_arts', difficulty: 1, onGameEnd });
+  const q = QUESTIONS[idx];
 
-  useEffect(() => setQuestionStartTime(Date.now()), [currentQuestionIndex]);
-
-  const handleAnswerSelect = (answer) => {
-    if (showFeedback) return;
-    setSelectedAnswer(answer);
-    const correct = answer === currentQuestion.correct;
-    setIsCorrect(correct);
-    setShowFeedback(true);
-
-    const responseTime = Date.now() - questionStartTime;
-    setResponseTimes([...responseTimes, responseTime]);
-
-    if (correct) {
-      setScore(score + 10 + streak * 5);
-      setStreak(streak + 1);
-    } else {
-      setLives(lives - 1);
-      setStreak(0);
-    }
-
-    setAnsweredQuestions([...answeredQuestions, { questionId: currentQuestion.id, correct, answer, responseTime }]);
+  const handleAnswer = useCallback((option) => {
+    if (selected) return;
+    setSelected(option);
+    const isCorrect = option === q.correct;
+    const speed = (Date.now() - startTime) / 1000;
+    const speedBonus = speed < 3 ? 5 : 0;
+    game.answer(isCorrect, { speedBonus });
+    setFeedback({ isCorrect, explanation: q.explanation });
 
     setTimeout(() => {
-      if (correct || lives > 1) nextQuestion();
-      else endGame();
-    }, 1500);
-  };
+      setFeedback(null);
+      setSelected(null);
+      setStartTime(Date.now());
+      if (game.lives - (isCorrect ? 0 : 1) <= 0 || idx >= QUESTIONS.length - 1) {
+        game.endGame();
+      } else {
+        setIdx(i => i + 1);
+      }
+    }, 1800);
+  }, [selected, q, startTime, game, idx]);
 
-  const nextQuestion = () => {
-    if (currentQuestionIndex < totalQuestions - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-      setSelectedAnswer(null);
-      setShowFeedback(false);
-    } else endGame();
-  };
-
-  const endGame = () => {
-    setGameState('finished');
-    const totalTime = Date.now() - startTime;
-    const avgResponseTime = responseTimes.length ? Math.round(responseTimes.reduce((a,b)=>a+b,0)/responseTimes.length/1000) : 0;
-    onGameEnd({ score, accuracy, topic: 'Parts of Speech', questionsAnswered: answeredQuestions.length, correctAnswers, totalTime: Math.round(totalTime/1000), averageResponseTime: avgResponseTime });
-  };
-
-  const restartGame = () => {
-    setGameState('playing');
-    setCurrentQuestionIndex(0);
-    setScore(0);
-    setLives(3);
-    setStreak(0);
-    setSelectedAnswer(null);
-    setShowFeedback(false);
-    setAnsweredQuestions([]);
-    setStartTime(Date.now());
-    setResponseTimes([]);
-    setQuestionStartTime(Date.now());
-  };
-
-  if (gameState === 'finished') {
+  if (game.done) {
     return (
-      <View style={styles.container}>
-        <View style={styles.centerCard}>
-          <MaterialCommunityIcons name="trophy" size={64} color="#FFD700" />
-          <Text style={styles.title}>Great Job, Detective!</Text>
-          <Text style={styles.subtitle}>You've completed the case!</Text>
-
-          <View style={styles.stats}>
-            <Text>Final Score: {score}</Text>
-            <Text>Accuracy: {accuracy}%</Text>
-            <Text>Questions Answered: {answeredQuestions.length}/{totalQuestions}</Text>
-            <Text>Correct Answers: {correctAnswers}</Text>
-          </View>
-
-          <TouchableOpacity style={styles.button} onPress={restartGame}>
-            <MaterialCommunityIcons name="rotate-left" size={24} color="#fff" />
-            <Text style={styles.buttonText}>Play Again</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <GameOver
+        score={game.score}
+        correct={game.correct}
+        total={game.attempted}
+        streak={game.bestStreak}
+        title="Case Closed, Detective!"
+        onPlayAgain={() => { game.reset(); setIdx(0); setSelected(null); setFeedback(null); }}
+        onQuit={() => navigation.goBack()}
+      />
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Ionicons name="sparkles" size={32} color="#9f7aea" />
-          <Text style={styles.title}>Word Detective</Text>
-        </View>
-        <View style={styles.lives}>
-          {[...Array(lives)].map((_,i)=><FontAwesome key={i} name="heart" size={32} color="red" />)}
-        </View>
-      </View>
+    <GameShell
+      title="Word Detective"
+      emoji="📖"
+      subject="Language Arts"
+      score={game.score}
+      lives={game.lives}
+      streak={game.streak}
+      progress={idx / QUESTIONS.length}
+    >
+      <ScrollView contentContainerStyle={s.scroll}>
+        {/* Progress */}
+        <Text style={s.progress}>Question {idx + 1} of {QUESTIONS.length}</Text>
 
-      {/* Question Card */}
-      <View style={styles.questionCard}>
-        <Text style={styles.question}>{currentQuestion.question}</Text>
-        <Text style={styles.sentence}>
-          {currentQuestion.sentence.split(currentQuestion.word).map((part,i,arr)=>(
-            <Text key={i}>
-              {part}
-              {i<arr.length-1 && <Text style={styles.highlight}>{currentQuestion.word}</Text>}
-            </Text>
-          ))}
-        </Text>
+        {/* Question card */}
+        <View style={s.card}>
+          <Text style={s.label}>What type of word is...</Text>
+          <View style={s.wordBadge}>
+            <Text style={s.word}>"{q.word}"</Text>
+          </View>
+          <Text style={s.sentence}>
+            {q.sentence.split(q.word).map((part, i, arr) => (
+              <Text key={i}>
+                {part}
+                {i < arr.length - 1 && (
+                  <Text style={s.highlight}>{q.word}</Text>
+                )}
+              </Text>
+            ))}
+          </Text>
+        </View>
 
         {/* Options */}
-        <View style={styles.options}>
-          {currentQuestion.options.map(option=>{
-            let bgColor = '#ddd';
-            if(showFeedback && option === currentQuestion.correct) bgColor='green';
-            else if(showFeedback && option===selectedAnswer && !isCorrect) bgColor='red';
-            else if(selectedAnswer===option && !showFeedback) bgColor='#9f7aea';
-
+        <View style={s.options}>
+          {q.options.map(opt => {
+            let bg = G.card;
+            let border = G.border;
+            if (selected) {
+              if (opt === q.correct) { bg = G.success + '33'; border = G.success; }
+              else if (opt === selected && !feedback?.isCorrect) { bg = G.error + '33'; border = G.error; }
+            }
             return (
-              <TouchableOpacity key={option} style={[styles.optionButton, {backgroundColor:bgColor}]} onPress={()=>handleAnswerSelect(option)} disabled={showFeedback}>
-                <Text style={styles.optionText}>{option}</Text>
+              <TouchableOpacity
+                key={opt}
+                style={[s.option, { backgroundColor: bg, borderColor: border }]}
+                onPress={() => handleAnswer(opt)}
+                disabled={!!selected}
+              >
+                <View style={[s.optionDot, { backgroundColor: OPTION_COLORS[opt] }]} />
+                <Text style={s.optionText}>{opt}</Text>
               </TouchableOpacity>
-            )
+            );
           })}
         </View>
 
         {/* Feedback */}
-        {showFeedback && (
-          <View style={[styles.feedback, {backgroundColor: isCorrect ? '#d4edda' : '#f8d7da'}]}>
-            <Text style={[styles.feedbackTitle, {color: isCorrect ? '#155724' : '#721c24'}]}>
-              {isCorrect ? '🎉 Correct!' : '💭 Not quite!'}
+        {feedback && (
+          <View style={[s.feedback, { borderColor: feedback.isCorrect ? G.success : G.error }]}>
+            <Text style={[s.feedbackTitle, { color: feedback.isCorrect ? G.success : G.error }]}>
+              {feedback.isCorrect ? '✓ Correct!' : '✗ Not quite!'}
             </Text>
-            <Text style={styles.feedbackText}>{currentQuestion.explanation}</Text>
+            <Text style={s.feedbackText}>{feedback.explanation}</Text>
           </View>
         )}
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </GameShell>
   );
-};
+}
 
-const styles = StyleSheet.create({
-  container: { padding: 16, flexGrow: 1, backgroundColor: '#e0c3fc' },
-  centerCard: { backgroundColor: '#fff', borderRadius: 24, padding: 24, alignItems: 'center', marginVertical: 32 },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#1f2937', marginVertical: 8 },
-  subtitle: { fontSize: 16, color: '#555', marginBottom: 16 },
-  stats: { marginVertical:16 },
-  button: { flexDirection:'row', alignItems:'center', justifyContent:'center', padding:16, backgroundColor:'#9f7aea', borderRadius:16, marginTop:16 },
-  buttonText:{ color:'#fff', fontWeight:'bold', marginLeft:8 },
-  header: { flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:16 },
-  headerLeft: { flexDirection:'row', alignItems:'center', gap:8 },
-  lives: { flexDirection:'row', gap:8 },
-  questionCard:{ backgroundColor:'#fff', borderRadius:24, padding:16 },
-  question:{ fontSize:20, fontWeight:'bold', marginBottom:8 },
-  sentence:{ fontSize:16, marginBottom:16 },
-  highlight:{ fontWeight:'bold', color:'#9f7aea', backgroundColor:'#e9d5ff', paddingHorizontal:4 },
-  options:{ flexDirection:'row', flexWrap:'wrap', gap:8 },
-  optionButton:{ flex:1, padding:12, borderRadius:16, margin:4, alignItems:'center', justifyContent:'center' },
-  optionText:{ fontSize:16, fontWeight:'bold', color:'#fff' },
-  feedback:{ padding:16, borderRadius:16, marginTop:16 },
-  feedbackTitle:{ fontSize:20, fontWeight:'bold', marginBottom:8 },
-  feedbackText:{ fontSize:16 }
+const s = StyleSheet.create({
+  scroll:      { padding: 16, paddingBottom: 40 },
+  progress:    { fontSize: 11, color: G.muted, textAlign: 'center', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 },
+  card:        { backgroundColor: G.card, borderRadius: 16, padding: 20, borderWidth: 0.5, borderColor: G.border, marginBottom: 16, alignItems: 'center' },
+  label:       { fontSize: 13, color: G.muted, marginBottom: 12 },
+  wordBadge:   { backgroundColor: G.goldL, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10, marginBottom: 14, borderWidth: 0.5, borderColor: G.gold },
+  word:        { fontSize: 22, fontWeight: '700', color: G.gold },
+  sentence:    { fontSize: 15, color: G.cream, textAlign: 'center', lineHeight: 22 },
+  highlight:   { color: G.gold, fontWeight: '700' },
+  options:     { gap: 10, marginBottom: 16 },
+  option:      { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderRadius: 12, padding: 16 },
+  optionDot:   { width: 10, height: 10, borderRadius: 5 },
+  optionText:  { fontSize: 16, fontWeight: '600', color: G.cream, textTransform: 'capitalize' },
+  feedback:    { backgroundColor: G.card, borderWidth: 1, borderRadius: 12, padding: 16 },
+  feedbackTitle:{ fontSize: 15, fontWeight: '700', marginBottom: 6 },
+  feedbackText:{ fontSize: 13, color: G.cream, lineHeight: 18 },
 });
-
-export default WordDetectiveGame;

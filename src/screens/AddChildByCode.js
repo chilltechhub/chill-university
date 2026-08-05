@@ -21,8 +21,11 @@ export default function AddChildByCode({ parentId, navigation }) {
       }
 
       const { error: linkError } = await supabase
-        .from('children')
-        .insert([{ parent_id: parentId, child_id: invite.child_id }]);
+  .from('parent_children')
+  .insert([
+    { parent_id: parentId, child_id: invite.child_id }
+  ]);
+
 
       if (linkError) return Alert.alert('Error linking child', linkError.message);
 

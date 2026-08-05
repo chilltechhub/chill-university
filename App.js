@@ -1,163 +1,116 @@
 // App.js
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
+import React, { useRef } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-// remove direct createClient usage — import the client you made
-import { supabase } from './src/api/supabaseClient';
+import { View, Platform } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 
-// Context & UI
-import { UserProgressProvider, useUserProgress } from './context/UserProgressContext';
-import TopBar from './src/components/TopBar';
-import HomeScreen from './src/screens/HomeScreen';
-import ClassesStack from './src/screens/ClassesStack';
-import LibraryNav from './src/screens/library/LibraryNav';
-import MissionPopup from './src/components/MissionPopup';
-import ProfileScreen from './src/screens/ProfileScreen';
-import LoginScreen from './src/screens/LoginScreen';
-import ProfileQuickSetup from './src/screens/ProfileQuickSetup';
+import { UserProgressProvider } from './context/UserProgressContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
+
+import HomeScreen    from './src/screens/HomeScreen';
+import GamesScreen   from './src/screens/GamesScreen';
+import LibraryNav    from './src/screens/library/LibraryNav';
+
 import MultiStepOnboarding from './src/screens/MultiStepOnboarding';
-import PlayScreen from './src/screens/PlayScreen';
-import ParentHome from './src/screens/ParentHome';
-import ChildDashboard from './src/screens/ChildDashboard';
-import AddChildByCode from './src/screens/AddChildByCode';
-import ChildInviteCode from './src/screens/ChildInviteCode';
+import ProfileQuickSetup   from './src/screens/ProfileQuickSetup';
+import ProfileScreen       from './src/screens/ProfileScreen';
+import PlayScreen          from './src/screens/PlayScreen';
+import ChildInviteCode     from './src/screens/ChildInviteCode';
+import TopBar              from './src/components/TopBar';
+import MissionPopup        from './src/components/MissionPopup';
+import { useUserProgress } from './context/UserProgressContext';
 
-const Tab = createBottomTabNavigator();
-const Stack = createNativeStackNavigator();
-export const navigationRef = createNavigationContainerRef();
 
-function Placeholder({ name }) {
+const Stack = createStackNavigator();
+const Tab   = createBottomTabNavigator();
+
+const TAB_ICONS = {
+  Home:    { active: 'home',       inactive: 'home-outline' },
+  Games:   { active: 'game-controller', inactive: 'game-controller-outline' },
+  Library: { active: 'book',       inactive: 'book-outline' },
+};
+
+function MainTabs() {
+  const { colors: c } = useTheme();
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>{name} Screen</Text>
-    </View>
-  );
-}
-
-/* Keep your Tab navigator as a separate component so we can push full-screen flows */
-function MainTabs({ user }) {
-  return (
-    <Tab.Navigator screenOptions={{ headerShown: false }}>
-      <Tab.Screen name="Home" component={HomeScreen} />
-      {user ? (
-        <>
-          <Tab.Screen name="Library" component={LibraryNav} />
-          <Tab.Screen name="Classes" component={ClassesStack} />
-          <Tab.Screen name="Parent"  component={ParentStackScreen} options={{ title: 'Parent' }} />
-
-        </>
-      ) : (
-        <Tab.Screen name="Login" component={LoginScreen} />
-        
-      )}
+    <Tab.Navigator
+      initialRouteName="Home"
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: c.tabBar,
+          borderTopWidth: 0.5,
+          borderTopColor: c.border,
+          paddingBottom: Platform.OS === 'ios' ? 20 : 6,
+          height: Platform.OS === 'ios' ? 84 : 60,
+        },
+        tabBarActiveTintColor:   c.tabActive,
+        tabBarInactiveTintColor: c.tabInactive,
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: 2 },
+        tabBarIcon: ({ focused, color, size }) => {
+          const icons = TAB_ICONS[route.name];
+          return <Ionicons name={focused ? icons.active : icons.inactive} size={size} color={color} />;
+        },
+      })}
+      
+    >
+      <Tab.Screen name="Library" component={LibraryNav} />
+      <Tab.Screen name="Home"    component={HomeScreen} />
+      <Tab.Screen name="Games"   component={GamesScreen} />
     </Tab.Navigator>
   );
 }
 
-const ParentStack = createNativeStackNavigator();
-
-function ParentStackScreen() {
+function MissionsOverlay() {
+  const { dailyMissions } = useUserProgress();
+  const [visible, setVisible] = React.useState(false);
   return (
-    <ParentStack.Navigator>
-      <ParentStack.Screen 
-        name="ParentHome" 
-        component={ParentHome} 
-        options={{ title: 'Parent Portal' }} 
-      />
-      <ParentStack.Screen 
-        name="ChildDashboard" 
-        component={ChildDashboard} 
-        options={{ title: 'Child Dashboard' }} 
-      />
-      <ParentStack.Screen 
-        name="AddChildByCode" 
-        component={AddChildByCode} 
-        options={{ title: 'Add Child' }} 
-      />
-      <ParentStack.Screen 
-        name="ChildInviteCode" 
-        component={ChildInviteCode} 
-        options={{ title: 'Child Code' }} 
-      />
-    </ParentStack.Navigator>
+    <MissionPopup
+      visible={visible}
+      onClose={() => setVisible(false)}
+      missions={dailyMissions || []}
+    />
   );
 }
 
-
-
-export default function App() {
-  const [user, setUser] = useState(null);
-  const [loadingAuth, setLoadingAuth] = useState(true);
-  const prevUserRef = useRef(null);
-
-
-  
-  useEffect(() => {
-    // setup listener
-    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    // initial session check
-    
-    supabase.auth.getSession().then(({ data }) => {
-      setUser(data.session?.user ?? null);
-      setLoadingAuth(false);
-    }).catch(err => {
-      console.error('getSession error', err);
-      setLoadingAuth(false);
-    });
-
-    return () => {
-      try { listener.subscription.unsubscribe(); } catch (e) {}
-    };
-  }, []);
-
-  // optional: respond to first login (no forced navigation)
-  useEffect(() => {
-    if (!prevUserRef.current && user) {
-      console.log('[App] user logged in — no forced navigation (guest can still play)');
-    }
-    prevUserRef.current = user;
-  }, [user]);
-
-  if (loadingAuth) {
-    return (
-      <View style={{ flex:1, justifyContent:'center', alignItems:'center' }}>
-        <Text>Loading auth...</Text>
-      </View>
-    );
-  }
-
-  const sampleMission = { title: 'First Steps', description: 'Welcome!', progress: { current: 0, total: 1 }, reward: 50 };
+function AppInner() {
+  const { colors: c } = useTheme();
+  const navigationRef = useRef(null);
 
   return (
-    <UserProgressProvider>
-      <NavigationContainer ref={navigationRef}>
-        <SafeAreaView style={{ flex: 1 }}>
-          <TopBar />
-          {/* Use a Stack so onboarding/modal flows can replace the whole UI */}
-          <Stack.Navigator screenOptions={{ headerShown: false }}>
-            {/* Main tabs are always available (guests see Home+Login; logged users see more tabs) */}
-            <Stack.Screen name="MainTabs">
-              {props => <MainTabs {...props} user={user} />}
-            </Stack.Screen>
+    <NavigationContainer ref={navigationRef}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: c.headerBg }} edges={['top']}>
+        <TopBar />
+        <Stack.Navigator screenOptions={{
+          headerShown: false,
+          gestureEnabled: true,
+          gestureDirection: 'horizontal',
+        }}>
+          <Stack.Screen name="MainTabs"            component={MainTabs} />
+          <Stack.Screen name="MultiStepOnboarding" component={MultiStepOnboarding} />
+          <Stack.Screen name="ProfileQuickSetup"   component={ProfileQuickSetup} />
+          <Stack.Screen name="Profile"             component={ProfileScreen} />
+          <Stack.Screen name="Play"                component={PlayScreen} />
+          <Stack.Screen name="PlayGame"             component={PlayScreen} />
+          <Stack.Screen name="ChildInviteCode"     component={ChildInviteCode} />
+        </Stack.Navigator>
+        <MissionsOverlay />
+      </SafeAreaView>
+    </NavigationContainer>
+  );
+}
 
-            {/* Full-screen flows */}
-            <Stack.Screen name="MultiStepOnboarding" component={MultiStepOnboarding} />
-            <Stack.Screen name="ProfileQuickSetup" component={ProfileQuickSetup} />
-            <Stack.Screen name="Profile" component={ProfileScreen} />
-            <Stack.Screen name="Play" component={PlayScreen} />
-            <Stack.Screen name="Home" component={HomeScreen} />
-            <Stack.Screen name="ChildInviteCode" component={ChildInviteCode} />
-          </Stack.Navigator>
-
-          <MissionPopup visible={false} onClose={() => {}} mission={sampleMission} />
-        </SafeAreaView>
-      </NavigationContainer>
-    </UserProgressProvider>
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <UserProgressProvider>
+          <AppInner />
+        </UserProgressProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

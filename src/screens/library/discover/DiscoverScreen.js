@@ -1,117 +1,51 @@
+// src/screens/library/discover/DiscoverScreen.js
 import React from 'react';
-import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../../../../context/ThemeContext';
 
-import BreakthroughsScreen from './BreakthroughsScreen';
-import FellowScholarsScreen from './FellowScholarsScreen';
-import MentorsScreen from './MentorsScreen'
-import TopTalentScreen from './TopTalentScreen';
+const SECTIONS = [
+  { screen:'BreakthroughsScreen',  emoji:'💡', title:'Breakthroughs',      desc:'Latest discoveries from the community' },
+  { screen:'FellowScholarsScreen', emoji:'🎓', title:'Fellow Scholars',    desc:'Connect with people on similar journeys' },
+  { screen:'TopTalentScreen',      emoji:'⭐', title:'Top Talent',         desc:'Exceptional work from the community' },
+  { screen:'MentorsScreen',        emoji:'🧙', title:'Mentors & Experts',  desc:'Learn from experienced people' },
+  { screen:'DiscoverPScreen',      emoji:'🚀', title:'Community Projects', desc:'Collaborate on open ideas and projects' },
+];
 
 export default function DiscoverScreen() {
   const navigation = useNavigation();
-
+  const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Discover</Text>
-
-      <View style={styles.searchSection}>
-        <Ionicons name="search" size={24} color="black" />
-        <TextInput
-          placeholder="Search..."
-          style={styles.searchInput}
-        />
+    <View style={{ flex:1, backgroundColor:c.bg0 }}>
+      <View style={{ backgroundColor:c.headerBg, padding:s.lg, borderBottomWidth:0.5, borderBottomColor:c.border }}>
+        <Text style={{ fontSize:t.xxl, fontWeight:t.bold, color:c.text1 }}>🧭 Discover</Text>
+        <Text style={{ fontSize:t.xs, color:c.text3, marginTop:3 }}>Explore the community</Text>
       </View>
-
-      <View style={styles.grid}>
-        <TouchableOpacity
-          style={styles.card}
-          onPress={() => navigation.navigate('DiscoverPScreen')}
-        >
-          <Image source={require('../../../../assets/projects-icon.png')} style={styles.icon} />
-          <Text style={styles.textCenter}>Projects{"\n"}Help Wanted & Requests</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.card}
-          onPress={() => navigation.navigate('BreakthroughsScreen')}
-        >
-          <Image source={require('../../../../assets/breakthrough-icon.png')} style={styles.icon} />
-          <Text style={styles.textCenter}>Breakthroughs</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.card}
-          onPress={() => navigation.navigate('FellowScholarsScreen')}
-        >
-          <Image source={require('../../../../assets/fellows-icon.png')} style={styles.icon} />
-          <Text style={styles.textCenter}>Fellow{"\n"}Scholars</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.card}
-          onPress={() => navigation.navigate('TopTalentScreen')}
-        >
-          <Image source={require('../../../../assets/toptalent-icon.png')} style={styles.icon} />
-          <Text style={styles.textCenter}>Top Talent</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.card}
-          onPress={() => navigation.navigate('MentorsScreen')}
-        >
-          <Image source={require('../../../../assets/master-icon.png')} style={styles.icon} />
-          <Text style={styles.textCenter}>Masters{"\n"}Experts{"\n"}Mentors</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+      <ScrollView contentContainerStyle={{ padding:s.lg, gap:s.sm, paddingBottom:40 }}>
+        <View style={{ backgroundColor:c.tealLight, borderRadius:r.lg, padding:s.lg, borderWidth:1, borderColor:c.teal, marginBottom:s.sm }}>
+          <Text style={{ fontSize:t.sm, fontWeight:t.bold, color:c.teal, marginBottom:s.sm }}>
+            🌱 Community features launching soon
+          </Text>
+          <Text style={{ fontSize:t.xs, color:c.teal, lineHeight:18 }}>
+            Discover is where you will share breakthroughs, find collaborators, and connect with other learners. It gets better as the community grows.
+          </Text>
+        </View>
+        {SECTIONS.map((sec, i) => (
+          <TouchableOpacity key={i}
+            style={{ backgroundColor:c.bg1, borderRadius:r.lg, padding:s.lg, borderWidth:0.5, borderColor:c.border, flexDirection:'row', alignItems:'center', gap:s.md }}
+            onPress={() => navigation.navigate(sec.screen)}>
+            <View style={{ width:44, height:44, borderRadius:22, backgroundColor:c.bg2, alignItems:'center', justifyContent:'center' }}>
+              <Text style={{ fontSize:22 }}>{sec.emoji}</Text>
+            </View>
+            <View style={{ flex:1 }}>
+              <Text style={{ fontSize:t.sm, fontWeight:t.bold, color:c.text1 }}>{sec.title}</Text>
+              <Text style={{ fontSize:t.xs, color:c.text3, marginTop:2 }}>{sec.desc}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={c.text4} />
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
   );
 }
-const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 36,
-    fontWeight: '300',
-    marginBottom: 10,
-  },
-  searchSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    width: '100%',
-    marginBottom: 30,
-    height: 40,
-  },
-  searchInput: {
-    marginLeft: 10,
-    flex: 1,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 20,
-  },
-  card: {
-    width: 120,
-    height: 120,
-    alignItems: 'center',
-    justifyContent: 'center',
-    margin: 10,
-  },
-  icon: {
-    width: 80,
-    height: 80,
-    marginBottom: 10,
-    resizeMode: 'contain',
-  },
-  textCenter: {
-    textAlign: 'center',
-  },
-});

@@ -15,21 +15,29 @@ const ParentHome = () => {
   }, []);
 
   const fetchChildren = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('children')
-        .select('id, name, avatar, grade, goals_completed, total_goals')
-        .order('name', { ascending: true });
+  try {
+    setLoading(true);
 
-      if (error) throw error;
-      setChildren(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const { data: userData } = await supabase.auth.getUser();
+    const parentId = userData?.user?.id;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, display_name, avatar_id, grade, goals_completed, total_goals')
+      .eq('role', 'child')
+      .eq('parent_id', parentId)
+      .order('display_name', { ascending: true });
+
+    if (error) throw error;
+
+    setChildren(data);
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   
 
@@ -38,7 +46,7 @@ const ParentHome = () => {
       style={styles.childCard}
       onPress={() => navigation.navigate('ChildDashboard', { childId: item.id })}
     >
-      <Text style={styles.childName}>{item.name}</Text>
+      <Text style={styles.childName}>{item.display_name}</Text>
       <Text style={styles.childGrade}>Grade: {item.grade}</Text>
       <Text style={styles.progressText}>
         Goals: {item.goals_completed}/{item.total_goals}

@@ -11,9 +11,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MissionsScreen from '../screens/MissionsScreen';
-import DailyTasksScreen from '../screens/DailyTasksScreen';
 import { useNavigation } from '@react-navigation/native';
-import ProfileScreen from '../screens/ProfileScreen';
+import { colors, typography, spacing, radius } from '../theme';
 
 
 export default function YouScreen({ onPlay }) {
@@ -73,14 +72,14 @@ export default function YouScreen({ onPlay }) {
         </SafeAreaView>
       </Modal>
 
-      {/* Daily Tasks Modal */}
+      {/* Daily Tasks Modal — reuses MissionsScreen on the 'daily' tab */}
       <Modal
         visible={showTasks}
         animationType="slide"
         onRequestClose={() => setShowTasks(false)}
       >
         <SafeAreaView style={{ flex: 1 }}>
-          <DailyTasksScreen onClose={() => setShowTasks(false)} />
+          <MissionsScreen initialTab="daily" onClose={() => setShowTasks(false)} />
         </SafeAreaView>
       </Modal>
     </>
@@ -90,7 +89,7 @@ export default function YouScreen({ onPlay }) {
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     padding: 20,
   },
   avatarWrapper: {
@@ -113,15 +112,15 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   playButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: colors.primary,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: radius.lg,
     marginVertical: 20,
     width: '80%',
     alignItems: 'center',
   },
   playText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 18,
     fontWeight: '700',
   },
@@ -132,14 +131,14 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   box: {
-    backgroundColor: '#ffa500',
+    backgroundColor: colors.accent,
     flex: 1,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: radius.lg,
     alignItems: 'center',
   },
   boxText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 16,
     fontWeight: '600',
   },

@@ -14,18 +14,30 @@
     },
     "ios": {
       "supportsTablet": true,
-       "bundleIdentifier": "com.chilltechhub.chillapp"
+      "bundleIdentifier": "com.chilltechhub.chillapp",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff",
-         "package": "com.chilltechhub.chillapp"
+        "backgroundColor": "#ffffff"
       },
+      "package": "com.chilltechhub.chillapp",
       "edgeToEdgeEnabled": true
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+ 
+    "owner": "chetowhite",
+    "extra": {
+      "SUPABASE_URL": "https://bjwxkuhkfffslarzzznw.supabase.co",
+      "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqd3hrdWhrZmZmc2xhcnp6em53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2MDU5NjQsImV4cCI6MjA3NDE4MTk2NH0.4Y4l4Gy_fU1Q1Quha_zTQO8nC7tX7K0tOtLlHaOlKf0",
+      "eas": {
+        "projectId": "50062f94-fb7a-453d-9ae3-09164fd7e52f"
+      }
     }
   }
 }

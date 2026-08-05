@@ -1,586 +1,229 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, FlatList, Modal } from 'react-native';
-import * as Animatable from 'react-native-animatable';
+// src/components/BudgetBalanceGame.js
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import GameShell, { G } from './GameShell';
+import GameOver from './GameOver';
+import useGame from '../logic/useGame';
 
-// Expanded scenarios with difficulty levels
-const scenarios = [
+const SCENARIOS = [
   {
-    difficulty: 'Easy',
-    budget: 100,
+    title: 'School Supplies Budget',
+    budget: 30, difficulty: 1,
+    story: 'You have $30 for school. Pick which items to cut to stay in budget.',
     expenses: [
-      { item: '🍎 Food', cost: 50, essential: true },
-      { item: '🧸 Toy', cost: 30, essential: false },
-      { item: '👕 Clothes', cost: 40, essential: true },
-      { item: '🎬 Movie Ticket', cost: 20, essential: false },
+      { item:'📓 Notebooks',    cost:8,  essential:true },
+      { item:'✏️ Pencils',      cost:3,  essential:true },
+      { item:'🎒 Backpack',     cost:20, essential:true },
+      { item:'🧸 Toy',          cost:12, essential:false },
+      { item:'🎬 Movie Ticket', cost:10, essential:false },
     ],
-    correctCuts: ['🧸 Toy', '🎬 Movie Ticket'],
-    explanation: 'Great job! Food and clothes are NEEDS. Toys and movies are WANTS!',
-    lesson: '💡 Needs keep us safe. Wants are nice but come second!',
+    lesson: 'Always buy what you need first, then wants with leftover money.',
   },
   {
-    difficulty: 'Easy',
-    budget: 80,
+    title: 'Lunch Money',
+    budget: 15, difficulty: 1,
+    story: 'You have $15 for lunch this week. What can you cut?',
     expenses: [
-      { item: '📚 School Supplies', cost: 30, essential: true },
-      { item: '🍬 Candy', cost: 10, essential: false },
-      { item: '🏠 Rent', cost: 50, essential: true },
-      { item: '🎮 Video Game', cost: 40, essential: false },
+      { item:'🍱 Lunch Box',    cost:8,  essential:true },
+      { item:'💧 Water Bottle', cost:2,  essential:true },
+      { item:'🍬 Candy',        cost:4,  essential:false },
+      { item:'🎮 Video Game',   cost:6,  essential:false },
     ],
-    correctCuts: ['🍬 Candy', '🎮 Video Game'],
-    explanation: 'Excellent! School and rent are needs!',
-    lesson: '💡 Housing and education help us grow!',
+    lesson: 'Needs first, wants second — always.',
   },
   {
-    difficulty: 'Medium',
-    budget: 120,
+    title: 'Weekend Fun Budget',
+    budget: 20, difficulty: 2,
+    story: 'You have $20 for the weekend. What do you cut to stay in budget?',
     expenses: [
-      { item: '💧 Water Bill', cost: 40, essential: true },
-      { item: '🍦 Ice Cream', cost: 15, essential: false },
-      { item: '🚌 Bus Pass', cost: 30, essential: true },
-      { item: '🎧 Headphones', cost: 60, essential: false },
+      { item:'🚌 Bus Fare',     cost:4,  essential:true },
+      { item:'🥪 Lunch',        cost:7,  essential:true },
+      { item:'🍦 Ice Cream',    cost:5,  essential:false },
+      { item:'🎧 Headphones',   cost:15, essential:false },
     ],
-    correctCuts: ['🍦 Ice Cream', '🎧 Headphones'],
-    explanation: 'Perfect! Water and transport are needs!',
-    lesson: '💡 Ask: Do I need this or want it?',
+    lesson: 'Transport and food are needs — entertainment is a want.',
   },
   {
-    difficulty: 'Medium',
-    budget: 150,
+    title: 'Grocery Run',
+    budget: 25, difficulty: 2,
+    story: 'You have $25 for groceries. What gets cut?',
     expenses: [
-      { item: '⚡ Electricity', cost: 60, essential: true },
-      { item: '🍕 Restaurant', cost: 40, essential: false },
-      { item: '💊 Medicine', cost: 50, essential: true },
-      { item: '👟 Designer Shoes', cost: 80, essential: false },
+      { item:'🥚 Eggs',         cost:4,  essential:true },
+      { item:'🍞 Bread',        cost:3,  essential:true },
+      { item:'🥛 Milk',         cost:4,  essential:true },
+      { item:'🍕 Restaurant',   cost:14, essential:false },
+      { item:'👟 Designer Shoes',cost:60,essential:false },
     ],
-    correctCuts: ['🍕 Restaurant', '👟 Designer Shoes'],
-    explanation: 'Awesome! Power and medicine are needs!',
-    lesson: '💡 Choose what works, not what\'s fancy!',
+    lesson: 'Basic food is essential. Dining out and luxury items are wants.',
   },
   {
-    difficulty: 'Hard',
-    budget: 200,
+    title: 'Birthday Budget',
+    budget: 40, difficulty: 3,
+    story: 'You have $40 for your birthday party. What stays?',
     expenses: [
-      { item: '🏥 Doctor', cost: 80, essential: true },
-      { item: '📱 New Phone', cost: 120, essential: false },
-      { item: '🍎 Groceries', cost: 70, essential: true },
-      { item: '🎨 Art Supplies', cost: 35, essential: false },
-      { item: '☕ Coffee Shop', cost: 25, essential: false },
+      { item:'🎂 Cake',         cost:20, essential:true },
+      { item:'🎈 Decorations',  cost:10, essential:true },
+      { item:'📱 New Phone',    cost:300,essential:false },
+      { item:'🎨 Art Supplies', cost:15, essential:false },
+      { item:'☕ Coffee Shop',  cost:25, essential:false },
     ],
-    correctCuts: ['📱 New Phone', '🎨 Art Supplies', '☕ Coffee Shop'],
-    explanation: 'Outstanding! Health and food are needs!',
-    lesson: '💡 Big buys wait until old one breaks!',
-  },
-  {
-    difficulty: 'Hard',
-    budget: 180,
-    expenses: [
-      { item: '🚗 Insurance', cost: 90, essential: true },
-      { item: '🎪 Concert', cost: 60, essential: false },
-      { item: '🥗 Food', cost: 65, essential: true },
-      { item: '🧴 Fancy Shampoo', cost: 30, essential: false },
-      { item: '🎁 Gift', cost: 45, essential: false },
-    ],
-    correctCuts: ['🎪 Concert', '🧴 Fancy Shampoo', '🎁 Gift'],
-    explanation: 'Brilliant! Insurance and food are needs!',
-    lesson: '💡 Best gifts come from the heart!',
-  },
-  {
-    difficulty: 'Expert',
-    budget: 160,
-    expenses: [
-      { item: '📖 Textbooks', cost: 75, essential: true },
-      { item: '🎯 Hobby Class', cost: 50, essential: false },
-      { item: '🏃 Gym', cost: 40, essential: false },
-      { item: '🍽️ Kitchen Tools', cost: 45, essential: true },
-      { item: '🎬 Streaming', cost: 15, essential: false },
-    ],
-    correctCuts: ['🎯 Hobby Class', '🏃 Gym', '🎬 Streaming'],
-    explanation: 'Expert! Books and tools are needs!',
-    lesson: '💡 Find free alternatives for wants!',
-  },
-  {
-    difficulty: 'Expert',
-    budget: 220,
-    expenses: [
-      { item: '🦷 Dentist', cost: 100, essential: true },
-      { item: '🎮 Gaming Console', cost: 150, essential: false },
-      { item: '🧺 Laundry', cost: 30, essential: true },
-      { item: '🍔 Fast Food', cost: 35, essential: false },
-      { item: '📱 Phone Plan', cost: 60, essential: true },
-      { item: '🎭 Theme Park', cost: 85, essential: false },
-    ],
-    correctCuts: ['🎮 Gaming Console', '🍔 Fast Food', '🎭 Theme Park'],
-    explanation: 'Master! Health and hygiene are needs!',
-    lesson: '💡 Theme park = groceries for a week!',
+    lesson: 'A $300 phone isn\'t a party necessity — stay focused on what the event needs.',
   },
 ];
 
-const funFacts = [
-  '🏦 $1/day = $365/year!',
-  '🐷 First piggy banks: 1600s!',
-  '💰 Save early = success!',
-  '📊 50% needs, 30% wants, 20% save!',
-  '🎯 Budget = reach goals!',
-  '🛍️ Wait 24hrs before buying!',
-];
+export default function BudgetBalanceGame({ onGameEnd }) {
+  const navigation = useNavigation();
+  const [idx, setIdx]         = useState(0);
+  const [cuts, setCuts]       = useState([]);
+  const [feedback, setFeedback] = useState(null);
+  const [startTime, setStartTime] = useState(Date.now());
 
-const BudgetBalanceGame = ({ onGameEnd }) => {
-  const [currentScenarioIndex, setCurrentScenarioIndex] = useState(0);
-  const [score, setScore] = useState(0);
-  const [streak, setStreak] = useState(0);
-  const [maxStreak, setMaxStreak] = useState(0);
-  const [lives, setLives] = useState(3);
-  const [correctAnswers, setCorrectAnswers] = useState(0);
-  const [hintsUsed, setHintsUsed] = useState(0);
-  const [showHint, setShowHint] = useState(false);
-  const [startTime, setStartTime] = useState(null);
-  const [selectedCuts, setSelectedCuts] = useState([]);
-  const [showResultModal, setShowResultModal] = useState(false);
-  const [resultData, setResultData] = useState(null);
-
-  useEffect(() => {
-    setStartTime(Date.now());
-    setSelectedCuts([]);
-    setShowHint(false);
-  }, [currentScenarioIndex]);
-
-  useEffect(() => {
-    if (streak > maxStreak) setMaxStreak(streak);
-  }, [streak]);
+  const game = useGame({ subject: 'general', difficulty: 2, onGameEnd });
+  const sc = SCENARIOS[idx];
 
   const toggleCut = (item) => {
-    if (selectedCuts.includes(item)) {
-      setSelectedCuts(selectedCuts.filter((cut) => cut !== item));
-    } else {
-      setSelectedCuts([...selectedCuts, item]);
-    }
+    if (feedback) return;
+    setCuts(prev => prev.includes(item) ? prev.filter(c => c !== item) : [...prev, item]);
   };
 
-  const useHint = () => {
-    setShowHint(true);
-    setHintsUsed(hintsUsed + 1);
-  };
+  const totalAfterCuts = sc.expenses
+    .filter(e => !cuts.includes(e.item))
+    .reduce((sum, e) => sum + e.cost, 0);
 
-  const checkAnswer = () => {
-    const responseTime = (Date.now() - startTime) / 1000;
-    const currentScenario = scenarios[currentScenarioIndex];
-    
-    const totalCost = currentScenario.expenses
-      .filter((expense) => !selectedCuts.includes(expense.item))
-      .reduce((sum, expense) => sum + expense.cost, 0);
-    
-    const withinBudget = totalCost <= currentScenario.budget;
-    const allCutsValid = selectedCuts.every((cut) => {
-      const expense = currentScenario.expenses.find(e => e.item === cut);
-      return expense && !expense.essential;
+  const checkAnswer = useCallback(() => {
+    if (feedback) return;
+    const withinBudget = totalAfterCuts <= sc.budget;
+    const cutEssential = cuts.some(c => {
+      const exp = sc.expenses.find(e => e.item === c);
+      return exp?.essential;
     });
-    const keptEssentials = currentScenario.expenses.filter(e => e.essential && !selectedCuts.includes(e.item));
-    const allEssentialsKept = keptEssentials.length === currentScenario.expenses.filter(e => e.essential).length;
+    const isCorrect = withinBudget && !cutEssential;
+    const speed = (Date.now() - startTime) / 1000;
+    game.answer(isCorrect, { speedBonus: speed < 15 ? 5 : 0 });
 
-    let basePoints = 10;
-    let streakBonus = streak * 5;
-    let timeBonus = responseTime < 10 ? 5 : responseTime < 20 ? 3 : 0;
-    let difficultyMultiplier = currentScenario.difficulty === 'Expert' ? 2 : 
-                              currentScenario.difficulty === 'Hard' ? 1.5 : 1;
-    
-    const isCorrect = withinBudget && allCutsValid && allEssentialsKept;
+    let msg = isCorrect
+      ? `✓ Budget balanced! $${totalAfterCuts} of $${sc.budget}`
+      : cutEssential
+        ? '✗ You cut something essential!'
+        : `✗ Still $${totalAfterCuts - sc.budget} over budget!`;
 
-    if (isCorrect) {
-      const earnedPoints = Math.round((basePoints + streakBonus + timeBonus) * difficultyMultiplier);
-      setScore(score + earnedPoints);
-      setStreak(streak + 1);
-      setCorrectAnswers(correctAnswers + 1);
-      
-      const randomFact = funFacts[Math.floor(Math.random() * funFacts.length)];
-      
-      setResultData({
-        isCorrect: true,
-        message: currentScenario.explanation,
-        lesson: currentScenario.lesson,
-        funFact: randomFact,
-        points: earnedPoints,
-        timeBonus: timeBonus,
-      });
-      setShowResultModal(true);
-    } else {
-      const newLives = lives - 1;
-      setLives(newLives);
-      setStreak(0);
-      
-      let errorMessage = '';
-      if (!withinBudget) {
-        errorMessage = `💸 Over budget by $${totalCost - currentScenario.budget}!`;
-      } else if (!allCutsValid) {
-        errorMessage = `⚠️ You cut essential items!`;
+    setFeedback({ isCorrect, msg, lesson: sc.lesson });
+
+    setTimeout(() => {
+      setFeedback(null);
+      setCuts([]);
+      setStartTime(Date.now());
+      if (game.lives - (isCorrect ? 0 : 1) <= 0 || idx >= SCENARIOS.length - 1) {
+        game.endGame();
       } else {
-        errorMessage = `🤔 Cut more wants!`;
+        setIdx(i => i + 1);
       }
-      
-      setResultData({
-        isCorrect: false,
-        message: errorMessage,
-        lesson: currentScenario.lesson,
-        explanation: currentScenario.explanation,
-        livesLeft: newLives,
-      });
-      setShowResultModal(true);
-    }
-  };
+    }, 2200);
+  }, [cuts, sc, totalAfterCuts, feedback, game, idx, startTime]);
 
-  const handleNextAction = () => {
-    setShowResultModal(false);
-    if (resultData.isCorrect || (resultData.livesLeft > 0)) {
-      if (currentScenarioIndex + 1 < scenarios.length) {
-        setCurrentScenarioIndex(currentScenarioIndex + 1);
-      } else {
-        endGame();
-      }
-    } else {
-      endGame();
-    }
-  };
-
-  const endGame = () => {
-    const accuracy = scenarios.length > 0 ? (correctAnswers / scenarios.length) * 100 : 0;
-    const rank = accuracy >= 90 ? '🏆 Budget Master!' : 
-                accuracy >= 70 ? '⭐ Money Manager!' : 
-                accuracy >= 50 ? '📊 Learning Saver' : '🌱 Beginning Budgeter';
-    
-    const gameData = {
-      score,
-      accuracy: accuracy.toFixed(1),
-      topic: 'Financial Literacy - Budgeting',
-      scenariosCompleted: currentScenarioIndex + 1,
-      correctAnswers,
-      maxStreak,
-      hintsUsed,
-      rank,
-    };
-    
-    Alert.alert(
-      '🎉 Complete!',
-      `${rank}\n\n📊 Score: ${score}\n✅ ${correctAnswers}/${scenarios.length}\n🎯 ${gameData.accuracy}%\n🔥 Streak: ${maxStreak}`,
-      [{ text: '🎊 Finish', onPress: () => onGameEnd(gameData) }]
-    );
-  };
-
-  const currentScenario = scenarios[currentScenarioIndex];
-  const totalSelectedCost = currentScenario.expenses
-    .filter((expense) => !selectedCuts.includes(expense.item))
-    .reduce((sum, expense) => sum + expense.cost, 0);
-  const remaining = currentScenario.budget - totalSelectedCost;
-
-  const ResultModal = () => (
-    <Modal visible={showResultModal} animationType="fade" transparent={true}>
-      <View style={styles.resultOverlay}>
-        <Animatable.View 
-          animation={resultData?.isCorrect ? "bounceIn" : "shake"}
-          style={[styles.resultCard, resultData?.isCorrect ? styles.correctCard : styles.wrongCard]}
-        >
-          <Text style={styles.resultTitle}>
-            {resultData?.isCorrect ? '✅ Correct!' : '❌ Not Quite!'}
-          </Text>
-          
-          <Text style={styles.resultMessage}>{resultData?.message}</Text>
-          
-          {resultData?.isCorrect && (
-            <>
-              <View style={styles.pointsBox}>
-                <Text style={styles.pointsText}>
-                  +{resultData.points} points!
-                  {resultData.timeBonus > 0 && ` ⚡+${resultData.timeBonus}`}
-                </Text>
-              </View>
-              <View style={styles.funFactBox}>
-                <Text style={styles.funFactText}>{resultData.funFact}</Text>
-              </View>
-            </>
-          )}
-          
-          <View style={styles.lessonBox}>
-            <Text style={styles.lessonText}>{resultData?.lesson || resultData?.explanation}</Text>
-          </View>
-
-          <TouchableOpacity style={styles.nextButton} onPress={handleNextAction}>
-            <Text style={styles.nextButtonText}>
-              {resultData?.livesLeft === 0 ? '📊 Results' : 
-               currentScenarioIndex + 1 < scenarios.length ? '➡️ Next' : '🏁 Finish'}
-            </Text>
-          </TouchableOpacity>
-        </Animatable.View>
-      </View>
-    </Modal>
+  if (game.done) return (
+    <GameOver
+      score={game.score} correct={game.correct} total={game.attempted}
+      streak={game.bestStreak} title="Budget Master!"
+      onPlayAgain={() => { game.reset(); setIdx(0); setCuts([]); setFeedback(null); }}
+      onQuit={() => navigation.goBack()}
+    />
   );
 
   return (
-  <View style={styles.container}>
-    <ResultModal />
+    <GameShell
+      title="Budget Balance" emoji="💰" subject="Financial Literacy"
+      score={game.score} lives={game.lives} streak={game.streak}
+      progress={idx / SCENARIOS.length}
+    >
+      <ScrollView contentContainerStyle={s.scroll}>
+        <Text style={s.progress}>Scenario {idx + 1} of {SCENARIOS.length}</Text>
 
-    <Text style={styles.header}>💰 Budget Balance</Text>
-
-    <View style={styles.topSection}>
-      <View style={styles.progressSection}>
-        <Text style={styles.progressText}>
-          Lv {currentScenarioIndex + 1}/{scenarios.length} • {currentScenario.difficulty}
-        </Text>
-        <View style={styles.progressBar}>
-          <View
-            style={[
-              styles.progressFill,
-              { width: `${((currentScenarioIndex + 1) / scenarios.length) * 100}%` },
-            ]}
-          />
-        </View>
-      </View>
-
-      <View style={styles.statsRow}>
-        <View style={styles.statBox}>
-          <Text style={styles.statValue}>{score}</Text>
-          <Text style={styles.statLabel}>Score</Text>
-        </View>
-        <View style={styles.statBox}>
-          <Text style={styles.statValue}>🔥{streak}</Text>
-          <Text style={styles.statLabel}>Streak</Text>
-        </View>
-        <View style={styles.statBox}>
-          <Text style={styles.statValue}>{Array(lives).fill('❤️').join('')}</Text>
-          <Text style={styles.statLabel}>Lives</Text>
-        </View>
-      </View>
-    </View>
-
-    <View style={styles.budgetCard}>
-      <View style={styles.budgetRow}>
-        <Text style={styles.budgetLabel}>💵 Budget:</Text>
-        <Text style={styles.budgetAmount}>${currentScenario.budget}</Text>
-      </View>
-      <View style={styles.budgetRow}>
-        <Text style={styles.spendingLabel}>💳 Spending:</Text>
-        <Text style={styles.spendingAmount}>${totalSelectedCost}</Text>
-      </View>
-      <View style={styles.budgetRow}>
-        <Text
-          style={[
-            styles.remainingLabel,
-            remaining >= 0 ? styles.positive : styles.negative,
-          ]}
-        >
-          {remaining >= 0 ? '✅' : '⚠️'} Left:
-        </Text>
-        <Text
-          style={[
-            styles.remainingAmount,
-            remaining >= 0 ? styles.positive : styles.negative,
-          ]}
-        >
-          ${remaining}
-        </Text>
-      </View>
-    </View>
-
-    <Text style={styles.instruction}>Tap to ✂️ CUT:</Text>
-
-    <FlatList
-      data={currentScenario.expenses}
-      keyExtractor={(item, index) => `${currentScenarioIndex}-${index}`}
-      contentContainerStyle={styles.expenseListContent}
-      showsVerticalScrollIndicator={false}
-      renderItem={({ item: expense }) => (
-        <TouchableOpacity
-          style={[
-            styles.expenseButton,
-            selectedCuts.includes(expense.item) && styles.cutButton,
-          ]}
-          onPress={() => toggleCut(expense.item)}
-        >
-          <Text
-            style={[
-              styles.expenseText,
-              selectedCuts.includes(expense.item) && styles.cutText,
-            ]}
-          >
-            {selectedCuts.includes(expense.item) ? '✂️ ' : ''}
-            {expense.item}
-          </Text>
-          <View style={styles.expenseRight}>
-            {showHint && <Text style={styles.hintBadge}>{expense.essential ? '🔒' : '💭'}</Text>}
-            <Text
-              style={[
-                styles.costText,
-                selectedCuts.includes(expense.item) && styles.cutText,
-              ]}
-            >
-              ${expense.cost}
-            </Text>
+        <View style={s.card}>
+          <Text style={s.scenarioTitle}>{sc.title}</Text>
+          <Text style={s.story}>{sc.story}</Text>
+          <View style={s.budgetRow}>
+            <Text style={s.budgetLabel}>Budget</Text>
+            <Text style={s.budgetAmount}>${sc.budget}</Text>
           </View>
+        </View>
+
+        <Text style={s.sectionLabel}>Tap items to cut (non-essentials only)</Text>
+
+        {sc.expenses.map(exp => {
+          const isCut = cuts.includes(exp.item);
+          return (
+            <TouchableOpacity
+              key={exp.item}
+              style={[s.expense, isCut && s.expenseCut, exp.essential && s.expenseEssential]}
+              onPress={() => toggleCut(exp.item)}
+              disabled={!!feedback}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={[s.expenseName, isCut && s.expenseNameCut]}>{exp.item}</Text>
+                {exp.essential && <Text style={s.essentialBadge}>essential</Text>}
+              </View>
+              <Text style={[s.expenseCost, isCut && s.expenseCostCut]}>${exp.cost}</Text>
+              {isCut && <Text style={s.cutIcon}>✗</Text>}
+            </TouchableOpacity>
+          );
+        })}
+
+        {/* Running total */}
+        <View style={[s.totalRow, { borderColor: totalAfterCuts <= sc.budget ? G.success : G.error }]}>
+          <Text style={s.totalLabel}>Total after cuts</Text>
+          <Text style={[s.totalAmount, { color: totalAfterCuts <= sc.budget ? G.success : G.error }]}>
+            ${totalAfterCuts} / ${sc.budget}
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          style={[s.checkBtn, feedback && { opacity: 0.5 }]}
+          onPress={checkAnswer}
+          disabled={!!feedback}
+        >
+          <Text style={s.checkBtnText}>Check Budget</Text>
         </TouchableOpacity>
-      )}
-    />
 
-    <View style={styles.bottomButtons}>
-      <TouchableOpacity
-        style={[styles.hintButton, showHint && styles.hintButtonActive]}
-        onPress={useHint}
-        disabled={showHint}
-      >
-        <Text style={styles.hintButtonText}>{showHint ? '💡 On' : '💡 Hint'}</Text>
-      </TouchableOpacity>
+        {feedback && (
+          <View style={[s.feedback, { borderColor: feedback.isCorrect ? G.success : G.error }]}>
+            <Text style={[s.feedbackTitle, { color: feedback.isCorrect ? G.success : G.error }]}>
+              {feedback.msg}
+            </Text>
+            <Text style={s.feedbackLesson}>{feedback.lesson}</Text>
+          </View>
+        )}
+      </ScrollView>
+    </GameShell>
+  );
+}
 
-      <TouchableOpacity
-        style={[styles.checkButton, remaining < 0 && styles.overBudgetButton]}
-        onPress={checkAnswer}
-      >
-        <Text style={styles.checkButtonText}>
-          {remaining >= 0 ? '✅ Check Answer' : '⚠️ Over Budget'}
-        </Text>
-      </TouchableOpacity>
-    </View>
-
-    <Text style={styles.footerFact}>
-      {funFacts[currentScenarioIndex % funFacts.length]}
-    </Text>
-  </View>
-);
-
-};
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#E8F5E9',
-    paddingVertical: 4,
-  },
-  header: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2E7D32',
-    textAlign: 'center',
-    marginVertical: 4,
-  },
-  topSection: {
-    marginHorizontal: 8,
-  },
-  progressSection: {
-    marginBottom: 4,
-  },
-  progressText: {
-    fontSize: 10,
-    color: '#558B2F',
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: '#C8E6C9',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#4CAF50',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 4,
-  },
-  statBox: {
-    backgroundColor: '#FFF',
-    borderRadius: 6,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-    elevation: 1,
-  },
-  statValue: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#2E7D32',
-  },
-  statLabel: {
-    fontSize: 9,
-    color: '#555',
-  },
-  budgetCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 8,
-    padding: 6,
-    marginHorizontal: 8,
-    marginTop: 6,
-    elevation: 1,
-  },
-  budgetRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 1,
-  },
-  budgetLabel: { fontSize: 11, fontWeight: '600', color: '#1976D2' },
-  budgetAmount: { fontSize: 12, fontWeight: 'bold', color: '#1976D2' },
-  spendingLabel: { fontSize: 11, fontWeight: '600', color: '#F57C00' },
-  spendingAmount: { fontSize: 12, fontWeight: 'bold', color: '#F57C00' },
-  remainingLabel: { fontSize: 11, fontWeight: '600' },
-  remainingAmount: { fontSize: 12, fontWeight: 'bold' },
-  positive: { color: '#2E7D32' },
-  negative: { color: '#C62828' },
-  instruction: {
-    textAlign: 'center',
-    color: '#424242',
-    fontWeight: '600',
-    fontSize: 11,
-    marginTop: 6,
-  },
-  expenseListContent: {
-    paddingHorizontal: 8,
-    paddingBottom: 8,
-  },
-  expenseButton: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#66BB6A',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    marginVertical: 2,
-  },
-  cutButton: { backgroundColor: '#BDBDBD', opacity: 0.8 },
-  expenseText: { fontSize: 13, color: '#FFF', fontWeight: '600' },
-  cutText: { textDecorationLine: 'line-through' },
-  expenseRight: { flexDirection: 'row', alignItems: 'center' },
-  costText: { fontSize: 12, color: '#FFF', fontWeight: 'bold' },
-  hintBadge: { fontSize: 12, marginRight: 4 },
-  bottomButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    marginTop: 4,
-    marginBottom: 2,
-  },
-  hintButton: {
-    backgroundColor: '#FFA726',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-  },
-  hintButtonActive: { backgroundColor: '#FFB74D' },
-  hintButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 12 },
-  checkButton: {
-    backgroundColor: '#43A047',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-  },
-  overBudgetButton: { backgroundColor: '#E53935' },
-  checkButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 12 },
-  footerFact: {
-    textAlign: 'center',
-    color: '#388E3C',
-    fontSize: 10,
-    marginBottom: 4,
-  },
+const s = StyleSheet.create({
+  scroll:         { padding: 16, paddingBottom: 40 },
+  progress:       { fontSize: 11, color: G.muted, textAlign: 'center', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 },
+  card:           { backgroundColor: G.card, borderRadius: 14, padding: 16, borderWidth: 0.5, borderColor: G.border, marginBottom: 14 },
+  scenarioTitle:  { fontSize: 16, fontWeight: '700', color: G.cream, marginBottom: 6 },
+  story:          { fontSize: 13, color: G.muted, lineHeight: 18, marginBottom: 10 },
+  budgetRow:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: G.goldL, borderRadius: 8, padding: 10, borderWidth: 0.5, borderColor: G.gold },
+  budgetLabel:    { fontSize: 12, color: G.gold, fontWeight: '600' },
+  budgetAmount:   { fontSize: 20, fontWeight: '700', color: G.gold },
+  sectionLabel:   { fontSize: 11, color: G.muted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 },
+  expense:        { flexDirection: 'row', alignItems: 'center', backgroundColor: G.card, borderRadius: 10, padding: 14, marginBottom: 6, borderWidth: 0.5, borderColor: G.border },
+  expenseCut:     { backgroundColor: G.error + '11', borderColor: G.error },
+  expenseEssential:{ borderColor: G.teal + '66' },
+  expenseName:    { fontSize: 14, color: G.cream, fontWeight: '500' },
+  expenseNameCut: { textDecorationLine: 'line-through', color: G.muted },
+  essentialBadge: { fontSize: 9, color: G.teal, textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 2 },
+  expenseCost:    { fontSize: 15, fontWeight: '700', color: G.cream, marginRight: 6 },
+  expenseCostCut: { color: G.muted },
+  cutIcon:        { fontSize: 16, color: G.error },
+  totalRow:       { flexDirection: 'row', justifyContent: 'space-between', borderWidth: 1, borderRadius: 10, padding: 12, marginVertical: 12 },
+  totalLabel:     { fontSize: 13, color: G.muted },
+  totalAmount:    { fontSize: 16, fontWeight: '700' },
+  checkBtn:       { backgroundColor: G.gold, borderRadius: 12, padding: 15, alignItems: 'center', marginBottom: 12 },
+  checkBtnText:   { fontSize: 15, fontWeight: '700', color: G.bg },
+  feedback:       { backgroundColor: G.card, borderWidth: 1, borderRadius: 12, padding: 16 },
+  feedbackTitle:  { fontSize: 14, fontWeight: '700', marginBottom: 8 },
+  feedbackLesson: { fontSize: 13, color: G.cream, lineHeight: 18 },
 });
-
-
-export default BudgetBalanceGame;

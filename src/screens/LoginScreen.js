@@ -1,212 +1,179 @@
 // src/screens/LoginScreen.js
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-  StyleSheet,
+  View, Text, TextInput, TouchableOpacity, Alert,
+  ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../api/supabaseClient';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../../context/ThemeContext';
 
-export default function LoginScreen() {
+export default function LoginScreen({ onSuccess, onClose }) {
+  const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   const navigation = useNavigation();
-  const [email, setEmail] = useState('');
+  const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading,  setLoading]  = useState(false);
+  const [mode,     setMode]     = useState('login');
 
-  // Helper: check profile and route to onboarding or main app
+  const styles = makeStyles(c, t, s, r);
+
   const goAfterAuth = async () => {
     try {
-      console.log('goAfterAuth: checking authenticated user');
-      const { data: userData, error: userErr } = await supabase.auth.getUser();
-      if (userErr) {
-        console.warn('goAfterAuth: getUser error', userErr);
-        return;
-      }
-      const user = userData?.user;
-      if (!user) {
-        console.log('goAfterAuth: no active user session found');
-        return;
-      }
-
-      console.log('goAfterAuth: user id', user.id);
-
-      const { data: profile, error: profileErr } = await supabase
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error || !user) return;
+      const { data: profile } = await supabase
         .from('profiles')
         .select('onboarding_completed')
         .eq('id', user.id)
         .maybeSingle();
-
-      if (profileErr) {
-        console.warn('goAfterAuth: profile fetch error', profileErr);
-        // fallback to onboarding if profile couldn't be read
-        navigation.replace('MultiStepOnboarding');
-        return;
-      }
-
       const needsOnboarding = !profile || profile.onboarding_completed === false;
-      console.log('goAfterAuth: needsOnboarding', needsOnboarding);
-
-      if (needsOnboarding) {
-        navigation.replace('MultiStepOnboarding');
+      if (onSuccess) {
+        onSuccess();
+        if (needsOnboarding) navigation.navigate('MultiStepOnboarding');
       } else {
-        navigation.replace('MainTabs');
+        navigation.replace(needsOnboarding ? 'MultiStepOnboarding' : 'MainTabs');
       }
-    } catch (err) {
-      console.error('goAfterAuth unexpected error', err);
-    }
+    } catch (err) { console.error('goAfterAuth', err); }
   };
 
-  // 🔹 Handle Login
-  const handleLogin = async () => {
+  const handleSubmit = async () => {
+    const trimEmail = email.trim();
+    if (!trimEmail || !password) {
+      Alert.alert('Missing fields', 'Please enter your email and password.');
+      return;
+    }
+    setLoading(true);
     try {
-      setLoading(true);
-      console.log('Attempting login:', email);
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      console.log('signInWithPassword result:', { data, error });
+      const { error } = mode === 'login'
+        ? await supabase.auth.signInWithPassword({ email: trimEmail, password })
+        : await supabase.auth.signUp({ email: trimEmail, password });
       if (error) {
-        Alert.alert('Login Error', error.message);
+        Alert.alert(mode === 'login' ? 'Login Error' : 'Signup Error', error.message);
         return;
       }
-
-      const sessionRes = await supabase.auth.getSession();
-      console.log('Session after login:', sessionRes);
-
-      if (sessionRes?.data?.session) {
-        // Session exists: decide where to route the user
-        await goAfterAuth();
-      } else {
-        // Most likely requires email confirmation
-        Alert.alert('Login', 'Check your email to confirm your account (if required).');
-      }
-    } catch (err) {
-      console.error('Unexpected login error', err);
-      Alert.alert('Login Error', 'An unexpected error occurred.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 🔹 Handle Signup
-  const handleSignup = async () => {
-    try {
-      setLoading(true);
-      console.log('Attempting signup:', email);
-
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-
-      console.log('signUp result:', { data, error });
-
-      if (error) {
-        Alert.alert('Signup Error', error.message);
-        return;
-      }
-
-      // If a session is created immediately, route user
-      const sessionRes = await supabase.auth.getSession();
-      if (sessionRes?.data?.session) {
-        await goAfterAuth();
-      } else {
-        // No session—email confirmation required in many Supabase setups
-        Alert.alert('Signed up', 'Check your email for a confirmation link before you can log in.');
-      }
-    } catch (err) {
-      console.error('Unexpected signup error', err);
-      Alert.alert('Signup Error', 'An unexpected error occurred.');
-    } finally {
-      setLoading(false);
-    }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) await goAfterAuth();
+      else Alert.alert('Check your email', 'Confirm your email address before logging in.');
+    } catch {
+      Alert.alert('Error', 'Something went wrong. Please try again.');
+    } finally { setLoading(false); }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Welcome Back</Text>
-
-      <TextInput
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        style={styles.input}
-        autoCapitalize="none"
-        keyboardType="email-address"
-      />
-
-      <TextInput
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        style={styles.input}
-      />
-
-      {loading ? (
-        <ActivityIndicator size="large" color="#007AFF" />
-      ) : (
-        <>
-          <TouchableOpacity style={styles.button} onPress={handleLogin}>
-            <Text style={styles.buttonText}>Login</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.button, styles.signupButton]}
-            onPress={handleSignup}
-          >
-            <Text style={styles.buttonText}>Sign Up</Text>
-          </TouchableOpacity>
-        </>
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      {onClose && (
+        <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+          <Ionicons name="close" size={24} color={c.text3} />
+        </TouchableOpacity>
       )}
-    </View>
+
+      <View style={styles.card}>
+        <Text style={styles.logo}>📚</Text>
+        <Text style={styles.ornament}>✦ ·  · ✦</Text>
+        <Text style={styles.title}>
+          {mode === 'login' ? 'Welcome back, Scholar' : 'Begin your journey'}
+        </Text>
+        <Text style={styles.subtitle}>
+          {mode === 'login'
+            ? 'Sign in to save your progress and rank'
+            : 'Create your account to start leveling up'}
+        </Text>
+
+        <TextInput
+          style={styles.input}
+          placeholder="Email address"
+          placeholderTextColor={c.text4}
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          autoCorrect={false}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          placeholderTextColor={c.text4}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+
+        {loading ? (
+          <ActivityIndicator color={c.gold} style={{ marginTop: s.lg }} />
+        ) : (
+          <TouchableOpacity style={styles.btn} onPress={handleSubmit} activeOpacity={0.85}>
+            <Text style={styles.btnGlyph}>✦</Text>
+            <Text style={styles.btnText}>
+              {mode === 'login' ? 'Enter the Library' : 'Create Account'}
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {onClose && (
+          <TouchableOpacity style={styles.guestBtn} onPress={onClose}>
+            <Text style={styles.guestText}>Continue as guest — progress won't be saved</Text>
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity
+          style={styles.switchRow}
+          onPress={() => setMode(m => m === 'login' ? 'signup' : 'login')}
+        >
+          <Text style={styles.switchText}>
+            {mode === 'login' ? "Don't have an account? " : 'Already a scholar? '}
+            <Text style={styles.switchLink}>
+              {mode === 'login' ? 'Sign up' : 'Sign in'}
+            </Text>
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 24,
-    backgroundColor: '#fff',
+const makeStyles = (c, t, s, r) => StyleSheet.create({
+  screen: {
+    flex: 1, backgroundColor: c.bg0,
+    justifyContent: 'center', padding: s.xl,
   },
+  closeBtn: {
+    position: 'absolute', top: s.xxl + s.lg,
+    right: s.xl, zIndex: 10, padding: s.sm,
+  },
+  card: {
+    backgroundColor: c.bg1, borderRadius: r.xl,
+    padding: s.xxl, borderWidth: 0.5, borderColor: c.border,
+  },
+  logo: { fontSize: 48, textAlign: 'center', marginBottom: s.xs },
+  ornament: { textAlign: 'center', color: c.gold, fontSize: t.sm, letterSpacing: 6, marginBottom: s.md },
   title: {
-    fontSize: 26,
-    fontWeight: '700',
-    marginBottom: 24,
-    textAlign: 'center',
-    color: '#333',
+    fontSize: t.xl, fontWeight: t.bold, color: c.text1,
+    textAlign: 'center', marginBottom: s.sm,
+  },
+  subtitle: {
+    fontSize: t.sm, color: c.text3, textAlign: 'center',
+    marginBottom: s.xl, lineHeight: 20,
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    fontSize: 16,
-    backgroundColor: '#f9f9f9',
+    borderWidth: 1, borderColor: c.inputBorder, borderRadius: r.md,
+    padding: s.md, marginBottom: s.md, fontSize: t.md,
+    color: c.text1, backgroundColor: c.inputBg,
   },
-  button: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 14,
-    borderRadius: 8,
-    marginBottom: 12,
+  btn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: s.sm, backgroundColor: c.goldMid,
+    paddingVertical: s.md + 2, borderRadius: r.md, marginTop: s.sm,
   },
-  signupButton: {
-    backgroundColor: '#34C759',
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '600',
-    textAlign: 'center',
-    fontSize: 16,
-  },
+  btnGlyph: { color: '#fff', fontSize: t.xs, opacity: 0.8 },
+  btnText: { color: '#fff', fontWeight: t.bold, fontSize: t.md },
+  guestBtn: { marginTop: s.lg, alignItems: 'center' },
+  guestText: { fontSize: t.xs, color: c.text4, textAlign: 'center' },
+  switchRow: { marginTop: s.lg, alignItems: 'center' },
+  switchText: { fontSize: t.sm, color: c.text3 },
+  switchLink: { color: c.teal, fontWeight: t.semibold },
 });

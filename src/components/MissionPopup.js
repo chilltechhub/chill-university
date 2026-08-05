@@ -1,7 +1,8 @@
+// src/components/MissionPopup.js
 import React from 'react';
 import { View, Text, Modal, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
 
-const MissionPopup = ({ visible, onClose, missions }) => {
+const MissionPopup = ({ visible, onClose, missions = [] }) => {
   return (
     <Modal
       transparent
@@ -11,28 +12,37 @@ const MissionPopup = ({ visible, onClose, missions }) => {
     >
       <View style={styles.overlay}>
         <View style={styles.popup}>
-          <Text style={styles.header}>Active Missions</Text>
+          <Text style={styles.header}>🎯 Active Missions</Text>
 
-          {/* Show the list of missions */}
+          {/* Mission List */}
           <FlatList
             data={missions}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
-              <View style={styles.missionItem}>
-                <Text style={styles.title}>{item.title}</Text>
-                <Text style={styles.description}>{item.description}</Text>
-                {item.progress && (
+            keyExtractor={(item) => item.id?.toString()}
+            renderItem={({ item }) => {
+              const data = item.missions || {};
+              const progress = `${item.current_value || 0} / ${item.target_value || 0}`;
+              const completed = item.status === 'completed';
+
+              return (
+                <View style={[styles.missionItem, completed && styles.completed]}>
+                  <Text style={styles.title}>{data.title}</Text>
+                  <Text style={styles.description}>{data.description}</Text>
+
                   <Text style={styles.progress}>
-                    Progress: {item.progress.current} / {item.progress.total}
+                    Progress: {progress}
                   </Text>
-                )}
-                {item.reward && (
-                  <Text style={styles.reward}>
-                    Reward: {item.reward} XP
-                  </Text>
-                )}
-              </View>
-            )}
+
+                  <View style={styles.rewardRow}>
+                    <Text style={styles.reward}>⭐ {data.point_reward || 0}</Text>
+                    <Text style={styles.reward}>✨ {data.xp_reward || 0} XP</Text>
+                  </View>
+
+                  {completed && (
+                    <Text style={styles.completedText}>✓ Ready to Claim</Text>
+                  )}
+                </View>
+              );
+            }}
           />
 
           {/* Close Button */}
@@ -54,43 +64,59 @@ const styles = StyleSheet.create({
   },
   popup: {
     width: '90%',
-    height: '70%',
+    height: '75%',
     backgroundColor: '#fff',
     borderRadius: 20,
     padding: 20,
-    elevation: 10,
   },
   header: {
     fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 12,
     textAlign: 'center',
   },
   missionItem: {
-    backgroundColor: '#f0f0f0',
-    borderRadius: 10,
-    padding: 15,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    padding: 14,
     marginBottom: 10,
   },
+  completed: {
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+    backgroundColor: '#E8F5E9',
+  },
   title: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
   },
   description: {
-    fontSize: 14,
-    marginTop: 5,
-    marginBottom: 5,
+    fontSize: 13,
+    marginVertical: 6,
+    color: '#555',
   },
   progress: {
     fontSize: 12,
-    color: '#555',
+    color: '#666',
+  },
+  rewardRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 6,
   },
   reward: {
     fontSize: 12,
-    color: '#28a745',
+    color: '#4CAF50',
+    fontWeight: '600',
+  },
+  completedText: {
+    marginTop: 6,
+    fontSize: 12,
+    color: '#2E7D32',
+    fontWeight: '700',
   },
   button: {
-    marginTop: 20,
+    marginTop: 16,
     backgroundColor: '#4CAF50',
     paddingVertical: 10,
     paddingHorizontal: 20,
