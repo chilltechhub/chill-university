@@ -528,8 +528,6 @@ export function UserProgressProvider({ children }) {
     pendingRewards,
     badges,
     gameplayStats,
-    
-    // Computed
     points,
     xp,
     level,
