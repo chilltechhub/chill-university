@@ -1,339 +1,412 @@
-// src/screens/library/OnboardingScreen.js
-// First-launch onboarding: user picks/creates life areas + sets daily goal
+// src/screens/Onboarding.js
+//
+// Replaces MultiStepOnboarding.js and ProfileQuickSetup.js.
+// One streamlined flow, one profile schema, themed to match Login/Profile/Settings.
+//
+// Final columns written to `profiles`:
+//   display_name, avatar_id, motivation[], topics[], formats[],
+//   experience_level, daily_goal_minutes, wants_reflection, onboarding_completed
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, TextInput,
+  View, Text, TextInput, TouchableOpacity, FlatList,
   StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { insertLifeAreas, upsertSettings } from '../api/commandCenterService';
+import { useNavigation } from '@react-navigation/native';
+import { supabase } from '../api/supabaseClient';
+import { useTheme } from '../../context/ThemeContext';
 
-// ─── Preset categories users can pick from ───────────────────────────────────
-const PRESETS = [
-  { label: 'Business', icon: 'briefcase', color: '#378add', color_light: '#e6f1fb', subtitle: 'Projects, revenue, clients' },
-  { label: 'Career & Jobs', icon: 'trending-up', color: '#7f77dd', color_light: '#eeedfe', subtitle: 'Job search, skills, growth' },
-  { label: 'App Development', icon: 'phone-portrait', color: '#1d9e75', color_light: '#e1f5ee', subtitle: 'Builds, code, launches' },
-  { label: 'Health & Fitness', icon: 'fitness', color: '#639922', color_light: '#eaf3de', subtitle: 'Nutrition, exercise, rest' },
-  { label: 'Content & Brand', icon: 'megaphone', color: '#ba7517', color_light: '#faeeda', subtitle: 'Social, media, presence' },
-  { label: 'Money', icon: 'cash', color: '#3b6d11', color_light: '#eaf3de', subtitle: 'Budget, savings, income' },
-  { label: 'Travel', icon: 'airplane', color: '#d85a30', color_light: '#faece7', subtitle: 'Plans, destinations, adventures' },
-  { label: 'Relationships', icon: 'people', color: '#bd10e0', color_light: '#f5eafe', subtitle: 'Friends, family, network' },
-  { label: 'Learning', icon: 'school', color: '#0f6e56', color_light: '#e1f5ee', subtitle: 'Courses, books, research' },
-  { label: 'Mental Wellness', icon: 'leaf', color: '#639922', color_light: '#eaf3de', subtitle: 'Mindfulness, self-care' },
-  { label: 'Side Projects', icon: 'flask', color: '#993556', color_light: '#fbeaf0', subtitle: 'Experiments, passion work' },
-  { label: 'Community', icon: 'globe', color: '#185fa5', color_light: '#e6f1fb', subtitle: 'Events, giving back, causes' },
+const AVATARS = ['📚', '🦉', '🦊', '🐱', '🤖', '🌱'];
+
+const EXPERIENCE_LEVELS = [
+  { value: 'beginner',     label: 'Beginner',     hint: "I'm just getting started" },
+  { value: 'intermediate', label: 'Intermediate', hint: 'I know the basics' },
+  { value: 'advanced',     label: 'Advanced',     hint: 'I want to go deep' },
 ];
 
-const DAILY_GOAL_OPTIONS = [1, 2, 3, 4, 5, 6];
+const DAILY_GOAL_OPTIONS = [10, 20, 30, 45, 60];
 
-export default function OnboardingScreen({ userId, onComplete }) {
-  const [step, setStep] = useState(1); // 1 = pick areas, 2 = goal, 3 = confirm
-  const [selected, setSelected] = useState([]);
-  const [customLabel, setCustomLabel] = useState('');
-  const [customSubtitle, setCustomSubtitle] = useState('');
-  const [customAreas, setCustomAreas] = useState([]);
-  const [dailyGoal, setDailyGoal] = useState(3);
+// Steps 1–5 share the same "pick from choices" shape.
+const QUESTIONS = [
+  {
+    key: 'motivation',
+    type: 'multi',
+    title: 'What brings you here?',
+    subtitle: 'Pick as many as apply.',
+    choices: ['Learn new skills', 'Understand tech', 'Grow personally', 'Curious', 'Connect with others'],
+  },
+  {
+    key: 'topics',
+    type: 'multi',
+    title: 'What are you interested in?',
+    subtitle: 'This shapes what shows up in your Library.',
+    choices: [
+      'AI & Machine Learning', 'Web & App Dev', 'Robotics', 'Cybersecurity',
+      'Personal Finance', 'Entrepreneurship', 'Science', 'Design & Creativity',
+      'Leadership & Communication',
+    ],
+  },
+  {
+    key: 'formats',
+    type: 'multi',
+    title: 'How do you like to learn?',
+    subtitle: 'We\'ll surface more of what fits.',
+    choices: ['Articles', 'Short videos', 'Audio / podcasts', 'Quizzes & challenges', 'Discussion'],
+  },
+  {
+    key: 'experience_level',
+    type: 'single',
+    title: 'How familiar are you with these topics?',
+    subtitle: null,
+    choices: EXPERIENCE_LEVELS,
+  },
+];
+
+export default function Onboarding() {
+  const nav = useNavigation();
+  const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
+  const styles = makeStyles(c, t, s, r);
+
+  // step 0 = identity, 1..N = questions, last = daily goal
+  const TOTAL_STEPS = 2 + QUESTIONS.length; // identity + questions + goal
+  const [step, setStep] = useState(0);
+
+  const [displayName, setDisplayName] = useState('');
+  const [avatarId, setAvatarId] = useState(AVATARS[0]);
+  const [answers, setAnswers] = useState({});
+  const [dailyGoal, setDailyGoal] = useState(20);
+  const [wantsReflection, setWantsReflection] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [prefilling, setPrefilling] = useState(true);
 
-  const togglePreset = (preset) => {
-    setSelected(prev =>
-      prev.find(p => p.label === preset.label)
-        ? prev.filter(p => p.label !== preset.label)
-        : [...prev, preset]
-    );
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        const user = userData?.user;
+        if (!user || !mounted) { setPrefilling(false); return; }
+        const { data } = await supabase
+          .from('profiles')
+          .select('display_name, avatar_id, motivation, topics, formats, experience_level, daily_goal_minutes, wants_reflection')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (data && mounted) {
+          setDisplayName(data.display_name || '');
+          setAvatarId(data.avatar_id || AVATARS[0]);
+          setAnswers({
+            motivation: data.motivation || [],
+            topics: data.topics || [],
+            formats: data.formats || [],
+            experience_level: data.experience_level || null,
+          });
+          setDailyGoal(data.daily_goal_minutes || 20);
+          setWantsReflection(data.wants_reflection ?? true);
+        }
+      } catch (e) {
+        console.warn('onboarding prefill failed', e);
+      } finally {
+        if (mounted) setPrefilling(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  const toggleMulti = (key, val) => {
+    const cur = answers[key] || [];
+    setAnswers({
+      ...answers,
+      [key]: cur.includes(val) ? cur.filter(x => x !== val) : [...cur, val],
+    });
   };
 
-  const addCustom = () => {
-    const label = customLabel.trim();
-    if (!label) return;
-    if ([...selected, ...customAreas].find(a => a.label.toLowerCase() === label.toLowerCase())) {
-      Alert.alert('Already added', 'You already have an area with that name.');
+  const selectSingle = (key, val) => setAnswers({ ...answers, [key]: val });
+
+  const isIdentityStep = step === 0;
+  const questionIndex = step - 1;
+  const isQuestionStep = questionIndex >= 0 && questionIndex < QUESTIONS.length;
+  const isGoalStep = step === TOTAL_STEPS - 1;
+  const currentQ = isQuestionStep ? QUESTIONS[questionIndex] : null;
+
+  const canAdvance = () => {
+    if (isIdentityStep) return displayName.trim().length >= 2;
+    if (isQuestionStep) {
+      if (currentQ.type === 'multi') return true; // optional
+      return !!answers[currentQ.key];
+    }
+    return true;
+  };
+
+  const goNext = () => {
+    if (!canAdvance()) {
+      if (isIdentityStep) Alert.alert('Almost there', 'Enter a display name (2+ characters) to continue.');
+      else Alert.alert('Pick one to continue');
       return;
     }
-    const newArea = {
-      label,
-      subtitle: customSubtitle.trim() || null,
-      icon: 'star',
-      color: '#888780',
-      color_light: '#f1efe8',
-    };
-    setCustomAreas(prev => [...prev, newArea]);
-    setCustomLabel('');
-    setCustomSubtitle('');
+    if (step < TOTAL_STEPS - 1) setStep(step + 1);
+    else finish();
   };
 
-  const removeCustom = (label) => {
-    setCustomAreas(prev => prev.filter(a => a.label !== label));
-  };
+  const goBack = () => { if (step > 0) setStep(step - 1); };
 
-  const allSelected = [...selected, ...customAreas];
-
-  const handleFinish = async () => {
-    if (allSelected.length === 0) {
-      Alert.alert('Add at least one area', 'Pick or create at least one life area to track.');
-      return;
-    }
+  const finish = async () => {
     setSaving(true);
     try {
-      await insertLifeAreas(userId, allSelected.map((a, i) => ({ ...a, sort_order: i, progress: 0 })));
-      await upsertSettings(userId, {
-        daily_goal_hours: dailyGoal,
-        onboarding_complete: true,
-        streak_count: 0,
-        last_active_date: new Date().toISOString().split('T')[0],
-      });
-      onComplete();
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData?.user;
+      if (!user) {
+        Alert.alert('Not signed in', 'Please sign in to finish setup.');
+        setSaving(false);
+        return;
+      }
+      const payload = {
+        id: user.id,
+        display_name: displayName.trim(),
+        avatar_id: avatarId,
+        motivation: answers.motivation || [],
+        topics: answers.topics || [],
+        formats: answers.formats || [],
+        experience_level: answers.experience_level || null,
+        daily_goal_minutes: dailyGoal,
+        wants_reflection: wantsReflection,
+        onboarding_completed: true,
+      };
+      const { error } = await supabase.from('profiles').upsert(payload);
+      if (error) {
+        Alert.alert('Save error', error.message || 'Unable to save your setup.');
+        setSaving(false);
+        return;
+      }
+      try {
+        await supabase.auth.updateUser({
+          data: { display_name: payload.display_name, avatar_id: payload.avatar_id },
+        });
+      } catch (e) { console.warn('auth.updateUser warning', e); }
+
+      try {
+        await supabase.from('analytics_events').insert([{
+          user_id: user.id, event: 'onboarding_completed', meta: {},
+        }]);
+      } catch (e) { console.warn('analytics insert failed', e); }
+
+      nav.replace('MainTabs');
     } catch (err) {
-      Alert.alert('Error', 'Could not save your setup. Please try again.');
+      console.error('finish onboarding error', err);
+      Alert.alert('Error', 'Unexpected error finishing setup.');
     } finally {
       setSaving(false);
     }
   };
 
+  const skip = () => {
+    Alert.alert('Skip setup?', 'You can finish this anytime from Settings.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Skip', style: 'destructive', onPress: () => nav.replace('MainTabs') },
+    ]);
+  };
+
+  if (prefilling) {
+    return (
+      <View style={styles.loadingScreen}>
+        <ActivityIndicator color={c.gold} size="large" />
+      </View>
+    );
+  }
+
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={styles.container}>
+    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View style={styles.dots}>
+        {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+          <View key={i} style={[styles.dot, step >= i && styles.dotActive]} />
+        ))}
+      </View>
 
-        {/* Progress dots */}
-        <View style={styles.dots}>
-          {[1, 2, 3].map(n => (
-            <View key={n} style={[styles.dot, step >= n && styles.dotActive]} />
-          ))}
-        </View>
+      <TouchableOpacity style={styles.skipBtn} onPress={skip}>
+        <Text style={styles.skipText}>Skip</Text>
+      </TouchableOpacity>
 
-        {/* ── Step 1: Pick life areas ── */}
-        {step === 1 && (
-          <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-            <Text style={styles.title}>What areas of your life{'\n'}do you want to track?</Text>
-            <Text style={styles.subtitle}>Pick all that apply. You can always change these later.</Text>
+      <View style={styles.body}>
+        {isIdentityStep && (
+          <View>
+            <Text style={styles.ornament}>✦ ·  · ✦</Text>
+            <Text style={styles.title}>What should we{'\n'}call you, Scholar?</Text>
+            <Text style={styles.subtitle}>Pick a name and a companion for your journey.</Text>
 
-            <View style={styles.presetGrid}>
-              {PRESETS.map(preset => {
-                const isSelected = !!selected.find(p => p.label === preset.label);
-                return (
-                  <TouchableOpacity
-                    key={preset.label}
-                    style={[styles.presetCard, isSelected && { borderColor: preset.color, borderWidth: 2, backgroundColor: preset.color_light }]}
-                    onPress={() => togglePreset(preset)}
-                  >
-                    <Ionicons name={preset.icon} size={22} color={isSelected ? preset.color : '#888'} />
-                    <Text style={[styles.presetLabel, isSelected && { color: preset.color }]}>{preset.label}</Text>
-                    <Text style={styles.presetSub} numberOfLines={1}>{preset.subtitle}</Text>
-                    {isSelected && (
-                      <View style={[styles.checkBadge, { backgroundColor: preset.color }]}>
-                        <Ionicons name="checkmark" size={10} color="#fff" />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <Text style={styles.sectionLabel}>Add your own</Text>
-            <View style={styles.customInputRow}>
-              <TextInput
-                style={[styles.input, { flex: 1 }]}
-                placeholder="Area name (e.g. Music)"
-                value={customLabel}
-                onChangeText={setCustomLabel}
-                maxLength={30}
-              />
-            </View>
             <TextInput
               style={styles.input}
-              placeholder="Short description (optional)"
-              value={customSubtitle}
-              onChangeText={setCustomSubtitle}
-              maxLength={50}
+              placeholder="Display name"
+              placeholderTextColor={c.text4}
+              value={displayName}
+              onChangeText={setDisplayName}
+              autoCapitalize="words"
+              maxLength={24}
             />
-            <TouchableOpacity style={styles.addBtn} onPress={addCustom}>
-              <Ionicons name="add" size={18} color="#fff" />
-              <Text style={styles.addBtnText}>Add area</Text>
-            </TouchableOpacity>
 
-            {customAreas.map(area => (
-              <View key={area.label} style={styles.customTag}>
-                <Text style={styles.customTagText}>{area.label}</Text>
-                {area.subtitle ? <Text style={styles.customTagSub}>{area.subtitle}</Text> : null}
-                <TouchableOpacity onPress={() => removeCustom(area.label)} style={styles.removeBtn}>
-                  <Ionicons name="close-circle" size={18} color="#999" />
-                </TouchableOpacity>
-              </View>
-            ))}
-
-            {allSelected.length > 0 && (
-              <View style={styles.selectedSummary}>
-                <Text style={styles.selectedCount}>{allSelected.length} area{allSelected.length !== 1 ? 's' : ''} selected</Text>
-              </View>
-            )}
-          </ScrollView>
-        )}
-
-        {/* ── Step 2: Daily goal ── */}
-        {step === 2 && (
-          <ScrollView contentContainerStyle={styles.scrollContent}>
-            <Text style={styles.title}>How many hours of{'\n'}focused work is your goal?</Text>
-            <Text style={styles.subtitle}>This sets your daily progress target. Be honest with yourself.</Text>
-            <View style={styles.goalGrid}>
-              {DAILY_GOAL_OPTIONS.map(hrs => (
+            <Text style={styles.sectionLabel}>Choose a companion</Text>
+            <View style={styles.avatarRow}>
+              {AVATARS.map(a => (
                 <TouchableOpacity
-                  key={hrs}
-                  style={[styles.goalCard, dailyGoal === hrs && styles.goalCardActive]}
-                  onPress={() => setDailyGoal(hrs)}
+                  key={a}
+                  style={[styles.avatarCircle, avatarId === a && styles.avatarCircleActive]}
+                  onPress={() => setAvatarId(a)}
                 >
-                  <Text style={[styles.goalNumber, dailyGoal === hrs && styles.goalNumberActive]}>{hrs}h</Text>
-                  <Text style={[styles.goalLabel, dailyGoal === hrs && styles.goalLabelActive]}>
-                    {hrs === 1 ? 'light' : hrs === 2 ? 'steady' : hrs === 3 ? 'solid' : hrs === 4 ? 'strong' : hrs === 5 ? 'intense' : 'beast'}
-                  </Text>
+                  <Text style={styles.avatarEmoji}>{a}</Text>
                 </TouchableOpacity>
               ))}
             </View>
-            <Text style={styles.goalHint}>You can change this anytime from settings.</Text>
-          </ScrollView>
+          </View>
         )}
 
-        {/* ── Step 3: Confirm ── */}
-        {step === 3 && (
-          <ScrollView contentContainerStyle={styles.scrollContent}>
-            <Text style={styles.title}>You're all set 🎯</Text>
-            <Text style={styles.subtitle}>Here's what your command center will track:</Text>
-            {allSelected.map(area => (
-              <View key={area.label} style={[styles.confirmRow, { borderLeftColor: area.color }]}>
-                <Ionicons name={area.icon} size={18} color={area.color} style={{ marginRight: 10 }} />
-                <View>
-                  <Text style={styles.confirmLabel}>{area.label}</Text>
-                  {area.subtitle ? <Text style={styles.confirmSub}>{area.subtitle}</Text> : null}
-                </View>
-              </View>
-            ))}
-            <View style={styles.confirmGoal}>
-              <Ionicons name="time" size={18} color="#378add" />
-              <Text style={styles.confirmGoalText}>Daily goal: {dailyGoal} hour{dailyGoal !== 1 ? 's' : ''}</Text>
-            </View>
-          </ScrollView>
-        )}
-
-        {/* Navigation buttons */}
-        <View style={styles.navRow}>
-          {step > 1 && (
-            <TouchableOpacity style={styles.backBtn} onPress={() => setStep(s => s - 1)}>
-              <Text style={styles.backBtnText}>Back</Text>
-            </TouchableOpacity>
-          )}
-          {step < 3 ? (
-            <TouchableOpacity
-              style={[styles.nextBtn, allSelected.length === 0 && step === 1 && styles.nextBtnDisabled]}
-              onPress={() => {
-                if (step === 1 && allSelected.length === 0) {
-                  Alert.alert('Pick at least one area');
-                  return;
-                }
-                setStep(s => s + 1);
+        {isQuestionStep && (
+          <>
+            <Text style={styles.title}>{currentQ.title}</Text>
+            {currentQ.subtitle && <Text style={styles.subtitle}>{currentQ.subtitle}</Text>}
+            <FlatList
+              data={currentQ.choices}
+              keyExtractor={(item) => (typeof item === 'string' ? item : item.value)}
+              ItemSeparatorComponent={() => <View style={{ height: s.sm }} />}
+              renderItem={({ item }) => {
+                const isObj = typeof item !== 'string';
+                const value = isObj ? item.value : item;
+                const label = isObj ? item.label : item;
+                const selected = currentQ.type === 'multi'
+                  ? (answers[currentQ.key] || []).includes(value)
+                  : answers[currentQ.key] === value;
+                return (
+                  <TouchableOpacity
+                    style={[styles.choice, selected && styles.choiceSelected]}
+                    onPress={() => currentQ.type === 'multi'
+                      ? toggleMulti(currentQ.key, value)
+                      : selectSingle(currentQ.key, value)}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.choiceText, selected && styles.choiceTextSelected]}>{label}</Text>
+                      {isObj && item.hint && (
+                        <Text style={[styles.choiceHint, selected && styles.choiceHintSelected]}>{item.hint}</Text>
+                      )}
+                    </View>
+                    {selected && <Ionicons name="checkmark-circle" size={20} color="#fff" />}
+                  </TouchableOpacity>
+                );
               }}
-            >
-              <Text style={styles.nextBtnText}>Continue</Text>
-              <Ionicons name="arrow-forward" size={18} color="#fff" />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity style={styles.nextBtn} onPress={handleFinish} disabled={saving}>
-              {saving
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.nextBtnText}>Let's go</Text>
-              }
-            </TouchableOpacity>
-          )}
-        </View>
+            />
+          </>
+        )}
 
+        {isGoalStep && (
+          <View>
+            <Text style={styles.title}>How many minutes a day{'\n'}do you want to spend learning?</Text>
+            <Text style={styles.subtitle}>You can change this later in Settings.</Text>
+            <View style={styles.goalGrid}>
+              {DAILY_GOAL_OPTIONS.map(min => (
+                <TouchableOpacity
+                  key={min}
+                  style={[styles.goalCard, dailyGoal === min && styles.goalCardActive]}
+                  onPress={() => setDailyGoal(min)}
+                >
+                  <Text style={[styles.goalNumber, dailyGoal === min && styles.goalNumberActive]}>{min}</Text>
+                  <Text style={[styles.goalUnit, dailyGoal === min && styles.goalNumberActive]}>min</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity
+              style={styles.reflectionRow}
+              onPress={() => setWantsReflection(v => !v)}
+            >
+              <View style={[styles.checkbox, wantsReflection && styles.checkboxActive]}>
+                {wantsReflection && <Ionicons name="checkmark" size={14} color="#fff" />}
+              </View>
+              <Text style={styles.reflectionText}>Prompt me to reflect on what I learn</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.navRow}>
+        {step > 0
+          ? <TouchableOpacity style={styles.backBtn} onPress={goBack}><Text style={styles.backBtnText}>Back</Text></TouchableOpacity>
+          : <View />}
+        <TouchableOpacity style={styles.nextBtn} onPress={goNext} disabled={saving} activeOpacity={0.85}>
+          {saving
+            ? <ActivityIndicator color="#fff" />
+            : <Text style={styles.nextBtnText}>{step === TOTAL_STEPS - 1 ? "Let's go" : 'Continue'}</Text>}
+        </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  dots: { flexDirection: 'row', justifyContent: 'center', gap: 8, paddingTop: 20, paddingBottom: 4 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#e0e0e0' },
-  dotActive: { backgroundColor: '#378add', width: 20 },
-  scrollContent: { padding: 24, paddingBottom: 40 },
-  title: { fontSize: 26, fontWeight: '700', color: '#1a1a1a', lineHeight: 34, marginBottom: 8 },
-  subtitle: { fontSize: 15, color: '#666', marginBottom: 24, lineHeight: 22 },
+const makeStyles = (c, t, s, r) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: c.bg0 },
+  loadingScreen: { flex: 1, backgroundColor: c.bg0, alignItems: 'center', justifyContent: 'center' },
 
-  presetGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 },
-  presetCard: {
-    width: '47%', padding: 12, borderRadius: 12,
-    borderWidth: 1.5, borderColor: '#e5e5e5',
-    backgroundColor: '#fafafa', position: 'relative',
-  },
-  presetLabel: { fontSize: 13, fontWeight: '600', color: '#333', marginTop: 6, marginBottom: 2 },
-  presetSub: { fontSize: 11, color: '#999' },
-  checkBadge: {
-    position: 'absolute', top: 8, right: 8,
-    width: 18, height: 18, borderRadius: 9,
-    alignItems: 'center', justifyContent: 'center',
-  },
+  dots: { flexDirection: 'row', justifyContent: 'center', gap: s.xs, paddingTop: s.xxl, paddingBottom: s.sm },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: c.border },
+  dotActive: { backgroundColor: c.gold, width: 20 },
 
-  sectionLabel: { fontSize: 13, fontWeight: '600', color: '#888', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 },
-  customInputRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  skipBtn: { position: 'absolute', top: s.xxl + 2, right: s.xl, padding: s.sm },
+  skipText: { color: c.text4, fontSize: t.sm },
+
+  body: { flex: 1, paddingHorizontal: s.xl, paddingTop: s.lg },
+  ornament: { textAlign: 'center', color: c.gold, fontSize: t.sm, letterSpacing: 6, marginBottom: s.md },
+  title: { fontSize: t.xl, fontWeight: t.bold, color: c.text1, marginBottom: s.sm, lineHeight: 30 },
+  subtitle: { fontSize: t.sm, color: c.text3, marginBottom: s.xl, lineHeight: 20 },
+
   input: {
-    borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 10,
-    padding: 12, fontSize: 15, color: '#1a1a1a', backgroundColor: '#fafafa', marginBottom: 8,
+    borderWidth: 1, borderColor: c.inputBorder, borderRadius: r.md,
+    padding: s.md, marginBottom: s.xl, fontSize: t.md,
+    color: c.text1, backgroundColor: c.inputBg,
   },
-  addBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 6, backgroundColor: '#0f1923', borderRadius: 10,
-    paddingVertical: 12, marginBottom: 16,
+  sectionLabel: { fontSize: t.sm, fontWeight: t.semibold, color: c.text3, marginBottom: s.md },
+  avatarRow: { flexDirection: 'row', flexWrap: 'wrap', gap: s.md },
+  avatarCircle: {
+    width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: c.bg1, borderWidth: 1.5, borderColor: c.border,
   },
-  addBtnText: { color: '#fff', fontWeight: '600', fontSize: 15 },
-  customTag: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#f5f5f5',
-    borderRadius: 10, padding: 12, marginBottom: 8,
-  },
-  customTagText: { fontWeight: '600', fontSize: 14, color: '#333', flex: 1 },
-  customTagSub: { fontSize: 12, color: '#888', marginRight: 8 },
-  removeBtn: { padding: 2 },
-  selectedSummary: { alignItems: 'center', paddingTop: 12 },
-  selectedCount: { fontSize: 13, color: '#888' },
+  avatarCircleActive: { borderColor: c.gold, backgroundColor: c.inputBg },
+  avatarEmoji: { fontSize: 26 },
 
-  goalGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 20, justifyContent: 'center' },
-  goalCard: {
-    width: 90, height: 90, borderRadius: 16,
-    borderWidth: 1.5, borderColor: '#e5e5e5',
-    backgroundColor: '#fafafa', alignItems: 'center', justifyContent: 'center',
-  },
-  goalCardActive: { borderColor: '#378add', backgroundColor: '#e6f1fb' },
-  goalNumber: { fontSize: 26, fontWeight: '700', color: '#333' },
-  goalNumberActive: { color: '#378add' },
-  goalLabel: { fontSize: 12, color: '#999', marginTop: 2 },
-  goalLabelActive: { color: '#378add' },
-  goalHint: { textAlign: 'center', fontSize: 13, color: '#aaa' },
-
-  confirmRow: {
+  choice: {
     flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 12, paddingHorizontal: 14,
-    borderLeftWidth: 4, backgroundColor: '#fafafa',
-    borderRadius: 8, marginBottom: 8,
+    padding: s.md, borderRadius: r.md,
+    borderWidth: 1, borderColor: c.border, backgroundColor: c.bg1,
   },
-  confirmLabel: { fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
-  confirmSub: { fontSize: 12, color: '#888', marginTop: 2 },
-  confirmGoal: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    marginTop: 16, padding: 14, backgroundColor: '#e6f1fb',
-    borderRadius: 10,
+  choiceSelected: { backgroundColor: c.goldMid, borderColor: c.goldMid },
+  choiceText: { fontSize: t.md, color: c.text1, fontWeight: t.semibold },
+  choiceTextSelected: { color: '#fff' },
+  choiceHint: { fontSize: t.xs, color: c.text4, marginTop: 2 },
+  choiceHintSelected: { color: '#fff', opacity: 0.85 },
+
+  goalGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: s.md, marginBottom: s.xl },
+  goalCard: {
+    width: 76, height: 76, borderRadius: r.md, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: c.border, backgroundColor: c.bg1,
   },
-  confirmGoalText: { fontSize: 15, fontWeight: '600', color: '#378add' },
+  goalCardActive: { borderColor: c.gold, backgroundColor: c.inputBg },
+  goalNumber: { fontSize: t.xl, fontWeight: t.bold, color: c.text1 },
+  goalNumberActive: { color: c.gold },
+  goalUnit: { fontSize: t.xs, color: c.text4, marginTop: 2 },
+
+  reflectionRow: { flexDirection: 'row', alignItems: 'center', gap: s.sm },
+  checkbox: {
+    width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: c.border,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: c.bg1,
+  },
+  checkboxActive: { backgroundColor: c.goldMid, borderColor: c.goldMid },
+  reflectionText: { fontSize: t.sm, color: c.text2 || c.text3, flex: 1 },
 
   navRow: {
-    flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center',
-    padding: 20, gap: 12, borderTopWidth: 1, borderTopColor: '#f0f0f0',
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    padding: s.xl, borderTopWidth: 0.5, borderTopColor: c.border,
   },
-  backBtn: { paddingVertical: 12, paddingHorizontal: 20 },
-  backBtnText: { fontSize: 15, color: '#666', fontWeight: '500' },
+  backBtn: { paddingVertical: s.md, paddingHorizontal: s.lg },
+  backBtnText: { fontSize: t.md, color: c.text3, fontWeight: t.semibold },
   nextBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#0f1923', borderRadius: 12,
-    paddingVertical: 14, paddingHorizontal: 24,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: c.goldMid, borderRadius: r.md,
+    paddingVertical: s.md, paddingHorizontal: s.xl, minWidth: 130,
   },
-  nextBtnDisabled: { backgroundColor: '#ccc' },
-  nextBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  nextBtnText: { color: '#fff', fontWeight: t.bold, fontSize: t.md },
 });

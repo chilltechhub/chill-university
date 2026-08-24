@@ -12,10 +12,6 @@ import { supabase } from '../api/supabaseClient';
 import { LIFE_AREAS } from './library/LifeAreaScreen';
 import CalendarModal from '../components/CalendarModal';
 
-
-
-
-
 // ─── Quotes ──────────────────────────────────────────────────────────────────
 const QUOTES = [
   { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
@@ -40,10 +36,10 @@ function getTodaysQuote() {
 
 // ─── Wizard ──────────────────────────────────────────────────────────────────
 const WIZARD_MOODS = {
-  happy:       { emoji: '🧙',    robe: '#8b4fc4', msg: "Ready for today's quest!" },
-  focused:     { emoji: '🧙‍♂️',  robe: '#2bb5a0', msg: 'Your focus is strong.' },
-  celebrating: { emoji: '🧙',    robe: '#c9a84c', msg: "You're on a roll!" },
-  resting:     { emoji: '🧙',    robe: '#4a3a6a', msg: 'Rest and recover.' },
+  happy:       { emoji: '🧙',   robe: '#8b4fc4', msg: "Ready for today's quest!" },
+  focused:     { emoji: '🧙‍♂️', robe: '#2bb5a0', msg: 'Your focus is strong.' },
+  celebrating: { emoji: '🧙',   robe: '#c9a84c', msg: "You're on a roll!" },
+  resting:     { emoji: '🧙',   robe: '#4a3a6a', msg: 'Rest and recover.' },
 };
 function WizardCharacter({ mood = 'happy', name, c }) {
   const w = WIZARD_MOODS[mood] || WIZARD_MOODS.happy;
@@ -83,40 +79,36 @@ function SectionHead({ title, action, onAction, c, t }) {
   );
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Main HomeScreen ──────────────────────────────────────────────────────────
 export default function HomeScreen() {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s, radius: r, shadows: sh } = useTheme();
   const { profile, streakDays } = useUserProgress();
 
-  const [refreshing,    setRefreshing]  = useState(false);
-  const [todayFocus,    setTodayFocus]  = useState('');
-  const [focusDraft,    setFocusDraft]  = useState('');
-  const [editFocus,     setEditFocus]   = useState(false);
-  const [todos,         setTodos]       = useState([]);
-  const [todoInput,     setTodoInput]   = useState('');
-  const [showTodoInput, setShowTodoInput] = useState(false);
-  const [affirmation,   setAffirmation] = useState('');
-  const [editAffirm,    setEditAffirm]  = useState(false);
-  const [affirmDraft,   setAffirmDraft] = useState('');
-  const [lifeAreas,     setLifeAreas]   = useState([]);
-  const [projects,      setProjects]    = useState([]);
-  const [ideas,         setIdeas]       = useState([]);
-  const [userId,        setUserId]      = useState(null);
-  const [showCalendar,  setShowCalendar] = useState(false);
-  const [calItems,      setCalItems]    = useState([]);
-  const [calInput,      setCalInput]    = useState('');
-  const [calDate,       setCalDate]     = useState('');
-  // Life area carousel
-  const [areaIndex,     setAreaIndex]   = useState(0);
+  const [refreshing,     setRefreshing]    = useState(false);
+  const [todayFocus,     setTodayFocus]    = useState('');
+  const [focusDraft,     setFocusDraft]    = useState('');
+  const [editFocus,      setEditFocus]     = useState(false);
+  const [todos,          setTodos]         = useState([]);
+  const [todoInput,      setTodoInput]     = useState('');
+  const [showTodoInput,  setShowTodoInput] = useState(false);
+  const [affirmation,    setAffirmation]   = useState('');
+  const [editAffirm,     setEditAffirm]    = useState(false);
+  const [affirmDraft,    setAffirmDraft]   = useState('');
+  const [lifeAreas,      setLifeAreas]     = useState([]);
+  const [projects,       setProjects]      = useState([]);
+  const [ideas,          setIdeas]         = useState([]);
+  const [userId,         setUserId]        = useState(null);
+  const [showCalendar,   setShowCalendar]  = useState(false);
+  const [areaIndex,      setAreaIndex]     = useState(0);
   const areaTimer = useRef(null);
 
   const styles = makeStyles(c, t, s, r, sh);
-  const quote = getTodaysQuote();
-  const today = new Date();
-  const wizardMood = (streakDays || 0) >= 3 ? 'celebrating' : todayFocus ? 'focused' : 'happy';
+  const quote  = getTodaysQuote();
+  const today  = new Date();
+  const wizardMood  = (streakDays || 0) >= 3 ? 'celebrating' : todayFocus ? 'focused' : 'happy';
   const displayName = profile?.display_name || profile?.username || 'Scholar';
-  const dateStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const dateStr     = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   // Auto-rotate life areas every 3s
   useEffect(() => {
@@ -150,19 +142,21 @@ export default function HomeScreen() {
         supabase.from('user_settings').select('affirmation').eq('user_id', uid).maybeSingle(),
       ]);
 
-      if (focusRes.data) { setTodayFocus(focusRes.data.focus_text); setFocusDraft(focusRes.data.focus_text); }
+      if (focusRes.data) {
+        setTodayFocus(focusRes.data.focus_text);
+        setFocusDraft(focusRes.data.focus_text);
+      }
 
-      // Merge todos from tasks + projects + captures
       const merged = [
-        ...(tasksRes.data    || []).map(t => ({ id: 'task_' + t.id,    title: t.title,                    source: 'task',    color: c.teal })),
-        ...(projRes2.data    || []).map(p => ({ id: 'proj_' + p.id,    title: `${p.emoji || '🚀'} ${p.title}`, source: 'project', color: p.color || c.gold })),
-        ...(capturesRes.data || []).map(n => ({ id: 'cap_' + n.id,     title: n.title || 'Untitled note', source: n.type,    color: c.purple })),
+        ...(tasksRes.data    || []).map(tk => ({ id: 'task_' + tk.id, title: tk.title,                     source: 'task',    color: c.teal })),
+        ...(projRes2.data    || []).map(p  => ({ id: 'proj_' + p.id,  title: `${p.emoji || '🚀'} ${p.title}`, source: 'project', color: p.color || c.gold })),
+        ...(capturesRes.data || []).map(n  => ({ id: 'cap_'  + n.id,  title: n.title || 'Untitled note',    source: n.type,    color: c.gold })),
       ].slice(0, 6);
       setTodos(merged);
 
-      if (areasRes.data)   setLifeAreas(areasRes.data);
-      if (projRes.data)    setProjects(projRes.data);
-      if (ideasRes.data)   setIdeas(ideasRes.data);
+      if (areasRes.data)  setLifeAreas(areasRes.data);
+      if (projRes.data)   setProjects(projRes.data);
+      if (ideasRes.data)  setIdeas(ideasRes.data);
       if (settingsRes.data?.affirmation) {
         setAffirmation(settingsRes.data.affirmation);
         setAffirmDraft(settingsRes.data.affirmation);
@@ -170,12 +164,19 @@ export default function HomeScreen() {
     } catch (e) { console.warn('HomeScreen loadAll', e); }
   };
 
-  const onRefresh = async () => { setRefreshing(true); if (userId) await loadAll(userId); setRefreshing(false); };
+  const onRefresh = async () => {
+    setRefreshing(true);
+    if (userId) await loadAll(userId);
+    setRefreshing(false);
+  };
 
   const saveFocus = async () => {
     setTodayFocus(focusDraft); setEditFocus(false);
     if (!userId) return;
-    await supabase.from('daily_focus').upsert({ user_id: userId, focus_text: focusDraft, date: new Date().toISOString().split('T')[0] });
+    await supabase.from('daily_focus').upsert({
+      user_id: userId, focus_text: focusDraft,
+      date: new Date().toISOString().split('T')[0],
+    });
   };
 
   const saveAffirmation = async () => {
@@ -186,7 +187,11 @@ export default function HomeScreen() {
 
   const addTodo = async () => {
     if (!todoInput.trim()) return;
-    const item = { title: todoInput.trim(), category: 'personal', priority: 2, completed: false, due_date: new Date().toISOString().split('T')[0], sort_order: todos.length, ...(userId ? { user_id: userId } : {}) };
+    const item = {
+      title: todoInput.trim(), category: 'personal', priority: 2,
+      completed: false, due_date: new Date().toISOString().split('T')[0],
+      sort_order: todos.length, ...(userId ? { user_id: userId } : {}),
+    };
     const { data } = userId
       ? await supabase.from('tasks').insert(item).select().single()
       : { data: { ...item, id: Date.now().toString() } };
@@ -195,13 +200,13 @@ export default function HomeScreen() {
   };
 
   const completeTodo = async (id) => {
-    setTodos(prev => prev.filter(t => t.id !== id));
+    setTodos(prev => prev.filter(tk => tk.id !== id));
     const rawId = id.replace(/^(task_|proj_|cap_)/, '');
-    if (userId && id.startsWith('task_')) await supabase.from('tasks').update({ completed: true, completed_at: new Date().toISOString() }).eq('id', rawId);
+    if (userId && id.startsWith('task_'))
+      await supabase.from('tasks').update({ completed: true, completed_at: new Date().toISOString() }).eq('id', rawId);
   };
 
-  // Current life area for carousel
-  const areaDef = LIFE_AREAS[areaIndex];
+  const areaDef   = LIFE_AREAS[areaIndex];
   const savedArea = lifeAreas.find(a => a.label?.toLowerCase() === areaDef?.label?.toLowerCase());
   const areaRating = savedArea?.progress || 0;
 
@@ -226,13 +231,21 @@ export default function HomeScreen() {
         <View style={styles.card}>
           <WizardCharacter mood={wizardMood} name={displayName} c={c} />
           <View style={styles.actionRow}>
-            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: c.navyMid || c.bg2, borderColor: c.border }]} onPress={() => navigation.navigate('Library')} activeOpacity={0.85}>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: c.bg2, borderColor: c.border }]}
+              onPress={() => navigation.navigate('Library')}
+              activeOpacity={0.85}
+            >
               <Text style={styles.actionGlyph}>📚</Text>
               <Text style={[styles.actionText, { color: c.teal }]}>STUDY</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: c.gold }]} onPress={() => navigation.navigate('Games')} activeOpacity={0.85}>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: c.gold }]}
+              onPress={() => navigation.navigate('Games')}
+              activeOpacity={0.85}
+            >
               <Text style={styles.actionGlyph}>✦</Text>
-              <Text style={[styles.actionText, { color: c.bg0 || '#fff' }]}>PLAY</Text>
+              <Text style={[styles.actionText, { color: '#fff' }]}>PLAY</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -258,7 +271,7 @@ export default function HomeScreen() {
           ) : null}
         </View>
 
-        {/* ── Focus + calendar box side by side ── */}
+        {/* ── Focus + calendar side by side ── */}
         <View style={[styles.section, { flexDirection: 'row', gap: s.sm }]}>
           <TouchableOpacity style={[styles.focusCard, { flex: 1 }]} onPress={() => setEditFocus(true)}>
             <Ionicons name="bookmark" size={14} color={c.teal} />
@@ -267,18 +280,11 @@ export default function HomeScreen() {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.calBox} onPress={() => setShowCalendar(true)}>
-  <Text style={styles.calDay}>{today.getDate()}</Text>
-  <Text style={styles.calMonth}>
-    {today.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-  </Text>
-</TouchableOpacity>
-
-<CalendarModal
-  visible={showCalendar}
-  onClose={() => setShowCalendar(false)}
-  userId={userId}
-  initialDate={today}
-/>
+            <Text style={styles.calDay}>{today.getDate()}</Text>
+            <Text style={styles.calMonth}>
+              {today.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* ── On the desk ── */}
@@ -328,11 +334,10 @@ export default function HomeScreen() {
               style={[styles.areaSnapshot, { borderColor: areaDef.color }]}
               onPress={() => navigation.navigate('Library', {
                 screen: 'LifeAreaScreen',
-                params: { areaId: areaDef.id, rating: areaRating, lastCheck: savedArea?.last_check_date || null, linkedItems: [] }
+                params: { areaId: areaDef.id, rating: areaRating, lastCheck: savedArea?.last_check_date || null, linkedItems: [] },
               })}
               activeOpacity={0.85}
             >
-              {/* Header row */}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 }}>
                 <Text style={{ fontSize: 32 }}>{areaDef.emoji}</Text>
                 <View style={{ flex: 1 }}>
@@ -346,11 +351,9 @@ export default function HomeScreen() {
                   <Text style={{ fontSize: 9, color: c.text4 }}>/5</Text>
                 </View>
               </View>
-              {/* Progress bar */}
               <View style={{ height: 5, backgroundColor: c.bg2, borderRadius: 3, overflow: 'hidden', marginBottom: 10 }}>
                 <View style={{ height: 5, borderRadius: 3, backgroundColor: areaDef.color, width: `${(areaRating / 5) * 100}%` }} />
               </View>
-              {/* Dot indicators */}
               <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
                 {LIFE_AREAS.map((_, i) => (
                   <TouchableOpacity
@@ -359,8 +362,7 @@ export default function HomeScreen() {
                     hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
                   >
                     <View style={{
-                      width: i === areaIndex ? 18 : 6,
-                      height: 6, borderRadius: 3,
+                      width: i === areaIndex ? 18 : 6, height: 6, borderRadius: 3,
                       backgroundColor: i === areaIndex ? areaDef.color : c.bg2,
                     }} />
                   </TouchableOpacity>
@@ -415,8 +417,10 @@ export default function HomeScreen() {
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>✦ Today's Focus</Text>
-            <TextInput style={styles.modalInput} value={focusDraft} onChangeText={setFocusDraft}
-              placeholder="What matters most today?" placeholderTextColor={c.text4} multiline autoFocus />
+            <TextInput
+              style={styles.modalInput} value={focusDraft} onChangeText={setFocusDraft}
+              placeholder="What matters most today?" placeholderTextColor={c.text4} multiline autoFocus
+            />
             <View style={styles.modalBtns}>
               <TouchableOpacity onPress={() => setEditFocus(false)} style={styles.cancelBtn}>
                 <Text style={styles.cancelText}>Cancel</Text>
@@ -435,8 +439,10 @@ export default function HomeScreen() {
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>💛 My Affirmation</Text>
             <Text style={styles.modalHint}>Write something you want to remind yourself of every day.</Text>
-            <TextInput style={styles.modalInput} value={affirmDraft} onChangeText={setAffirmDraft}
-              placeholder="I am capable of..." placeholderTextColor={c.text4} multiline autoFocus />
+            <TextInput
+              style={styles.modalInput} value={affirmDraft} onChangeText={setAffirmDraft}
+              placeholder="I am capable of..." placeholderTextColor={c.text4} multiline autoFocus
+            />
             <View style={styles.modalBtns}>
               <TouchableOpacity onPress={() => setEditAffirm(false)} style={styles.cancelBtn}>
                 <Text style={styles.cancelText}>Cancel</Text>
@@ -450,107 +456,61 @@ export default function HomeScreen() {
       </Modal>
 
       {/* ── Calendar modal ── */}
-      <Modal visible={showCalendar} transparent animationType="slide">
-        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={styles.modalCard}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: s.lg }}>
-              <Text style={styles.modalTitle}>📅 Calendar</Text>
-              <TouchableOpacity onPress={() => setShowCalendar(false)}>
-                <Ionicons name="close" size={22} color={c.text3} />
-              </TouchableOpacity>
-            </View>
-            <TextInput style={styles.modalInput} value={calInput} onChangeText={setCalInput}
-              placeholder="Add event or reminder..." placeholderTextColor={c.text4} />
-            <TextInput style={[styles.modalInput, { minHeight: 0, marginBottom: s.md }]}
-              value={calDate} onChangeText={setCalDate}
-              placeholder="Date (e.g. Aug 5)" placeholderTextColor={c.text4} />
-            <TouchableOpacity style={styles.saveBtn} onPress={() => {
-              if (!calInput.trim()) return;
-              setCalItems(prev => [...prev, { id: Date.now().toString(), title: calInput.trim(), date: calDate.trim() }]);
-              setCalInput(''); setCalDate('');
-            }}>
-              <Text style={styles.saveBtnText}>Add</Text>
-            </TouchableOpacity>
-            <ScrollView style={{ maxHeight: 260, marginTop: s.lg }} showsVerticalScrollIndicator={false}>
-              {calItems.length === 0
-                ? <Text style={{ color: c.text4, textAlign: 'center', paddingVertical: s.xl, fontSize: t.sm }}>No events yet</Text>
-                : calItems.map(item => (
-                    <View key={item.id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: s.sm, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: t.sm, color: c.text1, fontWeight: '500' }}>{item.title}</Text>
-                        {item.date ? <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>{item.date}</Text> : null}
-                      </View>
-                      <TouchableOpacity onPress={() => setCalItems(prev => prev.filter(i => i.id !== item.id))}>
-                        <Ionicons name="trash-outline" size={16} color={c.text4} />
-                      </TouchableOpacity>
-                    </View>
-                  ))
-              }
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+      <CalendarModal
+        visible={showCalendar}
+        onClose={() => setShowCalendar(false)}
+        userId={userId}
+        initialDate={today}
+      />
     </View>
   );
 }
 
 const makeStyles = (c, t, s, r, sh) => StyleSheet.create({
-  container:      { flex: 1, backgroundColor: c.bg0 },
-  dateRow:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: s.lg, paddingTop: s.md, paddingBottom: s.sm },
-  dateText:       { fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 0.8 },
-  streakBadge:    { backgroundColor: c.goldLight || c.bg1, borderRadius: 12, paddingHorizontal: s.sm, paddingVertical: 3, borderWidth: 0.5, borderColor: c.gold },
-  streakText:     { fontSize: t.xs, color: c.gold, fontWeight: t.semibold },
-
-  card:           { backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, marginHorizontal: s.lg, marginBottom: s.md, borderWidth: 0.5, borderColor: c.border, ...sh.sm },
-  actionRow:      { flexDirection: 'row', gap: 10, marginTop: s.md },
-  actionBtn:      { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 0.5, borderRadius: r.xl, paddingVertical: s.md },
-  actionGlyph:    { fontSize: 14 },
-  actionText:     { fontSize: t.lg, fontWeight: t.bold, letterSpacing: 1 },
-
-  quoteCard:      { backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, marginHorizontal: s.lg, marginBottom: s.md, borderLeftWidth: 3, borderWidth: 0.5, borderColor: c.border },
-  quoteLabel:     { fontSize: 10, color: c.teal, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm, fontWeight: t.semibold },
-  quoteText:      { fontSize: t.sm, color: c.text1, lineHeight: 20, fontStyle: 'italic', marginBottom: s.sm },
-  quoteAuthor:    { fontSize: t.xs, color: c.text3 },
-
-  section:        { paddingHorizontal: s.lg, marginBottom: s.lg },
-
-  focusCard:      { flexDirection: 'row', alignItems: 'flex-start', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 0.5, borderColor: c.border },
-  focusText:      { flex: 1, fontSize: t.sm, color: c.text2, lineHeight: 20 },
-
-  calBox:         { backgroundColor: c.bg1, borderRadius: r.md, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 0.5, borderColor: c.border, alignItems: 'center', justifyContent: 'center', minWidth: 70, position: 'relative' },
-  calDay:         { fontSize: t.xxl, fontWeight: t.bold, color: c.text1, lineHeight: 28 },
-  calMonth:       { fontSize: 9, color: c.text4, textTransform: 'uppercase', letterSpacing: 0.5 },
-  calBadge:       { position: 'absolute', top: -5, right: -5, width: 16, height: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  calBadgeText:   { fontSize: 9, color: '#fff', fontWeight: '700' },
-
-  todoInputRow:   { flexDirection: 'row', gap: s.sm, marginBottom: s.sm },
-  todoInput:      { flex: 1, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 0.5, borderColor: c.border },
-  todoAddBtn:     { backgroundColor: c.teal, borderRadius: r.md, padding: s.md, alignItems: 'center', justifyContent: 'center' },
-  emptyCard:      { flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.lg, borderWidth: 0.5, borderColor: c.border, borderStyle: 'dashed' },
-  emptyText:      { flex: 1, fontSize: t.sm, color: c.text4 },
-  todoRow:        { flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border },
-  todoCheck:      { padding: 2 },
-  todoTitle:      { fontSize: t.sm, color: c.text1, fontWeight: t.medium },
-  todoSource:     { fontSize: 9, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 },
-
-  areaSnapshot:   { backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, borderWidth: 1.5 },
-
-  projectCard:    { width: 130, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, gap: s.xs },
-  projectTitle:   { fontSize: t.xs, fontWeight: t.semibold, color: c.text1, lineHeight: 16 },
-  projectBadge:   { alignSelf: 'flex-start', borderRadius: r.full, paddingHorizontal: 6, paddingVertical: 2 },
+  container:       { flex: 1, backgroundColor: c.bg0 },
+  dateRow:         { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: s.lg, paddingTop: s.md, paddingBottom: s.sm },
+  dateText:        { fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 0.8 },
+  streakBadge:     { backgroundColor: c.goldLight || c.bg1, borderRadius: 12, paddingHorizontal: s.sm, paddingVertical: 3, borderWidth: 0.5, borderColor: c.gold },
+  streakText:      { fontSize: t.xs, color: c.gold, fontWeight: t.semibold },
+  card:            { backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, marginHorizontal: s.lg, marginBottom: s.md, borderWidth: 0.5, borderColor: c.border, ...sh.sm },
+  actionRow:       { flexDirection: 'row', gap: 10, marginTop: s.md },
+  actionBtn:       { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 0.5, borderRadius: r.xl, paddingVertical: s.md },
+  actionGlyph:     { fontSize: 14 },
+  actionText:      { fontSize: t.lg, fontWeight: t.bold, letterSpacing: 1 },
+  quoteCard:       { backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, marginHorizontal: s.lg, marginBottom: s.md, borderLeftWidth: 3, borderWidth: 0.5, borderColor: c.border },
+  quoteLabel:      { fontSize: 10, color: c.teal, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm, fontWeight: t.semibold },
+  quoteText:       { fontSize: t.sm, color: c.text1, lineHeight: 20, fontStyle: 'italic', marginBottom: s.sm },
+  quoteAuthor:     { fontSize: t.xs, color: c.text3 },
+  section:         { paddingHorizontal: s.lg, marginBottom: s.lg },
+  focusCard:       { flexDirection: 'row', alignItems: 'flex-start', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 0.5, borderColor: c.border },
+  focusText:       { flex: 1, fontSize: t.sm, color: c.text2, lineHeight: 20 },
+  calBox:          { backgroundColor: c.bg1, borderRadius: r.md, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 0.5, borderColor: c.border, alignItems: 'center', justifyContent: 'center', minWidth: 70 },
+  calDay:          { fontSize: t.xxl, fontWeight: t.bold, color: c.text1, lineHeight: 28 },
+  calMonth:        { fontSize: 9, color: c.text4, textTransform: 'uppercase', letterSpacing: 0.5 },
+  todoInputRow:    { flexDirection: 'row', gap: s.sm, marginBottom: s.sm },
+  todoInput:       { flex: 1, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 0.5, borderColor: c.border },
+  todoAddBtn:      { backgroundColor: c.teal, borderRadius: r.md, padding: s.md, alignItems: 'center', justifyContent: 'center' },
+  emptyCard:       { flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.lg, borderWidth: 0.5, borderColor: c.border, borderStyle: 'dashed' },
+  emptyText:       { flex: 1, fontSize: t.sm, color: c.text4 },
+  todoRow:         { flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border },
+  todoCheck:       { padding: 2 },
+  todoTitle:       { fontSize: t.sm, color: c.text1, fontWeight: t.medium },
+  todoSource:      { fontSize: 9, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 },
+  areaSnapshot:    { backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, borderWidth: 1.5 },
+  projectCard:     { width: 130, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, gap: s.xs },
+  projectTitle:    { fontSize: t.xs, fontWeight: t.semibold, color: c.text1, lineHeight: 16 },
+  projectBadge:    { alignSelf: 'flex-start', borderRadius: r.full, paddingHorizontal: 6, paddingVertical: 2 },
   projectBadgeText:{ fontSize: 9, fontWeight: t.bold, textTransform: 'uppercase', letterSpacing: 0.5 },
-
-  ideaCard:       { width: 110, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 1, alignItems: 'center', gap: 6 },
-  ideaTitle:      { fontSize: 11, fontWeight: t.medium, color: c.text1, textAlign: 'center', lineHeight: 15 },
-
-  modalOverlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalCard:      { backgroundColor: c.modalBg || c.bg1, borderTopLeftRadius: r.xl, borderTopRightRadius: r.xl, padding: s.xxl, borderTopWidth: 0.5, borderColor: c.border },
-  modalTitle:     { fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.sm },
-  modalHint:      { fontSize: t.xs, color: c.text3, marginBottom: s.md },
-  modalInput:     { borderWidth: 1, borderColor: c.inputBorder || c.border, borderRadius: r.md, padding: s.md, fontSize: t.md, color: c.text1, backgroundColor: c.inputBg || c.bg0, minHeight: 80, textAlignVertical: 'top', marginBottom: s.md },
-  modalBtns:      { flexDirection: 'row', justifyContent: 'flex-end', gap: s.sm },
-  cancelBtn:      { paddingVertical: s.md, paddingHorizontal: s.lg },
-  cancelText:     { fontSize: t.sm, color: c.text3 },
-  saveBtn:        { backgroundColor: c.teal, borderRadius: r.md, paddingVertical: s.md, paddingHorizontal: s.xl, alignItems: 'center' },
-  saveBtnText:    { color: '#fff', fontWeight: t.bold, fontSize: t.sm },
+  ideaCard:        { width: 110, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 1, alignItems: 'center', gap: 6 },
+  ideaTitle:       { fontSize: 11, fontWeight: t.medium, color: c.text1, textAlign: 'center', lineHeight: 15 },
+  modalOverlay:    { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalCard:       { backgroundColor: c.modalBg || c.bg1, borderTopLeftRadius: r.xl, borderTopRightRadius: r.xl, padding: s.xxl, borderTopWidth: 0.5, borderColor: c.border },
+  modalTitle:      { fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.sm },
+  modalHint:       { fontSize: t.xs, color: c.text3, marginBottom: s.md },
+  modalInput:      { borderWidth: 1, borderColor: c.inputBorder || c.border, borderRadius: r.md, padding: s.md, fontSize: t.md, color: c.text1, backgroundColor: c.inputBg || c.bg0, minHeight: 80, textAlignVertical: 'top', marginBottom: s.md },
+  modalBtns:       { flexDirection: 'row', justifyContent: 'flex-end', gap: s.sm },
+  cancelBtn:       { paddingVertical: s.md, paddingHorizontal: s.lg },
+  cancelText:      { fontSize: t.sm, color: c.text3 },
+  saveBtn:         { backgroundColor: c.teal, borderRadius: r.md, paddingVertical: s.md, paddingHorizontal: s.xl, alignItems: 'center' },
+  saveBtnText:     { color: '#fff', fontWeight: t.bold, fontSize: t.sm },
 });

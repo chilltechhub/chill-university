@@ -1,392 +1,424 @@
-// library/LifeAreaScreen.js
-// Dynamic screen for all 8 life areas
-// Receives area config via route params, shows sub-sections + linked content + journal
+// src/screens/library/LifeAreaScreen.js
+// Dynamic life area screen — uses ThemeContext for light/dark
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  TextInput, Modal, Alert, KeyboardAvoidingView, Platform,
+  View, Text, ScrollView, TouchableOpacity,
+  TextInput, Modal, ActivityIndicator,
+  KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { supabase } from '../../api/commandCenterService';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
+import { useTheme } from '../../../context/ThemeContext';
+import { supabase } from '../../api/supabaseClient';
 
-const T = {
-  navy:      '#0e1a2e',
-  navyMid:   '#152236',
-  navyLight: '#1c2f47',
-  navyBorder:'#243850',
-  brass:     '#c9a84c',
-  brassLight:'#e4c97a',
-  brassDim:  '#8a6f2e',
-  cream:     '#f5edd6',
-  creamDim:  '#c4b99a',
-  muted:     '#6b7f99',
-  green:     '#4caf7d',
-  red:       '#e05c5c',
-};
-
-// ─── Area definitions with sub-sections and nav links ─────────────────────────
+// ─── Life area config ─────────────────────────────────────────────────────────
 export const LIFE_AREAS = [
   {
-    id: 'physical',
-    label: 'Physical',
-    emoji: '💪',
-    icon: 'fitness',
+    id: 'physical', label: 'Physical', emoji: '💪', icon: 'fitness',
     color: '#e05c5c',
-    color_light: '#3a1e1e',
     subtitle: 'Fitness, nutrition, sleep & energy',
     description: 'Your body is your foundation. Track how you eat, move, rest and recover.',
     sections: [
-      { title: 'Fitness & Movement', icon: 'barbell-outline', screen: 'ExerciseScreen', items: ['Workouts', 'Steps & activity', 'Stretching', 'Sports'] },
-      { title: 'Nutrition', icon: 'nutrition-outline', screen: 'NutritionScreen', items: ['Meal tracking', 'Hydration', 'Supplements', 'Food goals'] },
-      { title: 'Sleep & Recovery', icon: 'moon-outline', screen: null, items: ['Sleep schedule', 'Rest days', 'Recovery habits'] },
-      { title: 'Energy & Vitality', icon: 'flash-outline', screen: null, items: ['Energy levels', 'Stress on body', 'Health checkups'] },
+      { title: 'Fitness & Movement', icon: 'barbell-outline',   screen: 'ExerciseScreen',  items: ['Workouts', 'Steps & activity', 'Stretching', 'Sports'] },
+      { title: 'Nutrition',          icon: 'nutrition-outline', screen: 'NutritionScreen', items: ['Meal tracking', 'Hydration', 'Supplements', 'Food goals'] },
+      { title: 'Sleep & Recovery',   icon: 'moon-outline',      screen: 'SleepRecoveryScreen', items: ['Sleep schedule', 'Rest days', 'Recovery habits'] },
+      { title: 'Energy & Vitality',  icon: 'flash-outline',     screen: 'EnergyVitalityScreen', items: ['Energy levels', 'Stress on body', 'Health checkups'] },
     ],
     weeklyPrompt: 'How did you treat your body this week? Workouts, food, sleep?',
+    quickLog: ['Completed workout', 'Drank enough water', 'Got 8h sleep', 'Ate healthy meals', 'Took a rest day'],
   },
   {
-    id: 'mental',
-    label: 'Mental',
-    emoji: '🧠',
-    icon: 'bulb',
+    id: 'mental', label: 'Mental', emoji: '🧠', icon: 'bulb',
     color: '#7eb8e0',
-    color_light: '#1a2d3d',
     subtitle: 'Emotions, stress, mindfulness & therapy',
     description: 'Mental health is the lens through which you experience everything else.',
     sections: [
-      { title: 'Emotional Well-being', icon: 'heart-outline', screen: 'WellbeingScreen', items: ['Mood tracking', 'Journaling', 'Processing emotions'] },
-      { title: 'Stress & Anxiety', icon: 'pulse-outline', screen: null, items: ['Stress triggers', 'Coping strategies', 'Breathing & grounding'] },
-      { title: 'Mindfulness', icon: 'leaf-outline', screen: 'SelfCareScreen', items: ['Meditation', 'Presence practice', 'Gratitude'] },
-      { title: 'Therapy & Support', icon: 'people-outline', screen: null, items: ['Therapy notes', 'Support resources', 'Crisis contacts'] },
+      { title: 'Emotional Well-being', icon: 'heart-outline',   screen: 'WellbeingScreen', items: ['Mood tracking', 'Journaling', 'Processing emotions'] },
+      { title: 'Stress & Anxiety',     icon: 'pulse-outline',   screen: 'StressAnxietyScreen', items: ['Stress triggers', 'Coping strategies', 'Breathing & grounding'] },
+      { title: 'Mindfulness',          icon: 'leaf-outline',    screen: 'SelfCareScreen',  items: ['Meditation', 'Presence practice', 'Gratitude'] },
+      { title: 'Therapy & Support',    icon: 'people-outline',  screen: 'TherapySupportScreen', items: ['Therapy notes', 'Support resources', 'Crisis contacts'] },
     ],
     weeklyPrompt: 'How was your mental state this week? What helped, what hurt?',
+    quickLog: ['Meditated today', 'Journaled', 'Managed stress well', 'Reached out for support', 'Practiced gratitude'],
   },
   {
-    id: 'social',
-    label: 'Social',
-    emoji: '🤝',
-    icon: 'people',
+    id: 'social', label: 'Social', emoji: '🤝', icon: 'people',
     color: '#b07be0',
-    color_light: '#2a1a3d',
     subtitle: 'Relationships, family, friends & community',
     description: 'The people around you shape your life more than almost anything else.',
     sections: [
-      { title: 'Relationships', icon: 'heart-outline', screen: 'RelationshipsScreen', items: ['Romantic', 'Family', 'Close friends'] },
-      { title: 'Network & Community', icon: 'globe-outline', screen: 'NetworkScreen', items: ['Colleagues', 'Mentors', 'Community involvement'] },
-      { title: 'Communication', icon: 'chatbubbles-outline', screen: null, items: ['Conflict resolution', 'Active listening', 'Setting boundaries'] },
-      { title: 'Social Health', icon: 'people-outline', screen: null, items: ['Quality time', 'Loneliness check', 'New connections'] },
+      { title: 'Relationships',       icon: 'heart-outline',       screen: 'RelationshipsScreen', items: ['Romantic', 'Family', 'Close friends'] },
+      { title: 'Network & Community', icon: 'globe-outline',       screen: 'NetworkScreen',       items: ['Colleagues', 'Mentors', 'Community involvement'] },
+      { title: 'Communication',       icon: 'chatbubbles-outline', screen: 'CommunicationScreen', items: ['Conflict resolution', 'Active listening', 'Setting boundaries'] },
+      { title: 'Social Health',       icon: 'people-outline',      screen: 'SocialHealthScreen', items: ['Quality time', 'Loneliness check', 'New connections'] },
     ],
-    weeklyPrompt: 'How were your relationships this week? Anyone you want to connect with more?',
+    weeklyPrompt: 'How were your relationships this week?',
+    quickLog: ['Connected with someone', 'Quality family time', 'Made a new connection', 'Resolved a conflict', 'Set a boundary'],
   },
   {
-    id: 'financial',
-    label: 'Financial',
-    emoji: '💰',
-    icon: 'cash',
+    id: 'financial', label: 'Financial', emoji: '💰', icon: 'cash',
     color: '#4caf7d',
-    color_light: '#1a3028',
     subtitle: 'Money, budget, savings & income',
     description: 'Financial clarity creates freedom. Know where you stand and where you\'re going.',
     sections: [
-      { title: 'Income & Earnings', icon: 'trending-up-outline', screen: null, items: ['Salary', 'Side income', 'Passive income', 'Income goals'] },
-      { title: 'Budget & Spending', icon: 'wallet-outline', screen: null, items: ['Monthly budget', 'Expense tracking', 'Subscriptions review'] },
-      { title: 'Savings & Investing', icon: 'save-outline', screen: null, items: ['Emergency fund', 'Investment accounts', 'Retirement'] },
-      { title: 'Debt & Credit', icon: 'card-outline', screen: null, items: ['Debt tracking', 'Credit score', 'Payoff strategy'] },
+      { title: 'Income & Earnings',   icon: 'trending-up-outline', screen: 'IncomeEarningsScreen', items: ['Salary', 'Side income', 'Passive income', 'Income goals'] },
+      { title: 'Budget & Spending',   icon: 'wallet-outline',      screen: 'BudgetSpendingScreen', items: ['Monthly budget', 'Expense tracking', 'Subscriptions review'] },
+      { title: 'Savings & Investing', icon: 'save-outline',        screen: 'SavingsInvestingScreen', items: ['Emergency fund', 'Investment accounts', 'Retirement'] },
+      { title: 'Debt & Credit',       icon: 'card-outline',        screen: 'DebtCreditScreen', items: ['Debt tracking', 'Credit score', 'Payoff strategy'] },
     ],
     weeklyPrompt: 'How was your money this week? Spending, saving, earning?',
+    quickLog: ['Stayed on budget', 'Saved money today', 'Tracked expenses', 'Paid off debt', 'Invested this week'],
   },
   {
-    id: 'creative',
-    label: 'Creative',
-    emoji: '🎨',
-    icon: 'color-palette',
+    id: 'creative', label: 'Creative', emoji: '🎨', icon: 'color-palette',
     color: '#f5a623',
-    color_light: '#3a2800',
     subtitle: 'Hobbies, art, music & expression',
     description: 'Creativity is how you process the world and contribute something uniquely yours.',
     sections: [
-      { title: 'Hobbies & Interests', icon: 'star-outline', screen: 'HobbiesScreen', items: ['Active hobbies', 'Learning interests', 'Passion projects'] },
-      { title: 'Art & Music', icon: 'musical-notes-outline', screen: null, items: ['Music practice', 'Visual art', 'Writing', 'Performance'] },
-      { title: 'Content & Media', icon: 'videocam-outline', screen: null, items: ['Content creation', 'Photography', 'Video', 'Podcasting'] },
-      { title: 'Learning & Curiosity', icon: 'book-outline', screen: null, items: ['Books', 'Courses', 'Documentaries', 'Deep dives'] },
+      { title: 'Hobbies & Interests', icon: 'star-outline',        screen: 'HobbiesScreen', items: ['Active hobbies', 'Learning interests', 'Passion projects'] },
+      { title: 'Art & Music',         icon: 'musical-notes-outline',screen: 'ArtMusicScreen', items: ['Music practice', 'Visual art', 'Writing', 'Performance'] },
+      { title: 'Content & Media',     icon: 'videocam-outline',    screen: 'ContentMediaScreen', items: ['Content creation', 'Photography', 'Video', 'Podcasting'] },
+      { title: 'Learning & Curiosity',icon: 'book-outline',        screen: 'LearningCuriosityScreen', items: ['Books', 'Courses', 'Documentaries', 'Deep dives'] },
     ],
     weeklyPrompt: 'Did you make or learn something creative this week?',
+    quickLog: ['Made something creative', 'Practiced a skill', 'Finished a book/course', 'Worked on a project', 'Tried something new'],
   },
   {
-    id: 'professional',
-    label: 'Professional',
-    emoji: '🚀',
-    icon: 'rocket',
+    id: 'professional', label: 'Professional', emoji: '🚀', icon: 'rocket',
     color: '#c9a84c',
-    color_light: '#2d2400',
     subtitle: 'Career, skills, projects & growth',
     description: 'Your professional life is where ambition meets action. Build deliberately.',
     sections: [
-      { title: 'Career & Jobs', icon: 'briefcase-outline', screen: 'CareerExplorationScreen', items: ['Current role', 'Job search', 'Career path', 'Promotions'] },
-      { title: 'Skills & Learning', icon: 'school-outline', screen: 'ResearchScreen', items: ['Technical skills', 'Soft skills', 'Certifications', 'Languages'] },
-      { title: 'Projects & Work', icon: 'construct-outline', screen: 'ProjectsScreen', items: ['Active projects', 'Deadlines', 'Collaborations'] },
-      { title: 'Business & Ventures', icon: 'storefront-outline', screen: 'DiscoverScreen', items: ['ChillTech Hub', 'CTH Recovery', 'Side ventures', 'Ideas pipeline'] },
+      { title: 'Career & Jobs',      icon: 'briefcase-outline',  screen: 'CareerExplorationScreen', items: ['Current role', 'Job search', 'Career path', 'Promotions'] },
+      { title: 'Skills & Learning',  icon: 'school-outline',     screen: 'ResearchScreen',          items: ['Technical skills', 'Soft skills', 'Certifications'] },
+      { title: 'Projects & Work',    icon: 'construct-outline',  screen: 'ProjectsScreen',          items: ['Active projects', 'Deadlines', 'Collaborations'] },
+      { title: 'Business & Ventures',icon: 'storefront-outline', screen: 'BusinessVenturesScreen', items: ['Side ventures', 'Ideas pipeline', 'CTH projects'] },
     ],
     weeklyPrompt: 'How did you invest in your professional growth this week?',
+    quickLog: ['Completed a work task', 'Learned something new', 'Networked with someone', 'Worked on a side project', 'Achieved a milestone'],
   },
   {
-    id: 'spiritual',
-    label: 'Spiritual',
-    emoji: '✨',
-    icon: 'sparkles',
-    color: '#e8c4ff',
-    color_light: '#2a1a3d',
+    id: 'spiritual', label: 'Spiritual', emoji: '✨', icon: 'sparkles',
+    color: '#c084e0',
     subtitle: 'Purpose, values, reflection & faith',
     description: 'Knowing what you stand for and why gives everything else meaning.',
     sections: [
-      { title: 'Purpose & Values', icon: 'compass-outline', screen: null, items: ['Core values', 'Life mission', 'What drives you'] },
-      { title: 'Reflection & Prayer', icon: 'sunny-outline', screen: null, items: ['Daily reflection', 'Prayer/meditation', 'Gratitude practice'] },
-      { title: 'Philosophy & Wisdom', icon: 'library-outline', screen: null, items: ['Books & teachings', 'Personal philosophy', 'Growth mindset'] },
-      { title: 'Community & Faith', icon: 'people-outline', screen: null, items: ['Faith community', 'Service & giving', 'Shared beliefs'] },
+      { title: 'Purpose & Values',      icon: 'compass-outline', screen: 'PurposeValuesScreen', items: ['Core values', 'Life mission', 'What drives you'] },
+      { title: 'Reflection & Prayer',   icon: 'sunny-outline',   screen: 'ReflectionPrayerScreen', items: ['Daily reflection', 'Prayer/meditation', 'Gratitude practice'] },
+      { title: 'Philosophy & Wisdom',   icon: 'library-outline', screen: 'PhilosophyWisdomScreen', items: ['Books & teachings', 'Personal philosophy', 'Growth mindset'] },
+      { title: 'Community & Faith',     icon: 'people-outline',  screen: 'CommunityFaithScreen', items: ['Faith community', 'Service & giving', 'Shared beliefs'] },
     ],
     weeklyPrompt: 'Did you feel aligned with your values and purpose this week?',
+    quickLog: ['Reflected on my values', 'Practiced gratitude', 'Meditated or prayed', 'Did an act of service', 'Felt a sense of purpose'],
   },
   {
-    id: 'digital',
-    label: 'Digital',
-    emoji: '💻',
-    icon: 'laptop',
+    id: 'digital', label: 'Digital', emoji: '💻', icon: 'laptop',
     color: '#64b5f6',
-    color_light: '#1a2535',
     subtitle: 'Screen time, privacy, security & tools',
     description: 'Your digital life shapes your attention, safety and productivity.',
     sections: [
-      { title: 'Privacy & Security', icon: 'shield-checkmark-outline', screen: 'PrivacyScreen', items: ['Account security', '2FA', 'Privacy settings', 'Data hygiene'] },
-      { title: 'Digital Security', icon: 'lock-closed-outline', screen: 'SecurityScreen', items: ['Password manager', 'Secure devices', 'Network safety'] },
-      { title: 'Screen Time & Focus', icon: 'phone-portrait-outline', screen: null, items: ['App usage', 'Social media limits', 'Deep work blocks'] },
-      { title: 'Tools & Systems', icon: 'settings-outline', screen: null, items: ['Productivity stack', 'Automation', 'Note-taking', 'Task systems'] },
+      { title: 'Privacy & Security',   icon: 'shield-checkmark-outline', screen: 'PrivacyScreen',  items: ['Account security', '2FA', 'Privacy settings', 'Data hygiene'] },
+      { title: 'Digital Security',     icon: 'lock-closed-outline',      screen: 'SecurityScreen', items: ['Password manager', 'Secure devices', 'Network safety'] },
+      { title: 'Screen Time & Focus',  icon: 'phone-portrait-outline',   screen: 'ScreenTimeFocusScreen', items: ['App usage', 'Social media limits', 'Deep work blocks'] },
+      { title: 'Tools & Systems',      icon: 'settings-outline',         screen: 'ToolsSystemsScreen', items: ['Productivity stack', 'Automation', 'Note-taking'] },
     ],
     weeklyPrompt: 'Was your digital life working for you or against you this week?',
+    quickLog: ['Stayed within screen limits', 'Ran a security check', 'Cleared digital clutter', 'Focused without phone', 'Updated passwords'],
   },
 ];
 
+// ─── Quick log chips ──────────────────────────────────────────────────────────
+function QuickLogChips({ options, onLog, color, c, t, s }) {
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: s.md }}>
+      {options.map((opt, i) => (
+        <TouchableOpacity key={i} onPress={() => onLog(opt)}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: color + '18', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: color + '44' }}>
+          <Ionicons name="add-circle" size={13} color={color} />
+          <Text style={{ fontSize: t.xs, color, fontWeight: '600' }}>{opt}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
+// ─── Section card ─────────────────────────────────────────────────────────────
+function SectionCard({ section, color, onPress, c, t, s, r }) {
+  const isNavigable = !!section.screen;
+  return (
+    <TouchableOpacity
+      onPress={isNavigable ? onPress : undefined}
+      activeOpacity={isNavigable ? 0.8 : 1}
+      style={{
+        backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg,
+        marginBottom: s.md, borderWidth: 0.5,
+        borderColor: isNavigable ? color + '44' : c.border,
+        borderLeftWidth: isNavigable ? 3 : 0.5,
+        borderLeftColor: isNavigable ? color : c.border,
+      }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: s.sm }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm }}>
+          <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: color + '22', alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name={section.icon} size={16} color={color} />
+          </View>
+          <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.text1 }}>{section.title}</Text>
+        </View>
+        {isNavigable && <Ionicons name="chevron-forward" size={16} color={color} />}
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+        {section.items.map((item, i) => (
+          <View key={i} style={{ backgroundColor: c.bg2, borderRadius: r.full, paddingHorizontal: 8, paddingVertical: 3 }}>
+            <Text style={{ fontSize: 10, color: c.text3 }}>{item}</Text>
+          </View>
+        ))}
+      </View>
+      {isNavigable && (
+        <Text style={{ fontSize: 10, color, marginTop: s.sm, fontWeight: '600' }}>Tap to open →</Text>
+      )}
+    </TouchableOpacity>
+  );
+}
+
+// ─── Note card ────────────────────────────────────────────────────────────────
+function NoteCard({ note, color, onDelete, c, t, s, r }) {
+  const date = new Date(note.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return (
+    <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: color }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+        <Text style={{ fontSize: 10, color, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>{date}</Text>
+        <TouchableOpacity onPress={onDelete}>
+          <Ionicons name="close" size={14} color={c.text4} />
+        </TouchableOpacity>
+      </View>
+      <Text style={{ fontSize: t.sm, color: c.text2, lineHeight: 20 }}>{note.content}</Text>
+    </View>
+  );
+}
+
+// ─── Main LifeAreaScreen ──────────────────────────────────────────────────────
 export default function LifeAreaScreen() {
   const navigation = useNavigation();
-  const route = useRoute();
-  const { areaId, rating, lastCheck, linkedItems = [] } = route.params || {};
+  const route      = useRoute();
+  const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
 
+  const { areaId } = route.params || {};
   const area = LIFE_AREAS.find(a => a.id === areaId);
-  if (!area) return null;
 
-  const [notes, setNotes] = useState([]);
-  const [newNote, setNewNote] = useState('');
-  const [noteModal, setNoteModal] = useState(false);
-  const [addLinkModal, setAddLinkModal] = useState(false);
-  const [linkDraft, setLinkDraft] = useState({ title: '', url: '', type: 'article' });
-  const [links, setLinks] = useState(linkedItems);
-  const [userId, setUserId] = useState(null);
+  const [notes,       setNotes]       = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [userId,      setUserId]      = useState(null);
+  const [noteModal,   setNoteModal]   = useState(false);
+  const [newNote,     setNewNote]     = useState('');
+  const [weeklyNote,  setWeeklyNote]  = useState('');
+  const [weekModal,   setWeekModal]   = useState(false);
+  const [rating,      setRating]      = useState(0);
+  const [saving,      setSaving]      = useState(false);
+
+  if (!area) return null;
+  const color = area.color;
 
   useEffect(() => {
-    const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserId(user.id);
-        // Load area-specific notes
-        const { data } = await supabase
-          .from('area_notes')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('area_id', areaId)
-          .order('created_at', { ascending: false })
-          .limit(10);
-        setNotes(data || []);
-      }
-    };
-    load();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) { setUserId(user.id); loadData(user.id); }
+      else setLoading(false);
+    });
   }, []);
 
-  const saveNote = async () => {
-    if (!newNote.trim() || !userId) return;
-    // Save as a standalone note tagged to this area
-    const { data } = await supabase
-      .from('area_notes')
-      .insert({ user_id: userId, area_id: areaId, content: newNote.trim() })
-      .select().single();
-    if (data) setNotes(prev => [data, ...prev]);
+  useFocusEffect(useCallback(() => {
+    if (userId) loadData(userId);
+  }, [userId]));
+
+  const loadData = async (uid) => {
+    setLoading(true);
+    try {
+      const [notesRes, areaRes] = await Promise.all([
+        supabase.from('area_notes').select('*').eq('user_id', uid).eq('area_id', area.id).order('created_at', { ascending: false }).limit(20),
+        supabase.from('life_areas').select('progress').eq('user_id', uid).eq('label', area.label).maybeSingle(),
+      ]);
+      if (notesRes.data) setNotes(notesRes.data);
+      if (areaRes.data?.progress) setRating(areaRes.data.progress);
+    } catch (e) { console.warn('LifeAreaScreen', e); }
+    setLoading(false);
+  };
+
+  const addNote = async (content) => {
+    if (!content.trim()) return;
+    const entry = { user_id: userId, area_id: area.id, content: content.trim(), created_at: new Date().toISOString() };
+    if (userId) {
+      const { data } = await supabase.from('area_notes').insert(entry).select().single();
+      if (data) setNotes(prev => [data, ...prev]);
+    } else {
+      setNotes(prev => [{ ...entry, id: Date.now().toString() }, ...prev]);
+    }
     setNewNote('');
     setNoteModal(false);
   };
 
-  const saveLink = () => {
-    if (!linkDraft.title.trim()) return;
-    setLinks(prev => [...prev, { ...linkDraft }]);
-    setLinkDraft({ title: '', url: '', type: 'article' });
-    setAddLinkModal(false);
+  const deleteNote = async (id) => {
+    setNotes(prev => prev.filter(n => n.id !== id));
+    if (userId) await supabase.from('area_notes').delete().eq('id', id);
   };
 
-  const lastCheckStr = lastCheck
-    ? new Date(lastCheck).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    : 'Not yet rated';
+  const saveRating = async (val) => {
+    setRating(val);
+    if (!userId) return;
+    await supabase.from('life_areas').upsert({ user_id: userId, label: area.label, progress: val, last_check_date: new Date().toISOString().split('T')[0] }, { onConflict: 'user_id,label' });
+  };
+
+  const saveWeeklyReflection = async () => {
+    if (!weeklyNote.trim()) return;
+    setSaving(true);
+    await addNote(`[Weekly Reflection] ${weeklyNote.trim()}`);
+    setWeeklyNote('');
+    setWeekModal(false);
+    setSaving(false);
+  };
+
+  const navigateTo = (screen) => {
+    if (!screen) return;
+    navigation.navigate(screen);
+  };
 
   return (
-    <View style={s.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-
-        {/* Header */}
-        <View style={[s.header, { borderBottomColor: area.color + '44' }]}>
-          <Text style={s.headerEmoji}>{area.emoji}</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={s.headerTitle}>{area.label}</Text>
-            <Text style={s.headerSub}>{area.subtitle}</Text>
-          </View>
-          <View style={s.ratingDisplay}>
-            <Text style={[s.ratingNum, { color: area.color }]}>{rating || '—'}</Text>
-            <Text style={s.ratingOf}>/5</Text>
-          </View>
-        </View>
-
-        {/* Rating bar */}
-        <View style={s.ratingBar}>
-          <View style={[s.ratingFill, { width: `${((rating || 0) / 5) * 100}%`, backgroundColor: area.color }]} />
-        </View>
-        <Text style={s.lastCheck}>Last checked: {lastCheckStr}</Text>
-
-        {/* Description */}
-        <View style={s.descCard}>
-          <Text style={s.descText}>{area.description}</Text>
-        </View>
-
-        {/* Weekly prompt */}
-        <View style={[s.promptCard, { borderLeftColor: area.color }]}>
-          <Text style={s.promptLabel}>This week's reflection</Text>
-          <Text style={s.promptText}>{area.weeklyPrompt}</Text>
-          <TouchableOpacity style={[s.promptBtn, { backgroundColor: area.color + '22', borderColor: area.color + '44' }]} onPress={() => setNoteModal(true)}>
-            <Ionicons name="pencil-outline" size={14} color={area.color} />
-            <Text style={[s.promptBtnText, { color: area.color }]}>Write reflection</Text>
+    <View style={{ flex: 1, backgroundColor: c.bg0 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
+        {/* ── Hero banner ── */}
+        <View style={{ backgroundColor: color + '18', borderBottomWidth: 1, borderBottomColor: color + '33', padding: s.xl, paddingTop: s.xxl }}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: s.md }}>
+            <Ionicons name="chevron-back" size={22} color={color} />
           </TouchableOpacity>
-        </View>
-
-        {/* Sub-sections */}
-        <View style={s.sectionHead}>
-          <Text style={s.sectionLabel}>Sections</Text>
-        </View>
-        {area.sections.map((sec, i) => (
-          <TouchableOpacity
-            key={i}
-            style={s.subCard}
-            onPress={() => sec.screen && navigation.navigate(sec.screen)}
-            activeOpacity={sec.screen ? 0.7 : 1}
-          >
-            <View style={[s.subIcon, { backgroundColor: area.color + '22' }]}>
-              <Ionicons name={sec.icon} size={18} color={area.color} />
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: s.lg }}>
+            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: color + '33', borderWidth: 2, borderColor: color, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontSize: 32 }}>{area.emoji}</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <View style={s.subCardTop}>
-                <Text style={s.subTitle}>{sec.title}</Text>
-                {sec.screen && <Ionicons name="chevron-forward" size={14} color={T.muted} />}
-              </View>
-              <View style={s.subItems}>
-                {sec.items.map((item, ii) => (
-                  <View key={ii} style={s.subItem}>
-                    <View style={[s.subItemDot, { backgroundColor: area.color + '88' }]} />
-                    <Text style={s.subItemText}>{item}</Text>
-                  </View>
-                ))}
-              </View>
+              <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>{area.label}</Text>
+              <Text style={{ fontSize: t.xs, color, marginTop: 2, fontWeight: '600' }}>{area.subtitle}</Text>
+              <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 6, lineHeight: 18 }}>{area.description}</Text>
             </View>
-          </TouchableOpacity>
-        ))}
+          </View>
 
-        {/* Linked content */}
-        <View style={s.sectionHead}>
-          <Text style={s.sectionLabel}>Linked Content</Text>
-          <TouchableOpacity onPress={() => setAddLinkModal(true)}>
-            <Ionicons name="add-circle" size={20} color={T.brass} />
-          </TouchableOpacity>
+          {/* Rating */}
+          <View style={{ marginTop: s.lg }}>
+            <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>How's this area right now?</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {[1,2,3,4,5].map(val => (
+                <TouchableOpacity key={val} onPress={() => saveRating(val)}
+                  style={{ flex: 1, height: 36, borderRadius: 8, backgroundColor: rating >= val ? color : color + '22', borderWidth: 1, borderColor: color + '55', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: rating >= val ? '#fff' : color }}>{val}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
         </View>
-        {links.length === 0
-          ? <View style={s.emptyLinks}>
-              <Text style={s.emptyText}>No linked content yet</Text>
-              <Text style={s.emptyHint}>Add articles, projects or resources from Discover</Text>
-            </View>
-          : links.map((lk, i) => (
-              <View key={i} style={s.linkCard}>
-                <View style={[s.linkIcon, { backgroundColor: area.color + '22' }]}>
-                  <Ionicons name={lk.type === 'project' ? 'briefcase-outline' : lk.type === 'advice' ? 'chatbubble-outline' : 'document-text-outline'} size={16} color={area.color} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.linkTitle}>{lk.title}</Text>
-                  <Text style={s.linkType}>{lk.type}</Text>
-                </View>
-                <Ionicons name="open-outline" size={14} color={T.muted} />
-              </View>
-            ))
-        }
 
-        {/* Notes */}
-        {notes.length > 0 && (
-          <>
-            <View style={s.sectionHead}>
-              <Text style={s.sectionLabel}>Recent Notes</Text>
-            </View>
-            {notes.slice(0, 5).map((note, i) => (
-              <View key={i} style={s.noteCard}>
-                <Text style={s.noteText}>{note.content}</Text>
-                <Text style={s.noteDate}>{new Date(note.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</Text>
-              </View>
-            ))}
-          </>
-        )}
+        <View style={{ padding: s.lg }}>
+          {/* ── Quick log ── */}
+          <Text style={{ fontSize: t.xs, color: color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.sm }}>
+            ⚡ Quick Log
+          </Text>
+          <QuickLogChips options={area.quickLog} onLog={(opt) => addNote(opt)} color={color} c={c} t={t} s={s} />
 
-        <View style={{ height: 40 }} />
+          {/* ── Sections ── */}
+          <Text style={{ fontSize: t.xs, color: color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.sm, marginTop: s.md }}>
+            📋 Sub-Sections
+          </Text>
+          {area.sections.map((sec, i) => (
+            <SectionCard key={i} section={sec} color={color}
+              onPress={() => navigateTo(sec.screen)}
+              c={c} t={t} s={s} r={r} />
+          ))}
+
+          {/* ── Weekly reflection ── */}
+          <TouchableOpacity onPress={() => setWeekModal(true)}
+            style={{ backgroundColor: color + '18', borderRadius: r.lg, padding: s.lg, borderWidth: 1, borderColor: color + '44', marginBottom: s.lg }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm }}>
+              <Ionicons name="journal-outline" size={18} color={color} />
+              <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.text1 }}>Weekly Reflection</Text>
+            </View>
+            <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 6, lineHeight: 18 }}>{area.weeklyPrompt}</Text>
+            <Text style={{ fontSize: t.xs, color, marginTop: 8, fontWeight: '600' }}>Tap to reflect →</Text>
+          </TouchableOpacity>
+
+          {/* ── Add note button ── */}
+          <TouchableOpacity onPress={() => setNoteModal(true)}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: s.sm, backgroundColor: color, borderRadius: r.md, padding: s.md, marginBottom: s.lg }}>
+            <Ionicons name="add" size={18} color="#fff" />
+            <Text style={{ color: '#fff', fontWeight: t.bold, fontSize: t.sm }}>Add Note</Text>
+          </TouchableOpacity>
+
+          {/* ── Notes feed ── */}
+          {loading ? <ActivityIndicator color={color} /> : (
+            <>
+              {notes.length > 0 && (
+                <Text style={{ fontSize: t.xs, color: color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.sm }}>
+                  📝 Notes & Logs ({notes.length})
+                </Text>
+              )}
+              {notes.map(note => (
+                <NoteCard key={note.id} note={note} color={color}
+                  onDelete={() => deleteNote(note.id)}
+                  c={c} t={t} s={s} r={r} />
+              ))}
+              {notes.length === 0 && (
+                <View style={{ alignItems: 'center', paddingVertical: s.xl }}>
+                  <Text style={{ fontSize: 36, marginBottom: s.sm }}>{area.emoji}</Text>
+                  <Text style={{ fontSize: t.sm, color: c.text3 }}>No notes yet — quick log or add one above</Text>
+                </View>
+              )}
+            </>
+          )}
+        </View>
       </ScrollView>
 
-      {/* Note modal */}
+      {/* ── Add note modal ── */}
       <Modal visible={noteModal} transparent animationType="slide">
-        <KeyboardAvoidingView style={s.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={s.modalCard}>
-            <Text style={s.modalTitle}>Reflection — {area.label}</Text>
-            <Text style={s.modalPrompt}>{area.weeklyPrompt}</Text>
+        <KeyboardAvoidingView style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 48, borderTopWidth: 1, borderTopColor: color + '44' }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
+            <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.md }}>{area.emoji} Add Note</Text>
             <TextInput
-              style={s.noteInput}
-              value={newNote}
-              onChangeText={setNewNote}
-              placeholder="Write freely..."
-              placeholderTextColor={T.muted}
-              multiline
-              autoFocus
-            />
-            <View style={s.modalBtns}>
-              <TouchableOpacity onPress={() => setNoteModal(false)} style={s.cancelBtn}>
-                <Text style={s.cancelText}>Cancel</Text>
+              style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: color + '44', minHeight: 80, textAlignVertical: 'top', marginBottom: s.md }}
+              value={newNote} onChangeText={setNewNote}
+              placeholder="What do you want to log?" placeholderTextColor={c.text4}
+              multiline autoFocus />
+            <View style={{ flexDirection: 'row', gap: s.sm }}>
+              <TouchableOpacity onPress={() => { setNoteModal(false); setNewNote(''); }}
+                style={{ flex: 1, padding: s.md, alignItems: 'center', backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border }}>
+                <Text style={{ color: c.text3 }}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={saveNote} style={[s.saveBtn, { backgroundColor: area.color }]}>
-                <Text style={s.saveText}>Save</Text>
+              <TouchableOpacity onPress={() => addNote(newNote)} disabled={!newNote.trim()}
+                style={{ flex: 2, padding: s.md, alignItems: 'center', backgroundColor: color, borderRadius: r.md, opacity: !newNote.trim() ? 0.5 : 1 }}>
+                <Text style={{ color: '#fff', fontWeight: t.bold }}>Save Note</Text>
               </TouchableOpacity>
             </View>
           </View>
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Add link modal */}
-      <Modal visible={addLinkModal} transparent animationType="slide">
-        <KeyboardAvoidingView style={s.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={s.modalCard}>
-            <Text style={s.modalTitle}>Link Content</Text>
-            <View style={s.typeRow}>
-              {['article','project','advice','resource'].map(t => (
-                <TouchableOpacity
-                  key={t}
-                  style={[s.typeChip, linkDraft.type === t && { backgroundColor: area.color + '22', borderColor: area.color }]}
-                  onPress={() => setLinkDraft(p => ({ ...p, type: t }))}>
-                  <Text style={[s.typeText, linkDraft.type === t && { color: area.color }]}>{t}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TextInput style={s.input} value={linkDraft.title} onChangeText={v => setLinkDraft(p => ({ ...p, title: v }))} placeholder="Title" placeholderTextColor={T.muted} autoFocus />
-            <TextInput style={s.input} value={linkDraft.url} onChangeText={v => setLinkDraft(p => ({ ...p, url: v }))} placeholder="URL or note (optional)" placeholderTextColor={T.muted} autoCapitalize="none" />
-            <View style={s.modalBtns}>
-              <TouchableOpacity onPress={() => setAddLinkModal(false)} style={s.cancelBtn}>
-                <Text style={s.cancelText}>Cancel</Text>
+      {/* ── Weekly reflection modal ── */}
+      <Modal visible={weekModal} transparent animationType="slide">
+        <KeyboardAvoidingView style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 48, borderTopWidth: 1, borderTopColor: color + '44' }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
+            <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.xs }}>📓 Weekly Reflection</Text>
+            <Text style={{ fontSize: t.sm, color: c.text3, lineHeight: 20, marginBottom: s.lg }}>{area.weeklyPrompt}</Text>
+            <TextInput
+              style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: color + '44', minHeight: 100, textAlignVertical: 'top', marginBottom: s.md }}
+              value={weeklyNote} onChangeText={setWeeklyNote}
+              placeholder="Write your reflection..." placeholderTextColor={c.text4}
+              multiline autoFocus />
+            <View style={{ flexDirection: 'row', gap: s.sm }}>
+              <TouchableOpacity onPress={() => { setWeekModal(false); setWeeklyNote(''); }}
+                style={{ flex: 1, padding: s.md, alignItems: 'center', backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border }}>
+                <Text style={{ color: c.text3 }}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={saveLink} style={[s.saveBtn, { backgroundColor: area.color }]}>
-                <Text style={s.saveText}>Link it</Text>
+              <TouchableOpacity onPress={saveWeeklyReflection} disabled={!weeklyNote.trim() || saving}
+                style={{ flex: 2, padding: s.md, alignItems: 'center', backgroundColor: color, borderRadius: r.md, opacity: (!weeklyNote.trim() || saving) ? 0.5 : 1 }}>
+                {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontWeight: t.bold }}>Save Reflection</Text>}
               </TouchableOpacity>
             </View>
           </View>
@@ -395,68 +427,3 @@ export default function LifeAreaScreen() {
     </View>
   );
 }
-
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: T.navy },
-
-  header: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 20, paddingTop: 16, borderBottomWidth: 1 },
-  headerEmoji: { fontSize: 32 },
-  headerTitle: { fontSize: 22, fontWeight: '700', color: T.cream },
-  headerSub: { fontSize: 12, color: T.muted, marginTop: 2 },
-  ratingDisplay: { flexDirection: 'row', alignItems: 'baseline' },
-  ratingNum: { fontSize: 28, fontWeight: '700' },
-  ratingOf: { fontSize: 13, color: T.muted },
-
-  ratingBar: { height: 3, backgroundColor: T.navyBorder, marginHorizontal: 20, borderRadius: 3, overflow: 'hidden' },
-  ratingFill: { height: 3, borderRadius: 3 },
-  lastCheck: { fontSize: 10, color: T.muted, marginHorizontal: 20, marginTop: 6, marginBottom: 16 },
-
-  descCard: { marginHorizontal: 16, backgroundColor: T.navyMid, borderRadius: 10, padding: 14, borderWidth: 0.5, borderColor: T.navyBorder, marginBottom: 16 },
-  descText: { fontSize: 14, color: T.creamDim, lineHeight: 20 },
-
-  promptCard: { marginHorizontal: 16, backgroundColor: T.navyMid, borderRadius: 10, padding: 14, borderLeftWidth: 3, borderWidth: 0.5, borderColor: T.navyBorder, marginBottom: 8 },
-  promptLabel: { fontSize: 10, color: T.muted, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 },
-  promptText: { fontSize: 14, color: T.cream, lineHeight: 20, marginBottom: 12 },
-  promptBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, borderWidth: 0.5 },
-  promptBtnText: { fontSize: 13, fontWeight: '500' },
-
-  sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 20, paddingBottom: 10 },
-  sectionLabel: { fontSize: 11, fontWeight: '600', color: T.brass, textTransform: 'uppercase', letterSpacing: 1 },
-
-  subCard: { flexDirection: 'row', gap: 12, marginHorizontal: 16, backgroundColor: T.navyMid, borderRadius: 12, padding: 14, borderWidth: 0.5, borderColor: T.navyBorder, marginBottom: 8 },
-  subIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  subCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  subTitle: { fontSize: 14, fontWeight: '600', color: T.cream },
-  subItems: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  subItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  subItemDot: { width: 4, height: 4, borderRadius: 2 },
-  subItemText: { fontSize: 11, color: T.muted },
-
-  emptyLinks: { marginHorizontal: 16, backgroundColor: T.navyMid, borderRadius: 10, padding: 16, alignItems: 'center', borderWidth: 0.5, borderColor: T.navyBorder, borderStyle: 'dashed' },
-  emptyText: { fontSize: 13, color: T.muted, fontWeight: '500' },
-  emptyHint: { fontSize: 11, color: T.muted, marginTop: 4, textAlign: 'center' },
-
-  linkCard: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 16, backgroundColor: T.navyMid, borderRadius: 10, padding: 12, borderWidth: 0.5, borderColor: T.navyBorder, marginBottom: 6 },
-  linkIcon: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  linkTitle: { fontSize: 13, fontWeight: '500', color: T.cream },
-  linkType: { fontSize: 10, color: T.muted, marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
-
-  noteCard: { marginHorizontal: 16, backgroundColor: T.navyMid, borderRadius: 10, padding: 12, borderWidth: 0.5, borderColor: T.navyBorder, marginBottom: 6 },
-  noteText: { fontSize: 13, color: T.creamDim, lineHeight: 18 },
-  noteDate: { fontSize: 10, color: T.muted, marginTop: 6 },
-
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: T.navyMid, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, borderTopWidth: 0.5, borderColor: T.navyBorder },
-  modalTitle: { fontSize: 17, fontWeight: '700', color: T.cream, marginBottom: 6 },
-  modalPrompt: { fontSize: 13, color: T.muted, marginBottom: 14, lineHeight: 18 },
-  noteInput: { borderWidth: 1, borderColor: T.navyBorder, borderRadius: 10, padding: 12, fontSize: 15, color: T.cream, backgroundColor: T.navy, minHeight: 120, textAlignVertical: 'top', marginBottom: 12 },
-  input: { borderWidth: 1, borderColor: T.navyBorder, borderRadius: 10, padding: 12, fontSize: 15, color: T.cream, backgroundColor: T.navy, marginBottom: 10 },
-  typeRow: { flexDirection: 'row', gap: 6, marginBottom: 14, flexWrap: 'wrap' },
-  typeChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: T.navyBorder, backgroundColor: T.navy },
-  typeText: { fontSize: 12, color: T.muted },
-  modalBtns: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 4 },
-  cancelBtn: { paddingVertical: 12, paddingHorizontal: 18 },
-  cancelText: { fontSize: 14, color: T.muted },
-  saveBtn: { borderRadius: 10, paddingVertical: 12, paddingHorizontal: 22 },
-  saveText: { color: T.navy, fontWeight: '700', fontSize: 14 },
-});

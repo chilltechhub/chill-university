@@ -19,6 +19,7 @@ import PlannerScreen from '../PlannerScreen';
 import CareerExplorationScreen from './careerexplore';
 import PortfolioScreen         from './portfolio';
 import ProjectsScreen          from './projects';
+import ProjectDetailScreen     from './ProjectDetail';
 import LabsScreen              from './labs';
 import ResearchScreen          from './research';
 
@@ -33,6 +34,9 @@ import MentorsScreen        from './discover/MentorsScreen';
 import IdeaGardenScreen    from './ideagarden';
 import NotesScreen         from './notes';
 import ResourcesToolsScreen from './resourcetools';
+
+import AreaSectionScreen from './AreaSectionScreen';
+
 
 // Wellness
 import NutritionScreen from './wellness/NutritionScreen';
@@ -91,7 +95,8 @@ export default function LibraryNavigator() {
 
       {/* Academic & Career */}
       <Stack.Screen name="ProjectsScreen"          component={ProjectsScreen}          options={{ title: 'Your Projects' }} />
-      <Stack.Screen name="LabsScreen"              component={LabsScreen}              options={{ title: 'Labs' }} />
+      <Stack.Screen name="ProjectDetail" component={ProjectDetailScreen} />
+      <Stack.Screen name="LabsScreen"              component={LabsScreen}              options={{ title: 'Labs' }} /> 
       <Stack.Screen name="PortfolioScreen"         component={PortfolioScreen}         options={{ title: 'Portfolio' }} />
       <Stack.Screen name="ResearchScreen"          component={ResearchScreen}          options={{ title: 'Research' }} />
       <Stack.Screen name="CareerExplorationScreen" component={CareerExplorationScreen} options={{ title: 'Career Explorer' }} />
@@ -111,6 +116,27 @@ export default function LibraryNavigator() {
       {/* Classes */}
       <Stack.Screen name="ClassesStack" component={ClassesStack} options={{ headerShown: false }} />
 
+{/* Sub-sections */}
+<Stack.Screen name="SleepRecoveryScreen"     component={AreaSectionScreen} options={{ title: 'Sleep & Recovery' }} />
+<Stack.Screen name="EnergyVitalityScreen"    component={AreaSectionScreen} options={{ title: 'Energy & Vitality' }} />
+<Stack.Screen name="StressAnxietyScreen"     component={AreaSectionScreen} options={{ title: 'Stress & Anxiety' }} />
+<Stack.Screen name="TherapySupportScreen"    component={AreaSectionScreen} options={{ title: 'Therapy & Support' }} />
+<Stack.Screen name="CommunicationScreen"     component={AreaSectionScreen} options={{ title: 'Communication' }} />
+<Stack.Screen name="SocialHealthScreen"      component={AreaSectionScreen} options={{ title: 'Social Health' }} />
+<Stack.Screen name="IncomeEarningsScreen"    component={AreaSectionScreen} options={{ title: 'Income & Earnings' }} />
+<Stack.Screen name="BudgetSpendingScreen"    component={AreaSectionScreen} options={{ title: 'Budget & Spending' }} />
+<Stack.Screen name="SavingsInvestingScreen"  component={AreaSectionScreen} options={{ title: 'Savings & Investing' }} />
+<Stack.Screen name="DebtCreditScreen"        component={AreaSectionScreen} options={{ title: 'Debt & Credit' }} />
+<Stack.Screen name="ArtMusicScreen"          component={AreaSectionScreen} options={{ title: 'Art & Music' }} />
+<Stack.Screen name="ContentMediaScreen"      component={AreaSectionScreen} options={{ title: 'Content & Media' }} />
+<Stack.Screen name="LearningCuriosityScreen" component={AreaSectionScreen} options={{ title: 'Learning & Curiosity' }} />
+<Stack.Screen name="BusinessVenturesScreen"  component={AreaSectionScreen} options={{ title: 'Business & Ventures' }} />
+<Stack.Screen name="PurposeValuesScreen"     component={AreaSectionScreen} options={{ title: 'Purpose & Values' }} />
+<Stack.Screen name="ReflectionPrayerScreen"  component={AreaSectionScreen} options={{ title: 'Reflection & Prayer' }} />
+<Stack.Screen name="PhilosophyWisdomScreen"  component={AreaSectionScreen} options={{ title: 'Philosophy & Wisdom' }} />
+<Stack.Screen name="CommunityFaithScreen"    component={AreaSectionScreen} options={{ title: 'Community & Faith' }} />
+<Stack.Screen name="ScreenTimeFocusScreen"   component={AreaSectionScreen} options={{ title: 'Screen Time & Focus' }} />
+<Stack.Screen name="ToolsSystemsScreen"      component={AreaSectionScreen} options={{ title: 'Tools & Systems' }} />
       {/* Wellness */}
       <Stack.Screen name="NutritionScreen" component={NutritionScreen} options={{ title: 'Nutrition' }} />
       <Stack.Screen name="ExerciseScreen"  component={ExerciseScreen}  options={{ title: 'Exercise' }} />

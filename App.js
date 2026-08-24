@@ -14,15 +14,24 @@ import HomeScreen    from './src/screens/HomeScreen';
 import GamesScreen   from './src/screens/GamesScreen';
 import LibraryNav    from './src/screens/library/LibraryNav';
 
+import LoginScreen        from './src/screens/LoginScreen';
 import MultiStepOnboarding from './src/screens/MultiStepOnboarding';
-import ProfileQuickSetup   from './src/screens/ProfileQuickSetup';
-import ProfileScreen       from './src/screens/ProfileScreen';
-import PlayScreen          from './src/screens/PlayScreen';
-import ChildInviteCode     from './src/screens/ChildInviteCode';
-import TopBar              from './src/components/TopBar';
-import MissionPopup        from './src/components/MissionPopup';
+import Onboarding      from './src/screens/OnboardingScreen';
+import ProfileScreen   from './src/screens/ProfileScreen';
+import SettingsScreen  from './src/screens/SettingsScreen';
+import PlayScreen      from './src/screens/PlayScreen';
+import TopBar           from './src/components/TopBar';
+import MissionPopup      from './src/components/MissionPopup';
 import { useUserProgress } from './context/UserProgressContext';
+import { supabase } from './src/api/supabaseClient';
 
+
+// NOTE: OnboardingScreen.js (life-areas / commandCenterService), ProfileQuickSetup.js,
+// and ChildInviteCode.js are retired by this rebuild — OnboardingScreen.js was already
+// orphaned (unreferenced), and ProfileQuickSetup's fields now live in Onboarding.js /
+// SettingsScreen.js under one consistent `profiles` schema. Parent/child invite flow
+// was dropped per product decision — restore ChildInviteCode + its Stack.Screen if that
+// feature comes back.
 
 const Stack = createStackNavigator();
 const Tab   = createBottomTabNavigator();
@@ -55,7 +64,7 @@ function MainTabs() {
           return <Ionicons name={focused ? icons.active : icons.inactive} size={size} color={color} />;
         },
       })}
-      
+
     >
       <Tab.Screen name="Library" component={LibraryNav} />
       <Tab.Screen name="Home"    component={HomeScreen} />
@@ -79,30 +88,54 @@ function MissionsOverlay() {
 function AppInner() {
   const { colors: c } = useTheme();
   const navigationRef = useRef(null);
+  const [initialRoute, setInitialRoute] = React.useState(null);
+
+  React.useEffect(() => {
+    // Check auth state on launch
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) {
+        setInitialRoute('Login');
+        return;
+      }
+      // Logged in — check onboarding
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('onboarding_completed')
+        .eq('id', session.user.id)
+        .maybeSingle();
+
+      const needsOnboarding = !profile || profile.onboarding_completed !== true;
+      setInitialRoute(needsOnboarding ? 'MultiStepOnboarding' : 'MainTabs');
+    });
+  }, []);
+
+  if (!initialRoute) return null; // splash while checking
 
   return (
     <NavigationContainer ref={navigationRef}>
       <SafeAreaView style={{ flex: 1, backgroundColor: c.headerBg }} edges={['top']}>
         <TopBar />
-        <Stack.Navigator screenOptions={{
-          headerShown: false,
-          gestureEnabled: true,
-          gestureDirection: 'horizontal',
-        }}>
-          <Stack.Screen name="MainTabs"            component={MainTabs} />
+        <Stack.Navigator
+          initialRouteName={initialRoute}
+          screenOptions={{
+            headerShown: false,
+            gestureEnabled: true,
+            gestureDirection: 'horizontal',
+          }}>
+          <Stack.Screen name="Login"               component={LoginScreen} />
           <Stack.Screen name="MultiStepOnboarding" component={MultiStepOnboarding} />
-          <Stack.Screen name="ProfileQuickSetup"   component={ProfileQuickSetup} />
+          <Stack.Screen name="MainTabs"            component={MainTabs} />
+          <Stack.Screen name="Onboarding"          component={Onboarding} />
           <Stack.Screen name="Profile"             component={ProfileScreen} />
+          <Stack.Screen name="Settings"            component={SettingsScreen} />
           <Stack.Screen name="Play"                component={PlayScreen} />
-          <Stack.Screen name="PlayGame"             component={PlayScreen} />
-          <Stack.Screen name="ChildInviteCode"     component={ChildInviteCode} />
+          <Stack.Screen name="PlayGame"            component={PlayScreen} />
         </Stack.Navigator>
         <MissionsOverlay />
       </SafeAreaView>
     </NavigationContainer>
   );
 }
-
 export default function App() {
   return (
     <SafeAreaProvider>
