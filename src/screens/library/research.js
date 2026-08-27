@@ -1,22 +1,102 @@
-// src/screens/library/ResearchScreen.js
-import React, { useState, useEffect, useCallback } from 'react';
+// src/screens/library/research.js
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, FlatList, ActivityIndicator, Linking,
+  TextInput, FlatList, ActivityIndicator, Linking, Share,
   Modal, KeyboardAvoidingView, Platform, Dimensions
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../../api/supabaseClient';
+import { useTheme } from '../../../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
+// ─── Auto-populated discovery catalog ──────────────────────────────────────
+// Well-known research tools & databases grouped by category so a fresh
+// vault never starts empty — browse Discover and one-tap save what's useful.
+const CATEGORIES = [
+  { id: 'encyclopedia', label: 'Encyclopedias & Reference', emoji: '📖', color: '#5c9ce0' },
+  { id: 'papers', label: 'Academic Papers & Journals', emoji: '🔬', color: '#4caf7d' },
+  { id: 'ai', label: 'AI Research Assistants', emoji: '🤖', color: '#9a6fd6' },
+  { id: 'citations', label: 'Citations & Bibliography', emoji: '📑', color: '#c9a84c' },
+  { id: 'books', label: 'Books & Archives', emoji: '📚', color: '#d97a7a' },
+  { id: 'data', label: 'Data & Statistics', emoji: '📊', color: '#3fb8cf' },
+];
+const CATEGORY_MAP = Object.fromEntries(CATEGORIES.map((c) => [c.id, c]));
+
+const CATALOG = [
+  { id: 'e1', catId: 'encyclopedia', emoji: '📖', title: 'Wikipedia', url: 'https://www.wikipedia.org', desc: 'The free encyclopedia' },
+  { id: 'e2', catId: 'encyclopedia', emoji: '📘', title: 'Encyclopaedia Britannica', url: 'https://www.britannica.com', desc: 'Trusted general reference' },
+  { id: 'e3', catId: 'encyclopedia', emoji: '🔢', title: 'Wolfram Alpha', url: 'https://www.wolframalpha.com', desc: 'Computational knowledge engine' },
+  { id: 'e4', catId: 'encyclopedia', emoji: '🏛️', title: 'Stanford Encyclopedia of Philosophy', url: 'https://plato.stanford.edu', desc: 'Rigorous, peer-reviewed philosophy reference' },
+
+  { id: 'p1', catId: 'papers', emoji: '🔎', title: 'Google Scholar', url: 'https://scholar.google.com', desc: 'Search academic papers & citations' },
+  { id: 'p2', catId: 'papers', emoji: '🧬', title: 'PubMed', url: 'https://pubmed.ncbi.nlm.nih.gov', desc: 'Medical & life sciences research' },
+  { id: 'p3', catId: 'papers', emoji: '📄', title: 'arXiv', url: 'https://arxiv.org', desc: 'Preprints in physics, math, CS & more' },
+  { id: 'p4', catId: 'papers', emoji: '🧠', title: 'Semantic Scholar', url: 'https://www.semanticscholar.org', desc: 'AI-powered research paper search' },
+  { id: 'p5', catId: 'papers', emoji: '📰', title: 'JSTOR', url: 'https://www.jstor.org', desc: 'Academic journals, books & primary sources' },
+  { id: 'p6', catId: 'papers', emoji: '🔓', title: 'DOAJ', url: 'https://doaj.org', desc: 'Directory of Open Access Journals' },
+
+  { id: 'a1', catId: 'ai', emoji: '🤖', title: 'Claude', url: 'https://claude.ai', desc: 'AI assistant for research & writing' },
+  { id: 'a2', catId: 'ai', emoji: '💬', title: 'ChatGPT', url: 'https://chat.openai.com', desc: 'AI assistant for research & writing' },
+  { id: 'a3', catId: 'ai', emoji: '🔍', title: 'Perplexity', url: 'https://www.perplexity.ai', desc: 'AI answer engine with cited sources' },
+  { id: 'a4', catId: 'ai', emoji: '🧪', title: 'Elicit', url: 'https://elicit.com', desc: 'AI research assistant for literature review' },
+  { id: 'a5', catId: 'ai', emoji: '✅', title: 'Consensus', url: 'https://consensus.app', desc: 'AI search engine for scientific papers' },
+
+  { id: 'c1', catId: 'citations', emoji: '📎', title: 'Zotero', url: 'https://www.zotero.org', desc: 'Free citation & reference manager' },
+  { id: 'c2', catId: 'citations', emoji: '🗂️', title: 'Mendeley', url: 'https://www.mendeley.com', desc: 'Reference manager & academic network' },
+  { id: 'c3', catId: 'citations', emoji: '🖊️', title: 'Citation Machine', url: 'https://www.citationmachine.net', desc: 'Generate citations in any style' },
+  { id: 'c4', catId: 'citations', emoji: '✍️', title: 'Purdue OWL', url: 'https://owl.purdue.edu', desc: 'Writing & citation style guides' },
+
+  { id: 'b1', catId: 'books', emoji: '📕', title: 'Google Books', url: 'https://books.google.com', desc: 'Search & preview millions of books' },
+  { id: 'b2', catId: 'books', emoji: '🗄️', title: 'Archive.org', url: 'https://archive.org', desc: 'Free books, media & web history' },
+  { id: 'b3', catId: 'books', emoji: '📗', title: 'Project Gutenberg', url: 'https://www.gutenberg.org', desc: '70,000+ free public-domain ebooks' },
+  { id: 'b4', catId: 'books', emoji: '📔', title: 'Open Library', url: 'https://openlibrary.org', desc: 'One web page for every book ever published' },
+
+  { id: 'd1', catId: 'data', emoji: '🌍', title: 'Our World in Data', url: 'https://ourworldindata.org', desc: 'Research & data on world problems' },
+  { id: 'd2', catId: 'data', emoji: '📊', title: 'Statista', url: 'https://www.statista.com', desc: 'Statistics & market data' },
+  { id: 'd3', catId: 'data', emoji: '🏦', title: 'World Bank Open Data', url: 'https://data.worldbank.org', desc: 'Global development data' },
+  { id: 'd4', catId: 'data', emoji: '🏛️', title: 'U.S. Census Bureau', url: 'https://www.census.gov', desc: 'Official U.S. demographic data' },
+];
+
+const SORT_OPTIONS = [
+  { key: 'recent', label: 'Newest', icon: 'time-outline' },
+  { key: 'oldest', label: 'Oldest', icon: 'hourglass-outline' },
+  { key: 'az', label: 'A–Z', icon: 'text-outline' },
+  { key: 'starred', label: 'Starred First', icon: 'star-outline' },
+  { key: 'visits', label: 'Most Opened', icon: 'flame-outline' },
+];
+
+// Interleave category headers into an already-bucketed catalog list.
+const withCategoryHeaders = (list) => {
+  const buckets = {};
+  list.forEach((item) => {
+    if (!buckets[item.catId]) buckets[item.catId] = [];
+    buckets[item.catId].push(item);
+  });
+  const out = [];
+  CATEGORIES.forEach((cat) => {
+    const items = buckets[cat.id];
+    if (items && items.length) {
+      out.push({ __header: true, key: `h_${cat.id}`, label: cat.label, emoji: cat.emoji, color: cat.color, count: items.length });
+      items.forEach((it) => out.push(it));
+    }
+  });
+  return out;
+};
+
 export default function ResearchScreen() {
+  const { colors: c } = useTheme();
+  const styles = makeStyles(c);
+
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState(null);
+
+  const [tab, setTab] = useState('vault'); // 'vault' | 'discover'
 
   // Form State
   const [title, setTitle] = useState('');
@@ -25,10 +105,13 @@ export default function ResearchScreen() {
   const [tags, setTags] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // Filters & Search
+  // Filters, search & sort
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all'); // 'all' | 'link' | 'note'
   const [selectedTag, setSelectedTag] = useState(null);
+  const [catFilter, setCatFilter] = useState(null); // Discover-only category filter
+  const [sortBy, setSortBy] = useState('recent');
+  const [showSort, setShowSort] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -54,22 +137,34 @@ export default function ResearchScreen() {
       .select('*')
       .eq('user_id', uid)
       .in('type', ['link', 'note'])
-      .eq('status', 'inbox')
+      // 'inbox' = captured here directly or via Discover; 'active' = routed
+      // in from the Capture Inbox's "Add to Research" destination.
+      .in('status', ['inbox', 'active'])
+      .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
     if (data) setEntries(data);
     setLoading(false);
   };
 
+  const isSavedUrl = (u) => entries.some((e) => e.url === u);
+  const savedIdForUrl = (u) => entries.find((e) => e.url === u)?.id || null;
+
   const save = async () => {
     if (!title.trim()) return;
     setSaving(true);
+    const finalUrl = url.trim();
+    if (finalUrl && isSavedUrl(finalUrl)) {
+      setSaving(false);
+      return;
+    }
     const item = {
       user_id: userId,
-      type: url.trim() ? 'link' : 'note',
+      type: finalUrl ? 'link' : 'note',
       title: title.trim(),
       body: notes.trim() || null,
-      url: url.trim() || null,
+      url: finalUrl || null,
+      url_meta: {},
       status: 'inbox',
       tags: tags
         .split(',')
@@ -89,130 +184,309 @@ export default function ResearchScreen() {
     setSaving(false);
   };
 
+  const addFromCatalog = async (cat) => {
+    const existingId = savedIdForUrl(cat.url);
+    if (existingId) {
+      deleteEntry(existingId);
+      return;
+    }
+    const item = {
+      user_id: userId,
+      type: 'link',
+      title: cat.title,
+      body: cat.desc,
+      url: cat.url,
+      url_meta: { emoji: cat.emoji, category: cat.catId, source: 'catalog' },
+      status: 'inbox',
+      tags: [cat.catId],
+      source: 'catalog',
+    };
+    const { data } = await supabase.from('captures').insert(item).select().single();
+    if (data) setEntries((prev) => [data, ...prev]);
+  };
+
   const deleteEntry = async (id) => {
     setEntries((prev) => prev.filter((e) => e.id !== id));
     if (selectedEntry?.id === id) setSelectedEntry(null);
-    await supabase.from('captures').delete().eq('id', id);
+    // Soft delete — moves to Recently Deleted in the Capture Inbox for 7 days.
+    await supabase.from('captures').update({ deleted_at: new Date().toISOString() }).eq('id', id);
   };
 
-  // Extract unique tags across all entries
+  const toggleStar = (item) => {
+    const starred = !item.url_meta?.starred;
+    const nextMeta = { ...(item.url_meta || {}), starred };
+    setEntries((prev) => prev.map((e) => (e.id === item.id ? { ...e, url_meta: nextMeta } : e)));
+    if (selectedEntry?.id === item.id) setSelectedEntry((prev) => ({ ...prev, url_meta: nextMeta }));
+    supabase.from('captures').update({ url_meta: nextMeta }).eq('id', item.id).then(() => {});
+  };
+
+  const openLink = (item) => {
+    if (!item.url) return;
+    Linking.openURL(item.url);
+    const visits = (item.url_meta?.visits || 0) + 1;
+    const nextMeta = { ...(item.url_meta || {}), visits, lastOpenedAt: new Date().toISOString() };
+    setEntries((prev) => prev.map((e) => (e.id === item.id ? { ...e, url_meta: nextMeta } : e)));
+    if (selectedEntry?.id === item.id) setSelectedEntry((prev) => ({ ...prev, url_meta: nextMeta }));
+    supabase.from('captures').update({ url_meta: nextMeta }).eq('id', item.id).then(() => {});
+  };
+
+  const shareEntry = (item) => {
+    Share.share({ message: item.url ? `${item.title} — ${item.url}` : item.title }).catch(() => {});
+  };
+
+  // Extract unique tags across all entries (excludes catalog category tags so
+  // the chip row stays focused on the user's own organization)
   const allTags = Array.from(
-    new Set(entries.flatMap((e) => e.tags || []))
+    new Set(entries.flatMap((e) => e.tags || []).filter((tg) => !CATEGORY_MAP[tg]))
   );
 
-  const filtered = entries.filter((e) => {
-    const matchSearch =
-      !search ||
-      e.title?.toLowerCase().includes(search.toLowerCase()) ||
-      e.body?.toLowerCase().includes(search.toLowerCase());
-    const matchType = typeFilter === 'all' || e.type === typeFilter;
-    const matchTag = !selectedTag || (e.tags && e.tags.includes(selectedTag));
-    return matchSearch && matchType && matchTag;
-  });
+  const vaultFiltered = useMemo(() => {
+    let list = entries.filter((e) => {
+      const matchSearch =
+        !search ||
+        e.title?.toLowerCase().includes(search.toLowerCase()) ||
+        e.body?.toLowerCase().includes(search.toLowerCase());
+      const matchType = typeFilter === 'all' || e.type === typeFilter;
+      const matchTag = !selectedTag || (e.tags && e.tags.includes(selectedTag));
+      return matchSearch && matchType && matchTag;
+    });
+    if (sortBy === 'oldest') {
+      list = [...list].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    } else if (sortBy === 'az') {
+      list = [...list].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+    } else if (sortBy === 'starred') {
+      list = [...list].sort((a, b) => (b.url_meta?.starred ? 1 : 0) - (a.url_meta?.starred ? 1 : 0));
+    } else if (sortBy === 'visits') {
+      list = [...list].sort((a, b) => (b.url_meta?.visits || 0) - (a.url_meta?.visits || 0));
+    }
+    // 'recent' — already ordered by created_at desc from the query
+    return list;
+  }, [entries, search, typeFilter, selectedTag, sortBy]);
+
+  const discoverFiltered = useMemo(() => {
+    const list = CATALOG.filter((item) => {
+      const matchCat = !catFilter || item.catId === catFilter;
+      const matchSearch =
+        !search ||
+        item.title.toLowerCase().includes(search.toLowerCase()) ||
+        item.desc.toLowerCase().includes(search.toLowerCase());
+      return matchCat && matchSearch;
+    });
+    return withCategoryHeaders(list);
+  }, [search, catFilter]);
+
+  const data = tab === 'vault' ? vaultFiltered : discoverFiltered;
+  const activeSort = SORT_OPTIONS.find((s) => s.key === sortBy);
 
   return (
     <View style={styles.container}>
-      {/* Flight Control Telemetry Header */}
+      {/* Header */}
       <View style={styles.header}>
         <View>
           <Text style={styles.headerSubtitle}>KNOWLEDGE & SOURCE INTEL</Text>
           <Text style={styles.headerTitle}>Research Vault</Text>
         </View>
         <TouchableOpacity style={styles.addBtn} onPress={() => setShowAdd(true)}>
-          <Ionicons name="add" size={18} color="#000" />
+          <Ionicons name="add" size={18} color="#fff" />
           <Text style={styles.addBtnText}>Capture</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Tabs */}
+      <View style={styles.tabRow}>
+        <TouchableOpacity
+          style={[styles.tabBtn, tab === 'vault' && styles.tabBtnActive]}
+          onPress={() => setTab('vault')}
+        >
+          <Ionicons name="book" size={13} color={tab === 'vault' ? c.teal : c.text3} />
+          <Text style={[styles.tabText, tab === 'vault' && styles.tabTextActive]}>My Vault ({entries.length})</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabBtn, tab === 'discover' && styles.tabBtnActive]}
+          onPress={() => setTab('discover')}
+        >
+          <Ionicons name="compass" size={13} color={tab === 'discover' ? c.teal : c.text3} />
+          <Text style={[styles.tabText, tab === 'discover' && styles.tabTextActive]}>Discover</Text>
         </TouchableOpacity>
       </View>
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
-          <Ionicons name="search" size={18} color="#00F0FF" />
+          <Ionicons name="search" size={18} color={c.teal} />
           <TextInput
             style={styles.searchInput}
             value={search}
             onChangeText={setSearch}
-            placeholder="Scan title, notes, or web intel..."
-            placeholderTextColor="#626D82"
+            placeholder={tab === 'vault' ? 'Scan title, notes, or web intel...' : 'Search research tools & databases...'}
+            placeholderTextColor={c.text4}
           />
           {search ? (
             <TouchableOpacity onPress={() => setSearch('')}>
-              <Ionicons name="close-circle" size={18} color="#626D82" />
+              <Ionicons name="close-circle" size={18} color={c.text4} />
             </TouchableOpacity>
           ) : null}
         </View>
+        {tab === 'vault' && (
+          <TouchableOpacity style={styles.sortBtn} onPress={() => setShowSort((v) => !v)}>
+            <Ionicons name={activeSort.icon} size={16} color={c.teal} />
+            <Ionicons name={showSort ? 'chevron-up' : 'chevron-down'} size={12} color={c.text3} />
+          </TouchableOpacity>
+        )}
       </View>
 
-      {/* Type & Tag Filters */}
+      {tab === 'vault' && showSort && (
+        <View style={styles.sortPanel}>
+          {SORT_OPTIONS.map((opt) => (
+            <TouchableOpacity
+              key={opt.key}
+              style={[styles.sortOption, sortBy === opt.key && styles.sortOptionActive]}
+              onPress={() => { setSortBy(opt.key); setShowSort(false); }}
+            >
+              <Ionicons name={opt.icon} size={13} color={sortBy === opt.key ? c.teal : c.text3} />
+              <Text style={[styles.sortOptionText, sortBy === opt.key && { color: c.teal, fontWeight: 'bold' }]}>
+                {opt.label}
+              </Text>
+              {sortBy === opt.key && <Ionicons name="checkmark" size={14} color={c.teal} />}
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {/* Type & Tag Filters (Vault) / Category Filters (Discover) */}
       <View style={styles.filterBarContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-          {/* Type Filters */}
-          <TouchableOpacity
-            style={[styles.typeChip, typeFilter === 'all' && styles.typeChipActive]}
-            onPress={() => setTypeFilter('all')}
-          >
-            <Text style={[styles.typeChipText, typeFilter === 'all' && styles.typeChipTextActive]}>All Vault</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.typeChip, typeFilter === 'link' && styles.typeChipActiveCyan]}
-            onPress={() => setTypeFilter('link')}
-          >
-            <Ionicons name="link-outline" size={12} color={typeFilter === 'link' ? '#00F0FF' : '#626D82'} />
-            <Text style={[styles.typeChipText, typeFilter === 'link' && { color: '#00F0FF', fontWeight: 'bold' }]}>
-              Links
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.typeChip, typeFilter === 'note' && styles.typeChipActiveGold]}
-            onPress={() => setTypeFilter('note')}
-          >
-            <Ionicons name="document-text-outline" size={12} color={typeFilter === 'note' ? '#FFB800' : '#626D82'} />
-            <Text style={[styles.typeChipText, typeFilter === 'note' && { color: '#FFB800', fontWeight: 'bold' }]}>
-              Notes
-            </Text>
-          </TouchableOpacity>
-
-          <View style={styles.filterDivider} />
-
-          {/* Dynamic Tag Filters */}
-          {allTags.map((tg) => {
-            const isSelected = selectedTag === tg;
-            return (
+          {tab === 'vault' ? (
+            <>
               <TouchableOpacity
-                key={tg}
-                style={[styles.tagChip, isSelected && styles.tagChipActive]}
-                onPress={() => setSelectedTag(isSelected ? null : tg)}
+                style={[styles.typeChip, typeFilter === 'all' && styles.typeChipActive]}
+                onPress={() => setTypeFilter('all')}
               >
-                <Text style={[styles.tagChipText, isSelected && styles.tagChipTextActive]}>#{tg}</Text>
+                <Text style={[styles.typeChipText, typeFilter === 'all' && styles.typeChipTextActive]}>All Vault</Text>
               </TouchableOpacity>
-            );
-          })}
+
+              <TouchableOpacity
+                style={[styles.typeChip, typeFilter === 'link' && styles.typeChipActiveCyan]}
+                onPress={() => setTypeFilter('link')}
+              >
+                <Ionicons name="link-outline" size={12} color={typeFilter === 'link' ? c.teal : c.text3} />
+                <Text style={[styles.typeChipText, typeFilter === 'link' && { color: c.teal, fontWeight: 'bold' }]}>
+                  Links
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.typeChip, typeFilter === 'note' && styles.typeChipActiveGold]}
+                onPress={() => setTypeFilter('note')}
+              >
+                <Ionicons name="document-text-outline" size={12} color={typeFilter === 'note' ? c.gold : c.text3} />
+                <Text style={[styles.typeChipText, typeFilter === 'note' && { color: c.gold, fontWeight: 'bold' }]}>
+                  Notes
+                </Text>
+              </TouchableOpacity>
+
+              <View style={styles.filterDivider} />
+
+              {allTags.map((tg) => {
+                const isSelected = selectedTag === tg;
+                return (
+                  <TouchableOpacity
+                    key={tg}
+                    style={[styles.tagChip, isSelected && styles.tagChipActive]}
+                    onPress={() => setSelectedTag(isSelected ? null : tg)}
+                  >
+                    <Text style={[styles.tagChipText, isSelected && styles.tagChipTextActive]}>#{tg}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </>
+          ) : (
+            <>
+              <TouchableOpacity
+                style={[styles.typeChip, !catFilter && styles.typeChipActive]}
+                onPress={() => setCatFilter(null)}
+              >
+                <Text style={[styles.typeChipText, !catFilter && styles.typeChipTextActive]}>All</Text>
+              </TouchableOpacity>
+              {CATEGORIES.map((cat) => {
+                const isSelected = catFilter === cat.id;
+                return (
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={[styles.typeChip, isSelected && { borderColor: cat.color, backgroundColor: cat.color + '22' }]}
+                    onPress={() => setCatFilter(isSelected ? null : cat.id)}
+                  >
+                    <Text style={{ fontSize: 12 }}>{cat.emoji}</Text>
+                    <Text style={[styles.typeChipText, isSelected && { color: cat.color, fontWeight: 'bold' }]}>{cat.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </>
+          )}
         </ScrollView>
       </View>
 
       {/* Main Content List */}
-      {loading ? (
+      {loading && tab === 'vault' ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00F0FF" />
-          <Text style={styles.loadingText}>Accessing Supabase Data Stream...</Text>
+          <ActivityIndicator size="large" color={c.teal} />
+          <Text style={styles.loadingText}>Loading your research vault...</Text>
         </View>
       ) : (
         <FlatList
-          data={filtered}
-          keyExtractor={(e) => e.id}
+          data={data}
+          keyExtractor={(e) => (e.__header ? e.key : e.id)}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <MaterialCommunityIcons name="radar" size={50} color="#1F263E" />
-              <Text style={styles.emptyTitle}>Vault Empty</Text>
-              <Text style={styles.emptySubtitle}>No links, research papers, or notes matching criteria.</Text>
+              <MaterialCommunityIcons name="radar" size={50} color={c.border} />
+              <Text style={styles.emptyTitle}>{tab === 'vault' ? 'Vault Empty' : 'No matches'}</Text>
+              <Text style={styles.emptySubtitle}>
+                {tab === 'vault'
+                  ? 'No links, research papers, or notes matching criteria.'
+                  : 'Try a different search or category.'}
+              </Text>
             </View>
           }
           renderItem={({ item }) => {
+            if (item.__header) {
+              return (
+                <View style={styles.sectionHeader}>
+                  <Text style={{ fontSize: 13 }}>{item.emoji}</Text>
+                  <Text style={[styles.sectionHeaderText, { color: item.color }]}>{item.label}</Text>
+                  <Text style={styles.sectionHeaderCount}>{item.count}</Text>
+                </View>
+              );
+            }
+
+            if (tab === 'discover') {
+              const saved = isSavedUrl(item.url);
+              const cat = CATEGORY_MAP[item.catId];
+              return (
+                <View style={[styles.card, { borderLeftColor: cat.color }]}>
+                  <View style={styles.cardHeader}>
+                    <View style={[styles.typeIconBox, { backgroundColor: cat.color + '22' }]}>
+                      <Text style={{ fontSize: 17 }}>{item.emoji}</Text>
+                    </View>
+                    <TouchableOpacity style={styles.cardTitleArea} onPress={() => Linking.openURL(item.url)}>
+                      <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+                      <Text style={styles.cardBody} numberOfLines={2}>{item.desc}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => Linking.openURL(item.url)} style={styles.trashBtn}>
+                      <Ionicons name="open-outline" size={17} color={c.text3} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => addFromCatalog(item)} style={styles.trashBtn}>
+                      <Ionicons name={saved ? 'bookmark' : 'bookmark-outline'} size={17} color={saved ? c.gold : c.text3} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            }
+
             const isLink = item.type === 'link';
-            const accentColor = isLink ? '#00F0FF' : '#FFB800';
+            const accentColor = isLink ? c.teal : c.gold;
+            const starred = !!item.url_meta?.starred;
+            const visits = item.url_meta?.visits || 0;
 
             return (
               <TouchableOpacity
@@ -220,7 +494,7 @@ export default function ResearchScreen() {
                 onPress={() => setSelectedEntry(item)}
               >
                 <View style={styles.cardHeader}>
-                  <View style={[styles.typeIconBox, { backgroundColor: `${accentColor}15` }]}>
+                  <View style={[styles.typeIconBox, { backgroundColor: accentColor + '22' }]}>
                     <Ionicons
                       name={isLink ? 'link-outline' : 'document-text-outline'}
                       size={18}
@@ -233,7 +507,7 @@ export default function ResearchScreen() {
                       {item.title}
                     </Text>
                     {item.url && (
-                      <TouchableOpacity onPress={() => Linking.openURL(item.url)}>
+                      <TouchableOpacity onPress={() => openLink(item)}>
                         <Text style={styles.cardUrl} numberOfLines={1}>
                           {item.url}
                         </Text>
@@ -241,8 +515,11 @@ export default function ResearchScreen() {
                     )}
                   </View>
 
+                  <TouchableOpacity onPress={() => toggleStar(item)} style={styles.trashBtn}>
+                    <Ionicons name={starred ? 'star' : 'star-outline'} size={16} color={starred ? c.gold : c.text4} />
+                  </TouchableOpacity>
                   <TouchableOpacity onPress={() => deleteEntry(item.id)} style={styles.trashBtn}>
-                    <Ionicons name="trash-outline" size={16} color="#626D82" />
+                    <Ionicons name="trash-outline" size={16} color={c.text4} />
                   </TouchableOpacity>
                 </View>
 
@@ -252,13 +529,19 @@ export default function ResearchScreen() {
                   </Text>
                 )}
 
-                {item.tags?.length > 0 && (
+                {(item.tags?.length > 0 || visits > 0) && (
                   <View style={styles.cardTagRow}>
-                    {item.tags.map((tg) => (
+                    {item.tags?.map((tg) => (
                       <View key={tg} style={styles.cardTagPill}>
                         <Text style={styles.cardTagText}>#{tg}</Text>
                       </View>
                     ))}
+                    {visits > 0 && (
+                      <View style={styles.visitsPill}>
+                        <Ionicons name="flame-outline" size={10} color={c.text4} />
+                        <Text style={styles.visitsPillText}>{visits}</Text>
+                      </View>
+                    )}
                   </View>
                 )}
               </TouchableOpacity>
@@ -267,22 +550,24 @@ export default function ResearchScreen() {
         />
       )}
 
-      {/* Capture Intel Modal */}
+      {/* Capture Modal */}
       <Modal visible={showAdd} transparent animationType="slide" onRequestClose={() => setShowAdd(false)}>
         <KeyboardAvoidingView
           style={styles.modalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
         >
           <View style={styles.modalContent}>
             <View style={styles.modalHandle} />
-            <Text style={styles.modalHeaderTitle}>⚡ CAPTURE RESEARCH INTEL</Text>
+            <Text style={styles.modalHeaderTitle}>⚡ CAPTURE RESEARCH</Text>
 
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <TextInput
               style={styles.modalInput}
               value={title}
               onChangeText={setTitle}
               placeholder="Title or Research Topic *"
-              placeholderTextColor="#626D82"
+              placeholderTextColor={c.text4}
               autoFocus
             />
 
@@ -291,7 +576,7 @@ export default function ResearchScreen() {
               value={url}
               onChangeText={setUrl}
               placeholder="Source URL (Optional)"
-              placeholderTextColor="#626D82"
+              placeholderTextColor={c.text4}
               autoCapitalize="none"
             />
 
@@ -299,8 +584,8 @@ export default function ResearchScreen() {
               style={[styles.modalInput, styles.modalTextArea]}
               value={notes}
               onChangeText={setNotes}
-              placeholder="Executive Summary or Synthesis Notes..."
-              placeholderTextColor="#626D82"
+              placeholder="Summary or synthesis notes..."
+              placeholderTextColor={c.text4}
               multiline
             />
 
@@ -309,9 +594,10 @@ export default function ResearchScreen() {
               value={tags}
               onChangeText={setTags}
               placeholder="Tags (comma separated, e.g. ai, math, robotics)"
-              placeholderTextColor="#626D82"
+              placeholderTextColor={c.text4}
               autoCapitalize="none"
             />
+            </ScrollView>
 
             <View style={styles.modalActionRow}>
               <TouchableOpacity onPress={() => setShowAdd(false)} style={styles.cancelBtn}>
@@ -324,9 +610,9 @@ export default function ResearchScreen() {
                 style={[styles.saveBtn, (!title.trim() || saving) && { opacity: 0.5 }]}
               >
                 {saving ? (
-                  <ActivityIndicator color="#000" size="small" />
+                  <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={styles.saveBtnText}>Encrypt & Save</Text>
+                  <Text style={styles.saveBtnText}>Save to Vault</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -345,31 +631,38 @@ export default function ResearchScreen() {
                 <View
                   style={[
                     styles.typeIconBox,
-                    { backgroundColor: selectedEntry.type === 'link' ? 'rgba(0,240,255,0.15)' : 'rgba(255,184,0,0.15)' },
+                    { backgroundColor: (selectedEntry.type === 'link' ? c.teal : c.gold) + '22' },
                   ]}
                 >
                   <Ionicons
                     name={selectedEntry.type === 'link' ? 'link-outline' : 'document-text-outline'}
                     size={22}
-                    color={selectedEntry.type === 'link' ? '#00F0FF' : '#FFB800'}
+                    color={selectedEntry.type === 'link' ? c.teal : c.gold}
                   />
                 </View>
                 <Text style={styles.detailTitle}>{selectedEntry.title}</Text>
+                <TouchableOpacity onPress={() => toggleStar(selectedEntry)}>
+                  <Ionicons
+                    name={selectedEntry.url_meta?.starred ? 'star' : 'star-outline'}
+                    size={20}
+                    color={selectedEntry.url_meta?.starred ? c.gold : c.text4}
+                  />
+                </TouchableOpacity>
                 <TouchableOpacity onPress={() => setSelectedEntry(null)}>
-                  <Ionicons name="close-circle" size={24} color="#626D82" />
+                  <Ionicons name="close-circle" size={24} color={c.text4} />
                 </TouchableOpacity>
               </View>
 
               {selectedEntry.url && (
                 <TouchableOpacity
                   style={styles.openUrlBanner}
-                  onPress={() => Linking.openURL(selectedEntry.url)}
+                  onPress={() => openLink(selectedEntry)}
                 >
-                  <Ionicons name="compass-outline" size={16} color="#00F0FF" />
+                  <Ionicons name="compass-outline" size={16} color={c.teal} />
                   <Text style={styles.openUrlText} numberOfLines={1}>
                     {selectedEntry.url}
                   </Text>
-                  <Ionicons name="open-outline" size={14} color="#00F0FF" />
+                  <Ionicons name="open-outline" size={14} color={c.teal} />
                 </TouchableOpacity>
               )}
 
@@ -391,10 +684,17 @@ export default function ResearchScreen() {
 
               <View style={styles.detailFooter}>
                 <TouchableOpacity
+                  style={styles.shareDetailBtn}
+                  onPress={() => shareEntry(selectedEntry)}
+                >
+                  <Ionicons name="share-outline" size={16} color={c.text3} />
+                  <Text style={styles.shareDetailText}>Share</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
                   style={styles.deleteDetailBtn}
                   onPress={() => deleteEntry(selectedEntry.id)}
                 >
-                  <Ionicons name="trash-outline" size={16} color="#FF5252" />
+                  <Ionicons name="trash-outline" size={16} color={c.error} />
                   <Text style={styles.deleteDetailText}>Delete Entry</Text>
                 </TouchableOpacity>
               </View>
@@ -406,64 +706,87 @@ export default function ResearchScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0B0D17', paddingTop: 50 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 16 },
-  headerSubtitle: { color: '#00F0FF', fontSize: 10, letterSpacing: 2, fontWeight: '800' },
-  headerTitle: { color: '#FFF', fontSize: 24, fontWeight: 'bold' },
-  addBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#00F0FF', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12 },
-  addBtnText: { color: '#000', fontWeight: 'bold', fontSize: 12 },
-  searchContainer: { paddingHorizontal: 20, marginBottom: 12 },
-  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#141829', borderRadius: 12, paddingHorizontal: 12, borderWidth: 1, borderColor: '#1F263E', gap: 8 },
-  searchInput: { flex: 1, paddingVertical: 10, color: '#FFF', fontSize: 13 },
+const makeStyles = (c) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: c.bg0, paddingTop: 50 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 14 },
+  headerSubtitle: { color: c.teal, fontSize: 10, letterSpacing: 2, fontWeight: '800' },
+  headerTitle: { color: c.text1, fontSize: 24, fontWeight: 'bold' },
+  addBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.teal, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12 },
+  addBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
+
+  tabRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 8, marginBottom: 12 },
+  tabBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, backgroundColor: c.bg1, borderWidth: 1, borderColor: c.border },
+  tabBtnActive: { borderColor: c.teal, backgroundColor: c.teal + '18' },
+  tabText: { color: c.text3, fontSize: 12, fontWeight: '600' },
+  tabTextActive: { color: c.teal, fontWeight: 'bold' },
+
+  searchContainer: { flexDirection: 'row', paddingHorizontal: 20, marginBottom: 10, gap: 8 },
+  searchBar: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: c.bg1, borderRadius: 12, paddingHorizontal: 12, borderWidth: 1, borderColor: c.border, gap: 8 },
+  searchInput: { flex: 1, paddingVertical: 10, color: c.text1, fontSize: 13 },
+  sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 10, backgroundColor: c.bg1, borderRadius: 12, borderWidth: 1, borderColor: c.border },
+  sortPanel: { marginHorizontal: 20, marginBottom: 10, backgroundColor: c.bg1, borderRadius: 12, borderWidth: 1, borderColor: c.border, overflow: 'hidden' },
+  sortOption: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: c.border },
+  sortOptionActive: { backgroundColor: c.teal + '10' },
+  sortOptionText: { flex: 1, color: c.text2, fontSize: 12 },
+
   filterBarContainer: { marginBottom: 16 },
   filterScroll: { paddingHorizontal: 20, gap: 8, alignItems: 'center' },
-  typeChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: '#141829', borderWidth: 1, borderColor: '#1F263E' },
-  typeChipActive: { borderColor: '#7C4DFF', backgroundColor: 'rgba(124,77,255,0.15)' },
-  typeChipActiveCyan: { borderColor: '#00F0FF', backgroundColor: 'rgba(0,240,255,0.15)' },
-  typeChipActiveGold: { borderColor: '#FFB800', backgroundColor: 'rgba(255,184,0,0.15)' },
-  typeChipText: { color: '#626D82', fontSize: 11, fontWeight: '600' },
-  typeChipTextActive: { color: '#FFF', fontWeight: 'bold' },
-  filterDivider: { width: 1, height: 16, backgroundColor: '#1F263E', marginHorizontal: 4 },
-  tagChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, backgroundColor: '#06080F', borderWidth: 1, borderColor: '#1F263E' },
-  tagChipActive: { borderColor: '#00E676', backgroundColor: 'rgba(0,230,118,0.15)' },
-  tagChipText: { color: '#626D82', fontSize: 10 },
-  tagChipTextActive: { color: '#00E676', fontWeight: 'bold' },
+  typeChip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: c.bg1, borderWidth: 1, borderColor: c.border, marginRight: 8 },
+  typeChipActive: { borderColor: c.purple, backgroundColor: c.purple + '22' },
+  typeChipActiveCyan: { borderColor: c.teal, backgroundColor: c.teal + '22' },
+  typeChipActiveGold: { borderColor: c.gold, backgroundColor: c.gold + '22' },
+  typeChipText: { color: c.text3, fontSize: 11, fontWeight: '600' },
+  typeChipTextActive: { color: c.text1, fontWeight: 'bold' },
+  filterDivider: { width: 1, height: 16, backgroundColor: c.border, marginHorizontal: 4 },
+  tagChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, backgroundColor: c.bg2, borderWidth: 1, borderColor: c.border, marginRight: 8 },
+  tagChipActive: { borderColor: c.financial, backgroundColor: c.financial + '22' },
+  tagChipText: { color: c.text3, fontSize: 10 },
+  tagChipTextActive: { color: c.financial, fontWeight: 'bold' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
-  loadingText: { color: '#626D82', fontSize: 12 },
+  loadingText: { color: c.text3, fontSize: 12 },
   listContent: { paddingHorizontal: 20, paddingBottom: 40, gap: 12 },
   emptyState: { alignItems: 'center', paddingTop: 60 },
-  emptyTitle: { color: '#FFF', fontSize: 16, fontWeight: 'bold', marginTop: 12 },
-  emptySubtitle: { color: '#626D82', fontSize: 12, marginTop: 4, textAlign: 'center' },
-  card: { backgroundColor: '#141829', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#1F263E', borderLeftWidth: 4 },
+  emptyTitle: { color: c.text1, fontSize: 16, fontWeight: 'bold', marginTop: 12 },
+  emptySubtitle: { color: c.text3, fontSize: 12, marginTop: 4, textAlign: 'center', paddingHorizontal: 30 },
+
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 10, paddingBottom: 4 },
+  sectionHeaderText: { fontSize: 11, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' },
+  sectionHeaderCount: { color: c.text4, fontSize: 10, fontWeight: '600' },
+
+  card: { backgroundColor: c.bg1, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: c.border, borderLeftWidth: 4 },
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8 },
   typeIconBox: { width: 32, height: 32, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
   cardTitleArea: { flex: 1 },
-  cardTitle: { color: '#FFF', fontSize: 14, fontWeight: 'bold' },
-  cardUrl: { color: '#00F0FF', fontSize: 11, marginTop: 2 },
+  cardTitle: { color: c.text1, fontSize: 14, fontWeight: 'bold' },
+  cardUrl: { color: c.teal, fontSize: 11, marginTop: 2 },
   trashBtn: { padding: 4 },
-  cardBody: { color: '#A0AABF', fontSize: 12, lineHeight: 18, marginBottom: 10 },
-  cardTagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
-  cardTagPill: { backgroundColor: '#06080F', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: '#1F263E' },
-  cardTagText: { color: '#FFB800', fontSize: 10 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#141829', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, borderTopWidth: 1, borderTopColor: 'rgba(0,240,255,0.3)', maxHeight: '85%' },
-  modalHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: '#1F263E', alignSelf: 'center', marginBottom: 16 },
-  modalHeaderTitle: { color: '#00F0FF', fontSize: 11, fontWeight: '800', letterSpacing: 1, marginBottom: 16 },
-  modalInput: { backgroundColor: '#06080F', borderWidth: 1, borderColor: '#1F263E', borderRadius: 10, padding: 12, color: '#FFF', fontSize: 13, marginBottom: 10 },
+  cardBody: { color: c.text2, fontSize: 12, lineHeight: 18, marginBottom: 10 },
+  cardTagRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 4 },
+  cardTagPill: { backgroundColor: c.bg2, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: c.border },
+  cardTagText: { color: c.gold, fontSize: 10 },
+  visitsPill: { flexDirection: 'row', alignItems: 'center', gap: 2, backgroundColor: c.bg2, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6 },
+  visitsPillText: { color: c.text4, fontSize: 10, fontWeight: '600' },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: c.bg1, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, borderTopWidth: 2, borderTopColor: c.teal, maxHeight: '85%' },
+  modalHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: 16 },
+  modalHeaderTitle: { color: c.teal, fontSize: 11, fontWeight: '800', letterSpacing: 1, marginBottom: 16 },
+  modalInput: { backgroundColor: c.bg2, borderWidth: 1, borderColor: c.border, borderRadius: 10, padding: 12, color: c.text1, fontSize: 13, marginBottom: 10 },
   modalTextArea: { minHeight: 80, textAlignVertical: 'top' },
   modalActionRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
-  cancelBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', backgroundColor: '#06080F', borderRadius: 10, borderWidth: 1, borderColor: '#1F263E' },
-  cancelBtnText: { color: '#626D82', fontSize: 12, fontWeight: 'bold' },
-  saveBtn: { flex: 2, paddingVertical: 12, alignItems: 'center', backgroundColor: '#00F0FF', borderRadius: 10 },
-  saveBtnText: { color: '#000', fontSize: 12, fontWeight: 'bold' },
+  cancelBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', backgroundColor: c.bg2, borderRadius: 10, borderWidth: 1, borderColor: c.border },
+  cancelBtnText: { color: c.text3, fontSize: 12, fontWeight: 'bold' },
+  saveBtn: { flex: 2, paddingVertical: 12, alignItems: 'center', backgroundColor: c.teal, borderRadius: 10 },
+  saveBtnText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
   detailHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
-  detailTitle: { flex: 1, color: '#FFF', fontSize: 16, fontWeight: 'bold' },
-  openUrlBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#06080F', padding: 12, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(0,240,255,0.3)', marginBottom: 16 },
-  openUrlText: { flex: 1, color: '#00F0FF', fontSize: 12 },
+  detailTitle: { flex: 1, color: c.text1, fontSize: 16, fontWeight: 'bold' },
+  openUrlBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: c.bg2, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: c.teal + '4d', marginBottom: 16 },
+  openUrlText: { flex: 1, color: c.teal, fontSize: 12 },
   detailBodyContainer: { maxHeight: 200, marginBottom: 16 },
-  detailBodyText: { color: '#A0AABF', fontSize: 13, lineHeight: 20 },
-  detailFooter: { marginTop: 20, borderTopWidth: 1, borderTopColor: '#1F263E', paddingTop: 12, alignItems: 'flex-end' },
+  detailBodyText: { color: c.text2, fontSize: 13, lineHeight: 20 },
+  detailFooter: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20, borderTopWidth: 1, borderTopColor: c.border, paddingTop: 12 },
+  shareDetailBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 12 },
+  shareDetailText: { color: c.text3, fontSize: 12, fontWeight: 'bold' },
   deleteDetailBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 12 },
-  deleteDetailText: { color: '#FF5252', fontSize: 12, fontWeight: 'bold' }
+  deleteDetailText: { color: c.error, fontSize: 12, fontWeight: 'bold' }
 });
