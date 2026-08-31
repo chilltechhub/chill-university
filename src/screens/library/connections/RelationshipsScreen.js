@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../../context/ThemeContext';
 import { supabase } from '../../../api/supabaseClient';
+import RelatedLinks, { EXCLUDE_LINK_FILTER } from '../RelatedLinks';
 
 const TYPES = [
   { key: 'romantic', label: 'Romantic', emoji: '❤️', color: '#e05858' },
@@ -35,7 +36,8 @@ export default function RelationshipsScreen() {
 
   const load = async (uid) => {
     setLoading(true);
-    const { data } = await supabase.from('area_notes').select('*').eq('user_id', uid).eq('area_id', 'social').order('created_at', { ascending: false }).limit(50);
+    const { data } = await EXCLUDE_LINK_FILTER(supabase.from('area_notes').select('*').eq('user_id', uid).eq('area_id', 'social'))
+      .order('created_at', { ascending: false }).limit(50);
     if (data) setEntries(data);
     setLoading(false);
   };
@@ -117,6 +119,11 @@ export default function RelationshipsScreen() {
               <Text style={{ fontSize: t.sm, color: c.text3, textAlign: 'center' }}>Add the people who matter most to you.</Text>
             </View>
           )}
+
+          <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginTop: s.lg, marginBottom: s.md }}>
+            🔗 Related
+          </Text>
+          <RelatedLinks areaId="social" color={color} c={c} t={t} s={s} r={r} />
         </ScrollView>
       )}
 

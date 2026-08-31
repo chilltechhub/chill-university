@@ -1,7 +1,8 @@
 // src/components/FactorCraftGame.js
-// Math tile game — select tiles that equal the target using the given operation
-// Preserves all original game logic, replaces Alert with inline feedback,
-// applies royal library theme via GameShell
+// Math tile game — select tiles that equal the target using the given operation.
+// Grade band picks the starting difficulty/timer; the existing per-round
+// leveling (harder rounds after enough correct answers) is the in-run
+// auto-adjust layer on top of that starting point.
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
@@ -9,13 +10,33 @@ import {
   Animated,
 } from 'react-native';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
-import GameShell, { G } from './GameShell';
+import GameShell, { useGameTheme } from './GameShell';
 import GameOver from './GameOver';
+import GradeSelectCard from './GradeSelectCard';
 import useGame from '../logic/useGame';
+import useGradeLevel from '../logic/useGradeLevel';
 
 const OPERATIONS = ['add', 'subtract', 'multiply', 'divide'];
 const OP_SYMBOLS  = { add: '+', subtract: '−', multiply: '×', divide: '÷' };
-const OP_COLORS   = { add: G.teal, subtract: G.warning, multiply: '#2196F3', divide: G.purple };
+function getOpColors(G) {
+  return { add: G.teal, subtract: G.warning, multiply: '#2196F3', divide: G.purple };
+}
+const OP_TIPS = {
+  add:      'Look for tiles that add up cleanly to the target.',
+  subtract: 'Start from your biggest tile and subtract down toward the target.',
+  multiply: 'Try smaller factor pairs first — they combine easier.',
+  divide:   'Look for a tile the target divides into evenly.',
+};
+
+const STARTING_LEVEL = { 'K-2': 1, '3-5': 4, '6-8': 7, '9-12': 10 };
+const STARTING_TIME  = { 'K-2': 80, '3-5': 65, '6-8': 55, '9-12': 45 };
+
+const BLURBS = {
+  'K-2': 'Small numbers, fewer tiles, more time on the clock.',
+  '3-5': 'Bigger numbers and more tile choices.',
+  '6-8': 'Large numbers, tight timer, tougher combinations.',
+  '9-12': 'Big numbers, minimal time, complex multi-tile combinations.',
+};
 
 function buildRound(level) {
   const numberRange = Math.min(10 + level * 5, 100);
@@ -66,9 +87,14 @@ function calcResult(nums, op) {
 
 export default function FactorCraftGame({ onGameEnd }) {
   const navigation = useNavigation();
+  const G = useGameTheme();
+  const s = makeStyles(G);
+  const OP_COLORS = getOpColors(G);
   const isFocused  = useIsFocused();
+  const { level: skillLevel, setLevel: setSkillLevel } = useGradeLevel('factor');
+  const [started, setStarted] = useState(false);
 
-  const [round, setRound]           = useState(() => buildRound(1));
+  const [round, setRound]           = useState(null);
   const [selected, setSelected]     = useState([]);
   const [level, setLevel]           = useState(1);
   const [levelCorrect, setLC]       = useState(0);
@@ -78,12 +104,25 @@ export default function FactorCraftGame({ onGameEnd }) {
   const [feedback, setFeedback]     = useState(null);
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
-  const game = useGame({ subject: 'math', difficulty: Math.min(Math.ceil(level / 3), 3), onGameEnd });
+  const game = useGame({ subject: 'math', difficulty: Math.min(Math.ceil(level / 3), 3), skillLevel, onGameEnd });
   const hasEnded = useRef(false);
+
+  const beginRun = () => {
+    const startLevel = STARTING_LEVEL[skillLevel] || 1;
+    hasEnded.current = false;
+    setLevel(startLevel);
+    setLC(0);
+    setCombo(0);
+    setTimeLeft(STARTING_TIME[skillLevel] || 60);
+    setRound(buildRound(startLevel));
+    setSelected([]);
+    setFeedback(null);
+    setStarted(true);
+  };
 
   // Timer
   useEffect(() => {
-    if (!isFocused || paused || timeLeft <= 0 || hasEnded.current) return;
+    if (!started || !isFocused || paused || timeLeft <= 0 || hasEnded.current) return;
     const id = setInterval(() => {
       setTimeLeft(t => {
         if (t <= 1) {
@@ -94,7 +133,7 @@ export default function FactorCraftGame({ onGameEnd }) {
       });
     }, 1000);
     return () => clearInterval(id);
-  }, [isFocused, paused, timeLeft]);
+  }, [started, isFocused, paused, timeLeft]);
 
   useEffect(() => {
     const unsub = navigation.addListener('blur', () => setPaused(true));
@@ -120,7 +159,7 @@ export default function FactorCraftGame({ onGameEnd }) {
   }, []);
 
   const checkAnswer = useCallback(() => {
-    if (selected.length < 2 || feedback || hasEnded.current) return;
+    if (!round || selected.length < 2 || feedback || hasEnded.current) return;
     const nums = selected.map(i => round.tiles[i]);
     const result = calcResult(nums, round.operation);
 
@@ -145,8 +184,8 @@ export default function FactorCraftGame({ onGameEnd }) {
         Animated.timing(shakeAnim, { toValue: 8,  duration: 50, useNativeDriver: true }),
         Animated.timing(shakeAnim, { toValue: 0,  duration: 50, useNativeDriver: true }),
       ]).start();
-      setFeedback({ isCorrect: false, msg: `Got ${result}, need ${round.target}` });
-      setTimeout(() => { setFeedback(null); setSelected([]); }, 1400);
+      setFeedback({ isCorrect: false, msg: `Got ${result}, need ${round.target} · ${OP_TIPS[round.operation]}` });
+      setTimeout(() => { setFeedback(null); setSelected([]); }, 1800);
     }
   }, [selected, round, feedback, combo, game, level, levelCorrect, nextRound, shakeAnim]);
 
@@ -155,18 +194,25 @@ export default function FactorCraftGame({ onGameEnd }) {
     setSelected(prev => prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]);
   };
 
+  if (!started) {
+    return (
+      <GradeSelectCard
+        title="Factor Craft" emoji="🔢" subjectLabel="Math"
+        blurbs={BLURBS} level={skillLevel} onSelectLevel={setSkillLevel} onStart={beginRun}
+      />
+    );
+  }
+
   if (game.done || hasEnded.current) return (
     <GameOver
       score={game.score} correct={game.correct} total={game.attempted}
       streak={game.bestStreak} title="Math Master!"
-      onPlayAgain={() => {
-        game.reset(); hasEnded.current = false;
-        setLevel(1); setLC(0); setCombo(0); setTimeLeft(60);
-        setRound(buildRound(1)); setSelected([]); setFeedback(null);
-      }}
+      onPlayAgain={() => { game.reset(); setStarted(false); }}
       onQuit={() => navigation.goBack()}
     />
   );
+
+  if (!round) return null;
 
   const opColor = OP_COLORS[round.operation];
   const currentNums = selected.map(i => round.tiles[i]);
@@ -174,13 +220,13 @@ export default function FactorCraftGame({ onGameEnd }) {
 
   return (
     <GameShell
-      title="Factor Craft" emoji="🔢" subject="Math"
+      title="Factor Craft" emoji="🔢" subject={`Math · ${skillLevel}`}
       score={game.score} lives={game.lives} streak={game.streak}
       timeLeft={timeLeft} progress={levelCorrect / (5 + Math.floor(level / 2))}
     >
       <ScrollView contentContainerStyle={s.scroll}>
         <View style={s.levelRow}>
-          <Text style={s.levelText}>Level {level}</Text>
+          <Text style={s.levelText}>Round {level}</Text>
           {combo > 1 && <Text style={s.comboText}>🔥 {combo}x Combo</Text>}
         </View>
 
@@ -204,7 +250,7 @@ export default function FactorCraftGame({ onGameEnd }) {
             </>
           )}
           {selected.length < 2 && (
-            <Text style={s.previewHint}>Select at least 2 tiles</Text>
+            <Text style={s.previewHint}>Select at least 2 tiles · {OP_TIPS[round.operation]}</Text>
           )}
         </View>
 
@@ -251,7 +297,7 @@ export default function FactorCraftGame({ onGameEnd }) {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (G) => StyleSheet.create({
   scroll:          { padding: 16, paddingBottom: 40 },
   levelRow:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   levelText:       { fontSize: 12, color: G.muted, textTransform: 'uppercase', letterSpacing: 1 },
@@ -262,13 +308,13 @@ const s = StyleSheet.create({
   targetOp:        { fontSize: 13, color: G.muted, marginTop: 4 },
   preview:         { backgroundColor: G.card, borderRadius: 10, padding: 12, alignItems: 'center', marginBottom: 14, borderWidth: 0.5, borderColor: G.border, minHeight: 44 },
   previewExpr:     { fontSize: 18, color: G.cream, fontWeight: '600' },
-  previewHint:     { fontSize: 13, color: G.faint },
+  previewHint:     { fontSize: 13, color: G.faint, textAlign: 'center' },
   tilesGrid:       { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center', marginBottom: 16 },
   tile:            { width: 60, height: 60, backgroundColor: G.card, borderRadius: 12, borderWidth: 1, borderColor: G.border, alignItems: 'center', justifyContent: 'center' },
   tileSelected:    { backgroundColor: G.border },
   tileNum:         { fontSize: 20, fontWeight: '700', color: G.cream },
   feedback:        { backgroundColor: G.card, borderWidth: 1, borderRadius: 12, padding: 14, alignItems: 'center', marginBottom: 12 },
-  feedbackText:    { fontSize: 15, fontWeight: '700' },
+  feedbackText:    { fontSize: 15, fontWeight: '700', textAlign: 'center' },
   actions:         { flexDirection: 'row', gap: 12 },
   clearBtn:        { flex: 1, backgroundColor: G.card, borderWidth: 1, borderColor: G.border, borderRadius: 12, padding: 14, alignItems: 'center' },
   clearBtnText:    { fontSize: 15, color: G.muted, fontWeight: '600' },

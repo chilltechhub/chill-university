@@ -1,47 +1,66 @@
 // src/components/ToolMatchGame.js
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import GameShell, { G } from './GameShell';
+import GameShell, { useGameTheme } from './GameShell';
 import GameOver from './GameOver';
+import GradeSelectCard from './GradeSelectCard';
 import useGame from '../logic/useGame';
+import useGradeLevel, { levelForTier } from '../logic/useGradeLevel';
+import { createAdaptiveTier, nextAdaptiveTier } from '../logic/difficultyAdapter';
+import { TOOL_BANK } from '../data/gameContent/toolMatch';
 
-const QUESTIONS = [
-  { tool:'🔨 Hammer',     correct:'Hammering nails into wood',         distractors:['Mixing batter','Cutting wood','Digging holes'],         explanation:'A hammer drives nails into surfaces.',            funFact:'First hammers were just rocks — 3 million years ago!',  tip:'Wear safety goggles when hammering.' },
-  { tool:'🥄 Whisk',      correct:'Mixing eggs and batter',            distractors:['Painting walls','Hammering nails','Cutting pipes'],      explanation:'A whisk mixes ingredients smoothly.',             funFact:'Whisks can have up to 12 wires!',                        tip:'Wash your whisk before and after cooking.' },
-  { tool:'🪚 Saw',        correct:'Cutting wood into pieces',          distractors:['Digging holes','Mixing ingredients','Painting'],         explanation:'Saw teeth cut through wood when pushed and pulled.',funFact:'Some saws can cut a tree trunk in minutes!',              tip:'Only use saws with adult supervision.' },
-  { tool:'⛏️ Shovel',     correct:'Digging holes in the ground',       distractors:['Hammering nails','Mixing cake batter','Painting'],       explanation:'A shovel digs, lifts dirt, and moves sand.',      funFact:'Shovels helped build the pyramids 5,000 years ago!',     tip:'Bend your knees when digging.' },
-  { tool:'🎨 Paintbrush', correct:'Painting walls and surfaces',       distractors:['Cutting materials','Mixing eggs','Measuring lengths'],   explanation:'Soft bristles spread paint evenly on surfaces.',  funFact:'Brushes can be made from horsehair or synthetic fibers!', tip:'Clean your brush right after painting.' },
-  { tool:'🔧 Screwdriver',correct:'Turning screws to fasten things',   distractors:['Painting furniture','Measuring angles','Digging holes'], explanation:'Clockwise tightens, counter-clockwise loosens.',   funFact:'There are 30+ types of screwdriver heads!',              tip:'Always use the right size for your screw.' },
-  { tool:'🔩 Wrench',     correct:'Tightening nuts and bolts',         distractors:['Cutting pipes','Painting metal','Measuring lengths'],    explanation:'A wrench grips and turns nuts and bolts.',        funFact:'The adjustable wrench was invented in 1892!',            tip:'Turn the wrench away from your body.' },
-  { tool:'📏 Ruler',      correct:'Measuring lengths accurately',      distractors:['Cutting paper','Hammering nails','Mixing paint'],        explanation:'A ruler measures in inches or centimeters.',      funFact:'The longest ruler ever was 100 feet — blue whale size!', tip:'Metal rulers can have sharp edges.' },
-  { tool:'✂️ Scissors',   correct:'Cutting paper, fabric, and thread', distractors:['Measuring things','Hammering tacks','Mixing liquids'],   explanation:'Two blades slide past each other to cut.',        funFact:'Scissors were invented in ancient Egypt in 1500 BC!',   tip:'Never run with scissors. Walk with them pointing down.' },
-  { tool:'🪜 Ladder',     correct:'Reaching high places safely',       distractors:['Measuring heights','Digging holes','Cutting tall items'], explanation:'Rungs let you safely climb to reach high places.', funFact:'Longest firefighter ladder: 135 feet tall!',             tip:'Have someone hold the ladder when you climb.' },
-  { tool:'🚽 Plunger',    correct:'Unclogging drains and toilets',     distractors:['Hammering tiles','Mixing cement','Painting pipes'],      explanation:'Suction pushes blockages through pipes.',         funFact:'Plungers work by changing water pressure!',              tip:'Wear gloves when using a plunger.' },
-  { tool:'🪛 Drill',      correct:'Making holes in wood or walls',     distractors:['Cutting wood','Painting surfaces','Measuring angles'],   explanation:'A spinning bit makes holes in hard materials.',   funFact:'First electric drill invented in 1889 — weighed 10 lbs!',tip:'Secure your material before drilling.' },
-];
+const SESSION_LENGTH = 14;
+
+const BLURBS = {
+  'K-2': 'Common hand tools everyone recognizes.',
+  '3-5': 'Shop staples — saws, wrenches, ladders, levels.',
+  '6-8': 'Power tools & the safety gear that goes with them.',
+  '9-12': 'Precision instruments & pro-level shop equipment.',
+};
 
 function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
+function pickNext(pool, avoid) {
+  const choices = pool.filter(q => !avoid.includes(q.tool));
+  const list = choices.length ? choices : pool;
+  return list[Math.floor(Math.random() * list.length)];
+}
+
 export default function ToolMatchGame({ onGameEnd }) {
   const navigation = useNavigation();
-  const [idx, setIdx]         = useState(0);
+  const G = useGameTheme();
+  const s = makeStyles(G);
+  const { level, setLevel, tier: savedTier } = useGradeLevel('tools');
+  const [started, setStarted] = useState(false);
+
+  const [adaptive, setAdaptive] = useState(() => createAdaptiveTier(savedTier));
+  const recentRef = useRef([]);
+  const [q, setQ] = useState(null);
+  const [opts, setOpts] = useState([]);
+  const [asked, setAsked] = useState(0);
   const [selected, setSelected] = useState(null);
   const [feedback, setFeedback] = useState(null);
-  const [showTutorial, setShowTutorial] = useState(true);
   const [startTime, setStartTime] = useState(Date.now());
 
-  const game = useGame({ subject: 'general', difficulty: 1, onGameEnd });
-  const q = QUESTIONS[idx];
-  const options = useState(() => shuffle([q.correct, ...q.distractors]))[0];
+  const game = useGame({ subject: 'home_ec', difficulty: adaptive.tier, skillLevel: level, onGameEnd });
 
-  // Rebuild options when idx changes
-  const [currentOptions, setCurrentOptions] = useState(() =>
-    shuffle([QUESTIONS[0].correct, ...QUESTIONS[0].distractors])
-  );
+  const beginRun = () => {
+    const initial = createAdaptiveTier(savedTier);
+    setAdaptive(initial);
+    const first = pickNext(TOOL_BANK[levelForTier(initial.tier)], []);
+    recentRef.current = [first.tool];
+    setQ(first);
+    setOpts(shuffle([first.correct, ...first.distractors]));
+    setAsked(0);
+    setSelected(null);
+    setFeedback(null);
+    setStartTime(Date.now());
+    setStarted(true);
+  };
 
   const handleAnswer = useCallback((opt) => {
-    if (selected) return;
+    if (selected || !q) return;
     setSelected(opt);
     const isCorrect = opt === q.correct;
     const speed = (Date.now() - startTime) / 1000;
@@ -49,60 +68,55 @@ export default function ToolMatchGame({ onGameEnd }) {
     game.answer(isCorrect, { speedBonus });
     setFeedback({ isCorrect, explanation: q.explanation, funFact: q.funFact, tip: q.tip });
 
+    const nextAdaptiveState = nextAdaptiveTier(adaptive, isCorrect);
+    setAdaptive(nextAdaptiveState);
+
     setTimeout(() => {
       setFeedback(null);
       setSelected(null);
       setStartTime(Date.now());
-      const nextIdx = idx + 1;
-      if (game.lives - (isCorrect ? 0 : 1) <= 0 || nextIdx >= QUESTIONS.length) {
+      const willEnd = game.lives - (isCorrect ? 0 : 1) <= 0 || asked + 1 >= SESSION_LENGTH;
+      if (willEnd) {
         game.endGame();
       } else {
-        setIdx(nextIdx);
-        setCurrentOptions(shuffle([QUESTIONS[nextIdx].correct, ...QUESTIONS[nextIdx].distractors]));
+        const pool = TOOL_BANK[levelForTier(nextAdaptiveState.tier)];
+        const next = pickNext(pool, recentRef.current);
+        recentRef.current = [...recentRef.current.slice(-4), next.tool];
+        setQ(next);
+        setOpts(shuffle([next.correct, ...next.distractors]));
+        setAsked(a => a + 1);
       }
     }, 2200);
-  }, [selected, q, startTime, game, idx]);
+  }, [selected, q, startTime, game, asked, adaptive]);
 
-  if (showTutorial) return (
-    <GameShell title="Tool Match" emoji="🔧" subject="Home Economics" score={0} lives={3} streak={0}>
-      <ScrollView contentContainerStyle={s.scroll}>
-        <Text style={s.tutTitle}>🔧 Tool Match Game! 🔨</Text>
-        <Text style={s.tutSub}>Learn what every tool is for</Text>
-        {[
-          { e:'🔧', t:'Read the tool name' },
-          { e:'🎯', t:'Pick what it\'s used for' },
-          { e:'📚', t:'Learn a fun fact' },
-          { e:'🔥', t:'Keep your streak going!' },
-        ].map((item, i) => (
-          <View key={i} style={s.tutRow}>
-            <Text style={s.tutEmoji}>{item.e}</Text>
-            <Text style={s.tutText}>{item.t}</Text>
-          </View>
-        ))}
-        <TouchableOpacity style={s.startBtn} onPress={() => setShowTutorial(false)}>
-          <Text style={s.startBtnText}>✦ Start Quest</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </GameShell>
-  );
+  if (!started) {
+    return (
+      <GradeSelectCard
+        title="Tool Match" emoji="🔧" subjectLabel="Home Economics"
+        blurbs={BLURBS} level={level} onSelectLevel={setLevel} onStart={beginRun}
+      />
+    );
+  }
 
   if (game.done) return (
     <GameOver
       score={game.score} correct={game.correct} total={game.attempted}
       streak={game.bestStreak} title="Tools Mastered!"
-      onPlayAgain={() => { game.reset(); setIdx(0); setSelected(null); setFeedback(null); setCurrentOptions(shuffle([QUESTIONS[0].correct, ...QUESTIONS[0].distractors])); }}
+      onPlayAgain={() => { game.reset(); setStarted(false); }}
       onQuit={() => navigation.goBack()}
     />
   );
 
+  if (!q) return null;
+
   return (
     <GameShell
-      title="Tool Match" emoji="🔧" subject="Home Economics"
+      title="Tool Match" emoji="🔧" subject={`Home Economics · ${levelForTier(adaptive.tier)}`}
       score={game.score} lives={game.lives} streak={game.streak}
-      progress={idx / QUESTIONS.length}
+      progress={asked / SESSION_LENGTH}
     >
       <ScrollView contentContainerStyle={s.scroll}>
-        <Text style={s.progress}>Tool {idx + 1} of {QUESTIONS.length}</Text>
+        <Text style={s.progress}>Tool {asked + 1} of {SESSION_LENGTH}</Text>
 
         <View style={s.toolCard}>
           <Text style={s.toolEmoji}>{q.tool.split(' ')[0]}</Text>
@@ -111,7 +125,7 @@ export default function ToolMatchGame({ onGameEnd }) {
         </View>
 
         <View style={s.options}>
-          {currentOptions.map(opt => {
+          {opts.map(opt => {
             let bg = G.card, border = G.border;
             if (selected) {
               if (opt === q.correct) { bg = G.success + '22'; border = G.success; }
@@ -146,16 +160,9 @@ export default function ToolMatchGame({ onGameEnd }) {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (G) => StyleSheet.create({
   scroll:     { padding: 16, paddingBottom: 40 },
   progress:   { fontSize: 11, color: G.muted, textAlign: 'center', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 },
-  tutTitle:   { fontSize: 22, fontWeight: '700', color: G.cream, textAlign: 'center', marginBottom: 6 },
-  tutSub:     { fontSize: 14, color: G.muted, textAlign: 'center', marginBottom: 24 },
-  tutRow:     { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: G.card, borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 0.5, borderColor: G.border },
-  tutEmoji:   { fontSize: 24 },
-  tutText:    { fontSize: 14, color: G.cream },
-  startBtn:   { backgroundColor: G.gold, borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 16 },
-  startBtnText:{ fontSize: 16, fontWeight: '700', color: G.bg },
   toolCard:   { backgroundColor: G.card, borderRadius: 16, padding: 24, alignItems: 'center', borderWidth: 0.5, borderColor: G.border, marginBottom: 16 },
   toolEmoji:  { fontSize: 52, marginBottom: 8 },
   toolName:   { fontSize: 22, fontWeight: '700', color: G.cream, marginBottom: 6 },

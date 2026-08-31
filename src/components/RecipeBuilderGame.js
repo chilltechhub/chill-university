@@ -2,75 +2,67 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import GameShell, { G } from './GameShell';
+import GameShell, { useGameTheme } from './GameShell';
 import GameOver from './GameOver';
+import GradeSelectCard from './GradeSelectCard';
 import useGame from '../logic/useGame';
+import useGradeLevel, { levelForTier } from '../logic/useGradeLevel';
+import { createAdaptiveTier, nextAdaptiveTier } from '../logic/difficultyAdapter';
+import { RECIPE_BANK } from '../data/gameContent/recipeBuilder';
 
-const RECIPES = [
-  {
-    name: '🥞 Pancakes',
-    steps: [
-      { order:1, text:'Mix flour, eggs, and milk in a bowl' },
-      { order:2, text:'Heat pan on medium and add butter' },
-      { order:3, text:'Pour batter and wait for bubbles' },
-      { order:4, text:'Flip and cook other side' },
-      { order:5, text:'Serve with syrup and fruit' },
-    ],
-    tip: 'Wait until bubbles form before flipping!',
-  },
-  {
-    name: '🥗 Salad',
-    steps: [
-      { order:1, text:'Wash all vegetables thoroughly' },
-      { order:2, text:'Chop lettuce, tomatoes, and cucumber' },
-      { order:3, text:'Add toppings like croutons and cheese' },
-      { order:4, text:'Drizzle dressing over the salad' },
-      { order:5, text:'Toss gently and serve' },
-    ],
-    tip: 'Always wash vegetables before eating!',
-  },
-  {
-    name: '🍝 Pasta',
-    steps: [
-      { order:1, text:'Boil salted water in a large pot' },
-      { order:2, text:'Add pasta and cook for 8-10 minutes' },
-      { order:3, text:'Drain pasta in a colander' },
-      { order:4, text:'Heat sauce in a separate pan' },
-      { order:5, text:'Mix pasta and sauce, serve hot' },
-    ],
-    tip: 'Salting the water adds flavor to the pasta!',
-  },
-  {
-    name: '🥪 Sandwich',
-    steps: [
-      { order:1, text:'Lay out two slices of bread' },
-      { order:2, text:'Spread butter or mayo on one slice' },
-      { order:3, text:'Add your fillings — meat, cheese, veggies' },
-      { order:4, text:'Season with salt and pepper' },
-      { order:5, text:'Close sandwich and cut diagonally' },
-    ],
-    tip: 'Cutting diagonally makes sandwiches easier to hold!',
-  },
-];
+const SESSION_RECIPES = 4;
+
+const BLURBS = {
+  'K-2': 'No-stove recipes — toast, cereal, sandwiches (4 steps).',
+  '3-5': 'Stovetop basics — pancakes, pasta, salad (5 steps).',
+  '6-8': 'Real cooking with safety tips (6-7 steps).',
+  '9-12': 'Real technique — roux, marinating, food safety temps (7-8 steps).',
+};
 
 function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
+function pickRecipe(pool, avoidName) {
+  const choices = pool.filter(r => r.name !== avoidName);
+  const list = choices.length ? choices : pool;
+  return list[Math.floor(Math.random() * list.length)];
+}
+
 export default function RecipeBuilderGame({ onGameEnd }) {
   const navigation = useNavigation();
-  const [recipeIdx, setRecipeIdx] = useState(0);
-  const [shuffled, setShuffled] = useState(() => shuffle(RECIPES[0].steps));
-  const [placed, setPlaced]    = useState([]);
-  const [feedback, setFeedback] = useState(null);
-  const [startTime, setStartTime] = useState(Date.now());
+  const G = useGameTheme();
+  const s = makeStyles(G);
+  const { level, setLevel, tier: savedTier } = useGradeLevel('recipe');
+  const [started, setStarted] = useState(false);
 
-  const game = useGame({ subject: 'general', difficulty: 1, onGameEnd });
-  const recipe = RECIPES[recipeIdx];
+  const [adaptive, setAdaptive] = useState(() => createAdaptiveTier(savedTier));
+  const [recipe, setRecipe] = useState(null);
+  const [shuffled, setShuffled] = useState([]);
+  const [placed, setPlaced] = useState([]);
+  const [completedCount, setCompletedCount] = useState(0);
+  const [feedback, setFeedback] = useState(null);
+
+  const game = useGame({ subject: 'home_ec', difficulty: adaptive.tier, skillLevel: level, onGameEnd });
+
+  const beginRun = () => {
+    const initial = createAdaptiveTier(savedTier);
+    setAdaptive(initial);
+    const first = pickRecipe(RECIPE_BANK[levelForTier(initial.tier)], null);
+    setRecipe(first);
+    setShuffled(shuffle(first.steps));
+    setPlaced([]);
+    setCompletedCount(0);
+    setFeedback(null);
+    setStarted(true);
+  };
 
   const handlePlace = useCallback((step) => {
-    if (feedback) return;
+    if (feedback || !recipe) return;
     const expectedOrder = placed.length + 1;
     const isCorrect = step.order === expectedOrder;
     game.answer(isCorrect);
+
+    const nextAdaptiveState = nextAdaptiveTier(adaptive, isCorrect);
+    setAdaptive(nextAdaptiveState);
 
     if (isCorrect) {
       const newPlaced = [...placed, step];
@@ -78,16 +70,19 @@ export default function RecipeBuilderGame({ onGameEnd }) {
       setShuffled(prev => prev.filter(s => s.order !== step.order));
 
       if (newPlaced.length === recipe.steps.length) {
-        // Recipe complete!
         setFeedback({ isCorrect: true, msg: `✓ ${recipe.name} complete!`, tip: recipe.tip, done: true });
         setTimeout(() => {
           setFeedback(null);
-          const nextIdx = recipeIdx + 1;
-          if (nextIdx >= RECIPES.length || game.lives <= 0) {
+          const newCount = completedCount + 1;
+          const willEnd = newCount >= SESSION_RECIPES || game.lives <= 0;
+          if (willEnd) {
             game.endGame();
           } else {
-            setRecipeIdx(nextIdx);
-            setShuffled(shuffle(RECIPES[nextIdx].steps));
+            const pool = RECIPE_BANK[levelForTier(nextAdaptiveState.tier)];
+            const next = pickRecipe(pool, recipe.name);
+            setCompletedCount(newCount);
+            setRecipe(next);
+            setShuffled(shuffle(next.steps));
             setPlaced([]);
           }
         }, 2000);
@@ -96,31 +91,41 @@ export default function RecipeBuilderGame({ onGameEnd }) {
         setTimeout(() => setFeedback(null), 800);
       }
     } else {
-      setFeedback({ isCorrect: false, msg: `✗ That\'s step ${step.order}, not step ${expectedOrder}`, done: false });
+      setFeedback({ isCorrect: false, msg: `✗ That's step ${step.order}, not step ${expectedOrder}`, done: false });
       setTimeout(() => setFeedback(null), 1200);
     }
-  }, [feedback, placed, recipe, game, recipeIdx]);
+  }, [feedback, placed, recipe, game, adaptive, completedCount]);
+
+  if (!started) {
+    return (
+      <GradeSelectCard
+        title="Recipe Builder" emoji="🍳" subjectLabel="Home Economics"
+        blurbs={BLURBS} level={level} onSelectLevel={setLevel} onStart={beginRun}
+      />
+    );
+  }
 
   if (game.done) return (
     <GameOver
       score={game.score} correct={game.correct} total={game.attempted}
       streak={game.bestStreak} title="Master Chef!"
-      onPlayAgain={() => { game.reset(); setRecipeIdx(0); setShuffled(shuffle(RECIPES[0].steps)); setPlaced([]); setFeedback(null); }}
+      onPlayAgain={() => { game.reset(); setStarted(false); }}
       onQuit={() => navigation.goBack()}
     />
   );
 
+  if (!recipe) return null;
+
   return (
     <GameShell
-      title="Recipe Builder" emoji="🍳" subject="Home Economics"
+      title="Recipe Builder" emoji="🍳" subject={`Home Economics · ${levelForTier(adaptive.tier)}`}
       score={game.score} lives={game.lives} streak={game.streak}
-      progress={recipeIdx / RECIPES.length}
+      progress={completedCount / SESSION_RECIPES}
     >
       <ScrollView contentContainerStyle={s.scroll}>
         <Text style={s.recipeName}>{recipe.name}</Text>
-        <Text style={s.instruction}>Tap the steps in the correct order</Text>
+        <Text style={s.instruction}>Tap the steps in the correct order · Recipe {completedCount + 1} of {SESSION_RECIPES}</Text>
 
-        {/* Placed steps */}
         {placed.length > 0 && (
           <View style={s.placedSection}>
             <Text style={s.sectionLabel}>Steps so far</Text>
@@ -134,7 +139,6 @@ export default function RecipeBuilderGame({ onGameEnd }) {
           </View>
         )}
 
-        {/* Next step indicator */}
         {placed.length < recipe.steps.length && (
           <View style={s.nextStep}>
             <Text style={s.nextStepLabel}>Step {placed.length + 1} of {recipe.steps.length}</Text>
@@ -142,7 +146,6 @@ export default function RecipeBuilderGame({ onGameEnd }) {
           </View>
         )}
 
-        {/* Available steps */}
         <View style={s.available}>
           {shuffled.map(step => (
             <TouchableOpacity
@@ -156,7 +159,6 @@ export default function RecipeBuilderGame({ onGameEnd }) {
           ))}
         </View>
 
-        {/* Feedback */}
         {feedback && (
           <View style={[s.feedback, { borderColor: feedback.isCorrect ? G.success : G.error }]}>
             <Text style={[s.feedbackTitle, { color: feedback.isCorrect ? G.success : G.error }]}>
@@ -170,7 +172,7 @@ export default function RecipeBuilderGame({ onGameEnd }) {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (G) => StyleSheet.create({
   scroll:         { padding: 16, paddingBottom: 40 },
   recipeName:     { fontSize: 20, fontWeight: '700', color: G.cream, textAlign: 'center', marginBottom: 4 },
   instruction:    { fontSize: 13, color: G.muted, textAlign: 'center', marginBottom: 16 },

@@ -1,23 +1,13 @@
-// src/screens/MusicScreen.js
+// src/screens/classes/arts/music.js
+import React from 'react';
+import ClassTopicScreen from '../../../components/ClassTopicScreen';
 
-import React, { useState } from 'react';
-import {
-  ScrollView,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Linking,
-} from 'react-native';
-
-export default function MusicScreen() {
-  const [openSections, setOpenSections] = useState({});
-
-  const topics = [
+const topics = [
     // 1. Performance (Purple)
     {
       key: 'vocalChoral',
       title: 'Vocal & Choral',
+      grade: '3-5',
       color: '#8E24AA',
       description:
         'Sight‑singing, ensemble singing, solo repertoire, vocal technique.',
@@ -35,6 +25,7 @@ export default function MusicScreen() {
     {
       key: 'instrumental',
       title: 'Instrumental',
+      grade: '3-5',
       color: '#8E24AA',
       description:
         'Band (woodwinds, brass, percussion), orchestra (strings, winds), jazz ensembles.',
@@ -50,6 +41,7 @@ export default function MusicScreen() {
     {
       key: 'ensembleChamber',
       title: 'Ensemble & Chamber',
+      grade: '6-8',
       color: '#8E24AA',
       description:
         'Small‑group collaboration, repertoire, and rehearsal techniques.',
@@ -63,6 +55,7 @@ export default function MusicScreen() {
     {
       key: 'soloPerformance',
       title: 'Solo Performance',
+      grade: '6-8',
       color: '#8E24AA',
       description:
         'Stage presence, interpretation, and recital preparation.',
@@ -77,6 +70,7 @@ export default function MusicScreen() {
     {
       key: 'notationSightReading',
       title: 'Notation & Sight‑Reading',
+      grade: '3-5',
       color: '#039BE5',
       description:
         'Reading staff notation, rhythms, and musical symbols.',
@@ -93,6 +87,7 @@ export default function MusicScreen() {
     {
       key: 'harmonyMelody',
       title: 'Harmony & Melody',
+      grade: '6-8',
       color: '#039BE5',
       description:
         'Scales, chord structure, harmonic progression, melodic development.',
@@ -110,6 +105,7 @@ export default function MusicScreen() {
     {
       key: 'rhythmMeter',
       title: 'Rhythm & Meter',
+      grade: 'K-2',
       color: '#039BE5',
       description:
         'Beat, tempo, time signatures, syncopation, polyrhythms.',
@@ -126,6 +122,7 @@ export default function MusicScreen() {
     {
       key: 'compositionTechniques',
       title: 'Composition Techniques',
+      grade: '9-12',
       color: '#039BE5',
       description:
         'Songwriting, arranging, electronic composition, sketching ideas.',
@@ -143,6 +140,7 @@ export default function MusicScreen() {
     {
       key: 'westernArtMusic',
       title: 'Western Art Music',
+      grade: '9-12',
       color: '#43A047',
       description:
         'Baroque, Classical, Romantic, 20th‑Century, and Contemporary periods.',
@@ -158,6 +156,7 @@ export default function MusicScreen() {
     {
       key: 'worldFolk',
       title: 'World & Folk Traditions',
+      grade: '6-8',
       color: '#43A047',
       description:
         'Non‑Western scales, instruments, and cultural contexts.',
@@ -173,6 +172,7 @@ export default function MusicScreen() {
     {
       key: 'popularGenres',
       title: 'Popular Music & Modern Genres',
+      grade: '3-5',
       color: '#43A047',
       description:
         'Jazz, rock, hip‑hop, electronic, and pop studies.',
@@ -190,6 +190,7 @@ export default function MusicScreen() {
     {
       key: 'earTraining',
       title: 'Ear Training',
+      grade: '6-8',
       color: '#FB8C00',
       description:
         'Interval, chord, and rhythm recognition.',
@@ -204,6 +205,7 @@ export default function MusicScreen() {
     {
       key: 'criticalListening',
       title: 'Critical Listening',
+      grade: '9-12',
       color: '#FB8C00',
       description:
         'Analyzing form, texture, timbre, and expressive elements.',
@@ -219,6 +221,7 @@ export default function MusicScreen() {
     {
       key: 'recordingTechniques',
       title: 'Recording Techniques',
+      grade: '9-12',
       color: '#00897B',
       description:
         'Microphone use, signal flow, and basic acoustics.',
@@ -233,6 +236,7 @@ export default function MusicScreen() {
     {
       key: 'daws',
       title: 'Digital Audio Workstations (DAWs)',
+      grade: '9-12',
       color: '#00897B',
       description:
         'MIDI, editing, mixing, and mastering fundamentals.',
@@ -246,6 +250,7 @@ export default function MusicScreen() {
     {
       key: 'synthesisSampling',
       title: 'Sound Synthesis & Sampling',
+      grade: '9-12',
       color: '#00897B',
       description:
         'Basics of synthesis engines, samplers, and sound design.',
@@ -260,134 +265,6 @@ export default function MusicScreen() {
     },
   ];
 
-  const toggleHelp = (key) => {
-    setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.mainTitle}>Music</Text>
-
-      {topics.map(topic => (
-        <View key={topic.key} style={styles.card}>
-          <View style={[styles.headerBar, { backgroundColor: topic.color }]}>  
-            <Text style={styles.headerText}>{topic.title}</Text>
-          </View>
-          <View style={styles.sectionBody}>
-            <Text style={styles.subtitle}>What is it?</Text>
-            <Text style={styles.description}>{topic.description}</Text>
-            {(topic.help.videos.length > 0 || topic.help.readings.length > 0) && (
-              <TouchableOpacity style={styles.helpToggle} onPress={() => toggleHelp(topic.key)} activeOpacity={0.7}>
-                <Text style={styles.helpTitle}>
-                  Need help? {openSections[topic.key] ? '▲' : '▼'}
-                </Text>
-              </TouchableOpacity>
-            )}
-            {openSections[topic.key] && (
-              <View style={styles.helpContent}>
-                {topic.help.readings.length > 0 && (
-                  <>
-                    <Text style={styles.helpLabel}>Readings</Text>
-                    {topic.help.readings.map((item, i) => (
-                      <Text key={i} style={styles.linkText} onPress={() => Linking.openURL(item.url)}>
-                        • {item.title}
-                      </Text>
-                    ))}
-                  </>
-                )}
-                {topic.help.videos.length > 0 && (
-                  <>
-                    <Text style={styles.helpLabel}>Videos</Text>
-                    {topic.help.videos.map((video, i) => (
-                      <Text key={i} style={styles.linkText} onPress={() => Linking.openURL(video.url)}>
-                        • {video.title}
-                      </Text>
-                    ))}
-                  </>
-                )}
-              </View>
-            )}
-          </View>
-        </View>
-      ))}
-    </ScrollView>
-  );
+export default function MusicScreen() {
+  return <ClassTopicScreen title={"Music"} classKey="Music" fallbackTopics={topics} />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    backgroundColor: '#F9F9F9',
-    paddingBottom: 40,
-  },
-  mainTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#333',
-  },
-  card: {
-    marginBottom: 24,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  headerBar: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  headerText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  sectionBody: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  subtitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-    color: '#555',
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 12,
-    color: '#444',
-  },
-  helpToggle: {
-    marginTop: 8,
-  },
-  helpTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  helpContent: {
-    marginTop: 8,
-    padding: 12,
-    backgroundColor: '#EFEFEF',
-    borderRadius: 8,
-  },
-  helpLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 6,
-    color: '#333',
-  },
-  linkText: {
-    fontSize: 14,
-    color: '#1e88e5',
-    marginLeft: 8,
-    marginTop: 4,
-    textDecorationLine: 'underline',
-  },
-});

@@ -75,11 +75,69 @@ function isOverdue(instance) {
   return instance.date < today;
 }
 
+// ─── Compact calendar — used by InstanceModal to pick a date ─────────────────
+function MiniCalendar({ value, onChange, color, c, t, s, r }) {
+  const [viewMonth, setViewMonth] = useState(() => new Date(value.getFullYear(), value.getMonth(), 1));
+  const year  = viewMonth.getFullYear();
+  const month = viewMonth.getMonth();
+  const firstDay    = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+  const todayIso = toISO(new Date());
+  const selIso   = toISO(value);
+
+  return (
+    <View style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, borderWidth: 1, borderColor: color + '44' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: s.sm }}>
+        <TouchableOpacity onPress={() => setViewMonth(new Date(year, month - 1, 1))} style={{ padding: 4 }}>
+          <Ionicons name="chevron-back" size={16} color={color} />
+        </TouchableOpacity>
+        <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.text1 }}>
+          {viewMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+        </Text>
+        <TouchableOpacity onPress={() => setViewMonth(new Date(year, month + 1, 1))} style={{ padding: 4 }}>
+          <Ionicons name="chevron-forward" size={16} color={color} />
+        </TouchableOpacity>
+      </View>
+      <View style={{ flexDirection: 'row', marginBottom: 4 }}>
+        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+          <Text key={i} style={{ flex: 1, textAlign: 'center', fontSize: 10, fontWeight: '700', color: c.text4 }}>{d}</Text>
+        ))}
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+        {cells.map((day, i) => {
+          if (!day) return <View key={`e${i}`} style={{ width: '14.28%', aspectRatio: 1 }} />;
+          const iso     = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          const isSel   = iso === selIso;
+          const isToday = iso === todayIso;
+          return (
+            <TouchableOpacity key={day} onPress={() => onChange(new Date(year, month, day))}
+              style={{ width: '14.28%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{
+                width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+                backgroundColor: isSel ? color : 'transparent',
+                borderWidth: isToday && !isSel ? 1 : 0, borderColor: color,
+              }}>
+                <Text style={{ fontSize: 12, fontWeight: isSel ? '800' : '500', color: isSel ? '#fff' : isToday ? color : c.text1 }}>{day}</Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+      <TouchableOpacity onPress={() => { setViewMonth(new Date()); onChange(new Date()); }} style={{ marginTop: s.sm, alignSelf: 'center', padding: 4 }}>
+        <Text style={{ fontSize: 11, color, fontWeight: '700' }}>Today</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 // ─── Add / Edit instance modal ────────────────────────────────────────────────
 function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onClose, c, t, s, r }) {
   const [title,       setTitle]       = useState('');
   const [area,        setArea]        = useState('physical');
   const [cadence,     setCadence]     = useState('daily');
+  const [selectedDate,setSelectedDate]= useState(new Date());
+  const [showCal,     setShowCal]     = useState(false);
   const [timeVal,     setTimeVal]     = useState('');
   const [duration,    setDuration]    = useState('');
   const [notes,       setNotes]       = useState('');
@@ -89,18 +147,21 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
   const isEdit = !!instance;
 
   useEffect(() => {
+    setShowCal(false);
     if (instance) {
       setTitle(instance.title || '');
       setArea(instance.area || 'physical');
       setCadence(instance.cadence || 'daily');
+      setSelectedDate(instance.date ? new Date(instance.date + 'T00:00:00') : new Date());
       setTimeVal(instance.start_time || '');
       setDuration(instance.duration_minutes ? String(instance.duration_minutes) : '');
       setNotes(instance.notes || '');
     } else {
       setTitle(''); setArea('physical'); setCadence('daily');
+      setSelectedDate(date ? new Date(date + 'T00:00:00') : new Date());
       setTimeVal(''); setDuration(''); setNotes(''); setReminder(false);
     }
-  }, [instance, visible]);
+  }, [instance, visible, date]);
 
   const save = async () => {
     if (!title.trim()) return;
@@ -112,7 +173,7 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
         area,
         cadence,
         type:             'checklist',
-        date:             date || (instance?.date),
+        date:             toISO(selectedDate),
         start_time:       timeVal || null,
         duration_minutes: duration ? parseInt(duration) : null,
         notes:            notes || null,
@@ -198,6 +259,25 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
               placeholder="What are you scheduling?" placeholderTextColor={c.text4}
               autoFocus={!isEdit}
             />
+
+            {/* Date */}
+            <View>
+              <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Date</Text>
+              <TouchableOpacity onPress={() => setShowCal(v => !v)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, borderWidth: 1, borderColor: c.border, borderRadius: r.md, padding: s.md, backgroundColor: c.bg0 }}>
+                <Ionicons name="calendar-outline" size={16} color={areaColor} />
+                <Text style={{ flex: 1, fontSize: t.sm, color: c.text1, fontWeight: t.medium }}>
+                  {selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })}
+                </Text>
+                <Ionicons name={showCal ? 'chevron-up' : 'chevron-down'} size={14} color={c.text4} />
+              </TouchableOpacity>
+              {showCal && (
+                <View style={{ marginTop: s.sm }}>
+                  <MiniCalendar value={selectedDate} onChange={(d) => { setSelectedDate(d); setShowCal(false); }}
+                    color={areaColor} c={c} t={t} s={s} r={r} />
+                </View>
+              )}
+            </View>
 
             {/* Area picker */}
             <View>

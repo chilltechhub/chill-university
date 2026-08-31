@@ -4,6 +4,7 @@ export default ({ config }) => {
   return {
     ...config,
     owner: "chetowhite",
+    plugins: [...(config.plugins || []), 'expo-secure-store', 'expo-notifications', 'expo-screen-orientation'],
     extra: {
       ...config.extra,
       SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,

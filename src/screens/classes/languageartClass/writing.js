@@ -1,23 +1,13 @@
-// src/screens/WritingScreen.js
+// src/screens/classes/languageartClass/writing.js
+import React from 'react';
+import ClassTopicScreen from '../../../components/ClassTopicScreen';
 
-import React, { useState } from 'react';
-import {
-  ScrollView,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Linking,
-} from 'react-native';
-
-export default function WritingScreen() {
-  const [openSections, setOpenSections] = useState({});
-
-  const topics = [
+const topics = [
     // Text Types & Purposes (Purple)
     {
       key: 'opinionArgumentative',
       title: 'Opinion/Argumentative',
+      grade: '6-8',
       color: '#8E24AA',
       description:
         'Writing that expresses a clear viewpoint and supports it with reasons and evidence.',
@@ -33,6 +23,7 @@ export default function WritingScreen() {
     {
       key: 'informativeExplanatory',
       title: 'Informative/Explanatory',
+      grade: '3-5',
       color: '#8E24AA',
       description:
         'Writing that explains facts or concepts clearly to inform the reader.',
@@ -48,6 +39,7 @@ export default function WritingScreen() {
     {
       key: 'narrative',
       title: 'Narrative',
+      grade: 'K-2',
       color: '#8E24AA',
       description: 'Writing that tells a story with characters, setting, and plot.',
       help: {
@@ -64,6 +56,7 @@ export default function WritingScreen() {
     {
       key: 'planningResearch',
       title: 'Planning & Research',
+      grade: '3-5',
       color: '#039BE5',
       description: 'Gathering ideas and information before writing.',
       help: {
@@ -78,6 +71,7 @@ export default function WritingScreen() {
     {
       key: 'drafting',
       title: 'Drafting',
+      grade: '3-5',
       color: '#039BE5',
       description: 'Putting ideas into a first draft to get the writing on paper.',
       help: {
@@ -92,6 +86,7 @@ export default function WritingScreen() {
     {
       key: 'revisingEditing',
       title: 'Revising & Editing',
+      grade: '6-8',
       color: '#039BE5',
       description:
         'Improving and correcting the draft to make it clearer and error-free.',
@@ -107,6 +102,7 @@ export default function WritingScreen() {
     {
       key: 'publishing',
       title: 'Publishing',
+      grade: '6-8',
       color: '#039BE5',
       description: 'Sharing the final version of writing with others.',
       help: {
@@ -123,6 +119,7 @@ export default function WritingScreen() {
     {
       key: 'gatheringSources',
       title: 'Gathering Sources',
+      grade: '9-12',
       color: '#43A047',
       description: 'Finding reliable books, websites, or other materials for research.',
       help: {
@@ -137,6 +134,7 @@ export default function WritingScreen() {
     {
       key: 'noteTakingOrganizing',
       title: 'Note-taking & Organizing',
+      grade: '6-8',
       color: '#43A047',
       description: 'Recording and arranging important information from sources.',
       help: {
@@ -155,6 +153,7 @@ export default function WritingScreen() {
     {
       key: 'citingEvidence',
       title: 'Citing Evidence',
+      grade: '9-12',
       color: '#43A047',
       description: 'Giving credit to sources to show where information came from.',
       help: {
@@ -175,6 +174,7 @@ export default function WritingScreen() {
     {
       key: 'handwritingKeyboarding',
       title: 'Handwriting & Keyboarding',
+      grade: 'K-2',
       color: '#FB8C00',
       description:
         'Learning to write letters neatly by hand and using a keyboard effectively.',
@@ -198,139 +198,6 @@ export default function WritingScreen() {
     },
   ];
 
-  const toggleHelp = (key) => {
-    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.mainTitle}>Writing</Text>
-
-      {topics.map((topic) => (
-        <View key={topic.key} style={styles.card}>
-          {/* Colored Header */}
-          <View style={[styles.headerBar, { backgroundColor: topic.color }]}>
-            <Text style={styles.headerText}>{topic.title}</Text>
-          </View>
-
-          {/* Body */}
-          <View style={styles.sectionBody}>
-            <Text style={styles.subtitle}>What is it?</Text>
-            <Text style={styles.description}>{topic.description}</Text>
-
-            {/* Show “Need help?” only if there are videos */}
-            {topic.help.videos.length > 0 && (
-              <TouchableOpacity
-                style={styles.helpToggle}
-                onPress={() => toggleHelp(topic.key)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.helpTitle}>
-                  Need help? {openSections[topic.key] ? '▲' : '▼'}
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {/* Collapsible help content */}
-            {openSections[topic.key] && (
-              <View style={styles.helpContent}>
-                {topic.help.videos.length > 0 && (
-                  <>
-                    <Text style={styles.helpLabel}>Videos</Text>
-                    {topic.help.videos.map((video, idx) => (
-                      <Text
-                        key={idx}
-                        style={styles.linkText}
-                        onPress={() => Linking.openURL(video.url)}
-                      >
-                        • {video.title}
-                      </Text>
-                    ))}
-                  </>
-                )}
-              </View>
-            )}
-          </View>
-        </View>
-      ))}
-    </ScrollView>
-  );
+export default function WritingScreen() {
+  return <ClassTopicScreen title={"Writing"} classKey="Writing" fallbackTopics={topics} />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    backgroundColor: '#F9F9F9',
-    paddingBottom: 40,
-  },
-  mainTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#333',
-  },
-  card: {
-    marginBottom: 24,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  headerBar: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  headerText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  sectionBody: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  subtitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-    color: '#555',
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 12,
-    color: '#444',
-  },
-  helpToggle: {
-    marginTop: 8,
-  },
-  helpTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  helpContent: {
-    marginTop: 8,
-    padding: 12,
-    backgroundColor: '#EFEFEF',
-    borderRadius: 8,
-  },
-  helpLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 6,
-    color: '#333',
-  },
-  linkText: {
-    fontSize: 14,
-    color: '#1e88e5',
-    marginLeft: 8,
-    marginTop: 4,
-    textDecorationLine: 'underline',
-  },
-});

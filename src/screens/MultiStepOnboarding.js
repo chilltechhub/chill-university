@@ -10,8 +10,11 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
+import { THEMES } from '../theme';
 import { supabase } from '../api/supabaseClient';
 import { generateRecommendations } from '../api/recommendationEngine';
+import useSetting, { SETTING_KEYS } from '../logic/useSetting';
+import { ensureNotificationPermission } from '../logic/notificationScheduler';
 
 const { width: SW } = Dimensions.get('window');
 
@@ -367,6 +370,21 @@ function Step5({ data, set }) {
 }
 
 function Step6({ data, set }) {
+  const [remindersEnabled, setRemindersEnabled] = useSetting(SETTING_KEYS.DAILY_REMINDERS_ENABLED, false);
+
+  // Not part of the `data`/`set` payload sent to `profiles` — reminders are
+  // a device-local preference (same AsyncStorage key SettingsScreen's
+  // toggle uses), not a server column. Requests OS permission right away
+  // if turned on here; HomeScreen picks up the setting and actually
+  // schedules today's reminders once real mission/streak data is loaded.
+  const toggleReminders = async (v) => {
+    setRemindersEnabled(v);
+    if (v) {
+      const granted = await ensureNotificationPermission();
+      if (!granted) setRemindersEnabled(false);
+    }
+  };
+
   return (
     <View style={s.stepContent}>
       <Text style={s.stepTitle}>Your Goals & Style ⚡</Text>
@@ -415,6 +433,19 @@ function Step6({ data, set }) {
           thumbColor={data.wants_reflection ? '#3ac860' : '#888'}
         />
       </View>
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12, padding: 14, marginTop: 8 }}>
+        <View style={{ flex: 1, marginRight: 12 }}>
+          <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>Daily reminders</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 2 }}>A nudge if today's tasks are open, or your streak's at risk</Text>
+        </View>
+        <Switch
+          value={remindersEnabled}
+          onValueChange={toggleReminders}
+          trackColor={{ false: 'rgba(255,255,255,0.1)', true: '#c9a84c88' }}
+          thumbColor={remindersEnabled ? '#c9a84c' : '#888'}
+        />
+      </View>
     </View>
   );
 }
@@ -428,32 +459,32 @@ function Step7({ data, set }) {
       <View style={{ gap: 14, marginTop: 8 }}>
         {/* Dark theme */}
         <TouchableOpacity onPress={() => set('theme', 'dark')}
-          style={[s.themeCard, { backgroundColor: '#0e0818', borderColor: data.theme === 'dark' ? '#c9a84c' : 'rgba(255,255,255,0.1)' }]}>
+          style={[s.themeCard, { backgroundColor: THEMES.dark.bg0, borderColor: data.theme === 'dark' ? THEMES.dark.gold : 'rgba(255,255,255,0.1)' }]}>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: '#e8dfc8', fontWeight: '700', fontSize: 16, marginBottom: 4 }}>Dark · Royal Library</Text>
-            <Text style={{ color: '#7a6a9a', fontSize: 13 }}>Deep space. Gold accents. Easy on the eyes at night.</Text>
+            <Text style={{ color: THEMES.dark.text1, fontWeight: '700', fontSize: 16, marginBottom: 4 }}>Dark · Command</Text>
+            <Text style={{ color: THEMES.dark.text3, fontSize: 13 }}>Command-deck slate. Gold accents. Easy on the eyes at night.</Text>
             <View style={{ flexDirection: 'row', gap: 6, marginTop: 10 }}>
-              {['#0e0818','#1c1530','#c9a84c','#2bb5a0','#e8dfc8'].map(col => (
+              {[THEMES.dark.bg0, THEMES.dark.bg1, THEMES.dark.gold, THEMES.dark.teal, THEMES.dark.text1].map(col => (
                 <View key={col} style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: col, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.2)' }} />
               ))}
             </View>
           </View>
-          {data.theme === 'dark' && <Ionicons name="checkmark-circle" size={24} color="#c9a84c" />}
+          {data.theme === 'dark' && <Ionicons name="checkmark-circle" size={24} color={THEMES.dark.gold} />}
         </TouchableOpacity>
 
         {/* Light theme */}
         <TouchableOpacity onPress={() => set('theme', 'light')}
-          style={[s.themeCard, { backgroundColor: '#faf8f4', borderColor: data.theme === 'light' ? '#2bb5a0' : 'rgba(0,0,0,0.1)' }]}>
+          style={[s.themeCard, { backgroundColor: THEMES.light.bg0, borderColor: data.theme === 'light' ? THEMES.light.teal : 'rgba(0,0,0,0.1)' }]}>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: '#1a1208', fontWeight: '700', fontSize: 16, marginBottom: 4 }}>Light · Parchment</Text>
-            <Text style={{ color: '#7a6a5a', fontSize: 13 }}>Warm and bright. Great for daytime focus.</Text>
+            <Text style={{ color: THEMES.light.text1, fontWeight: '700', fontSize: 16, marginBottom: 4 }}>Light · Daylight</Text>
+            <Text style={{ color: THEMES.light.text3, fontSize: 13 }}>Cool steel and paper. Great for daytime focus.</Text>
             <View style={{ flexDirection: 'row', gap: 6, marginTop: 10 }}>
-              {['#faf8f4','#f0ebe2','#2bb5a0','#c9a84c','#1a1208'].map(col => (
+              {[THEMES.light.bg0, THEMES.light.bg1, THEMES.light.gold, THEMES.light.teal, THEMES.light.text1].map(col => (
                 <View key={col} style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: col, borderWidth: 0.5, borderColor: 'rgba(0,0,0,0.15)' }} />
               ))}
             </View>
           </View>
-          {data.theme === 'light' && <Ionicons name="checkmark-circle" size={24} color="#2bb5a0" />}
+          {data.theme === 'light' && <Ionicons name="checkmark-circle" size={24} color={THEMES.light.teal} />}
         </TouchableOpacity>
       </View>
 

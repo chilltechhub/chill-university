@@ -1,109 +1,121 @@
 // src/components/ScienceSortGame.js
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import GameShell, { G } from './GameShell';
+import GameShell, { useGameTheme } from './GameShell';
 import GameOver from './GameOver';
+import GradeSelectCard from './GradeSelectCard';
 import useGame from '../logic/useGame';
+import useGradeLevel, { levelForTier } from '../logic/useGradeLevel';
+import { createAdaptiveTier, nextAdaptiveTier } from '../logic/difficultyAdapter';
+import { SCIENCE_TOPICS } from '../data/gameContent/scienceSort';
 
-const TOPICS = [
-  {
-    title: 'Animals',
-    question: 'Is this a mammal, reptile, bird, or fish?',
-    items: [
-      { name:'🐬 Dolphin',  correct:'Mammal',  explanation:'Dolphins breathe air and nurse their young with milk.' },
-      { name:'🦎 Lizard',   correct:'Reptile', explanation:'Lizards are cold-blooded and have scales.' },
-      { name:'🦅 Eagle',    correct:'Bird',    explanation:'Eagles have feathers and hollow bones for flight.' },
-      { name:'🐟 Salmon',   correct:'Fish',    explanation:'Salmon have gills and live their whole life in water.' },
-      { name:'🦇 Bat',      correct:'Mammal',  explanation:'Bats are the only flying mammals — they nurse with milk.' },
-      { name:'🐊 Crocodile',correct:'Reptile', explanation:'Crocodiles are cold-blooded and lay eggs.' },
-    ],
-    categories: ['Mammal','Reptile','Bird','Fish'],
-  },
-  {
-    title: 'States of Matter',
-    question: 'Is this a solid, liquid, or gas?',
-    items: [
-      { name:'💎 Diamond',  correct:'Solid',  explanation:'Diamond has a fixed shape and volume.' },
-      { name:'💧 Water',    correct:'Liquid', explanation:'Liquid takes the shape of its container.' },
-      { name:'💨 Steam',    correct:'Gas',    explanation:'Gas expands to fill any space.' },
-      { name:'🧊 Ice',      correct:'Solid',  explanation:'Ice is frozen water — fixed shape.' },
-      { name:'🫧 Bubbles',  correct:'Gas',    explanation:'Bubbles are filled with gas — usually air.' },
-      { name:'🍯 Honey',    correct:'Liquid', explanation:'Honey flows and takes the shape of its container.' },
-    ],
-    categories: ['Solid','Liquid','Gas'],
-  },
-  {
-    title: 'Space Objects',
-    question: 'What type of space object is this?',
-    items: [
-      { name:'☀️ Sun',      correct:'Star',   explanation:'Our Sun is a medium-sized star made of plasma.' },
-      { name:'🌍 Earth',    correct:'Planet', explanation:'Earth is a rocky planet orbiting the Sun.' },
-      { name:'🌙 Moon',     correct:'Moon',   explanation:'Moons orbit planets — Earth has one.' },
-      { name:'⭐ Sirius',   correct:'Star',   explanation:'Sirius is the brightest star in our night sky.' },
-      { name:'🌌 Galaxy',   correct:'Galaxy', explanation:'A galaxy contains billions of stars.' },
-      { name:'🪐 Saturn',   correct:'Planet', explanation:'Saturn is known for its beautiful ring system.' },
-    ],
-    categories: ['Star','Planet','Moon','Galaxy'],
-  },
-];
+const SESSION_LENGTH = 15;
 
-function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
+const BLURBS = {
+  'K-2': 'Animal classes & states of matter.',
+  '3-5': 'Living vs nonliving, vertebrates, rock types.',
+  '6-8': 'Physical/chemical change, ecosystem roles, space objects.',
+  '9-12': 'Cell organelles and Newton\'s laws of motion.',
+};
+
+function flatten(levelKey) {
+  return SCIENCE_TOPICS[levelKey].flatMap(topic => topic.items.map(item => ({ ...item, topic })));
+}
+
+function pickNext(pool, avoid) {
+  const choices = pool.filter(q => !avoid.includes(q.name));
+  const list = choices.length ? choices : pool;
+  return list[Math.floor(Math.random() * list.length)];
+}
 
 export default function ScienceSortGame({ onGameEnd }) {
   const navigation = useNavigation();
-  const [topicIdx, setTopicIdx] = useState(0);
-  const [items] = useState(() => TOPICS.map(t => shuffle(t.items)).flat());
-  const [allItems] = useState(() => {
-    // Build flat list of all items across topics
-    return TOPICS.flatMap(t => t.items.map(item => ({ ...item, topic: t })));
-  });
-  const [idx, setIdx]         = useState(0);
+  const G = useGameTheme();
+  const s = makeStyles(G);
+  const { level, setLevel, tier: savedTier } = useGradeLevel('classify');
+  const [started, setStarted] = useState(false);
+
+  const [adaptive, setAdaptive] = useState(() => createAdaptiveTier(savedTier));
+  const recentRef = useRef([]);
+  const [current, setCurrent] = useState(null);
+  const [asked, setAsked] = useState(0);
   const [selected, setSelected] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [startTime, setStartTime] = useState(Date.now());
 
-  const game = useGame({ subject: 'science', difficulty: 2, onGameEnd });
-  const current = allItems[idx];
-  const topic = current.topic;
+  const game = useGame({ subject: 'science', difficulty: adaptive.tier, skillLevel: level, onGameEnd });
+
+  const beginRun = () => {
+    const initial = createAdaptiveTier(savedTier);
+    setAdaptive(initial);
+    const first = pickNext(flatten(levelForTier(initial.tier)), []);
+    recentRef.current = [first.name];
+    setCurrent(first);
+    setAsked(0);
+    setSelected(null);
+    setFeedback(null);
+    setStartTime(Date.now());
+    setStarted(true);
+  };
 
   const handleAnswer = useCallback((cat) => {
-    if (selected) return;
+    if (selected || !current) return;
     setSelected(cat);
     const isCorrect = cat === current.correct;
     const speed = (Date.now() - startTime) / 1000;
     game.answer(isCorrect, { speedBonus: speed < 4 ? 5 : 0 });
     setFeedback({ isCorrect, explanation: current.explanation, correct: current.correct });
 
+    const nextAdaptiveState = nextAdaptiveTier(adaptive, isCorrect);
+    setAdaptive(nextAdaptiveState);
+
     setTimeout(() => {
       setFeedback(null);
       setSelected(null);
       setStartTime(Date.now());
-      if (game.lives - (isCorrect ? 0 : 1) <= 0 || idx >= allItems.length - 1) {
+      const willEnd = game.lives - (isCorrect ? 0 : 1) <= 0 || asked + 1 >= SESSION_LENGTH;
+      if (willEnd) {
         game.endGame();
       } else {
-        setIdx(i => i + 1);
+        const pool = flatten(levelForTier(nextAdaptiveState.tier));
+        const next = pickNext(pool, recentRef.current);
+        recentRef.current = [...recentRef.current.slice(-4), next.name];
+        setCurrent(next);
+        setAsked(a => a + 1);
       }
     }, 1800);
-  }, [selected, current, startTime, game, idx, allItems]);
+  }, [selected, current, startTime, game, asked, adaptive]);
+
+  if (!started) {
+    return (
+      <GradeSelectCard
+        title="Science Sort" emoji="🔬" subjectLabel="Science"
+        blurbs={BLURBS} level={level} onSelectLevel={setLevel} onStart={beginRun}
+      />
+    );
+  }
 
   if (game.done) return (
     <GameOver
       score={game.score} correct={game.correct} total={game.attempted}
       streak={game.bestStreak} title="Science Scholar!"
-      onPlayAgain={() => { game.reset(); setIdx(0); setSelected(null); setFeedback(null); }}
+      onPlayAgain={() => { game.reset(); setStarted(false); }}
       onQuit={() => navigation.goBack()}
     />
   );
 
+  if (!current) return null;
+  const topic = current.topic;
+
   return (
     <GameShell
-      title="Science Sort" emoji="🔬" subject="Science"
+      title="Science Sort" emoji="🔬" subject={`Science · ${levelForTier(adaptive.tier)}`}
       score={game.score} lives={game.lives} streak={game.streak}
-      progress={idx / allItems.length}
+      progress={asked / SESSION_LENGTH}
     >
       <ScrollView contentContainerStyle={s.scroll}>
-        <Text style={s.progress}>{idx + 1} / {allItems.length}</Text>
+        <Text style={s.progress}>{asked + 1} / {SESSION_LENGTH}</Text>
 
         <View style={s.topicBadge}>
           <Text style={s.topicText}>📚 {topic.title}</Text>
@@ -141,7 +153,7 @@ export default function ScienceSortGame({ onGameEnd }) {
         {feedback && (
           <View style={[s.feedback, { borderColor: feedback.isCorrect ? G.success : G.error }]}>
             <Text style={[s.feedbackTitle, { color: feedback.isCorrect ? G.success : G.error }]}>
-              {feedback.isCorrect ? `✓ Correct! It\'s a ${feedback.correct}` : `✗ It\'s actually a ${feedback.correct}`}
+              {feedback.isCorrect ? `✓ Correct! It's a ${feedback.correct}` : `✗ It's actually a ${feedback.correct}`}
             </Text>
             <Text style={s.feedbackText}>{feedback.explanation}</Text>
           </View>
@@ -151,7 +163,7 @@ export default function ScienceSortGame({ onGameEnd }) {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (G) => StyleSheet.create({
   scroll:       { padding: 16, paddingBottom: 40 },
   progress:     { fontSize: 11, color: G.muted, textAlign: 'center', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 },
   topicBadge:   { backgroundColor: G.tealL, borderRadius: 10, padding: 8, alignItems: 'center', marginBottom: 12, borderWidth: 0.5, borderColor: G.teal },

@@ -1,100 +1,134 @@
 // src/components/FoodSortGame.js
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import GameShell, { G } from './GameShell';
+import GameShell, { useGameTheme } from './GameShell';
 import GameOver from './GameOver';
+import GradeSelectCard from './GradeSelectCard';
 import useGame from '../logic/useGame';
+import useGradeLevel, { levelForTier } from '../logic/useGradeLevel';
+import { createAdaptiveTier, nextAdaptiveTier } from '../logic/difficultyAdapter';
+import { FOOD_BANK, NUTRITION_TIPS } from '../data/gameContent/foodSort';
 
-const FOODS = [
-  { food:'🍎 Apple',       category:'Healthy',   emoji:'🍎', fact:'Apples contain fiber that helps digestion.' },
-  { food:'🍔 Burger',      category:'Junk',      emoji:'🍔', fact:'Burgers are high in saturated fat and sodium.' },
-  { food:'🥦 Broccoli',    category:'Healthy',   emoji:'🥦', fact:'Broccoli has more vitamin C than an orange!' },
-  { food:'🍕 Pizza',       category:'Moderate',  emoji:'🍕', fact:'Pizza can be healthy with veggie toppings.' },
-  { food:'🍭 Lollipop',    category:'Junk',      emoji:'🍭', fact:'Sugar spikes blood sugar quickly.' },
-  { food:'🥕 Carrot',      category:'Healthy',   emoji:'🥕', fact:'Carrots boost night vision thanks to beta-carotene.' },
-  { food:'🍟 Fries',       category:'Junk',      emoji:'🍟', fact:'Deep frying removes most nutrients from potatoes.' },
-  { food:'🍇 Grapes',      category:'Healthy',   emoji:'🍇', fact:'Grapes contain antioxidants that fight disease.' },
-  { food:'🌮 Taco',        category:'Moderate',  emoji:'🌮', fact:'Tacos can include healthy beans and veggies.' },
-  { food:'🥤 Soda',        category:'Junk',      emoji:'🥤', fact:'A can of soda has about 10 teaspoons of sugar.' },
-  { food:'🥑 Avocado',     category:'Healthy',   emoji:'🥑', fact:'Avocados are full of healthy monounsaturated fats.' },
-  { food:'🍦 Ice Cream',   category:'Junk',      emoji:'🍦', fact:'Ice cream is mostly sugar and saturated fat.' },
-  { food:'🐟 Fish',        category:'Healthy',   emoji:'🐟', fact:'Fish provides omega-3 fatty acids for brain health.' },
-  { food:'🧃 Juice',       category:'Moderate',  emoji:'🧃', fact:'Juice has vitamins but often lacks fiber.' },
-  { food:'🥚 Egg',         category:'Healthy',   emoji:'🥚', fact:'Eggs are a complete protein with all amino acids.' },
-  { food:'🍰 Cake',        category:'Junk',      emoji:'🍰', fact:'Cake is mostly refined flour and sugar.' },
-  { food:'🫘 Beans',       category:'Healthy',   emoji:'🫘', fact:'Beans are high in protein and fiber.' },
-  { food:'🍫 Chocolate',   category:'Moderate',  emoji:'🍫', fact:'Dark chocolate has antioxidants — in small amounts!' },
-  { food:'🥜 Peanuts',     category:'Healthy',   emoji:'🥜', fact:'Peanuts are protein-packed and heart-healthy.' },
-  { food:'🥓 Bacon',       category:'Junk',      emoji:'🥓', fact:'Bacon is very high in sodium and processed fat.' },
-];
+const SESSION_LENGTH = 15;
 
-const CAT_CONFIG = {
-  Healthy:  { color: G.success, label: '✓ Healthy',  bg: G.success + '22' },
-  Moderate: { color: G.warning, label: '~ Moderate', bg: G.warning + '22' },
-  Junk:     { color: G.error,   label: '✗ Junk',     bg: G.error + '22' },
+const BLURBS = {
+  'K-2': 'Obvious healthy vs junk food picks.',
+  '3-5': 'Adds "moderate" foods — pizza, cheese, juice.',
+  '6-8': 'Sneaky ones — granola bars, trail mix, sports drinks.',
+  '9-12': 'Nutrition science — glycemic index, processed protein, additives.',
 };
 
-function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
+function getCatConfig(G) {
+  return {
+    Healthy:  { color: G.success, label: '✓ Healthy',  bg: G.success + '22' },
+    Moderate: { color: G.warning, label: '~ Moderate', bg: G.warning + '22' },
+    Junk:     { color: G.error,   label: '✗ Junk',     bg: G.error + '22' },
+  };
+}
+
+function pickNext(pool, avoid) {
+  const choices = pool.filter(q => !avoid.includes(q.food));
+  const list = choices.length ? choices : pool;
+  return list[Math.floor(Math.random() * list.length)];
+}
 
 export default function FoodSortGame({ onGameEnd }) {
   const navigation = useNavigation();
-  const [questions]  = useState(() => shuffle(FOODS).slice(0, 15));
-  const [idx, setIdx] = useState(0);
+  const G = useGameTheme();
+  const s = makeStyles(G);
+  const CAT_CONFIG = getCatConfig(G);
+  const { level, setLevel, tier: savedTier } = useGradeLevel('junk');
+  const [started, setStarted] = useState(false);
+
+  const [adaptive, setAdaptive] = useState(() => createAdaptiveTier(savedTier));
+  const recentRef = useRef([]);
+  const [q, setQ] = useState(null);
+  const [asked, setAsked] = useState(0);
+  const [tip] = useState(() => NUTRITION_TIPS[Math.floor(Math.random() * NUTRITION_TIPS.length)]);
   const [selected, setSelected] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [startTime, setStartTime] = useState(Date.now());
 
-  const game = useGame({ subject: 'science', difficulty: 1, onGameEnd });
-  const q = questions[idx];
+  const game = useGame({ subject: 'health', difficulty: adaptive.tier, skillLevel: level, onGameEnd });
+
+  const beginRun = () => {
+    const initial = createAdaptiveTier(savedTier);
+    setAdaptive(initial);
+    const first = pickNext(FOOD_BANK[levelForTier(initial.tier)], []);
+    recentRef.current = [first.food];
+    setQ(first);
+    setAsked(0);
+    setSelected(null);
+    setFeedback(null);
+    setStartTime(Date.now());
+    setStarted(true);
+  };
 
   const handleAnswer = useCallback((cat) => {
-    if (selected) return;
+    if (selected || !q) return;
     setSelected(cat);
     const isCorrect = cat === q.category;
     const speed = (Date.now() - startTime) / 1000;
-    const speedBonus = speed < 3 ? 5 : 0;
-    game.answer(isCorrect, { speedBonus });
+    game.answer(isCorrect, { speedBonus: speed < 3 ? 5 : 0 });
     setFeedback({ isCorrect, fact: q.fact, correct: q.category });
+
+    const nextAdaptiveState = nextAdaptiveTier(adaptive, isCorrect);
+    setAdaptive(nextAdaptiveState);
 
     setTimeout(() => {
       setFeedback(null);
       setSelected(null);
       setStartTime(Date.now());
-      if (game.lives - (isCorrect ? 0 : 1) <= 0 || idx >= questions.length - 1) {
+      const willEnd = game.lives - (isCorrect ? 0 : 1) <= 0 || asked + 1 >= SESSION_LENGTH;
+      if (willEnd) {
         game.endGame();
       } else {
-        setIdx(i => i + 1);
+        const pool = FOOD_BANK[levelForTier(nextAdaptiveState.tier)];
+        const next = pickNext(pool, recentRef.current);
+        recentRef.current = [...recentRef.current.slice(-4), next.food];
+        setQ(next);
+        setAsked(a => a + 1);
       }
     }, 1800);
-  }, [selected, q, startTime, game, idx, questions]);
+  }, [selected, q, startTime, game, asked, adaptive]);
+
+  if (!started) {
+    return (
+      <GradeSelectCard
+        title="Food Sort" emoji="🍎" subjectLabel="Health"
+        blurbs={BLURBS} level={level} onSelectLevel={setLevel} onStart={beginRun}
+      />
+    );
+  }
 
   if (game.done) return (
     <GameOver
       score={game.score} correct={game.correct} total={game.attempted}
       streak={game.bestStreak} title="Nutrition Expert!"
-      onPlayAgain={() => { game.reset(); setIdx(0); setSelected(null); setFeedback(null); }}
+      onPlayAgain={() => { game.reset(); setStarted(false); }}
       onQuit={() => navigation.goBack()}
     />
   );
 
+  if (!q) return null;
+
   return (
     <GameShell
-      title="Food Sort" emoji="🍎" subject="Health & Nutrition"
+      title="Food Sort" emoji="🍎" subject={`Health & Nutrition · ${levelForTier(adaptive.tier)}`}
       score={game.score} lives={game.lives} streak={game.streak}
-      progress={idx / questions.length}
+      progress={asked / SESSION_LENGTH}
     >
       <ScrollView contentContainerStyle={s.scroll}>
-        <Text style={s.progress}>{idx + 1} / {questions.length}</Text>
+        <Text style={s.progress}>{asked + 1} / {SESSION_LENGTH}</Text>
 
-        {/* Random nutrition tip */}
         <View style={s.tipBanner}>
-          <Text style={s.tipText}>💡 Calcium from milk and cheese makes your bones strong!</Text>
+          <Text style={s.tipText}>{tip}</Text>
         </View>
 
         <View style={s.foodCard}>
           <Text style={s.foodEmoji}>{q.emoji}</Text>
-          <Text style={s.foodName}>Is {q.food.replace(/^\S+\s/, '')} healthy or junk food?</Text>
+          <Text style={s.foodName}>Is {q.food.replace(/^\S+\s/, '')} healthy, moderate, or junk food?</Text>
         </View>
 
         <View style={s.options}>
@@ -118,7 +152,7 @@ export default function FoodSortGame({ onGameEnd }) {
         {feedback && (
           <View style={[s.feedback, { borderColor: feedback.isCorrect ? G.success : G.error }]}>
             <Text style={[s.feedbackTitle, { color: feedback.isCorrect ? G.success : G.error }]}>
-              {feedback.isCorrect ? '✓ Correct!' : `✗ It\'s ${feedback.correct}!`}
+              {feedback.isCorrect ? '✓ Correct!' : `✗ It's ${feedback.correct}!`}
             </Text>
             <Text style={s.feedbackFact}>{q.fact}</Text>
           </View>
@@ -128,7 +162,7 @@ export default function FoodSortGame({ onGameEnd }) {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (G) => StyleSheet.create({
   scroll:       { padding: 16, paddingBottom: 40 },
   progress:     { fontSize: 11, color: G.muted, textAlign: 'center', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 },
   tipBanner:    { backgroundColor: G.goldL, borderRadius: 10, padding: 12, marginBottom: 14, borderWidth: 0.5, borderColor: G.gold },

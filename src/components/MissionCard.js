@@ -4,6 +4,15 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { SUBJECT_CONFIG } from '../../context/UserProgressContext';
 
+const CRITERIA_ICON = {
+  questions_answered: '📋',
+  correct_answers:    '🎯',
+  topic_completed:    '🏫',
+  game_completed:     '🏁',
+  perfect_game:       '💯',
+  play_subject:       '📚',
+};
+
 export default function MissionCard({ mission, onPress }) {
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
 
@@ -16,6 +25,7 @@ export default function MissionCard({ mission, onPress }) {
   const target      = mission?.target      || mission?.target_value   || 1;
   const status      = mission?.status      || 'active';
   const subject     = mission?.subject     || 'general';
+  const criteriaType= mission?.criteriaType || mission?.missions?.criteria?.type;
 
   if (!title) return null;
 
@@ -23,74 +33,105 @@ export default function MissionCard({ mission, onPress }) {
   const isCompleted = status === 'completed';
   const isClaimed   = status === 'claimed';
   const isExpired   = status === 'expired';
+  const almostThere = !isCompleted && !isExpired && pct >= 75;
   const cfg         = SUBJECT_CONFIG[subject] || SUBJECT_CONFIG.general;
+  const icon        = CRITERIA_ICON[criteriaType] || cfg.icon;
+  const st          = styles(c, t, s, r);
 
   return (
     <TouchableOpacity
       style={[
-        styles(c, s, r).card,
-        isCompleted && { borderWidth: 1.5, borderColor: c.teal, backgroundColor: c.tealLight },
-        isExpired   && { opacity: 0.45 },
+        st.card,
+        isCompleted && st.cardCompleted,
+        isExpired   && st.cardExpired,
       ]}
       onPress={onPress}
       disabled={isExpired || isClaimed}
       activeOpacity={0.8}
     >
-      {/* Header */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: s.sm }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, flex: 1 }}>
-          <Text style={{ fontSize: 24 }}>{cfg.icon}</Text>
+      <View style={[st.accentBar, { backgroundColor: isCompleted ? c.teal : cfg.color }]} />
+
+      <View style={st.body}>
+        {/* Header */}
+        <View style={st.headerRow}>
+          <View style={st.iconWrap}>
+            <Text style={{ fontSize: 22 }}>{icon}</Text>
+          </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.text1 }} numberOfLines={1}>
-              {title}
-            </Text>
-            <Text style={{ fontSize: t.xs, color: c.text3 }}>{cfg.name}</Text>
+            <Text style={st.title} numberOfLines={1}>{title}</Text>
+            <Text style={st.subjectLabel}>{cfg.name}</Text>
           </View>
+          {isCompleted && !isClaimed && (
+            <View style={st.doneBadge}>
+              <Text style={st.doneBadgeText}>✓ Done</Text>
+            </View>
+          )}
+          {isClaimed && (
+            <View style={st.claimedBadge}>
+              <Text style={st.claimedBadgeText}>Claimed</Text>
+            </View>
+          )}
         </View>
-        {isCompleted && !isClaimed && (
-          <View style={{ backgroundColor: c.teal, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'center' }}>
-            <Text style={{ color: '#fff', fontSize: 10, fontWeight: t.bold }}>✓ Done</Text>
-          </View>
-        )}
-        {isClaimed && (
-          <View style={{ backgroundColor: c.text4, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'center' }}>
-            <Text style={{ color: '#fff', fontSize: 10, fontWeight: t.bold }}>Claimed</Text>
-          </View>
-        )}
-      </View>
 
-      {/* Description */}
-      {description ? (
-        <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: s.sm, lineHeight: 16 }}>
-          {description}
-        </Text>
-      ) : null}
+        {/* Description */}
+        {description ? <Text style={st.description}>{description}</Text> : null}
 
-      {/* Progress */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
-        <Text style={{ fontSize: t.xs, color: c.text3 }}>{progress} / {target}</Text>
-        <Text style={{ fontSize: t.xs, color: isCompleted ? c.teal : c.text4 }}>{Math.round(pct)}%</Text>
-      </View>
-      <View style={{ height: 6, backgroundColor: c.bg2, borderRadius: 3, overflow: 'hidden', marginBottom: s.sm }}>
-        <View style={{ height: 6, borderRadius: 3, width: `${pct}%`, backgroundColor: isCompleted ? c.teal : cfg.color }} />
-      </View>
+        {/* Progress */}
+        <View style={st.progressRow}>
+          <Text style={st.progressText}>{progress} / {target}</Text>
+          {almostThere ? (
+            <Text style={st.almostText}>🔥 Almost there!</Text>
+          ) : (
+            <Text style={[st.pctText, isCompleted && { color: c.teal }]}>{Math.round(pct)}%</Text>
+          )}
+        </View>
+        <View style={st.barBg}>
+          <View style={[st.barFill, { width: `${pct}%`, backgroundColor: isCompleted ? c.teal : cfg.color }]} />
+        </View>
 
-      {/* Rewards */}
-      <View style={{ flexDirection: 'row', gap: s.lg }}>
-        <Text style={{ fontSize: t.xs, fontWeight: t.semibold, color: c.gold }}>⭐ {ptReward} pts</Text>
-        <Text style={{ fontSize: t.xs, fontWeight: t.semibold, color: c.teal }}>✨ {xpReward} XP</Text>
+        {/* Rewards */}
+        <View style={st.rewardsRow}>
+          <Text style={st.rewardPts}>⭐ {ptReward} pts</Text>
+          <Text style={st.rewardXp}>✨ {xpReward} XP</Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
 }
 
-const styles = (c, s, r) => StyleSheet.create({
+const styles = (c, t, s, r) => StyleSheet.create({
   card: {
+    flexDirection: 'row',
     backgroundColor: c.bg1,
     borderRadius: r.lg,
-    padding: s.lg,
     marginBottom: s.md,
     borderWidth: 0.5,
     borderColor: c.border,
+    overflow: 'hidden',
   },
+  cardCompleted: { borderColor: c.teal, borderWidth: 1 },
+  cardExpired:   { opacity: 0.45 },
+  accentBar: { width: 4 },
+  body: { flex: 1, padding: s.lg },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: s.sm },
+  iconWrap: {
+    width: 36, height: 36, borderRadius: r.md, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: c.bg2,
+  },
+  title: { fontSize: t.sm, fontWeight: t.bold, color: c.text1 },
+  subjectLabel: { fontSize: t.xs, color: c.text3, marginTop: 1 },
+  doneBadge: { backgroundColor: c.teal, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3 },
+  doneBadgeText: { color: '#fff', fontSize: 10, fontWeight: t.bold },
+  claimedBadge: { backgroundColor: c.text4, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3 },
+  claimedBadgeText: { color: '#fff', fontSize: 10, fontWeight: t.bold },
+  description: { fontSize: t.xs, color: c.text3, marginBottom: s.sm, lineHeight: 16 },
+  progressRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
+  progressText: { fontSize: t.xs, color: c.text3 },
+  pctText: { fontSize: t.xs, color: c.text4 },
+  almostText: { fontSize: t.xs, color: c.gold, fontWeight: t.bold },
+  barBg: { height: 6, backgroundColor: c.bg2, borderRadius: 3, overflow: 'hidden', marginBottom: s.sm },
+  barFill: { height: 6, borderRadius: 3 },
+  rewardsRow: { flexDirection: 'row', gap: s.lg },
+  rewardPts: { fontSize: t.xs, fontWeight: t.semibold, color: c.gold },
+  rewardXp: { fontSize: t.xs, fontWeight: t.semibold, color: c.teal },
 });

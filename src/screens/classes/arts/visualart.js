@@ -1,22 +1,12 @@
-// src/screens/VisualArts.js
+// src/screens/classes/arts/visualart.js
+import React from 'react';
+import ClassTopicScreen from '../../../components/ClassTopicScreen';
 
-import React, { useState } from 'react';
-import {
-  ScrollView,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Linking,
-} from 'react-native';
-
-export default function VisualArts() {
-  const [openSections, setOpenSections] = useState({});
-
-  const topics = [
+const topics = [
     {
       key: 'drawingIllustration',
       title: 'Drawing & Illustration',
+      grade: 'K-2',
       color: '#8E24AA',
       description:
         'Techniques in line, shading, perspective, and observational drawing.',
@@ -36,6 +26,7 @@ export default function VisualArts() {
     {
       key: 'painting',
       title: 'Painting',
+      grade: '3-5',
       color: '#D32F2F',
       description:
         'Exploration of media (watercolor, acrylic, oil), color mixing, brushwork, and composition.',
@@ -54,6 +45,7 @@ export default function VisualArts() {
     {
       key: 'sculpture3d',
       title: 'Sculpture & 3D Media',
+      grade: '3-5',
       color: '#FF8F00',
       description:
         'Working in clay, wood, metal, or mixed materials to create three-dimensional forms.',
@@ -70,6 +62,7 @@ export default function VisualArts() {
     {
       key: 'printmaking',
       title: 'Printmaking',
+      grade: '6-8',
       color: '#00796B',
       description:
         'Relief, intaglio, screen-printing, and monotype processes for producing editions.',
@@ -83,6 +76,7 @@ export default function VisualArts() {
     {
       key: 'ceramicsFiber',
       title: 'Ceramics & Fiber Arts',
+      grade: '6-8',
       color: '#5D4037',
       description:
         'Hand-building, wheel-throwing, weaving, textile design, and mixed-media fibers.',
@@ -101,6 +95,7 @@ export default function VisualArts() {
     {
       key: 'photographyDigital',
       title: 'Photography & Digital Media',
+      grade: '6-8',
       color: '#303F9F',
       description:
         'Camera basics, digital editing, composition, and experimental media.',
@@ -119,6 +114,7 @@ export default function VisualArts() {
     {
       key: 'mixedMediaInstallation',
       title: 'Mixed Media & Installation',
+      grade: '9-12',
       color: '#C2185B',
       description:
         'Combining multiple materials or creating site-specific works.',
@@ -134,6 +130,7 @@ export default function VisualArts() {
     {
       key: 'elementsPrinciples',
       title: 'Elements & Principles of Art',
+      grade: '3-5',
       color: '#388E3C',
       description:
         'Line, shape, form, color, texture, space, balance, contrast, emphasis, movement, pattern, rhythm, unity.',
@@ -147,6 +144,7 @@ export default function VisualArts() {
     {
       key: 'artHistoryCriticism',
       title: 'Art History & Criticism',
+      grade: '9-12',
       color: '#455A64',
       description:
         'Survey of major movements, styles, and critical analysis of artworks.',
@@ -160,146 +158,6 @@ export default function VisualArts() {
     },
   ];
 
-  const toggleHelp = (key) => {
-    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.mainTitle}>Visual Arts</Text>
-
-      {topics.map((topic) => (
-        <View key={topic.key} style={styles.card}>
-          <View style={[styles.headerBar, { backgroundColor: topic.color }]}>
-            <Text style={styles.headerText}>{topic.title}</Text>
-          </View>
-          <View style={styles.sectionBody}>
-            <Text style={styles.subtitle}>What is it?</Text>
-            <Text style={styles.description}>{topic.description}</Text>
-            {(topic.help.videos.length > 0 || topic.help.readings.length > 0) && (
-              <TouchableOpacity
-                style={styles.helpToggle}
-                onPress={() => toggleHelp(topic.key)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.helpTitle}>
-                  Need help? {openSections[topic.key] ? '▲' : '▼'}
-                </Text>
-              </TouchableOpacity>
-            )}
-            {openSections[topic.key] && (
-              <View style={styles.helpContent}>
-                {topic.help.readings.length > 0 && (
-                  <>
-                    <Text style={styles.helpLabel}>Readings</Text>
-                    {topic.help.readings.map((item, i) => (
-                      <Text
-                        key={i}
-                        style={styles.linkText}
-                        onPress={() => Linking.openURL(item.url)}
-                      >
-                        • {item.title}
-                      </Text>
-                    ))}
-                  </>
-                )}
-                {topic.help.videos.length > 0 && (
-                  <>
-                    <Text style={styles.helpLabel}>Videos</Text>
-                    {topic.help.videos.map((video, i) => (
-                      <Text
-                        key={i}
-                        style={styles.linkText}
-                        onPress={() => Linking.openURL(video.url)}
-                      >
-                        • {video.title}
-                      </Text>
-                    ))}
-                  </>
-                )}
-              </View>
-            )}
-          </View>
-        </View>
-      ))}
-    </ScrollView>
-  );
+export default function VisualArts() {
+  return <ClassTopicScreen title={"Visual Arts"} classKey="VisualArt" fallbackTopics={topics} />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    backgroundColor: '#F9F9F9',
-    paddingBottom: 40,
-  },
-  mainTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#333',
-  },
-  card: {
-    marginBottom: 24,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  headerBar: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  headerText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  sectionBody: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  subtitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-    color: '#555',
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 12,
-    color: '#444',
-  },
-  helpToggle: {
-    marginTop: 8,
-  },
-  helpTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  helpContent: {
-    marginTop: 8,
-    padding: 12,
-    backgroundColor: '#EFEFEF',
-    borderRadius: 8,
-  },
-  helpLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 6,
-    color: '#333',
-  },
-  linkText: {
-    fontSize: 14,
-    color: '#1e88e5',
-    marginLeft: 8,
-    marginTop: 4,
-    textDecorationLine: 'underline',
-  },
-});

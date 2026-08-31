@@ -1,9 +1,11 @@
 // src/screens/library/connections/PrivacyScreen.js
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Switch, Linking } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Linking, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../../context/ThemeContext';
+import { supabase } from '../../../api/supabaseClient';
+import RelatedLinks from '../RelatedLinks';
 
 const CHECKLIST = [
   { id: 'pw',    label: 'Use unique passwords for every account',  tip: 'Use a password manager like Bitwarden (free)' },
@@ -15,14 +17,70 @@ const CHECKLIST = [
   { id: 'data',  label: 'Review what data apps collect about you', tip: 'Check Privacy settings on iPhone or Android' },
 ];
 
+const PRESETS = ['Ran a security check', 'Updated a password', 'Reviewed privacy settings', 'Enabled 2FA on an account'];
+
+const CHECKLIST_TAG = '__CHECKLIST__:';
+const SCREEN_TAG = '[Privacy]';
+
 export default function PrivacyScreen() {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
-  const [checked, setChecked] = useState({});
+  const [checked,  setChecked]  = useState({});
+  const [entries,  setEntries]  = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [userId,   setUserId]   = useState(null);
+  const [showAdd,  setShowAdd]  = useState(false);
+  const [input,    setInput]    = useState('');
   const color = '#64b5f6';
 
-  const toggle = (id) => setChecked(prev => ({ ...prev, [id]: !prev[id] }));
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) { setUserId(user.id); load(user.id); }
+      else setLoading(false);
+    });
+  }, []);
+
+  const load = async (uid) => {
+    setLoading(true);
+    const [checklistRes, logRes] = await Promise.all([
+      supabase.from('area_notes').select('content').eq('user_id', uid).eq('area_id', 'digital')
+        .ilike('content', `${CHECKLIST_TAG}%`).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+      supabase.from('area_notes').select('*').eq('user_id', uid).eq('area_id', 'digital')
+        .ilike('content', `%${SCREEN_TAG}%`).order('created_at', { ascending: false }).limit(30),
+    ]);
+    if (checklistRes.data) {
+      try { setChecked(JSON.parse(checklistRes.data.content.slice(CHECKLIST_TAG.length))); } catch {}
+    }
+    if (logRes.data) setEntries(logRes.data);
+    setLoading(false);
+  };
+
+  const toggle = (id) => {
+    const next = { ...checked, [id]: !checked[id] };
+    setChecked(next);
+    if (userId) {
+      supabase.from('area_notes').insert({
+        user_id: userId, area_id: 'digital',
+        content: CHECKLIST_TAG + JSON.stringify(next),
+        created_at: new Date().toISOString(),
+      }).then(() => {});
+    }
+  };
   const done = Object.values(checked).filter(Boolean).length;
+
+  const addLog = async (text) => {
+    const value = text.trim();
+    if (!value || !userId) return;
+    const entry = { user_id: userId, area_id: 'digital', content: `${SCREEN_TAG} ${value}`, created_at: new Date().toISOString() };
+    const { data } = await supabase.from('area_notes').insert(entry).select().single();
+    if (data) setEntries(prev => [data, ...prev]);
+    setInput(''); setShowAdd(false);
+  };
+
+  const delLog = async (id) => {
+    setEntries(prev => prev.filter(e => e.id !== id));
+    await supabase.from('area_notes').delete().eq('id', id);
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg0 }}>
@@ -69,6 +127,61 @@ export default function PrivacyScreen() {
             </View>
           </TouchableOpacity>
         ))}
+
+        {/* ── Log ── */}
+        <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginTop: s.lg, marginBottom: s.sm }}>📝 Log</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm, marginBottom: s.md }}>
+          {PRESETS.map((p, i) => (
+            <TouchableOpacity key={i} onPress={() => addLog(p)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: color + '18', borderRadius: r.full, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: color + '44' }}>
+              <Ionicons name="add-circle" size={12} color={color} />
+              <Text style={{ fontSize: t.xs, color, fontWeight: '600' }}>{p}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        {showAdd ? (
+          <View style={{ gap: s.sm, marginBottom: s.md }}>
+            <TextInput
+              style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: color + '44', minHeight: 60, textAlignVertical: 'top' }}
+              value={input} onChangeText={setInput}
+              placeholder="Log something else..." placeholderTextColor={c.text4} multiline autoFocus />
+            <View style={{ flexDirection: 'row', gap: s.sm }}>
+              <TouchableOpacity onPress={() => { setShowAdd(false); setInput(''); }}
+                style={{ flex: 1, padding: s.md, alignItems: 'center', backgroundColor: c.bg1, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border }}>
+                <Text style={{ color: c.text3, fontSize: t.sm }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => addLog(input)} disabled={!input.trim()}
+                style={{ flex: 2, padding: s.md, alignItems: 'center', backgroundColor: color, borderRadius: r.md, opacity: !input.trim() ? 0.5 : 1 }}>
+                <Text style={{ color: '#fff', fontWeight: t.bold, fontSize: t.sm }}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <TouchableOpacity onPress={() => setShowAdd(true)}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: color + '18', borderRadius: r.md, padding: s.md, borderWidth: 1, borderColor: color + '33', borderStyle: 'dashed', marginBottom: s.md }}>
+            <Ionicons name="add-circle" size={18} color={color} />
+            <Text style={{ color, fontWeight: '600', fontSize: t.sm }}>Log something else</Text>
+          </TouchableOpacity>
+        )}
+        {loading ? <ActivityIndicator color={color} /> : entries.map(entry => (
+          <View key={entry.id} style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: color, flexDirection: 'row', alignItems: 'flex-start', gap: s.sm }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: t.sm, color: c.text1, lineHeight: 20 }}>{entry.content.replace(SCREEN_TAG, '').trim()}</Text>
+              <Text style={{ fontSize: 10, color: c.text4, marginTop: 4 }}>
+                {new Date(entry.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => delLog(entry.id)} style={{ padding: 2 }}>
+              <Ionicons name="close" size={14} color={c.text4} />
+            </TouchableOpacity>
+          </View>
+        ))}
+
+        {/* ── Related ── */}
+        <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginTop: s.lg, marginBottom: s.md }}>
+          🔗 Related
+        </Text>
+        <RelatedLinks areaId="digital" color={color} c={c} t={t} s={s} r={r} />
       </ScrollView>
     </View>
   );

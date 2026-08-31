@@ -43,6 +43,12 @@ const EVENT_TYPES = [
   { key:'note',     label:'Note',     icon:'document-text-outline',    color:'#8b4fc4' },
   { key:'focus',    label:'Focus',    icon:'bookmark-outline',         color:'#e05858' },
 ];
+const PLANNER_AREAS = {
+  physical:     { emoji: '💪', color: '#e05858' }, mental:       { emoji: '🧠', color: '#8b4fc4' },
+  social:       { emoji: '🤝', color: '#2bb5a0' }, financial:    { emoji: '💰', color: '#3ac860' },
+  professional: { emoji: '🚀', color: '#c9a84c' }, spiritual:    { emoji: '✨', color: '#6b9fe8' },
+  creative:     { emoji: '🎨', color: '#e0a830' }, digital:      { emoji: '💻', color: '#5a9ae0' },
+};
 const REMINDER_OPTS = [
   { label:'None',    value:null },
   { label:'15 min',  value:15 },
@@ -68,10 +74,10 @@ function fmt12(t24)  {
 }
 
 // ─── Add Event Form ───────────────────────────────────────────────────────────
-function AddEventForm({ date, userId, onSave, onCancel, c, t, s, r }) {
+function AddEventForm({ date, userId, onSave, onCancel, c, t, s, r, initialType }) {
   const [title,    setTitle]    = useState('');
   const [desc,     setDesc]     = useState('');
-  const [type,     setType]     = useState('event');
+  const [type,     setType]     = useState(initialType || 'event');
   const [time,     setTime]     = useState('');
   const [allDay,   setAllDay]   = useState(false);
   const [reminder, setReminder] = useState(null);
@@ -167,13 +173,14 @@ const fS = StyleSheet.create({
 });
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
-export default function CalendarModal({ visible, onClose, userId, initialDate }) {
+export default function CalendarModal({ visible, onClose, userId, initialDate, autoAdd, quickType }) {
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   const today  = new Date();
   const [anchor,  setAnchor]  = useState(initialDate || today);
   const [events,  setEvents]  = useState({});
   const [loading, setLoading] = useState(false);
   const [addDate, setAddDate] = useState(null);
+  const [selectedPlannerArea, setSelectedPlannerArea] = useState(null);
 
   const weekDays  = getWeekDays(anchor);
   const weekStart = toISO(weekDays[0]);
@@ -188,11 +195,12 @@ export default function CalendarModal({ visible, onClose, userId, initialDate })
     if (!userId) return;
     setLoading(true);
     try {
-      const [evtRes, taskRes, focusRes, noteRes] = await Promise.all([
+      const [evtRes, taskRes, focusRes, noteRes, plannerRes] = await Promise.all([
         supabase.from('calendar_events').select('*').eq('user_id', userId).gte('date', weekStart).lte('date', weekEnd),
         supabase.from('tasks').select('id,title,due_date').eq('user_id', userId).eq('completed', false).gte('due_date', weekStart).lte('due_date', weekEnd),
         supabase.from('daily_focus').select('id,focus_text,date').eq('user_id', userId).gte('date', weekStart).lte('date', weekEnd),
         supabase.from('captures').select('id,title,created_at').eq('user_id', userId).eq('status','inbox').gte('created_at', weekStart).lte('created_at', weekEnd+'T23:59:59'),
+        supabase.from('agenda_instances').select('id,title,area,date,start_time').eq('user_id', userId).gte('date', weekStart).lte('date', weekEnd).eq('completed', false).eq('skipped', false),
       ]);
       const map = {};
       const push = (date, item) => { if (!map[date]) map[date]=[]; map[date].push(item); };
@@ -200,12 +208,23 @@ export default function CalendarModal({ visible, onClose, userId, initialDate })
       (taskRes.data ||[]).forEach(tk => { if(tk.due_date) push(tk.due_date,{id:'task_'+tk.id, title:tk.title, type:'task', color:TYPE_COLORS.task, _src:'task'}); });
       (focusRes.data||[]).forEach(f  => push(f.date, {id:'focus_'+f.id, title:f.focus_text, type:'focus', color:TYPE_COLORS.focus, _src:'focus'}));
       (noteRes.data ||[]).forEach(n  => { const d=n.created_at?.split('T')[0]; if(d) push(d,{id:'note_'+n.id, title:n.title||'Note', type:'note', color:TYPE_COLORS.note, _src:'note'}); });
+      (plannerRes.data ||[]).forEach(item => {
+        const area = PLANNER_AREAS[item.area] || { emoji: '•', color: c.teal };
+        push(item.date, { ...item, type: 'planner', color: area.color, _src: 'planner', area: item.area, emoji: area.emoji, time: item.start_time });
+      });
       setEvents(map);
     } catch(e) { console.warn('CalendarModal', e); }
     setLoading(false);
-  }, [userId, weekStart, weekEnd]);
+  }, [userId, weekStart, weekEnd, c.teal]);
 
   useEffect(() => { if (visible) loadWeek(); }, [visible, loadWeek]);
+
+  // A caller (e.g. the floating action button's "New Reminder") can ask this
+  // modal to open straight into the add sheet, pre-typed, instead of making
+  // the user tap a day's + button first.
+  useEffect(() => {
+    if (visible && autoAdd) setAddDate(initialDate || new Date());
+  }, [visible, autoAdd]);
 
   const prevWeek = () => { const d=new Date(anchor); d.setDate(d.getDate()-7); setAnchor(d); };
   const nextWeek = () => { const d=new Date(anchor); d.setDate(d.getDate()+7); setAnchor(d); };
@@ -277,6 +296,13 @@ export default function CalendarModal({ visible, onClose, userId, initialDate })
                   const iso    = toISO(day);
                   const isToday = iso === toISO(today);
                   const dayEvs = events[iso] || [];
+                  const plannerByArea = dayEvs.filter(evt => evt._src === 'planner').reduce((result, evt) => {
+                    if (!result[evt.area]) result[evt.area] = [];
+                    result[evt.area].push(evt);
+                    return result;
+                  }, {});
+                  const activeArea = selectedPlannerArea?.date === iso ? selectedPlannerArea.area : null;
+                  const visibleEvs = activeArea ? dayEvs.filter(evt => evt._src !== 'planner' || evt.area === activeArea) : dayEvs;
                   const dayColor = isToday ? c.teal : c.text3;
 
                   return (
@@ -305,6 +331,18 @@ export default function CalendarModal({ visible, onClose, userId, initialDate })
                               {dayEvs.length} {dayEvs.length === 1 ? 'item' : 'items'}
                             </Text>
                           )}
+                          {Object.keys(plannerByArea).length > 0 && (
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                              {Object.entries(plannerByArea).map(([areaKey, items]) => {
+                                const area = PLANNER_AREAS[areaKey] || { emoji: '•', color: c.teal };
+                                const chosen = activeArea === areaKey;
+                                return <TouchableOpacity key={areaKey} onPress={() => setSelectedPlannerArea(chosen ? null : { date: iso, area: areaKey })} style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: area.color + '22', borderWidth: 1, borderColor: chosen ? area.color : area.color + '88', alignItems: 'center', justifyContent: 'center' }} accessibilityLabel={`${items.length} ${areaKey} planner items`}>
+                                  <Text style={{ fontSize: 12 }}>{area.emoji}</Text>
+                                  {items.length > 1 && <View style={{ position: 'absolute', right: -4, top: -5, minWidth: 12, height: 12, paddingHorizontal: 2, borderRadius: 6, backgroundColor: area.color, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#fff', fontSize: 7, fontWeight: '800' }}>{items.length}</Text></View>}
+                                </TouchableOpacity>;
+                              })}
+                            </View>
+                          )}
                         </View>
                         {/* Add button */}
                         <TouchableOpacity
@@ -316,9 +354,9 @@ export default function CalendarModal({ visible, onClose, userId, initialDate })
                       </View>
 
                       {/* Event pills inside the day card */}
-                      {dayEvs.length > 0 && (
+                      {visibleEvs.length > 0 && (
                         <View style={{ paddingHorizontal:10, paddingVertical:6, gap:4 }}>
-                          {dayEvs.map((evt, j) => (
+                          {visibleEvs.map((evt, j) => (
                             <View key={evt.id||j} style={{ flexDirection:'row', alignItems:'center', gap:8, paddingVertical:3 }}>
                               {/* Color dot */}
                               <View style={{ width:6, height:6, borderRadius:3, backgroundColor:evt.color||c.teal, flexShrink:0 }} />
@@ -364,6 +402,7 @@ export default function CalendarModal({ visible, onClose, userId, initialDate })
                 <AddEventForm
                   date={addDate} userId={userId}
                   c={c} t={t} s={s} r={r}
+                  initialType={quickType}
                   onSave={async () => { setAddDate(null); await loadWeek(); }}
                   onCancel={() => setAddDate(null)}
                 />

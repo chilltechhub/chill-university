@@ -8,17 +8,26 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../../api/supabaseClient';
+import { fetchContentPool } from '../../api/remoteConfigService';
 import { useTheme } from '../../../context/ThemeContext';
 import { LIFE_AREAS } from './LifeAreaScreen';
+import useFolders from '../../logic/useFolders';
+import FolderRow from '../../components/FolderRow';
+import FolderAssignSheet from '../../components/FolderAssignSheet';
 
 // ─── Auto-populated discovery catalog ──────────────────────────────────────
 // Curated, well-known sites grouped by life area so a fresh account never
 // starts empty — users browse Discover and one-tap save what's useful.
+//
+// The live list now comes from Supabase (app_content, type='featured_resource';
+// see remoteConfigService.fetchContentPool) so it can be edited/expanded any
+// time with no app update. FALLBACK_CATALOG below is what renders before
+// that fetch resolves, and what's used if it ever fails or comes back empty.
 const GENERAL_META = { id: 'general', label: 'General', emoji: '🌐', color: '#5c9ce0' };
 const AREA_MAP = Object.fromEntries([...LIFE_AREAS, GENERAL_META].map((a) => [a.id, a]));
 const FILTER_AREAS = [...LIFE_AREAS, GENERAL_META];
 
-const CATALOG = [
+const FALLBACK_CATALOG = [
   // General & reference
   { id: 'g1', areaId: 'general', emoji: '🌐', title: 'Wikipedia', url: 'https://www.wikipedia.org', desc: 'The free encyclopedia' },
   { id: 'g2', areaId: 'general', emoji: '🔢', title: 'Wolfram Alpha', url: 'https://www.wolframalpha.com', desc: 'Computational knowledge engine' },
@@ -149,7 +158,10 @@ export default function ResourcesToolsScreen() {
   const [search, setSearch] = useState('');
   const [areaFilter, setAreaFilter] = useState(null); // null = all
   const [sortBy, setSortBy] = useState('recent');
-  const [showSort, setShowSort] = useState(false);
+  const [folderFilter, setFolderFilter] = useState(null);
+  const [assigningEntry, setAssigningEntry] = useState(null);
+
+  const { folders, createFolder, renameFolder, deleteFolder } = useFolders('resources', userId);
 
   const [showAdd, setShowAdd] = useState(false);
   const [title, setTitle] = useState('');
@@ -159,10 +171,24 @@ export default function ResourcesToolsScreen() {
   const [formArea, setFormArea] = useState(null);
   const [saving, setSaving] = useState(false);
 
+  const [catalog, setCatalog] = useState(FALLBACK_CATALOG);
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) { setUserId(user.id); load(user.id); }
       else setLoading(false);
+    });
+  }, []);
+
+  // Remote Discover catalog — falls back to FALLBACK_CATALOG until this
+  // resolves, or forever if it fails/is empty.
+  useEffect(() => {
+    fetchContentPool('featured_resource').then((rows) => {
+      if (rows.length) {
+        setCatalog(rows.map((r) => ({
+          id: r.id, areaId: r.key, emoji: r.meta?.emoji, title: r.title, url: r.meta?.url, desc: r.body,
+        })));
+      }
     });
   }, []);
 
@@ -239,6 +265,20 @@ export default function ResourcesToolsScreen() {
     Share.share({ message: item.url ? `${item.title} — ${item.url}` : item.title }).catch(() => {});
   };
 
+  const assignFolder = (item, folderId) => {
+    const nextMeta = { ...(item.url_meta || {}), folder: folderId || undefined };
+    if (!folderId) delete nextMeta.folder;
+    setEntries((prev) => prev.map((e) => (e.id === item.id ? { ...e, url_meta: nextMeta } : e)));
+    supabase.from('captures').update({ url_meta: nextMeta }).eq('id', item.id).then(() => {});
+    setAssigningEntry(null);
+  };
+
+  const handleDeleteFolder = (folderId) => {
+    deleteFolder(folderId);
+    if (folderFilter === folderId) setFolderFilter(null);
+    entries.filter((e) => e.url_meta?.folder === folderId).forEach((e) => assignFolder(e, null));
+  };
+
   const saveCustom = async () => {
     if (!title.trim() || !url.trim()) return;
     const finalUrl = normalizeUrl(url);
@@ -272,7 +312,8 @@ export default function ResourcesToolsScreen() {
     let list = entries.filter((e) => {
       const areaId = getItemAreaId(e);
       const matchArea = !areaFilter || areaId === areaFilter;
-      return matchArea && matchesSearch(e.title, e.body);
+      const matchFolder = !folderFilter || e.url_meta?.folder === folderFilter;
+      return matchArea && matchFolder && matchesSearch(e.title, e.body);
     });
     if (sortBy === 'az') {
       list = [...list].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
@@ -283,15 +324,15 @@ export default function ResourcesToolsScreen() {
     }
     // 'recent' — already ordered by created_at desc from the query
     return list;
-  }, [entries, search, areaFilter, sortBy]);
+  }, [entries, search, areaFilter, sortBy, folderFilter]);
 
   const discoverFiltered = useMemo(() => {
-    const list = CATALOG.filter((item) => {
+    const list = catalog.filter((item) => {
       const matchArea = !areaFilter || item.areaId === areaFilter;
       return matchArea && matchesSearch(item.title, item.desc);
     });
     return withAreaHeaders(list, (item) => item.areaId);
-  }, [search, areaFilter]);
+  }, [catalog, search, areaFilter]);
 
   const areaCounts = useMemo(() => {
     const counts = {};
@@ -300,7 +341,6 @@ export default function ResourcesToolsScreen() {
   }, [entries]);
 
   const data = tab === 'mine' ? mineFiltered : discoverFiltered;
-  const activeSort = SORT_OPTIONS.find((s) => s.key === sortBy);
 
   return (
     <View style={styles.container}>
@@ -351,30 +391,43 @@ export default function ResourcesToolsScreen() {
             </TouchableOpacity>
           ) : null}
         </View>
-        {tab === 'mine' && (
-          <TouchableOpacity style={styles.sortBtn} onPress={() => setShowSort((v) => !v)}>
-            <Ionicons name={activeSort.icon} size={15} color={c.teal} />
-            <Ionicons name={showSort ? 'chevron-up' : 'chevron-down'} size={12} color={c.text3} />
-          </TouchableOpacity>
-        )}
       </View>
 
-      {tab === 'mine' && showSort && (
-        <View style={styles.sortPanel}>
-          {SORT_OPTIONS.map((opt) => (
-            <TouchableOpacity
-              key={opt.key}
-              style={[styles.sortOption, sortBy === opt.key && styles.sortOptionActive]}
-              onPress={() => { setSortBy(opt.key); setShowSort(false); }}
-            >
-              <Ionicons name={opt.icon} size={13} color={sortBy === opt.key ? c.teal : c.text3} />
-              <Text style={[styles.sortOptionText, sortBy === opt.key && { color: c.teal, fontWeight: 'bold' }]}>
-                {opt.label}
-              </Text>
-              {sortBy === opt.key && <Ionicons name="checkmark" size={14} color={c.teal} />}
-            </TouchableOpacity>
-          ))}
+      {/* Sort Selector (My List only) */}
+      {tab === 'mine' && (
+        <View style={styles.filterBarContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+            <View style={styles.sortLabelWrap}>
+              <Ionicons name="swap-vertical-outline" size={13} color={c.text4} />
+              <Text style={styles.sortLabel}>Sort</Text>
+            </View>
+            {SORT_OPTIONS.map((opt) => {
+              const isActive = sortBy === opt.key;
+              return (
+                <TouchableOpacity
+                  key={opt.key}
+                  style={[styles.areaChip, isActive && { borderColor: c.teal, backgroundColor: c.teal + '22' }]}
+                  onPress={() => setSortBy(opt.key)}
+                >
+                  <Ionicons name={opt.icon} size={12} color={isActive ? c.teal : c.text3} />
+                  <Text style={[styles.areaChipText, isActive && { color: c.teal, fontWeight: 'bold' }]}>{opt.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         </View>
+      )}
+
+      {/* Folders (My List only) */}
+      {tab === 'mine' && (
+        <FolderRow
+          folders={folders}
+          activeFolderId={folderFilter}
+          onSelect={setFolderFilter}
+          onCreate={createFolder}
+          onRename={renameFolder}
+          onDelete={handleDeleteFolder}
+        />
       )}
 
       {/* Life area filter chips */}
@@ -469,6 +522,7 @@ export default function ResourcesToolsScreen() {
             const areaId = getItemAreaId(item);
             const area = AREA_MAP[areaId];
             const visits = item.url_meta?.visits || 0;
+            const folder = folders.find((f) => f.id === item.url_meta?.folder);
             return (
               <View style={[styles.card, { borderLeftColor: area.color }]}>
                 <View style={styles.cardHeader}>
@@ -488,6 +542,11 @@ export default function ResourcesToolsScreen() {
                     <View style={[styles.areaPill, { borderColor: area.color + '55', backgroundColor: area.color + '18' }]}>
                       <Text style={[styles.areaPillText, { color: area.color }]}>{area.emoji} {area.label}</Text>
                     </View>
+                    {folder && (
+                      <View style={[styles.areaPill, { borderColor: folder.color + '55', backgroundColor: folder.color + '18' }]}>
+                        <Text style={[styles.areaPillText, { color: folder.color }]}>📁 {folder.name}</Text>
+                      </View>
+                    )}
                     {visits > 0 && (
                       <View style={styles.visitsPill}>
                         <Ionicons name="flame-outline" size={10} color={c.text4} />
@@ -496,6 +555,9 @@ export default function ResourcesToolsScreen() {
                     )}
                   </View>
                   <View style={{ flexDirection: 'row' }}>
+                    <TouchableOpacity onPress={() => setAssigningEntry(item)} style={styles.iconBtn}>
+                      <Ionicons name={folder ? 'folder' : 'folder-outline'} size={16} color={folder ? folder.color : c.text4} />
+                    </TouchableOpacity>
                     <TouchableOpacity onPress={() => openLink(item)} style={styles.iconBtn}>
                       <Ionicons name="open-outline" size={16} color={c.teal} />
                     </TouchableOpacity>
@@ -601,6 +663,15 @@ export default function ResourcesToolsScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      <FolderAssignSheet
+        visible={!!assigningEntry}
+        folders={folders}
+        currentFolderId={assigningEntry?.url_meta?.folder || null}
+        onAssign={(folderId) => assignFolder(assigningEntry, folderId)}
+        onClose={() => setAssigningEntry(null)}
+        onCreateFolder={createFolder}
+      />
     </View>
   );
 }
@@ -622,11 +693,8 @@ const makeStyles = (c) => StyleSheet.create({
   searchRow: { flexDirection: 'row', paddingHorizontal: 20, marginBottom: 10, gap: 8 },
   searchBar: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: c.bg1, borderRadius: 12, paddingHorizontal: 12, borderWidth: 1, borderColor: c.border, gap: 8 },
   searchInput: { flex: 1, paddingVertical: 10, color: c.text1, fontSize: 13 },
-  sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 10, backgroundColor: c.bg1, borderRadius: 12, borderWidth: 1, borderColor: c.border },
-  sortPanel: { marginHorizontal: 20, marginBottom: 10, backgroundColor: c.bg1, borderRadius: 12, borderWidth: 1, borderColor: c.border, overflow: 'hidden' },
-  sortOption: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: c.border },
-  sortOptionActive: { backgroundColor: c.teal + '10' },
-  sortOptionText: { flex: 1, color: c.text2, fontSize: 12 },
+  sortLabelWrap: { flexDirection: 'row', alignItems: 'center', gap: 4, marginRight: 2 },
+  sortLabel: { color: c.text4, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
 
   filterBarContainer: { marginBottom: 12 },
   filterScroll: { paddingHorizontal: 20, gap: 8, alignItems: 'center' },

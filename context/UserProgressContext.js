@@ -6,10 +6,20 @@ import { getRank, getRankProgress } from '../src/logic/rankUtils';
 
 /* ─── Subject config ───────────────────────────────────────────────────────── */
 export const SUBJECT_CONFIG = {
-  math:         { name: 'Math',         icon: '🔢', color: '#3B82F6' },
-  language_arts:{ name: 'Language Arts', icon: '📚', color: '#8B5CF6' },
-  science:      { name: 'Science',       icon: '🔬', color: '#10B981' },
-  general:      { name: 'General',       icon: '⭐', color: '#6366F1' },
+  math:           { name: 'Math',              icon: '🔢', color: '#3B82F6' },
+  language_arts:  { name: 'Language Arts',     icon: '📚', color: '#8B5CF6' },
+  science:        { name: 'Science',           icon: '🔬', color: '#10B981' },
+  health:         { name: 'Health',            icon: '💪', color: '#e05858' },
+  finance:        { name: 'Finance',           icon: '💰', color: '#c9a84c' },
+  home_ec:        { name: 'Home Ec',           icon: '🧰', color: '#e0a830' },
+  social_studies: { name: 'Social Studies',    icon: '🌍', color: '#F59E0B' },
+  arts:           { name: 'Art & Music',       icon: '🎨', color: '#EC4899' },
+  technology:     { name: 'Technology',        icon: '💻', color: '#5A80E8' },
+  foreign_language:{ name: 'Foreign Language', icon: '🗣️', color: '#14B8A6' },
+  mental:         { name: 'Mental Wellness',   icon: '🧠', color: '#8B5CF6' },
+  social_skills:  { name: 'Social & Relationships', icon: '🤝', color: '#22C55E' },
+  career:         { name: 'Career & Life Skills', icon: '🧭', color: '#84CC16' },
+  general:        { name: 'General',           icon: '⭐', color: '#6366F1' },
 };
 
 /* ─── Mission normaliser ───────────────────────────────────────────────────── */

@@ -1,39 +1,28 @@
-// src/screens/library/ProjectsScreen.js
-// Mission Control — space theme, real Supabase data
+// src/screens/library/projects.js
+// The Workshop — a drafting-table blueprint. Same base-camp language as the
+// Library home screen ("Your Base" / "Construction Yard"): a project is a
+// "build" that moves from Blueprint → Building → Shipped, sketched here on
+// graph paper instead of flat app cards.
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   TextInput, Modal, ActivityIndicator, RefreshControl,
-  Alert, KeyboardAvoidingView, Platform, Dimensions,
+  Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { useTheme } from '../../../context/ThemeContext';
+import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import { supabase } from '../../api/supabaseClient';
+import { FONTS } from '../../theme';
+import { useBlueprint, BlueprintGrid, CornerTicks, Stamp, RulerBar } from './blueprint';
 
-const { width } = Dimensions.get('window');
-
-const CATEGORIES = [
-  { id: 'all',            label: 'All Missions',     icon: 'planet-outline',              color: '#00F0FF' },
-  { id: 'active',         label: 'Active Missions',  icon: 'rocket-outline',              color: '#00F0FF' },
-  { id: 'completed',      label: 'Completed',        icon: 'checkmark-circle-outline',    color: '#00E676' },
-  { id: 'idea',           label: 'Stargazer Ideas',  icon: 'bulb-outline',                color: '#FFB800' },
-  { id: 'showcase',       label: 'Hall of Fame',     icon: 'trophy-outline',              color: '#FF4081' },
-];
-
-const PROJECT_TYPES = [
+const BUILD_TYPES = [
   '🔬 Science',  '💻 Coding',   '🎨 Art',      '📝 Writing',
   '💰 Business', '🏗️ DIY',     '📚 Research', '🎯 Personal',
   '✈️ Travel',   '🎵 Music',   '📊 Finance',  '🌱 Other',
 ];
 
-const COLORS = [
-  '#00F0FF','#c9a84c','#7C4DFF','#FF4081',
-  '#00E676','#FFB800','#e07a30','#FF6B6B',
-];
-
-const EMOJIS = ['🚀','💡','🔬','🎨','💻','📝','🏗️','💰','🎯','🌟','⚡','🔥','🌙','🛸','🌊','🦋'];
+const EMOJIS = ['🏗️','🔨','🧱','🧰','📐','🪛','📦','🛠️','💡','🚀','⚙️','🏠'];
 
 function timeAgo(dateStr) {
   if (!dateStr) return '';
@@ -48,21 +37,35 @@ function timeAgo(dateStr) {
   return `${Math.floor(days / 7)}w ago`;
 }
 
-// ─── New Mission Modal ────────────────────────────────────────────────────────
-function NewMissionModal({ visible, userId, onCreated, onClose }) {
+function stageFor(project) {
+  if (project.is_showcase) return { key: 'showcase', label: 'SHOWROOM' };
+  if (project.status === 'completed') return { key: 'completed', label: 'SHIPPED' };
+  if (project.status === 'idea') return { key: 'idea', label: 'BLUEPRINT' };
+  return { key: 'active', label: 'BUILDING' };
+}
+
+// ─── New Build Modal ───────────────────────────────────────────────────────
+function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, initialType }) {
+  const s = makeModalStyles(bp);
   const [title,     setTitle]     = useState('');
   const [objective, setObjective] = useState('');
-  const [emoji,     setEmoji]     = useState('🚀');
-  const [color,     setColor]     = useState(COLORS[0]);
-  const [type,      setType]      = useState('');
+  const [emoji,     setEmoji]     = useState('🏗️');
+  const [color,     setColor]     = useState(buildColors[0]);
+  const [type,      setType]      = useState(initialType || '');
   const [saving,    setSaving]    = useState(false);
 
+  // A career (or any deep link) can land here with a build type already
+  // chosen — sync it in whenever the sheet opens, not just on first mount.
+  useEffect(() => {
+    if (visible && initialType) setType(initialType);
+  }, [visible, initialType]);
+
   const reset = () => {
-    setTitle(''); setObjective(''); setEmoji('🚀');
-    setColor(COLORS[0]); setType('');
+    setTitle(''); setObjective(''); setEmoji('🏗️');
+    setColor(buildColors[0]); setType(initialType || '');
   };
 
-  const launch = async () => {
+  const start = async () => {
     if (!title.trim()) return;
     setSaving(true);
     try {
@@ -79,14 +82,14 @@ function NewMissionModal({ visible, userId, onCreated, onClose }) {
 
       await supabase.from('project_milestones').insert({
         user_id: userId, project_id: data.id,
-        title: '🚀 Mission launched', type: 'project_created',
+        title: '🏗️ Build started', type: 'project_created',
         date: new Date().toISOString().split('T')[0],
       });
 
       onCreated(data);
       reset();
     } catch (e) {
-      Alert.alert('Error', 'Could not create project');
+      Alert.alert('Error', 'Could not start this build');
     }
     setSaving(false);
   };
@@ -94,70 +97,71 @@ function NewMissionModal({ visible, userId, onCreated, onClose }) {
   return (
     <Modal visible={visible} transparent animationType="slide">
       <KeyboardAvoidingView
-        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' }}
+        style={{ flex: 1, backgroundColor: 'rgba(4,16,28,0.68)', justifyContent: 'flex-end' }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={m.sheet}>
-          <View style={m.handle} />
-          <Text style={m.sheetTitle}>🛸 Launch New Mission</Text>
+        <View style={s.sheet}>
+          <View style={s.handle} />
+          <Text style={s.sheetEyebrow}>NEW BUILD · DRAFT SHEET</Text>
+          <Text style={s.sheetTitle}>🏗️ Start a New Build</Text>
 
           {/* Preview */}
           <View style={{ alignItems: 'center', marginBottom: 20 }}>
-            <View style={[m.previewCircle, { backgroundColor: color + '22', borderColor: color }]}>
-              <Text style={{ fontSize: 40 }}>{emoji}</Text>
+            <View style={[s.previewBox, { backgroundColor: color + '18', borderColor: color }]}>
+              <Text style={{ fontSize: 36 }}>{emoji}</Text>
             </View>
-            <Text style={[m.previewName, { color }]}>{title || 'Mission Name'}</Text>
+            <Text style={[s.previewName, { color }]}>{title || 'BUILD NAME'}</Text>
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 20 }}>
-            <TextInput style={[m.input, { borderColor: color }]}
+            <TextInput style={[s.input, { borderColor: color }]}
               value={title} onChangeText={setTitle}
-              placeholder="Mission name..." placeholderTextColor="#626D82"
+              placeholder="Build name..." placeholderTextColor={bp.ink3}
               autoFocus />
-            <TextInput style={[m.input, { borderColor: '#1F263E', minHeight: 60, textAlignVertical: 'top' }]}
+            <TextInput style={[s.input, { borderColor: bp.border, minHeight: 60, textAlignVertical: 'top' }]}
               value={objective} onChangeText={setObjective}
-              placeholder="Mission objective (optional)" placeholderTextColor="#626D82"
+              placeholder="What are you building? (optional)" placeholderTextColor={bp.ink3}
               multiline />
 
-            <Text style={m.label}>MISSION ICON</Text>
+            <Text style={s.label}>BUILD ICON</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 {EMOJIS.map(em => (
                   <TouchableOpacity key={em} onPress={() => setEmoji(em)}
-                    style={[m.emojiBtn, emoji === em && { borderColor: color, backgroundColor: color + '22' }]}>
-                    <Text style={{ fontSize: 22 }}>{em}</Text>
+                    style={[s.emojiBtn, emoji === em && { borderColor: color, backgroundColor: color + '18' }]}>
+                    <Text style={{ fontSize: 20 }}>{em}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </ScrollView>
 
-            <Text style={m.label}>MISSION COLOR</Text>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              {COLORS.map(col => (
+            <Text style={s.label}>BUILD COLOR</Text>
+            <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
+              {buildColors.map(col => (
                 <TouchableOpacity key={col} onPress={() => setColor(col)}
-                  style={[m.colorDot, { backgroundColor: col }, color === col && m.colorDotSel]} />
+                  style={[s.colorSwatch, { backgroundColor: col }, color === col && s.colorSwatchSel]} />
               ))}
             </View>
 
-            <Text style={m.label}>MISSION TYPE</Text>
+            <Text style={s.label}>BUILD TYPE</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={{ flexDirection: 'row', gap: 8 }}>
-                {PROJECT_TYPES.map(pt => (
+                {BUILD_TYPES.map(pt => (
                   <TouchableOpacity key={pt} onPress={() => setType(pt)}
-                    style={[m.typeChip, type === pt && { borderColor: color, backgroundColor: color + '22' }]}>
-                    <Text style={[m.typeText, type === pt && { color }]}>{pt}</Text>
+                    style={[s.typeChip, type === pt && { borderColor: color, backgroundColor: color + '18' }]}>
+                    <Text style={[s.typeText, type === pt && { color }]}>{pt}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </ScrollView>
 
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
-              <TouchableOpacity onPress={() => { reset(); onClose(); }} style={m.cancelBtn}>
-                <Text style={{ color: '#8E9BB0', fontWeight: '600' }}>Cancel</Text>
+              <TouchableOpacity onPress={() => { reset(); onClose(); }} style={s.cancelBtn}>
+                <Text style={{ color: bp.ink2, fontWeight: '700', fontFamily: FONTS.mono, fontSize: 12 }}>CANCEL</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={launch} disabled={!title.trim() || saving}
-                style={[m.launchBtn, { backgroundColor: color, opacity: (!title.trim() || saving) ? 0.5 : 1 }]}>
-                {saving ? <ActivityIndicator color="#000" size="small" />
-                  : <Text style={{ color: '#000', fontWeight: '800', fontSize: 15 }}>🚀 Launch</Text>}
+              <TouchableOpacity onPress={start} disabled={!title.trim() || saving}
+                style={[s.startBtn, { backgroundColor: color, opacity: (!title.trim() || saving) ? 0.5 : 1 }]}>
+                {saving ? <ActivityIndicator color={bp.onStamp} size="small" />
+                  : <Text style={{ color: bp.onStamp, fontWeight: '800', fontFamily: FONTS.mono, fontSize: 13, letterSpacing: 0.5 }}>🏗️ START BUILDING</Text>}
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -167,85 +171,103 @@ function NewMissionModal({ visible, userId, onCreated, onClose }) {
   );
 }
 
-const m = StyleSheet.create({
-  sheet:       { backgroundColor: '#0B0D17', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 48, maxHeight: '92%', borderTopWidth: 1, borderColor: '#1F263E' },
-  handle:      { width: 36, height: 4, borderRadius: 2, backgroundColor: '#1F263E', alignSelf: 'center', marginBottom: 20 },
-  sheetTitle:  { color: '#FFF', fontSize: 20, fontWeight: '800', marginBottom: 16, textAlign: 'center' },
-  previewCircle: { width: 80, height: 80, borderRadius: 40, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  previewName: { fontSize: 15, fontWeight: '700' },
-  input:       { backgroundColor: '#141829', borderRadius: 10, padding: 14, fontSize: 15, color: '#FFF', borderWidth: 1 },
-  label:       { color: '#626D82', fontSize: 10, fontWeight: '800', letterSpacing: 1.5, marginTop: 4 },
-  emojiBtn:    { width: 44, height: 44, borderRadius: 12, borderWidth: 1.5, borderColor: 'transparent', alignItems: 'center', justifyContent: 'center', backgroundColor: '#141829' },
-  colorDot:    { width: 32, height: 32, borderRadius: 16 },
-  colorDotSel: { borderWidth: 3, borderColor: '#FFF' },
-  typeChip:    { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16, borderWidth: 1, borderColor: '#1F263E', backgroundColor: '#141829' },
-  typeText:    { color: '#8E9BB0', fontSize: 12 },
-  cancelBtn:   { flex: 1, backgroundColor: '#141829', borderRadius: 10, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: '#1F263E' },
-  launchBtn:   { flex: 2, borderRadius: 10, padding: 14, alignItems: 'center' },
+const makeModalStyles = bp => StyleSheet.create({
+  sheet:       { backgroundColor: bp.panel, borderTopLeftRadius: 14, borderTopRightRadius: 14, padding: 24, paddingBottom: 48, maxHeight: '92%', borderTopWidth: 1, borderColor: bp.border },
+  handle:      { width: 36, height: 4, borderRadius: 2, backgroundColor: bp.border, alignSelf: 'center', marginBottom: 16 },
+  sheetEyebrow:{ color: bp.ink3, fontSize: 9, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 2, textAlign: 'center', marginBottom: 4 },
+  sheetTitle:  { color: bp.ink, fontSize: 19, fontFamily: FONTS.displaySemibold, fontWeight: '800', marginBottom: 16, textAlign: 'center' },
+  previewBox:  { width: 72, height: 72, borderRadius: 6, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  previewName: { fontSize: 12, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 0.5 },
+  input:       { backgroundColor: bp.paper, borderRadius: 4, padding: 14, fontSize: 15, color: bp.ink, borderWidth: 1 },
+  label:       { color: bp.ink3, fontSize: 10, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 1.5, marginTop: 4 },
+  emojiBtn:    { width: 40, height: 40, borderRadius: 5, borderWidth: 1.5, borderColor: 'transparent', alignItems: 'center', justifyContent: 'center', backgroundColor: bp.paper },
+  colorSwatch: { width: 30, height: 30, borderRadius: 4 },
+  colorSwatchSel: { borderWidth: 3, borderColor: bp.ink },
+  typeChip:    { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 4, borderWidth: 1, borderColor: bp.border, backgroundColor: bp.paper },
+  typeText:    { color: bp.ink2, fontSize: 12 },
+  cancelBtn:   { flex: 1, backgroundColor: bp.paper, borderRadius: 4, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: bp.border },
+  startBtn:    { flex: 2, borderRadius: 4, padding: 14, alignItems: 'center' },
 });
 
-// ─── Project card ─────────────────────────────────────────────────────────────
-function ProjectCard({ project, onPress, onFavorite }) {
-  const color = project.color || '#00F0FF';
+// ─── Build card ─────────────────────────────────────────────────────────────
+function BuildCard({ project, bp, onPress, onFavorite, onDelete }) {
+  const s = makeCardStyles(bp);
+  const color = project.color || bp.accent;
+  const stage = stageFor(project);
+  const total = project.tasks?.total || 0;
+  const done  = project.tasks?.done || 0;
+  const pct   = total > 0 ? Math.round((done / total) * 100) : null;
+
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={pc.card}>
-      {/* Left thumbnail strip */}
-      <View style={[pc.strip, { backgroundColor: color + '22', borderRightColor: color }]}>
-        <Text style={{ fontSize: 28 }}>{project.emoji || '🚀'}</Text>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={[s.card, { borderLeftColor: color }]}>
+      <View style={s.topRow}>
+        <View style={[s.icon, { borderColor: color }]}>
+          <Text style={{ fontSize: 19 }}>{project.emoji || '🏗️'}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <View style={s.badgeRow}>
+            <Stamp label={stage.label} color={color} />
+            {project.category && project.category !== 'general' && (
+              <Text style={s.categoryText} numberOfLines={1}>{project.category}</Text>
+            )}
+            <Text style={s.date}>{timeAgo(project.updated_at || project.created_at)}</Text>
+          </View>
+          <Text style={s.title} numberOfLines={1}>{project.title}</Text>
+          {project.objective ? (
+            <Text style={s.objective} numberOfLines={1}>{project.objective}</Text>
+          ) : null}
+        </View>
       </View>
 
-      {/* Content */}
-      <View style={pc.content}>
-        <View style={pc.topRow}>
-          {project.category && project.category !== 'general' && (
-            <View style={[pc.typeBadge, { backgroundColor: color + '18', borderColor: color + '55' }]}>
-              <Text style={[pc.typeText, { color }]}>{project.category}</Text>
-            </View>
-          )}
-          <Text style={pc.date}>{timeAgo(project.updated_at || project.created_at)}</Text>
+      {total > 0 && (
+        <View style={{ marginTop: 11 }}>
+          <RulerBar pct={pct} color={color} bp={bp} />
+          <Text style={s.progressText}>{done}/{total} TASKS · {pct}%</Text>
         </View>
+      )}
 
-        <Text style={pc.title} numberOfLines={1}>{project.title}</Text>
-        {project.objective && (
-          <Text style={pc.objective} numberOfLines={1}>{project.objective}</Text>
-        )}
-
-        <View style={pc.actions}>
-          <TouchableOpacity onPress={onPress}
-            style={[pc.enterBtn, { backgroundColor: color + '18', borderColor: color + '44' }]}>
-            <Ionicons name="play" size={11} color={color} />
-            <Text style={[pc.enterText, { color }]}>Enter Command</Text>
+      <View style={s.actions}>
+        <View style={[s.outlineBtn, { borderColor: color }]}>
+          <Ionicons name="hammer-outline" size={11} color={color} />
+          <Text style={[s.outlineBtnText, { color }]}>ENTER WORKSHOP</Text>
+        </View>
+        <View style={{ flexDirection: 'row', gap: 14 }}>
+          <TouchableOpacity onPress={() => onFavorite(project)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+            <Ionicons name={project.is_favorite ? 'star' : 'star-outline'} size={17} color={bp.stamp} />
           </TouchableOpacity>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <TouchableOpacity onPress={() => onFavorite(project)}>
-              <Ionicons name={project.is_favorite ? 'star' : 'star-outline'} size={18} color="#FFB800" />
-            </TouchableOpacity>
-            <Ionicons name="share-social-outline" size={18} color="#626D82" />
-          </View>
+          <TouchableOpacity onPress={() => onDelete(project)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+            <Ionicons name="trash-outline" size={17} color={bp.danger} />
+          </TouchableOpacity>
+          <Ionicons name="share-social-outline" size={17} color={bp.ink3} />
         </View>
       </View>
     </TouchableOpacity>
   );
 }
 
-const pc = StyleSheet.create({
-  card:      { flexDirection: 'row', backgroundColor: '#141829', borderRadius: 14, borderWidth: 1, borderColor: '#1F263E', marginBottom: 12, overflow: 'hidden' },
-  strip:     { width: 72, alignItems: 'center', justifyContent: 'center', borderRightWidth: 1 },
-  content:   { flex: 1, padding: 12 },
-  topRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  typeBadge: { borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, borderWidth: 1 },
-  typeText:  { fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
-  date:      { color: '#626D82', fontSize: 10 },
-  title:     { color: '#FFF', fontSize: 15, fontWeight: 'bold', marginBottom: 3 },
-  objective: { color: '#8E9BB0', fontSize: 11, marginBottom: 10, lineHeight: 15 },
-  actions:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  enterBtn:  { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 7, borderWidth: 1 },
-  enterText: { fontSize: 11, fontWeight: '700' },
+const makeCardStyles = bp => StyleSheet.create({
+  card:      { backgroundColor: bp.panel, borderRadius: 3, borderWidth: 1, borderColor: bp.border, borderLeftWidth: 3, marginBottom: 12, padding: 13 },
+  topRow:    { flexDirection: 'row', gap: 11 },
+  icon:      { width: 42, height: 42, borderRadius: 4, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, backgroundColor: bp.paper },
+  badgeRow:  { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 5 },
+  categoryText: { color: bp.ink3, fontSize: 10, flexShrink: 1 },
+  date:      { color: bp.ink3, fontSize: 10, marginLeft: 'auto', fontFamily: FONTS.mono },
+  title:     { color: bp.ink, fontSize: 14.5, fontWeight: '700', marginBottom: 2 },
+  objective: { color: bp.ink2, fontSize: 12, lineHeight: 16 },
+  progressText: { fontSize: 9.5, fontFamily: FONTS.mono, color: bp.ink3, marginTop: 5, letterSpacing: 0.4 },
+  actions:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 11 },
+  outlineBtn:  { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderRadius: 3, paddingHorizontal: 9, paddingVertical: 5 },
+  outlineBtnText: { fontSize: 10, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 0.3 },
 });
 
 // ─── Main ProjectsScreen ──────────────────────────────────────────────────────
 export default function ProjectsScreen() {
   const navigation = useNavigation();
+  const route = useRoute();
+  const bp = useBlueprint();
+  const s = makeStyles(bp);
+  const buildColors = [bp.accent, bp.stamp, bp.approved, bp.violet, bp.draft, bp.ink2];
+
   const [projects,   setProjects]   = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -253,6 +275,14 @@ export default function ProjectsScreen() {
   const [filter,     setFilter]     = useState('all');
   const [showNew,    setShowNew]    = useState(false);
   const [search,     setSearch]     = useState('');
+
+  const STAGES = [
+    { id: 'all',       label: 'All Builds',   icon: 'apps-outline',              color: bp.accent },
+    { id: 'active',    label: 'Building',     icon: 'hammer-outline',            color: bp.accent },
+    { id: 'idea',      label: 'Blueprints',   icon: 'bulb-outline',              color: bp.draft },
+    { id: 'completed', label: 'Shipped',      icon: 'checkmark-circle-outline',  color: bp.approved },
+    { id: 'showcase',  label: 'Showroom',     icon: 'trophy-outline',            color: bp.stamp },
+  ];
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -263,13 +293,36 @@ export default function ProjectsScreen() {
 
   useFocusEffect(useCallback(() => { if (userId) load(userId); }, [userId]));
 
+  // A deep link (e.g. Career Expeditions' "Start a build") can arrive with
+  // a build type already chosen and ask us to jump straight to the sheet.
+  useFocusEffect(useCallback(() => {
+    if (route.params?.autoOpen) {
+      setShowNew(true);
+      navigation.setParams({ autoOpen: false });
+    }
+  }, [route.params?.autoOpen]));
+
   const load = async (uid) => {
     setLoading(true);
     try {
       const { data } = await supabase
-        .from('projects').select('*').eq('user_id', uid)
+        .from('projects').select('*').eq('user_id', uid).is('deleted_at', null)
         .order('updated_at', { ascending: false });
-      if (data) setProjects(data);
+      const list = data || [];
+      if (list.length) {
+        const ids = list.map(p => p.id);
+        const { data: taskRows } = await supabase
+          .from('project_tasks').select('project_id, completed').in('project_id', ids);
+        const byProject = {};
+        (taskRows || []).forEach(tk => {
+          if (!byProject[tk.project_id]) byProject[tk.project_id] = { total: 0, done: 0 };
+          byProject[tk.project_id].total += 1;
+          if (tk.completed) byProject[tk.project_id].done += 1;
+        });
+        setProjects(list.map(p => ({ ...p, tasks: byProject[p.id] || null })));
+      } else {
+        setProjects([]);
+      }
     } catch (e) { console.warn('ProjectsScreen', e); }
     setLoading(false);
   };
@@ -280,6 +333,23 @@ export default function ProjectsScreen() {
     const val = !proj.is_favorite;
     setProjects(prev => prev.map(p => p.id === proj.id ? { ...p, is_favorite: val } : p));
     await supabase.from('projects').update({ is_favorite: val }).eq('id', proj.id);
+  };
+
+  const deleteProject = (proj) => {
+    Alert.alert('Delete this build?', `"${proj.title}" moves to Recently Deleted in the Capture Inbox, kept for 7 days before it's gone for good.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        setProjects(prev => prev.filter(p => p.id !== proj.id));
+        try {
+          const { error } = await supabase.from('projects').update({ deleted_at: new Date().toISOString() }).eq('id', proj.id);
+          if (error) throw error;
+        } catch (e) {
+          console.warn('delete project error', e);
+          Alert.alert('Could not delete', 'Something went wrong — try again.');
+          if (userId) load(userId);
+        }
+      }},
+    ]);
   };
 
   const filtered = projects.filter(p => {
@@ -296,171 +366,191 @@ export default function ProjectsScreen() {
   const hero    = projects.find(p => p.status === 'active');
   const favs    = projects.filter(p => p.is_favorite);
   const active  = projects.filter(p => p.status === 'active').length;
+  const heroTotal = hero?.tasks?.total || 0;
+  const heroDone  = hero?.tasks?.done || 0;
+  const heroPct   = heroTotal > 0 ? Math.round((heroDone / heroTotal) * 100) : null;
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0B0D17' }}>
+    <View style={s.screen}>
+      <BlueprintGrid bp={bp} />
+      <View style={{ flex: 1 }}>
 
-      {/* Header */}
-      <View style={s.header}>
-        <View>
-          <Text style={s.headerSub}>MISSION CONTROL</Text>
-          <Text style={s.headerTitle}>Projects Command</Text>
+        {/* Header */}
+        <View style={s.header}>
+          <View>
+            <Text style={s.headerSub}>DRAFTING TABLE</Text>
+            <Text style={s.headerTitle}>The Workshop</Text>
+          </View>
+          <TouchableOpacity style={s.newBtn} onPress={() => setShowNew(true)}>
+            <Ionicons name="add" size={15} color={bp.onStamp} />
+            <Text style={s.newBtnText}>NEW BUILD</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={s.launchBtn} onPress={() => setShowNew(true)}>
-          <Ionicons name="add-circle" size={18} color="#000" />
-          <Text style={s.launchText}>Launch Project</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={s.headerRuleWrap}>
+          <View style={s.headerRuleThick} />
+          <View style={s.headerRuleThin} />
+        </View>
 
-      {/* Search */}
-      <View style={s.searchWrap}>
-        <Ionicons name="search" size={15} color="#626D82" style={{ marginRight: 8 }} />
-        <TextInput style={s.searchInput}
-          value={search} onChangeText={setSearch}
-          placeholder="Search missions..." placeholderTextColor="#626D82" />
-      </View>
+        {/* Search */}
+        <View style={s.searchWrap}>
+          <Ionicons name="search" size={15} color={bp.ink3} style={{ marginRight: 8 }} />
+          <TextInput style={s.searchInput}
+            value={search} onChangeText={setSearch}
+            placeholder="Search builds..." placeholderTextColor={bp.ink3} />
+        </View>
 
-      {loading ? <ActivityIndicator style={{ marginTop: 40 }} color="#00F0FF" /> : (
-        <ScrollView showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00F0FF" />}
-          contentContainerStyle={{ paddingBottom: 60 }}>
+        {loading ? <ActivityIndicator style={{ marginTop: 40 }} color={bp.accent} /> : (
+          <ScrollView showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={bp.accent} />}
+            contentContainerStyle={{ paddingBottom: 60 }}>
 
-          {/* Hero — Continue Mission */}
-          {hero && filter === 'all' && !search && (
-            <View style={s.section}>
-              <Text style={s.sectionLabel}>⚡ CONTINUE MISSION</Text>
-              <TouchableOpacity
-                style={s.heroCard}
-                onPress={() => navigation.navigate('ProjectDetail', { project: hero })}
-                activeOpacity={0.88}>
-                {/* Color gradient top */}
-                <View style={[s.heroBanner, { backgroundColor: (hero.color || '#00F0FF') + '33', borderBottomColor: (hero.color || '#00F0FF') + '55' }]}>
-                  <Text style={{ fontSize: 48 }}>{hero.emoji || '🚀'}</Text>
-                </View>
-                <View style={s.heroBody}>
-                  <View style={s.heroTopRow}>
-                    <View style={[s.heroBadge, { borderColor: hero.color || '#00F0FF', backgroundColor: (hero.color || '#00F0FF') + '18' }]}>
-                      <Text style={[s.heroBadgeText, { color: hero.color || '#00F0FF' }]}>
-                        {hero.category || 'ACTIVE'}
-                      </Text>
+            {/* Hero — Continue Building */}
+            {hero && filter === 'all' && !search && (
+              <View style={s.section}>
+                <Text style={s.sectionLabel}>SHEET 01 — CONTINUE BUILDING</Text>
+                <TouchableOpacity
+                  style={s.heroCard}
+                  onPress={() => navigation.navigate('ProjectDetail', { project: hero })}
+                  activeOpacity={0.88}>
+                  <CornerTicks color={hero.color || bp.accent} />
+                  <View style={s.heroTop}>
+                    <View style={[s.emojiBox, { borderColor: hero.color || bp.accent, backgroundColor: (hero.color || bp.accent) + '14' }]}>
+                      <Text style={{ fontSize: 26 }}>{hero.emoji || '🏗️'}</Text>
                     </View>
-                    <Text style={s.heroMeta}>Updated {timeAgo(hero.updated_at)}</Text>
+                    <View style={{ flex: 1 }}>
+                      <View style={s.heroBadgeRow}>
+                        <Stamp label={stageFor(hero).label} color={hero.color || bp.accent} />
+                        <Text style={s.heroMeta}>UPD {timeAgo(hero.updated_at)}</Text>
+                      </View>
+                      <Text style={s.heroTitle}>{hero.title}</Text>
+                    </View>
                   </View>
-                  <Text style={s.heroTitle}>{hero.title}</Text>
                   {hero.objective && (
                     <Text style={s.heroObj} numberOfLines={2}>{hero.objective}</Text>
                   )}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12 }}>
-                    <View style={[s.enterBtn, { backgroundColor: (hero.color || '#00F0FF') + '22', borderColor: hero.color || '#00F0FF' }]}>
-                      <Ionicons name="play" size={12} color={hero.color || '#00F0FF'} />
-                      <Text style={[s.enterText, { color: hero.color || '#00F0FF' }]}>Enter Command Center</Text>
+                  {heroTotal > 0 && (
+                    <View style={{ marginTop: 12 }}>
+                      <RulerBar pct={heroPct} color={hero.color || bp.accent} bp={bp} height={11} />
+                      <Text style={s.progressText}>{heroDone}/{heroTotal} TASKS DONE · {heroPct}%</Text>
                     </View>
-                    <Ionicons name={hero.is_favorite ? 'star' : 'star-outline'} size={18} color="#FFB800" />
+                  )}
+                  <View style={s.heroFooter}>
+                    <View style={[s.outlineBtnLg, { borderColor: hero.color || bp.accent }]}>
+                      <Ionicons name="hammer-outline" size={13} color={hero.color || bp.accent} />
+                      <Text style={[s.outlineBtnLgText, { color: hero.color || bp.accent }]}>ENTER WORKSHOP</Text>
+                    </View>
+                    <Ionicons name={hero.is_favorite ? 'star' : 'star-outline'} size={18} color={bp.stamp} />
                   </View>
-                </View>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Category filter */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.catBar}>
-            {CATEGORIES.map(cat => {
-              const isAct = filter === cat.id;
-              return (
-                <TouchableOpacity key={cat.id} onPress={() => setFilter(cat.id)}
-                  style={[s.catChip, isAct && { borderColor: cat.color }]}>
-                  <Ionicons name={cat.icon} size={15} color={isAct ? cat.color : '#8E9BB0'} />
-                  <Text style={[s.catText, isAct && { color: '#FFF', fontWeight: '700' }]}>{cat.label}</Text>
                 </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          {/* Stats row */}
-          {filter === 'all' && !search && (
-            <View style={s.statsRow}>
-              {[
-                { label: 'TOTAL', val: projects.length,                            color: '#00F0FF' },
-                { label: 'ACTIVE', val: active,                                    color: '#00E676' },
-                { label: 'COMPLETE', val: projects.filter(p=>p.status==='completed').length, color: '#FFB800' },
-                { label: 'STARRED', val: favs.length,                              color: '#FF4081' },
-              ].map(st => (
-                <View key={st.label} style={s.statCard}>
-                  <Text style={[s.statVal, { color: st.color }]}>{st.val}</Text>
-                  <Text style={s.statLabel}>{st.label}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {/* Projects list */}
-          <View style={s.section}>
-            {filter !== 'all' || search ? (
-              <Text style={s.sectionLabel}>🛰️ {filtered.length} MISSION{filtered.length !== 1 ? 'S' : ''}</Text>
-            ) : (
-              <Text style={s.sectionLabel}>🛰️ ALL FLEET ({filtered.length})</Text>
-            )}
-
-            {filtered.length === 0 ? (
-              <View style={s.empty}>
-                <Text style={{ fontSize: 48, marginBottom: 12 }}>🛸</Text>
-                <Text style={s.emptyTitle}>{search ? 'No missions found' : 'No missions yet'}</Text>
-                <Text style={s.emptyText}>{search ? 'Try a different search' : 'Tap Launch Project to begin'}</Text>
               </View>
-            ) : (
-              filtered.map(proj => (
-                <ProjectCard key={proj.id} project={proj}
-                  onPress={() => navigation.navigate('ProjectDetail', { project: proj })}
-                  onFavorite={toggleFavorite}
-                />
-              ))
             )}
-          </View>
-        </ScrollView>
-      )}
 
-      <NewMissionModal
-        visible={showNew} userId={userId}
-        onCreated={(proj) => {
-          setProjects(prev => [proj, ...prev]);
-          setShowNew(false);
-          navigation.navigate('ProjectDetail', { project: proj });
-        }}
-        onClose={() => setShowNew(false)}
-      />
+            {/* Stage filter */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.catBar}>
+              {STAGES.map(stage => {
+                const isAct = filter === stage.id;
+                return (
+                  <TouchableOpacity key={stage.id} onPress={() => setFilter(stage.id)}
+                    style={[s.catChip, isAct && { borderColor: stage.color, backgroundColor: stage.color + '16' }]}>
+                    <Ionicons name={stage.icon} size={14} color={isAct ? stage.color : bp.ink3} />
+                    <Text style={[s.catText, isAct && { color: stage.color, fontWeight: '800' }]}>{stage.label.toUpperCase()}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {/* Stats row */}
+            {filter === 'all' && !search && (
+              <View style={s.statsRow}>
+                {[
+                  { label: 'TOTAL', val: projects.length, color: bp.accent },
+                  { label: 'BUILDING', val: active, color: bp.ink },
+                  { label: 'SHIPPED', val: projects.filter(p=>p.status==='completed').length, color: bp.approved },
+                  { label: 'STARRED', val: favs.length, color: bp.stamp },
+                ].map(st => (
+                  <View key={st.label} style={[s.statCard, { borderTopColor: st.color }]}>
+                    <Text style={[s.statVal, { color: st.color }]}>{st.val}</Text>
+                    <Text style={s.statLabel}>{st.label}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Builds list */}
+            <View style={s.section}>
+              {filter !== 'all' || search ? (
+                <Text style={s.sectionLabel}>{filtered.length} BUILD{filtered.length !== 1 ? 'S' : ''} ON SHEET</Text>
+              ) : (
+                <Text style={s.sectionLabel}>ALL BUILDS ({filtered.length})</Text>
+              )}
+
+              {filtered.length === 0 ? (
+                <View style={s.empty}>
+                  <Text style={{ fontSize: 40, marginBottom: 12 }}>🧰</Text>
+                  <Text style={s.emptyTitle}>{search ? 'No builds found' : 'No builds yet'}</Text>
+                  <Text style={s.emptyText}>{search ? 'Try a different search' : 'Tap New Build to start your first project'}</Text>
+                </View>
+              ) : (
+                filtered.map(proj => (
+                  <BuildCard key={proj.id} project={proj} bp={bp}
+                    onPress={() => navigation.navigate('ProjectDetail', { project: proj })}
+                    onFavorite={toggleFavorite}
+                    onDelete={deleteProject}
+                  />
+                ))
+              )}
+            </View>
+          </ScrollView>
+        )}
+
+        <NewBuildModal
+          visible={showNew} userId={userId} bp={bp} buildColors={buildColors}
+          initialType={route.params?.presetType}
+          onCreated={(proj) => {
+            setProjects(prev => [{ ...proj, tasks: null }, ...prev]);
+            setShowNew(false);
+            navigation.navigate('ProjectDetail', { project: proj });
+          }}
+          onClose={() => setShowNew(false)}
+        />
+      </View>
     </View>
   );
 }
 
-const s = StyleSheet.create({
-  header:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12 },
-  headerSub:   { color: '#00F0FF', fontSize: 10, letterSpacing: 2, fontWeight: '800' },
-  headerTitle: { color: '#FFF', fontSize: 24, fontWeight: 'bold' },
-  launchBtn:   { backgroundColor: '#00F0FF', flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, gap: 6 },
-  launchText:  { color: '#000', fontWeight: '800', fontSize: 13 },
-  searchWrap:  { flexDirection: 'row', alignItems: 'center', backgroundColor: '#141829', marginHorizontal: 20, borderRadius: 10, paddingHorizontal: 14, borderWidth: 1, borderColor: '#1F263E', marginBottom: 16 },
-  searchInput: { flex: 1, paddingVertical: 12, fontSize: 14, color: '#FFF' },
+const makeStyles = bp => StyleSheet.create({
+  screen:      { flex: 1, backgroundColor: bp.paper },
+  header:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10 },
+  headerSub:   { color: bp.ink3, fontSize: 10, fontFamily: FONTS.mono, letterSpacing: 2, fontWeight: '800' },
+  headerTitle: { color: bp.ink, fontSize: 26, fontFamily: FONTS.display, fontWeight: '800' },
+  newBtn:      { backgroundColor: bp.stamp, flexDirection: 'row', alignItems: 'center', paddingVertical: 9, paddingHorizontal: 13, borderRadius: 4, gap: 5 },
+  newBtnText:  { color: bp.onStamp, fontWeight: '800', fontFamily: FONTS.mono, fontSize: 11.5, letterSpacing: 0.4 },
+  headerRuleWrap: { marginHorizontal: 20, marginBottom: 16 },
+  headerRuleThick: { height: 2, backgroundColor: bp.ink },
+  headerRuleThin:  { height: 1, backgroundColor: bp.border, marginTop: 3 },
+  searchWrap:  { flexDirection: 'row', alignItems: 'center', backgroundColor: bp.panel, marginHorizontal: 20, borderRadius: 4, paddingHorizontal: 14, borderWidth: 1, borderColor: bp.border, marginBottom: 18 },
+  searchInput: { flex: 1, paddingVertical: 12, fontSize: 14, color: bp.ink },
   section:     { paddingHorizontal: 20, marginBottom: 20 },
-  sectionLabel:{ color: '#626D82', fontSize: 11, fontWeight: '800', letterSpacing: 1.5, marginBottom: 12 },
-  heroCard:    { backgroundColor: '#141829', borderRadius: 16, borderWidth: 1, borderColor: '#1F263E', overflow: 'hidden' },
-  heroBanner:  { height: 100, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 1 },
-  heroBody:    { padding: 16 },
-  heroTopRow:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  heroBadge:   { borderWidth: 1, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
-  heroBadgeText:{ fontSize: 10, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' },
-  heroMeta:    { color: '#626D82', fontSize: 11 },
-  heroTitle:   { color: '#FFF', fontSize: 20, fontWeight: 'bold', marginBottom: 4 },
-  heroObj:     { color: '#8E9BB0', fontSize: 13, lineHeight: 18 },
-  enterBtn:    { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1 },
-  enterText:   { fontSize: 12, fontWeight: '700' },
+  sectionLabel:{ color: bp.ink3, fontSize: 10.5, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 1.5, marginBottom: 12 },
+  heroCard:    { backgroundColor: bp.panel, borderRadius: 4, borderWidth: 1, borderColor: bp.border, padding: 16 },
+  heroTop:     { flexDirection: 'row', gap: 12, alignItems: 'center' },
+  emojiBox:    { width: 54, height: 54, borderRadius: 5, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  heroBadgeRow:{ flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 5 },
+  heroMeta:    { color: bp.ink3, fontSize: 10, fontFamily: FONTS.mono, marginLeft: 'auto' },
+  heroTitle:   { color: bp.ink, fontSize: 19, fontFamily: FONTS.display, fontWeight: '800' },
+  heroObj:     { color: bp.ink2, fontSize: 13, lineHeight: 18, marginTop: 11 },
+  progressText: { fontSize: 10, fontFamily: FONTS.mono, color: bp.ink3, marginTop: 6, letterSpacing: 0.4 },
+  heroFooter:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 },
+  outlineBtnLg:{ flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 3, paddingHorizontal: 11, paddingVertical: 7 },
+  outlineBtnLgText: { fontSize: 11.5, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 0.4 },
   catBar:      { paddingLeft: 20, marginBottom: 16 },
-  catChip:     { flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: '#141829', paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, marginRight: 10, borderWidth: 1, borderColor: '#1F263E' },
-  catText:     { color: '#8E9BB0', fontSize: 12 },
+  catChip:     { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: bp.panel, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 3, marginRight: 9, borderWidth: 1, borderColor: bp.border },
+  catText:     { color: bp.ink3, fontSize: 10.5, fontFamily: FONTS.mono, letterSpacing: 0.4 },
   statsRow:    { flexDirection: 'row', paddingHorizontal: 20, gap: 10, marginBottom: 20 },
-  statCard:    { flex: 1, backgroundColor: '#141829', borderRadius: 10, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: '#1F263E' },
-  statVal:     { fontSize: 22, fontWeight: '800', marginBottom: 2 },
-  statLabel:   { color: '#626D82', fontSize: 9, fontWeight: '800', letterSpacing: 1 },
-  empty:       { alignItems: 'center', paddingVertical: 60 },
-  emptyTitle:  { color: '#FFF', fontSize: 18, fontWeight: 'bold', marginBottom: 6 },
-  emptyText:   { color: '#626D82', fontSize: 14 },
+  statCard:    { flex: 1, backgroundColor: bp.panel, borderRadius: 3, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: bp.border, borderTopWidth: 3 },
+  statVal:     { fontSize: 20, fontFamily: FONTS.mono, fontWeight: '800', marginBottom: 2 },
+  statLabel:   { color: bp.ink3, fontSize: 8.5, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 1 },
+  empty:       { alignItems: 'center', paddingVertical: 56 },
+  emptyTitle:  { color: bp.ink, fontSize: 17, fontWeight: 'bold', marginBottom: 6 },
+  emptyText:   { color: bp.ink3, fontSize: 13 },
 });

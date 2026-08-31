@@ -1,40 +1,63 @@
 // src/components/WordTypeGame.js
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import GameShell, { G } from './GameShell';
+import GameShell, { useGameTheme } from './GameShell';
 import GameOver from './GameOver';
+import GradeSelectCard from './GradeSelectCard';
 import useGame from '../logic/useGame';
+import useGradeLevel, { levelForTier } from '../logic/useGradeLevel';
+import { createAdaptiveTier, nextAdaptiveTier } from '../logic/difficultyAdapter';
+import { WORD_BANK, WORD_TYPE_COLORS } from '../data/gameContent/wordDetective';
 
-const QUESTIONS = [
-  { word: 'quickly',    sentence: 'The rabbit ran quickly through the garden.',   correct: 'adverb',    options: ['noun','verb','adverb','adjective'],    explanation: "'Quickly' describes HOW the rabbit ran — that makes it an adverb." },
-  { word: 'happy',      sentence: 'The happy dog wagged its tail.',                correct: 'adjective', options: ['noun','verb','adverb','adjective'],    explanation: "'Happy' describes the dog — describing words are adjectives." },
-  { word: 'playground', sentence: 'The children played at the playground.',        correct: 'noun',      options: ['noun','verb','adverb','adjective'],    explanation: "'Playground' is a place — places are nouns." },
-  { word: 'jumped',     sentence: 'The frog jumped over the log.',                 correct: 'verb',      options: ['noun','verb','adverb','adjective'],    explanation: "'Jumped' is an action — action words are verbs." },
-  { word: 'colorful',   sentence: 'She painted a colorful picture.',               correct: 'adjective', options: ['noun','verb','adverb','adjective'],    explanation: "'Colorful' describes the picture — adjective." },
-  { word: 'teacher',    sentence: 'Our teacher reads us stories every day.',       correct: 'noun',      options: ['noun','verb','adverb','adjective'],    explanation: "'Teacher' is a person — people are nouns." },
-  { word: 'slowly',     sentence: 'The turtle moved slowly across the path.',      correct: 'adverb',    options: ['noun','verb','adverb','adjective'],    explanation: "'Slowly' tells HOW the turtle moved — adverb." },
-  { word: 'giggled',    sentence: 'The baby giggled at the funny face.',           correct: 'verb',      options: ['noun','verb','adverb','adjective'],    explanation: "'Giggled' is something the baby did — verb." },
-  { word: 'ancient',    sentence: 'We visited an ancient castle.',                 correct: 'adjective', options: ['noun','verb','adverb','adjective'],    explanation: "'Ancient' describes the castle — adjective." },
-  { word: 'mountain',   sentence: 'The mountain was covered in snow.',             correct: 'noun',      options: ['noun','verb','adverb','adjective'],    explanation: "'Mountain' is a place — noun." },
-];
+const SESSION_LENGTH = 15;
 
-const OPTION_COLORS = {
-  noun: '#2bb5a0', verb: '#c9a84c', adverb: '#8b4fc4', adjective: '#e05858',
+const BLURBS = {
+  'K-2': 'Simple sentences — noun, verb, adjective, adverb.',
+  '3-5': 'Trickier sentences, plus pronouns, prepositions & conjunctions.',
+  '6-8': 'Multi-use words, linking verbs & relative pronouns.',
+  '9-12': 'Gerunds, participles, interjections & complex clause structure.',
 };
+
+function pickNext(pool, avoid) {
+  const choices = pool.filter(q => !avoid.includes(q.word + q.sentence));
+  const list = choices.length ? choices : pool;
+  return list[Math.floor(Math.random() * list.length)];
+}
 
 export default function WordTypeGame({ onGameEnd }) {
   const navigation = useNavigation();
-  const [idx, setIdx]         = useState(0);
+  const G = useGameTheme();
+  const s = makeStyles(G);
+  const { level, setLevel, tier: savedTier } = useGradeLevel('word');
+  const [started, setStarted] = useState(false);
+
+  const [adaptive, setAdaptive] = useState(() => createAdaptiveTier(savedTier));
+  const recentRef = useRef([]);
+  const [q, setQ] = useState(null);
+  const [asked, setAsked] = useState(0);
   const [selected, setSelected] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [startTime, setStartTime] = useState(Date.now());
 
-  const game = useGame({ subject: 'language_arts', difficulty: 1, onGameEnd });
-  const q = QUESTIONS[idx];
+  const game = useGame({ subject: 'language_arts', difficulty: adaptive.tier, skillLevel: level, onGameEnd });
+
+  const beginRun = () => {
+    const initial = createAdaptiveTier(savedTier);
+    setAdaptive(initial);
+    recentRef.current = [];
+    const first = pickNext(WORD_BANK[levelForTier(initial.tier)], []);
+    recentRef.current = [first.word + first.sentence];
+    setQ(first);
+    setAsked(0);
+    setSelected(null);
+    setFeedback(null);
+    setStartTime(Date.now());
+    setStarted(true);
+  };
 
   const handleAnswer = useCallback((option) => {
-    if (selected) return;
+    if (selected || !q) return;
     setSelected(option);
     const isCorrect = option === q.correct;
     const speed = (Date.now() - startTime) / 1000;
@@ -42,47 +65,61 @@ export default function WordTypeGame({ onGameEnd }) {
     game.answer(isCorrect, { speedBonus });
     setFeedback({ isCorrect, explanation: q.explanation });
 
+    const nextAdaptiveState = nextAdaptiveTier(adaptive, isCorrect);
+    setAdaptive(nextAdaptiveState);
+
     setTimeout(() => {
       setFeedback(null);
       setSelected(null);
       setStartTime(Date.now());
-      if (game.lives - (isCorrect ? 0 : 1) <= 0 || idx >= QUESTIONS.length - 1) {
+      const willEnd = game.lives - (isCorrect ? 0 : 1) <= 0 || asked + 1 >= SESSION_LENGTH;
+      if (willEnd) {
         game.endGame();
       } else {
-        setIdx(i => i + 1);
+        const pool = WORD_BANK[levelForTier(nextAdaptiveState.tier)];
+        const nextQ = pickNext(pool, recentRef.current);
+        recentRef.current = [...recentRef.current.slice(-4), nextQ.word + nextQ.sentence];
+        setQ(nextQ);
+        setAsked(a => a + 1);
       }
     }, 1800);
-  }, [selected, q, startTime, game, idx]);
+  }, [selected, q, startTime, game, asked, adaptive]);
+
+  if (!started) {
+    return (
+      <GradeSelectCard
+        title="Word Detective" emoji="📖" subjectLabel="Language Arts"
+        blurbs={BLURBS} level={level} onSelectLevel={setLevel} onStart={beginRun}
+      />
+    );
+  }
 
   if (game.done) {
     return (
       <GameOver
-        score={game.score}
-        correct={game.correct}
-        total={game.attempted}
-        streak={game.bestStreak}
-        title="Case Closed, Detective!"
-        onPlayAgain={() => { game.reset(); setIdx(0); setSelected(null); setFeedback(null); }}
+        score={game.score} correct={game.correct} total={game.attempted}
+        streak={game.bestStreak} title="Case Closed, Detective!"
+        onPlayAgain={() => { game.reset(); setStarted(false); }}
         onQuit={() => navigation.goBack()}
       />
     );
   }
 
+  if (!q) return null;
+
   return (
     <GameShell
       title="Word Detective"
       emoji="📖"
-      subject="Language Arts"
+      subject={`Language Arts · ${levelForTier(adaptive.tier)}`}
       score={game.score}
       lives={game.lives}
       streak={game.streak}
-      progress={idx / QUESTIONS.length}
+      progress={asked / SESSION_LENGTH}
     >
       <ScrollView contentContainerStyle={s.scroll}>
-        {/* Progress */}
-        <Text style={s.progress}>Question {idx + 1} of {QUESTIONS.length}</Text>
+        <Text style={s.progress}>Question {asked + 1} of {SESSION_LENGTH}</Text>
 
-        {/* Question card */}
         <View style={s.card}>
           <Text style={s.label}>What type of word is...</Text>
           <View style={s.wordBadge}>
@@ -100,7 +137,6 @@ export default function WordTypeGame({ onGameEnd }) {
           </Text>
         </View>
 
-        {/* Options */}
         <View style={s.options}>
           {q.options.map(opt => {
             let bg = G.card;
@@ -116,14 +152,13 @@ export default function WordTypeGame({ onGameEnd }) {
                 onPress={() => handleAnswer(opt)}
                 disabled={!!selected}
               >
-                <View style={[s.optionDot, { backgroundColor: OPTION_COLORS[opt] }]} />
+                <View style={[s.optionDot, { backgroundColor: WORD_TYPE_COLORS[opt] || G.muted }]} />
                 <Text style={s.optionText}>{opt}</Text>
               </TouchableOpacity>
             );
           })}
         </View>
 
-        {/* Feedback */}
         {feedback && (
           <View style={[s.feedback, { borderColor: feedback.isCorrect ? G.success : G.error }]}>
             <Text style={[s.feedbackTitle, { color: feedback.isCorrect ? G.success : G.error }]}>
@@ -137,7 +172,7 @@ export default function WordTypeGame({ onGameEnd }) {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (G) => StyleSheet.create({
   scroll:      { padding: 16, paddingBottom: 40 },
   progress:    { fontSize: 11, color: G.muted, textAlign: 'center', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 },
   card:        { backgroundColor: G.card, borderRadius: 16, padding: 20, borderWidth: 0.5, borderColor: G.border, marginBottom: 16, alignItems: 'center' },

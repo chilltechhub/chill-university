@@ -929,7 +929,9 @@ function CaptureCard({ item, onProcess, onDone, selectMode, selected, onToggleSe
 }
 
 // ─── Quick Capture Modal ──────────────────────────────────────────────────────
-function QuickCaptureModal({ visible, userId, onSaved, onClose, c, t, s, r }) {
+// Exported so the global floating action button can pop this up from
+// anywhere without navigating to the full Capture Inbox screen.
+export function QuickCaptureModal({ visible, userId, onSaved, onClose, c, t, s, r }) {
   const [draft,  setDraft]  = useState('');
   const [type,   setType]   = useState('note');
   const [tags,   setTags]   = useState('');

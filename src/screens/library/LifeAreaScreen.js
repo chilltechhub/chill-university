@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../../context/ThemeContext';
 import { supabase } from '../../api/supabaseClient';
+import RelatedLinks, { EXCLUDE_LINK_FILTER } from './RelatedLinks';
 
 // ─── Life area config ─────────────────────────────────────────────────────────
 export const LIFE_AREAS = [
@@ -233,7 +234,7 @@ export default function LifeAreaScreen() {
     setLoading(true);
     try {
       const [notesRes, areaRes] = await Promise.all([
-        supabase.from('area_notes').select('*').eq('user_id', uid).eq('area_id', area.id).order('created_at', { ascending: false }).limit(20),
+        EXCLUDE_LINK_FILTER(supabase.from('area_notes').select('*').eq('user_id', uid).eq('area_id', area.id)).order('created_at', { ascending: false }).limit(20),
         supabase.from('life_areas').select('progress').eq('user_id', uid).eq('label', area.label).maybeSingle(),
       ]);
       if (notesRes.data) setNotes(notesRes.data);
@@ -261,9 +262,20 @@ export default function LifeAreaScreen() {
   };
 
   const saveRating = async (val) => {
+    const prev = rating;
     setRating(val);
-    if (!userId) return;
+    if (!userId || val === prev) return;
     await supabase.from('life_areas').upsert({ user_id: userId, label: area.label, progress: val, last_check_date: new Date().toISOString().split('T')[0] }, { onConflict: 'user_id,label' });
+    // Log the change itself so rating history is visible in the feed below,
+    // not just the current value.
+    const stars = '★'.repeat(val) + '☆'.repeat(5 - val);
+    const entry = {
+      user_id: userId, area_id: area.id,
+      content: `[Rating] ${stars} — rated ${val}/5${prev ? ` (was ${prev}/5)` : ''}`,
+      created_at: new Date().toISOString(),
+    };
+    const { data } = await supabase.from('area_notes').insert(entry).select().single();
+    if (data) setNotes(p => [data, ...p]);
   };
 
   const saveWeeklyReflection = async () => {
@@ -329,6 +341,14 @@ export default function LifeAreaScreen() {
               onPress={() => navigateTo(sec.screen)}
               c={c} t={t} s={s} r={r} />
           ))}
+
+          {/* ── Related ── */}
+          <Text style={{ fontSize: t.xs, color: color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.sm, marginTop: s.md }}>
+            🔗 Related
+          </Text>
+          <View style={{ marginBottom: s.lg }}>
+            <RelatedLinks areaId={area.id} color={color} c={c} t={t} s={s} r={r} />
+          </View>
 
           {/* ── Weekly reflection ── */}
           <TouchableOpacity onPress={() => setWeekModal(true)}

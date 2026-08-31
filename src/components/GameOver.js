@@ -6,7 +6,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { G } from './GameShell';
+import { useGameTheme } from './GameShell';
 
 const RANKS = [
   { min: 95, label: 'Legendary', emoji: '🏆', color: '#FFD700' },
@@ -32,6 +32,8 @@ export default function GameOver({
   onPlayAgain,
   onQuit,
 }) {
+  const G = useGameTheme();
+  const s = makeStyles(G);
   const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
   const rank = getRank(accuracy);
 
@@ -72,11 +74,11 @@ export default function GameOver({
 
       {/* Stats grid */}
       <View style={s.statsGrid}>
-        <StatBox label="Accuracy" value={`${accuracy}%`} icon="stats-chart" color={accuracy >= 70 ? G.success : G.warning} />
-        <StatBox label="Correct" value={`${correct}/${total}`} icon="checkmark-circle" color={G.teal} />
-        <StatBox label="Best Streak" value={streak} icon="flame" color={G.gold} />
+        <StatBox s={s} label="Accuracy" value={`${accuracy}%`} icon="stats-chart" color={accuracy >= 70 ? G.success : G.warning} />
+        <StatBox s={s} label="Correct" value={`${correct}/${total}`} icon="checkmark-circle" color={G.teal} />
+        <StatBox s={s} label="Best Streak" value={streak} icon="flame" color={G.gold} />
         {timeSeconds !== null && (
-          <StatBox label="Time" value={`${timeSeconds}s`} icon="timer" color={G.purple} />
+          <StatBox s={s} label="Time" value={`${timeSeconds}s`} icon="timer" color={G.purple} />
         )}
       </View>
 
@@ -93,7 +95,7 @@ export default function GameOver({
   );
 }
 
-function StatBox({ label, value, icon, color }) {
+function StatBox({ s, label, value, icon, color }) {
   return (
     <View style={s.statBox}>
       <Ionicons name={icon} size={20} color={color} style={{ marginBottom: 4 }} />
@@ -103,7 +105,7 @@ function StatBox({ label, value, icon, color }) {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (G) => StyleSheet.create({
   container:   { flex: 1, backgroundColor: G.bg },
   content:     { alignItems: 'center', padding: 24, paddingBottom: 48 },
   ornament:    { fontSize: 12, color: G.gold, letterSpacing: 8, marginBottom: 16 },

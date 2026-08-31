@@ -12,6 +12,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../../context/ThemeContext';
 import { supabase } from '../../api/supabaseClient';
+import { fetchContentPool } from '../../api/remoteConfigService';
+import RelatedLinks from './RelatedLinks';
 
 // ─── Section configs — all 18 missing sub-sections ───────────────────────────
 export const SECTION_CONFIGS = {
@@ -318,6 +320,18 @@ export default function AreaSectionScreen() {
   const [saving,   setSaving]   = useState(false);
   const [activeTab,setActiveTab]= useState('log'); // log | habits | tips
 
+  // Tips — remote pool from Supabase (app_content, type='area_tip',
+  // key=screenName), seeded with this section's hardcoded tips so there's
+  // no empty flash before the fetch resolves and no regression if it fails.
+  const [tips, setTips] = useState(config?.tips || []);
+
+  useEffect(() => {
+    if (!screenName) return;
+    fetchContentPool('area_tip', screenName).then((rows) => {
+      if (rows.length) setTips(rows.map((r) => r.body));
+    });
+  }, [screenName]);
+
   if (!config) return null;
   const color = config.color;
 
@@ -405,11 +419,11 @@ export default function AreaSectionScreen() {
           </View>
 
           {/* Tabs */}
-          <View style={{ flexDirection: 'row', gap: s.sm }}>
-            {['log','habits','tips'].map(tab => (
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            {['log','habits','related','tips'].map(tab => (
               <TouchableOpacity key={tab} onPress={() => setActiveTab(tab)}
                 style={{ flex: 1, paddingVertical: 8, borderRadius: r.md, backgroundColor: activeTab === tab ? color : c.bg2, alignItems: 'center' }}>
-                <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: activeTab === tab ? '#fff' : c.text3, textTransform: 'capitalize' }}>{tab === 'log' ? '📝 Log' : tab === 'habits' ? '✅ Habits' : '💡 Tips'}</Text>
+                <Text style={{ fontSize: 10, fontWeight: t.bold, color: activeTab === tab ? '#fff' : c.text3, textTransform: 'capitalize' }}>{tab === 'log' ? '📝 Log' : tab === 'habits' ? '✅ Habits' : tab === 'related' ? '🔗 Related' : '💡 Tips'}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -549,13 +563,23 @@ export default function AreaSectionScreen() {
           </>
         )}
 
+        {/* ── RELATED TAB ── */}
+        {activeTab === 'related' && (
+          <>
+            <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.md }}>
+              🔗 Linked notes, projects & resources
+            </Text>
+            <RelatedLinks areaId={config.areaId} color={color} c={c} t={t} s={s} r={r} />
+          </>
+        )}
+
         {/* ── TIPS TAB ── */}
         {activeTab === 'tips' && (
           <>
             <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.md }}>
               💡 Tips for {config.title}
             </Text>
-            {(config.tips || []).map((tip, i) => (
+            {tips.map((tip, i) => (
               <View key={i} style={{ flexDirection: 'row', gap: s.md, backgroundColor: c.bg1, borderRadius: r.md, padding: s.lg, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: color }}>
                 <Text style={{ fontSize: t.md, color }}>{i + 1}</Text>
                 <Text style={{ flex: 1, fontSize: t.sm, color: c.text2, lineHeight: 22 }}>{tip}</Text>

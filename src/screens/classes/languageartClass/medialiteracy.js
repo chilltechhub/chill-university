@@ -1,23 +1,13 @@
-// src/screens/MediaDigitalLiteracy.js
+// src/screens/classes/languageartClass/medialiteracy.js
+import React from 'react';
+import ClassTopicScreen from '../../../components/ClassTopicScreen';
 
-import React, { useState } from 'react';
-import {
-  ScrollView,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Linking,
-} from 'react-native';
-
-export default function MediaDigitalLiteracy() {
-  const [openSections, setOpenSections] = useState({});
-
-  const topics = [
+const topics = [
     // Analyzing Media Messages (Deep Blue)
     {
       key: 'identifyingPurposeBias',
       title: 'Identifying Purpose & Bias',
+      grade: '6-8',
       color: '#1565C0',
       description:
         'Recognizing why a media message was created and detecting any subjective slant or agenda.',
@@ -33,6 +23,7 @@ export default function MediaDigitalLiteracy() {
     {
       key: 'evaluatingSources',
       title: 'Evaluating Sources',
+      grade: '6-8',
       color: '#1565C0',
       description:
         'Assessing credibility, accuracy, and trustworthiness of media outlets and authors.',
@@ -50,6 +41,7 @@ export default function MediaDigitalLiteracy() {
     {
       key: 'integratingMedia',
       title: 'Integrating Text, Images, Audio & Video',
+      grade: '9-12',
       color: '#00897B',
       description:
         'Combining different media elements to produce engaging multimedia content.',
@@ -66,6 +58,7 @@ export default function MediaDigitalLiteracy() {
     {
       key: 'digitalStorytelling',
       title: 'Digital Storytelling',
+      grade: '6-8',
       color: '#00897B',
       description:
         'Using digital tools (images, video, audio, text) to craft and share narratives online.',
@@ -80,135 +73,6 @@ export default function MediaDigitalLiteracy() {
     },
   ];
 
-  const toggleHelp = (key) => {
-    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.mainTitle}>Media & Digital Literacy</Text>
-
-      {topics.map((topic) => (
-        <View key={topic.key} style={styles.card}>
-          {/* Colored Header */}
-          <View style={[styles.headerBar, { backgroundColor: topic.color }]}>
-            <Text style={styles.headerText}>{topic.title}</Text>
-          </View>
-
-          {/* Body */}
-          <View style={styles.sectionBody}>
-            <Text style={styles.subtitle}>What is it?</Text>
-            <Text style={styles.description}>{topic.description}</Text>
-
-            {/* Show “Need help?” only if there are videos */}
-            {topic.help.videos.length > 0 && (
-              <TouchableOpacity
-                style={styles.helpToggle}
-                onPress={() => toggleHelp(topic.key)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.helpTitle}>
-                  Need help? {openSections[topic.key] ? '▲' : '▼'}
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {/* Collapsible help content */}
-            {openSections[topic.key] && (
-              <View style={styles.helpContent}>
-                <Text style={styles.helpLabel}>Videos</Text>
-                {topic.help.videos.map((video, idx) => (
-                  <Text
-                    key={idx}
-                    style={styles.linkText}
-                    onPress={() => Linking.openURL(video.url)}
-                  >
-                    • {video.title}
-                  </Text>
-                ))}
-              </View>
-            )}
-          </View>
-        </View>
-      ))}
-    </ScrollView>
-  );
+export default function MediaDigitalLiteracy() {
+  return <ClassTopicScreen title={"Media & Digital Literacy"} classKey="MediaDigitalLiteracy" fallbackTopics={topics} />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    backgroundColor: '#F9F9F9',
-    paddingBottom: 40,
-  },
-  mainTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#333',
-  },
-  card: {
-    marginBottom: 24,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  headerBar: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  headerText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  sectionBody: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  subtitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-    color: '#555',
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 12,
-    color: '#444',
-  },
-  helpToggle: {
-    marginTop: 8,
-  },
-  helpTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  helpContent: {
-    marginTop: 8,
-    padding: 12,
-    backgroundColor: '#EFEFEF',
-    borderRadius: 8,
-  },
-  helpLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 6,
-    color: '#333',
-  },
-  linkText: {
-    fontSize: 14,
-    color: '#1e88e5',
-    marginLeft: 8,
-    marginTop: 4,
-    textDecorationLine: 'underline',
-  },
-});

@@ -8,6 +8,7 @@ import LibraryScreen   from './LibraryScreen';
 import OnboardingScreen from '../OnboardingScreen';
 import LifeAreaScreen  from './LifeAreaScreen';
 import CaptureInbox    from '../CaptureInbox';
+import ImportScreen    from '../ImportScreen';
 
 // Classes
 import ClassesStack from '../ClassesStack';
@@ -67,6 +68,9 @@ export default function LibraryNavigator() {
   return (
     <Stack.Navigator
       screenOptions={{
+        // Each Library screen owns its content header. This avoids a second,
+        // oversized navigation bar above screens such as Projects, Notes, and Research.
+        headerShown: false,
         gestureEnabled: true,
         gestureDirection: 'horizontal',
         headerStyle,
@@ -92,10 +96,11 @@ export default function LibraryNavigator() {
       <Stack.Screen name="PlannerScreen" component={PlannerScreen} options={{ headerShown: false }} />
       {/* Inbox */}
       <Stack.Screen name="CaptureInbox" component={CaptureInbox} options={{ title: 'Capture Inbox' }} />
+      <Stack.Screen name="ImportScreen" component={ImportScreen} options={{ headerShown: false }} />
 
       {/* Academic & Career */}
-      <Stack.Screen name="ProjectsScreen"          component={ProjectsScreen}          options={{ title: 'Your Projects' }} />
-      <Stack.Screen name="ProjectDetail" component={ProjectDetailScreen} />
+      <Stack.Screen name="ProjectsScreen"          component={ProjectsScreen}          options={{ title: 'The Workshop' }} />
+      <Stack.Screen name="ProjectDetail" component={ProjectDetailScreen} options={{ title: 'Build' }} />
       <Stack.Screen name="LabsScreen"              component={LabsScreen}              options={{ title: 'Labs' }} /> 
       <Stack.Screen name="PortfolioScreen"         component={PortfolioScreen}         options={{ title: 'Portfolio' }} />
       <Stack.Screen name="ResearchScreen"          component={ResearchScreen}          options={{ title: 'Research' }} />

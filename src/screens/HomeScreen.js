@@ -3,28 +3,40 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, RefreshControl, Modal, KeyboardAvoidingView,
-  Platform, Animated, FlatList, Alert,
+  Platform, Animated, Easing, FlatList, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { supabase } from '../api/supabaseClient';
+import { fetchContentPool } from '../api/remoteConfigService';
+import { syncReminders, computeReminderState } from '../logic/notificationScheduler';
+import TourSpot from '../components/TourSpot';
 import CalendarModal from '../components/CalendarModal';
+import LevelRing from '../components/LevelRing';
+import PlayerMatchBackground from '../components/PlayerMatchBackground';
+import useCharacterLoadout from '../logic/useCharacterLoadout';
+import useSetting, { SETTING_KEYS } from '../logic/useSetting';
+import { RANK_LABELS, FONTS } from '../theme';
+import { GAMES } from './GamesScreen';
 
-// ─── Life areas config (matches planner + onboarding) ────────────────────────
-const LIFE_AREAS_CONFIG = [
-  { key: 'physical',     emoji: '💪', label: 'Physical',     color: '#e05858' },
-  { key: 'mental',       emoji: '🧠', label: 'Mental',       color: '#8b4fc4' },
-  { key: 'social',       emoji: '🤝', label: 'Social',       color: '#2bb5a0' },
-  { key: 'financial',    emoji: '💰', label: 'Financial',    color: '#3ac860' },
-  { key: 'professional', emoji: '🚀', label: 'Professional', color: '#c9a84c' },
-  { key: 'spiritual',    emoji: '✨', label: 'Spiritual',    color: '#6b9fe8' },
-  { key: 'creative',     emoji: '🎨', label: 'Creative',     color: '#e0a830' },
-  { key: 'digital',      emoji: '💻', label: 'Digital',      color: '#5a9ae0' },
+// The four "study" destinations the STUDY button picks randomly among (tap),
+// or lets you choose explicitly (hold). Screen names match the Stack.Screen
+// names registered in LibraryNav.js.
+const STUDY_DESTINATIONS = [
+  { key: 'ProjectsScreen',   label: 'Workshop',    icon: 'hammer-outline' },
+  { key: 'IdeaGardenScreen', label: 'Idea Garden',  icon: 'leaf-outline' },
+  { key: 'ResearchScreen',   label: 'Research',     icon: 'flask-outline' },
+  { key: 'ClassesStack',     label: 'Classes',      icon: 'ribbon-outline' },
 ];
 
 // ─── Quotes pool ──────────────────────────────────────────────────────────────
+// Offline/fallback pool only — the live pool now comes from Supabase
+// (app_content, type='quote'; see remoteConfigService.fetchContentPool).
+// Add/edit/remove quotes there and every user gets them with no app update.
+// This array is what renders before that fetch resolves, and what's used
+// if it ever fails or the table is emptied out.
 const QUOTES = [
   { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
   { text: "It does not matter how slowly you go as long as you do not stop.", author: "Confucius" },
@@ -60,155 +72,67 @@ function getTodaysQuote(pool) {
   return pool[Math.floor(Date.now() / 86400000) % pool.length];
 }
 
-// ─── Space traveler character ─────────────────────────────────────────────────
-const SUIT_COLORS = {
+// ─── Commander card — base HQ identity, crest color stays user-customizable ──
+const CREST_COLORS = {
   teal:   '#2bb5a0', gold:   '#c9a84c', purple: '#8b4fc4',
   red:    '#e05858', blue:   '#3a7bd5', green:  '#3ac860',
   orange: '#e07a30', silver: '#9a9aa8',
 };
-const HELMET_EMOJIS = { classic: '🪖', visor: '⛑️', bubble: '🌐', stealth: '🕶️' };
-const BADGE_EMOJIS  = { explorer: '🧭', builder: '🏗️', scholar: '📚', guardian: '🛡️', pioneer: '🌟', creator: '🎨' };
+const BADGE_EMOJIS = { explorer: '🧭', builder: '🏗️', scholar: '📚', guardian: '🛡️', pioneer: '🌟', creator: '🎨' };
 
-const TRAVELER_MOODS = {
-  happy:       { msg: "Ready for today's mission!" },
-  focused:     { msg: 'Your focus is locked in.' },
-  celebrating: { msg: "You're on a streak! 🔥" },
-  resting:     { msg: 'Rest is part of the mission.' },
-};
-
-function TravelerCharacter({ mood = 'happy', profile, c, onPress }) {
-  const suitColor   = SUIT_COLORS[profile?.suit_color]   || '#2bb5a0';
-  const helmetEmoji = HELMET_EMOJIS[profile?.helmet_style] || '🪖';
-  const badgeEmoji  = BADGE_EMOJIS[profile?.badge]         || '🧭';
-  const name        = profile?.traveler_name || profile?.display_name || 'Traveler';
-  const moodData    = TRAVELER_MOODS[mood] || TRAVELER_MOODS.happy;
+function CommanderCard({ profile, rank, progress, c, t, onPress }) {
+  const crestColor = CREST_COLORS[profile?.suit_color] || c.gold;
+  const badgeEmoji = BADGE_EMOJIS[profile?.badge] || null;
+  const name       = profile?.traveler_name || profile?.display_name || 'Commander';
+  const rankInfo   = RANK_LABELS[rank] || RANK_LABELS[20];
+  const level      = rank ? 21 - rank : 1;
 
   return (
-    <TouchableOpacity style={trav.wrap} onPress={onPress} activeOpacity={0.85}>
-      <View style={[trav.suit, { backgroundColor: suitColor + '22', borderColor: suitColor + '66' }]}>
-        <Text style={trav.helmet}>{helmetEmoji}</Text>
-        <View style={[trav.suitBody, { backgroundColor: suitColor + '44' }]}>
-          <Text style={trav.badge}>{badgeEmoji}</Text>
+    <TouchableOpacity style={cmd.wrap} onPress={onPress} activeOpacity={0.85}>
+      <LevelRing pct={progress || 0} size={60} strokeWidth={4} color={crestColor} trackColor={c.bg2}>
+        <View style={[cmd.crest, { backgroundColor: crestColor + '22', borderColor: crestColor }]}>
+          <Text style={cmd.crestEmoji}>{rankInfo.emoji}</Text>
+          {badgeEmoji && (
+            <View style={[cmd.badgeDot, { backgroundColor: c.bg1, borderColor: crestColor }]}>
+              <Text style={{ fontSize: 9 }}>{badgeEmoji}</Text>
+            </View>
+          )}
         </View>
+      </LevelRing>
+      <View style={cmd.info}>
+        <Text style={[cmd.name, { color: c.text1 }]} numberOfLines={1}>{name}</Text>
+        <Text style={[cmd.rank, { color: crestColor }]}>LV {level} · {rankInfo.label}</Text>
       </View>
-      <View style={[trav.nameTag, { borderColor: suitColor }]}>
-        <Text style={[trav.name, { color: suitColor }]}>{name}</Text>
-      </View>
-      <Text style={[trav.msg, { color: c.text3 }]}>{moodData.msg}</Text>
-      <Text style={{ fontSize: 9, color: c.text4, marginTop: 2 }}>tap to view profile</Text>
+      <Ionicons name="chevron-forward" size={18} color={c.text4} />
     </TouchableOpacity>
   );
 }
-const trav = StyleSheet.create({
-  wrap:     { alignItems: 'center', paddingVertical: 8 },
-  suit:     { width: 100, height: 100, borderRadius: 50, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  helmet:   { fontSize: 38, marginBottom: -4 },
-  suitBody: { width: 44, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  badge:    { fontSize: 16 },
-  nameTag:  { borderWidth: 0.5, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 4, marginBottom: 4 },
-  name:     { fontSize: 13, fontWeight: '700' },
-  msg:      { fontSize: 11, fontStyle: 'italic' },
+const cmd = StyleSheet.create({
+  wrap:      { flexDirection: 'row', alignItems: 'center', paddingVertical: 4 },
+  crest:     { width: 48, height: 48, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  crestEmoji:{ fontSize: 20 },
+  badgeDot:  { position: 'absolute', bottom: -4, right: -4, width: 18, height: 18, borderRadius: 9, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  info:      { flex: 1, marginLeft: 14, marginRight: 8 },
+  name:      { fontSize: 17, fontFamily: FONTS.display, fontWeight: '800' },
+  rank:      { fontSize: 12, fontFamily: FONTS.mono, fontWeight: '700', letterSpacing: 0.3, marginTop: 2 },
 });
 
 // ─── Section header ───────────────────────────────────────────────────────────
 function SectionHead({ title, action, onAction, c, t }) {
   return (
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-      <Text style={{ fontSize: t.xs, fontWeight: t.semibold, color: c.gold, textTransform: 'uppercase', letterSpacing: 1.2 }}>
+      <Text style={{ fontSize: t.sm, fontFamily: FONTS.displaySemibold, fontWeight: t.bold, color: c.gold, textTransform: 'uppercase', letterSpacing: 1.2 }}>
         {title}
       </Text>
       {action && (
         <TouchableOpacity onPress={onAction}>
-          <Text style={{ fontSize: t.xs, color: c.teal }}>{action}</Text>
+          <Text style={{ fontSize: t.xs, fontFamily: FONTS.mono, color: c.teal }}>{action}</Text>
         </TouchableOpacity>
       )}
     </View>
   );
 }
 
-// ─── Life area mini circles ───────────────────────────────────────────────────
-function LifeAreaCircles({ areas, activeAreas, agendaByArea, onPress, c, t, s }) {
-  // Only show active areas from onboarding, or all if none set
-  const toShow = activeAreas?.length > 0
-    ? LIFE_AREAS_CONFIG.filter(a => activeAreas.includes(a.key))
-    : LIFE_AREAS_CONFIG;
-
-  return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm, justifyContent: 'center' }}>
-      {toShow.map(area => {
-        const remaining = agendaByArea[area.key] || 0;
-        const hasItems  = remaining > 0;
-        return (
-          <TouchableOpacity key={area.key} onPress={() => onPress(area)}
-            style={{ alignItems: 'center', gap: 4, width: 56 }}>
-            <View style={{
-              width: 48, height: 48, borderRadius: 24,
-              backgroundColor: area.color + (hasItems ? '33' : '15'),
-              borderWidth: hasItems ? 2 : 1,
-              borderColor: area.color + (hasItems ? 'cc' : '44'),
-              alignItems: 'center', justifyContent: 'center',
-            }}>
-              <Text style={{ fontSize: 20 }}>{area.emoji}</Text>
-              {hasItems && (
-                <View style={{ position: 'absolute', top: -3, right: -3, backgroundColor: area.color, borderRadius: 8, minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 }}>
-                  <Text style={{ fontSize: 9, color: '#fff', fontWeight: '800' }}>{remaining}</Text>
-                </View>
-              )}
-            </View>
-            <Text style={{ fontSize: 9, color: hasItems ? area.color : c.text4, fontWeight: hasItems ? '700' : '400', textAlign: 'center' }} numberOfLines={1}>
-              {area.label}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-}
-
-// ─── Area detail modal ────────────────────────────────────────────────────────
-function AreaDetailModal({ area, items, visible, onClose, c, t, s, r }) {
-  if (!area) return null;
-  return (
-    <Modal visible={visible} transparent animationType="slide">
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
-        <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 48, maxHeight: '70%' }}>
-          <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, marginBottom: s.lg }}>
-            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: area.color + '33', alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontSize: 22 }}>{area.emoji}</Text>
-            </View>
-            <View>
-              <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1 }}>{area.label}</Text>
-              <Text style={{ fontSize: t.xs, color: area.color }}>{items.length} remaining today</Text>
-            </View>
-          </View>
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {items.length === 0 ? (
-              <View style={{ alignItems: 'center', paddingVertical: s.xl }}>
-                <Text style={{ fontSize: 36, marginBottom: s.sm }}>✅</Text>
-                <Text style={{ fontSize: t.md, color: c.text3 }}>All done for today!</Text>
-              </View>
-            ) : (
-              items.map((item, i) => (
-                <View key={item.id || i} style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, marginBottom: s.sm, borderLeftWidth: 3, borderLeftColor: area.color }}>
-                  <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 1.5, borderColor: area.color }} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: t.sm, color: c.text1 }}>{item.title}</Text>
-                    {item.start_time && <Text style={{ fontSize: t.xs, color: area.color, marginTop: 2 }}>{item.start_time}</Text>}
-                  </View>
-                </View>
-              ))
-            )}
-          </ScrollView>
-          <TouchableOpacity onPress={onClose}
-            style={{ backgroundColor: area.color, borderRadius: r.md, padding: s.md, alignItems: 'center', marginTop: s.md }}>
-            <Text style={{ color: '#fff', fontWeight: t.bold }}>Close</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
-}
 
 // ─── Focus modal with presets ─────────────────────────────────────────────────
 function FocusModal({ visible, draft, setDraft, onSave, onClose, presets, onAddPreset, onDeletePreset, c, t, s, r }) {
@@ -526,72 +450,75 @@ function DeskItemCard({ item, visible, onClose, onNavigate, c, t, s, r }) {
 }
 
 // ─── 3. DESK CAROUSEL ────────────────────────────────────────────────────────
+// Continuously drifting ticker — the row is rendered twice back-to-back and
+// scrolled left forever; once a full copy has scrolled past, the second
+// copy is sitting exactly where the first started, so the loop is seamless.
 function DeskCarousel({ items, onItemPress, onAdd, c, t, s, r }) {
-  const [index, setIndex] = React.useState(0);
-  const scrollRef = React.useRef(null);
-  const CARD_W = 260;
+  const translateX = useRef(new Animated.Value(0)).current;
+  const [setWidth, setSetWidth] = useState(0);
+
+  useEffect(() => {
+    if (!setWidth) return;
+    translateX.setValue(0);
+    const loop = Animated.loop(
+      Animated.timing(translateX, {
+        toValue: -setWidth,
+        duration: setWidth * 28, // px/ms — slow, readable drift
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [setWidth, items.length]);
 
   if (items.length === 0) {
     return (
       <TouchableOpacity
-        style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.lg, borderWidth: 0.5, borderColor: c.border, borderStyle: 'dashed' }}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 0.5, borderColor: c.border, borderStyle: 'dashed' }}
         onPress={onAdd}>
-        <Ionicons name="add-circle-outline" size={20} color={c.text4} />
+        <Ionicons name="add-circle-outline" size={18} color={c.text4} />
         <Text style={{ flex: 1, fontSize: t.sm, color: c.text4 }}>Add priorities from your projects, notes and ideas</Text>
       </TouchableOpacity>
     );
   }
 
-  return (
-    <View>
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        pagingEnabled={false}
-        showsHorizontalScrollIndicator={false}
-        decelerationRate="fast"
-        snapToInterval={CARD_W + s.sm}
-        snapToAlignment="start"
-        contentContainerStyle={{ gap: s.sm, paddingRight: s.lg }}
-        style={{ marginHorizontal: -s.lg, paddingHorizontal: s.lg }}
-        onMomentumScrollEnd={e => {
-          const idx = Math.round(e.nativeEvent.contentOffset.x / (CARD_W + s.sm));
-          setIndex(Math.min(idx, items.length - 1));
-        }}
-      >
-        {items.map((item, i) => {
-          const color = item.color || c.teal;
-          return (
-            <TouchableOpacity key={item.id} onPress={() => onItemPress(item)}
-              activeOpacity={0.85}
-              style={{ width: CARD_W, backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: color }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: s.sm }}>
-                <Text style={{ fontSize: 20 }}>
-                  {item.source === 'project' ? (item.emoji || '🚀') : item.source === 'task' ? '✅' : '📝'}
-                </Text>
-                <View style={{ backgroundColor: color + '22', borderRadius: r.full, paddingHorizontal: 7, paddingVertical: 2 }}>
-                  <Text style={{ fontSize: 9, color, fontWeight: t.bold, textTransform: 'uppercase' }}>{item.source}</Text>
-                </View>
-              </View>
-              <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1, lineHeight: 20 }} numberOfLines={2}>
-                {item.title}
-              </Text>
-              <Text style={{ fontSize: 10, color: c.text4, marginTop: s.sm }}>
-                Tap to preview →
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+  const chip = (item, keyPrefix) => {
+    const color = item.color || c.teal;
+    return (
+      <TouchableOpacity key={`${keyPrefix}-${item.id}`} onPress={() => onItemPress(item)} activeOpacity={0.8}
+        style={{
+          flexDirection: 'row', alignItems: 'center', gap: 7,
+          backgroundColor: c.bg1, borderRadius: r.md,
+          paddingVertical: 7, paddingHorizontal: 12, marginRight: s.sm,
+          borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 2, borderLeftColor: color,
+        }}>
+        <Text style={{ fontSize: 9, fontFamily: FONTS.mono, fontWeight: '800', color, letterSpacing: 0.5 }}>
+          {(item.source || '').toUpperCase()}
+        </Text>
+        <Text style={{ fontSize: 12, fontWeight: '600', color: c.text1, maxWidth: 180 }} numberOfLines={1}>
+          {item.title}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
 
-      {/* Dot indicators */}
-      {items.length > 1 && (
-        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 5, marginTop: s.sm }}>
-          {items.map((_, i) => (
-            <View key={i} style={{ width: i === index ? 16 : 5, height: 5, borderRadius: 3, backgroundColor: i === index ? c.teal : c.bg2 }} />
-          ))}
+  return (
+    <View style={{ overflow: 'hidden', marginHorizontal: -s.lg, paddingHorizontal: s.lg }}>
+      <Animated.View style={{ flexDirection: 'row', transform: [{ translateX }] }}>
+        <View
+          style={{ flexDirection: 'row' }}
+          onLayout={e => {
+            const w = Math.round(e.nativeEvent.layout.width);
+            if (w > 0 && w !== setWidth) setSetWidth(w);
+          }}
+        >
+          {items.map(item => chip(item, 'a'))}
         </View>
-      )}
+        <View style={{ flexDirection: 'row' }}>
+          {items.map(item => chip(item, 'b'))}
+        </View>
+      </Animated.View>
     </View>
   );
 }
@@ -600,7 +527,10 @@ function DeskCarousel({ items, onItemPress, onAdd, c, t, s, r }) {
 export default function HomeScreen() {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s, radius: r, shadows: sh } = useTheme();
-  const { profile, streakDays } = useUserProgress();
+  const { profile, streakDays, rank, progress, level, points, dailyMissions } = useUserProgress();
+  const { background: playerBackground } = useCharacterLoadout({ level, points, rank, streakDays });
+  // Set from Settings → Appearance, not on this screen itself.
+  const [bgMode] = useSetting(SETTING_KEYS.HOME_BACKGROUND, 'plain');
 
   const [refreshing,      setRefreshing]     = useState(false);
   const [userId,          setUserId]         = useState(null);
@@ -611,6 +541,9 @@ export default function HomeScreen() {
   const [editFocus,      setEditFocus]      = useState(false);
   const [focusPresets,   setFocusPresets]   = useState([...DEFAULT_PRESETS]);
 
+  // Quotes — remote pool from Supabase (app_content), null until loaded
+  const [quotePool,      setQuotePool]      = useState(null);
+
   // Affirmations — pool that rotates
   const [affirmations,   setAffirmations]   = useState([]);
   const [editAffirm,     setEditAffirm]     = useState(false);
@@ -620,19 +553,15 @@ export default function HomeScreen() {
   const [todoInput,      setTodoInput]      = useState('');
   const [showTodoInput,  setShowTodoInput]  = useState(false);
 
-  // Projects + ideas
-  const [projects,       setProjects]       = useState([]);
+  // Ideas
   const [ideas,          setIdeas]          = useState([]);
 
-  // Life area circles
-  const [activeAreas,    setActiveAreas]    = useState([]);
-  const [agendaByArea,   setAgendaByArea]   = useState({});
-  const [areaItems,      setAreaItems]      = useState({});
-  const [selectedArea,   setSelectedArea]   = useState(null);
-  const [showAreaModal,  setShowAreaModal]  = useState(false);
-
-  // Calendar
   const [showCalendar,   setShowCalendar]   = useState(false);
+
+  // STUDY / PLAY shortcuts — tap goes somewhere random, hold picks explicitly
+  const [showStudyMenu, setShowStudyMenu] = useState(false);
+  const [showPlayMenu,  setShowPlayMenu]  = useState(false);
+
   const [selectedDeskItem, setSelectedDeskItem] = useState(null);
   const [showDeskCard,     setShowDeskCard]     = useState(false);
   const [selectedIdea,     setSelectedIdea]     = useState(null);
@@ -646,15 +575,34 @@ export default function HomeScreen() {
     ? affirmations[Math.floor(Date.now() / 86400000) % affirmations.length]
     : null;
 
-  const todaysQuote = getTodaysQuote(null);
-
-  const wizardMood = (streakDays || 0) >= 3 ? 'celebrating' : todayFocus ? 'focused' : 'happy';
+  const todaysQuote = getTodaysQuote(quotePool);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) { setUserId(user.id); loadAll(user.id); }
     });
   }, []);
+
+  // Remote quotes pool — falls back to the local QUOTES array (via
+  // getTodaysQuote) until this resolves, or forever if it fails/is empty.
+  useEffect(() => {
+    fetchContentPool('quote').then((rows) => {
+      if (rows.length) {
+        setQuotePool(rows.map((r) => ({ text: r.body, author: r.meta?.author || '' })));
+      }
+    });
+  }, []);
+
+  // Daily-task / streak reminders — re-synced whenever today's mission or
+  // streak state changes, so a reminder already scheduled for "tasks
+  // incomplete" gets cancelled the moment the last one is finished. Opt-in
+  // via Settings > Daily Reminders (SETTING_KEYS.DAILY_REMINDERS_ENABLED).
+  const [remindersEnabled] = useSetting(SETTING_KEYS.DAILY_REMINDERS_ENABLED, false);
+  useEffect(() => {
+    if (!remindersEnabled || !profile) return;
+    const { tasksAllComplete, checkedInToday } = computeReminderState({ dailyMissions, profile });
+    syncReminders({ enabled: true, tasksAllComplete, checkedInToday });
+  }, [remindersEnabled, dailyMissions, profile]);
 
   useFocusEffect(useCallback(() => {
     if (userId) loadAll(userId);
@@ -664,18 +612,14 @@ export default function HomeScreen() {
     try {
       const [
         focusRes, tasksRes, projRes, capturesRes,
-        projActiveRes, ideasRes, settingsRes, profileRes,
-        agendaRes,
+        ideasRes, settingsRes,
       ] = await Promise.all([
         supabase.from('daily_focus').select('focus_text').eq('user_id', uid).eq('date', todayStr).maybeSingle(),
         supabase.from('tasks').select('id, title').eq('user_id', uid).eq('completed', false).order('priority').limit(3),
-        supabase.from('projects').select('id, title, emoji, color').eq('user_id', uid).eq('status', 'active').limit(3),
-        supabase.from('captures').select('id, title, type').eq('user_id', uid).eq('status', 'inbox').limit(2),
-        supabase.from('projects').select('id, title, emoji, color, status').eq('user_id', uid).eq('status', 'active').order('sort_order').limit(4),
-        supabase.from('garden_cores').select('id, title, plant_type, color, color_light, is_project, project_progress, garden_petals(id, title, petal_type, completed)').eq('user_id', uid).order('created_at', { ascending: false }).limit(5),
+        supabase.from('projects').select('id, title, emoji, color').eq('user_id', uid).eq('status', 'active').is('deleted_at', null).limit(3),
+        supabase.from('captures').select('id, title, type').eq('user_id', uid).eq('status', 'inbox').is('deleted_at', null).limit(2),
+        supabase.from('garden_cores').select('id, title, plant_type, color, color_light, is_project, project_progress, garden_petals(id, title, petal_type, completed)').eq('user_id', uid).is('deleted_at', null).order('created_at', { ascending: false }).limit(5),
         supabase.from('user_settings').select('affirmation, focus_presets').eq('user_id', uid).maybeSingle(),
-        supabase.from('profiles').select('active_life_areas, suit_color, helmet_style, badge, traveler_name, display_name').eq('id', uid).maybeSingle(),
-        supabase.from('agenda_instances').select('id, title, area, start_time, completed').eq('user_id', uid).eq('date', todayStr).eq('completed', false).eq('skipped', false),
       ]);
 
       // Focus
@@ -689,9 +633,8 @@ export default function HomeScreen() {
       ].slice(0, 6);
       setTodos(merged);
 
-      // Projects + ideas
-      if (projActiveRes.data) setProjects(projActiveRes.data);
-      if (ideasRes.data)      setIdeas(ideasRes.data);
+      // Ideas
+      if (ideasRes.data) setIdeas(ideasRes.data);
 
       // Affirmations — stored as JSON array in user_settings
       if (settingsRes.data) {
@@ -711,23 +654,6 @@ export default function HomeScreen() {
           } catch {}
         }
       }
-
-      // Active life areas from profile (set during onboarding)
-      if (profileRes.data?.active_life_areas?.length > 0) {
-        setActiveAreas(profileRes.data.active_life_areas);
-      }
-
-      // Agenda items grouped by area for circles
-      const agenda = agendaRes.data || [];
-      const byArea = {};
-      const byAreaItems = {};
-      agenda.forEach(inst => {
-        byArea[inst.area] = (byArea[inst.area] || 0) + 1;
-        if (!byAreaItems[inst.area]) byAreaItems[inst.area] = [];
-        byAreaItems[inst.area].push(inst);
-      });
-      setAgendaByArea(byArea);
-      setAreaItems(byAreaItems);
 
     } catch (e) { console.warn('HomeScreen loadAll', e); }
   };
@@ -783,16 +709,29 @@ export default function HomeScreen() {
       await supabase.from('tasks').update({ completed: true, completed_at: new Date().toISOString() }).eq('id', rawId);
   };
 
-  // Area circle tap
-  const handleAreaPress = (area) => {
-    setSelectedArea(area);
-    setShowAreaModal(true);
+  const dateStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+  const goStudy = () => {
+    const pick = STUDY_DESTINATIONS[Math.floor(Math.random() * STUDY_DESTINATIONS.length)];
+    navigation.navigate('Library', { screen: pick.key });
+  };
+  const pickStudy = (key) => {
+    setShowStudyMenu(false);
+    navigation.navigate('Library', { screen: key });
   };
 
-  const dateStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const goPlay = () => {
+    const pick = GAMES[Math.floor(Math.random() * GAMES.length)];
+    navigation.navigate('Play', { gameId: pick.key });
+  };
+  const pickGame = (gameId) => {
+    setShowPlayMenu(false);
+    navigation.navigate('Play', { gameId });
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg0 }}>
+      {bgMode === 'player' && <PlayerMatchBackground background={playerBackground} />}
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.teal} />}
@@ -808,31 +747,33 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* ── Traveler + buttons ── */}
-        <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, marginHorizontal: s.lg, marginBottom: s.md, borderWidth: 0.5, borderColor: c.border }}>
-          <TravelerCharacter
-            mood={wizardMood}
+        {/* ── HQ card ── */}
+        <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, marginHorizontal: s.lg, marginBottom: s.md, borderWidth: 0.5, borderColor: c.border, borderTopWidth: 2, borderTopColor: c.gold }}>
+          <CommanderCard
             profile={profile}
-            c={c}
+            rank={rank}
+            progress={progress}
+            c={c} t={t}
             onPress={() => navigation.navigate('Profile')}
           />
           <View style={{ flexDirection: 'row', gap: 10, marginTop: s.md }}>
             <TouchableOpacity
-              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 0.5, borderColor: c.border, backgroundColor: c.bg2, borderRadius: r.xl, paddingVertical: s.md }}
-              onPress={() => navigation.navigate('Library')}>
-              <Text style={{ fontSize: 14 }}>📚</Text>
-              <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.teal, letterSpacing: 1 }}>STUDY</Text>
+              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: c.teal, backgroundColor: c.tealLight, borderRadius: r.md, paddingVertical: s.md }}
+              onPress={goStudy} onLongPress={() => setShowStudyMenu(true)} delayLongPress={350}>
+              <Ionicons name="book-outline" size={15} color={c.teal} />
+              <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.teal, letterSpacing: 1 }}>STUDY</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: c.gold, borderRadius: r.xl, paddingVertical: s.md }}
-              onPress={() => navigation.navigate('Games')}>
-              <Text style={{ fontSize: 14 }}>✦</Text>
-              <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: '#fff', letterSpacing: 1 }}>PLAY</Text>
+              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: c.gold, borderRadius: r.md, paddingVertical: s.md }}
+              onPress={goPlay} onLongPress={() => setShowPlayMenu(true)} delayLongPress={350}>
+              <Ionicons name="game-controller-outline" size={15} color="#fff" />
+              <Text style={{ fontSize: t.md, fontWeight: t.bold, color: '#fff', letterSpacing: 1 }}>PLAY</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* ── Quote + affirmation ── */}
+        <TourSpot id="home-focus">
         <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, marginHorizontal: s.lg, marginBottom: s.md, borderLeftWidth: 3, borderLeftColor: c.teal, borderWidth: 0.5, borderColor: c.border }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: s.sm }}>
             <Text style={{ fontSize: 10, color: c.teal, textTransform: 'uppercase', letterSpacing: 1, fontWeight: t.semibold }}>✦ Today's Wisdom</Text>
@@ -853,8 +794,9 @@ export default function HomeScreen() {
             </TouchableOpacity>
           )}
         </View>
+        </TourSpot>
 
-        {/* ── Focus + calendar side by side ── */}
+        {/* ── Focus + calendar ── */}
         <View style={{ paddingHorizontal: s.lg, marginBottom: s.lg, flexDirection: 'row', gap: s.sm }}>
           <TouchableOpacity
             style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 0.5, borderColor: c.border }}
@@ -867,30 +809,11 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={{ backgroundColor: c.bg1, borderRadius: r.md, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 0.5, borderColor: c.border, alignItems: 'center', justifyContent: 'center', minWidth: 70 }}
             onPress={() => setShowCalendar(true)}>
-            <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1, lineHeight: 28 }}>{today.getDate()}</Text>
+            <Text style={{ fontSize: t.xxl, fontFamily: FONTS.display, fontWeight: t.bold, color: c.text1, lineHeight: 28 }}>{today.getDate()}</Text>
             <Text style={{ fontSize: 9, color: c.text4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
               {today.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
             </Text>
           </TouchableOpacity>
-        </View>
-
-        {/* ── Life area circles ── */}
-        <View style={{ paddingHorizontal: s.lg, marginBottom: s.lg }}>
-          <SectionHead title="Life Areas" action="Planner →" onAction={() => navigation.navigate('Library', { screen: 'PlannerScreen' })} c={c} t={t} />
-          <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, borderWidth: 0.5, borderColor: c.border }}>
-            <LifeAreaCircles
-              areas={LIFE_AREAS_CONFIG}
-              activeAreas={activeAreas}
-              agendaByArea={agendaByArea}
-              onPress={handleAreaPress}
-              c={c} t={t} s={s}
-            />
-            {Object.values(agendaByArea).some(v => v > 0) && (
-              <Text style={{ fontSize: 10, color: c.text4, textAlign: 'center', marginTop: s.sm }}>
-                Tap a circle to see what's left today
-              </Text>
-            )}
-          </View>
         </View>
 
         {/* ── On the desk ── */}
@@ -916,26 +839,6 @@ export default function HomeScreen() {
             c={c} t={t} s={s} r={r}
           />
         </View>
-
-                {/* ── Active projects ── */}
-        {projects.length > 0 && (
-          <View style={{ paddingHorizontal: s.lg, marginBottom: s.lg }}>
-            <SectionHead title="Active Missions" action="See all" onAction={() => navigation.navigate('Library')} c={c} t={t} />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -s.lg }}>
-              <View style={{ flexDirection: 'row', paddingHorizontal: s.lg, gap: s.sm }}>
-                {projects.map(proj => (
-                  <View key={proj.id} style={{ width: 130, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: proj.color || c.teal, gap: s.xs }}>
-                    <Text style={{ fontSize: 24 }}>{proj.emoji || '🚀'}</Text>
-                    <Text style={{ fontSize: t.xs, fontWeight: t.semibold, color: c.text1, lineHeight: 16 }} numberOfLines={2}>{proj.title}</Text>
-                    <View style={{ alignSelf: 'flex-start', backgroundColor: (proj.color || c.teal) + '22', borderRadius: r.full, paddingHorizontal: 6, paddingVertical: 2 }}>
-                      <Text style={{ fontSize: 9, fontWeight: t.bold, color: proj.color || c.teal, textTransform: 'uppercase', letterSpacing: 0.5 }}>active</Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </ScrollView>
-          </View>
-        )}
 
         {/* ── Latest ideas ── */}
         {ideas.length > 0 && (
@@ -989,15 +892,6 @@ export default function HomeScreen() {
         c={c} t={t} s={s} r={r}
       />
 
-      {/* ── Area detail modal ── */}
-      <AreaDetailModal
-        area={selectedArea}
-        items={selectedArea ? (areaItems[selectedArea.key] || []) : []}
-        visible={showAreaModal}
-        onClose={() => setShowAreaModal(false)}
-        c={c} t={t} s={s} r={r}
-      />
-
       {/* ── Desk item preview ── */}
       <DeskItemCard
         item={selectedDeskItem}
@@ -1015,13 +909,52 @@ export default function HomeScreen() {
         c={c} t={t} s={s} r={r}
       />
 
-      {/* ── Calendar modal ── */}
       <CalendarModal
         visible={showCalendar}
         onClose={() => setShowCalendar(false)}
         userId={userId}
         initialDate={today}
       />
+
+      {/* ── Hold STUDY: pick a destination ── */}
+      <Modal visible={showStudyMenu} transparent animationType="slide" onRequestClose={() => setShowStudyMenu(false)}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setShowStudyMenu(false)}>
+          <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 44 }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
+            <Text style={{ fontSize: t.lg, fontFamily: FONTS.display, fontWeight: t.bold, color: c.text1, marginBottom: s.md }}>Study</Text>
+            {STUDY_DESTINATIONS.map(d => (
+              <TouchableOpacity key={d.key} onPress={() => pickStudy(d.key)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, paddingVertical: s.md, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
+                <Ionicons name={d.icon} size={18} color={c.teal} />
+                <Text style={{ fontSize: t.sm, color: c.text1, fontWeight: '600', flex: 1 }}>{d.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── Hold PLAY: pick any game ── */}
+      <Modal visible={showPlayMenu} transparent animationType="slide" onRequestClose={() => setShowPlayMenu(false)}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setShowPlayMenu(false)}>
+          <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 44, maxHeight: '75%' }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
+            <Text style={{ fontSize: t.lg, fontFamily: FONTS.display, fontWeight: t.bold, color: c.text1, marginBottom: s.md }}>Play</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {GAMES.map(game => (
+                <TouchableOpacity key={game.key} onPress={() => pickGame(game.key)}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, paddingVertical: s.md, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
+                  <Text style={{ fontSize: 20 }}>{game.emoji}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: t.sm, color: c.text1, fontWeight: '600' }}>{game.title}</Text>
+                    <Text style={{ fontSize: 11, color: c.text4 }}>{game.subject}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
     </View>
   );
 }

@@ -1,23 +1,13 @@
-// src/screens/ReadingScreen.js
+// src/screens/classes/languageartClass/reading.js
+import React from 'react';
+import ClassTopicScreen from '../../../components/ClassTopicScreen';
 
-import React, { useState } from 'react';
-import {
-  ScrollView,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Linking,
-} from 'react-native';
-
-export default function ReadingScreen() {
-  const [openSections, setOpenSections] = useState({});
-
-  const topics = [
+const topics = [
     // Foundational Skills (Purple)
     {
       key: 'printConcepts',
       title: 'Print Concepts',
+      grade: 'K-2',
       color: '#8E24AA',
       description:
         'Understanding how books and print work (e.g., reading left to right, top to bottom, how to turn pages, recognizing that words are made of letters).',
@@ -33,6 +23,7 @@ export default function ReadingScreen() {
     {
       key: 'phonologicalAwareness',
       title: 'Phonological Awareness',
+      grade: 'K-2',
       color: '#8E24AA',
       description:
         'The ability to hear and manipulate sounds in spoken language. Includes skills like rhyming; syllable segmentation; blending and segmenting onset-rime; phonemic awareness (individual sounds in words).',
@@ -56,6 +47,7 @@ export default function ReadingScreen() {
     {
       key: 'phonicsWordRecognition',
       title: 'Phonics & Word Recognition',
+      grade: 'K-2',
       color: '#8E24AA',
       description:
         'Phonics – Connecting sounds to letters (letter-sound correspondence). Helps children decode (sound out) words when reading. Word Recognition – The ability to recognize words quickly and effortlessly. Includes sight word recognition and decoding strategies.',
@@ -79,6 +71,7 @@ export default function ReadingScreen() {
     {
       key: 'fluency',
       title: 'Fluency',
+      grade: 'K-2',
       color: '#8E24AA',
       description:
         'Reading with speed, accuracy, and proper expression. Fluency bridges the gap between word recognition and comprehension.',
@@ -96,6 +89,7 @@ export default function ReadingScreen() {
     {
       key: 'storyElements',
       title: 'Story Elements',
+      grade: '3-5',
       color: '#039BE5',
       description:
         'Story Elements (plot, character, setting).',
@@ -111,6 +105,7 @@ export default function ReadingScreen() {
     {
       key: 'themesAuthorsPurpose',
       title: 'Themes & Author’s Purpose',
+      grade: '3-5',
       color: '#039BE5',
       description:
         'Themes & Author’s Purpose.',
@@ -130,6 +125,7 @@ export default function ReadingScreen() {
     {
       key: 'literaryDevices',
       title: 'Literary Devices',
+      grade: '6-8',
       color: '#039BE5',
       description:
         'Literary Devices (metaphor, symbolism, etc.).',
@@ -148,6 +144,7 @@ export default function ReadingScreen() {
     {
       key: 'mainIdea',
       title: 'Main Idea & Supporting Details',
+      grade: '3-5',
       color: '#FB8C00',
       description:
         'Main Idea & Supporting Details.',
@@ -163,6 +160,7 @@ export default function ReadingScreen() {
     {
       key: 'textFeatures',
       title: 'Text Features',
+      grade: '3-5',
       color: '#FB8C00',
       description:
         'Text Features (headings, charts, captions).',
@@ -178,6 +176,7 @@ export default function ReadingScreen() {
     {
       key: 'textStructure',
       title: 'Text Structure',
+      grade: '6-8',
       color: '#FB8C00',
       description:
         'Text Structure (cause/effect, compare/contrast, sequence).',
@@ -196,6 +195,7 @@ export default function ReadingScreen() {
     {
       key: 'contextClues',
       title: 'Context Clues',
+      grade: '3-5',
       color: '#43A047',
       description:
         'Context Clues.',
@@ -211,6 +211,7 @@ export default function ReadingScreen() {
     {
       key: 'wordRootsAffixes',
       title: 'Word Roots & Affixes',
+      grade: '6-8',
       color: '#43A047',
       description:
         'Word Roots & Affixes.',
@@ -226,6 +227,7 @@ export default function ReadingScreen() {
     {
       key: 'academicDomainTerms',
       title: 'Academic & Domain-Specific Terms',
+      grade: '9-12',
       color: '#43A047',
       description:
         'Academic & Domain-Specific Terms.',
@@ -244,6 +246,7 @@ export default function ReadingScreen() {
     {
       key: 'makingInferences',
       title: 'Making Inferences',
+      grade: '6-8',
       color: '#D32F2F',
       description:
         'Making Inferences.',
@@ -259,6 +262,7 @@ export default function ReadingScreen() {
     {
       key: 'summarizing',
       title: 'Summarizing',
+      grade: '3-5',
       color: '#D32F2F',
       description:
         'Summarizing.',
@@ -274,6 +278,7 @@ export default function ReadingScreen() {
     {
       key: 'monitoringSelfQuestioning',
       title: 'Monitoring & Self-Questioning',
+      grade: '9-12',
       color: '#D32F2F',
       description:
         'Monitoring & Self-Questioning.',
@@ -288,139 +293,6 @@ export default function ReadingScreen() {
     },
   ];
 
-  const toggleHelp = (key) => {
-    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.mainTitle}>Reading</Text>
-
-      {topics.map((topic) => (
-        <View key={topic.key} style={styles.card}>
-          {/* Colored Header */}
-          <View style={[styles.headerBar, { backgroundColor: topic.color }]}>
-            <Text style={styles.headerText}>{topic.title}</Text>
-          </View>
-
-          {/* Body */}
-          <View style={styles.sectionBody}>
-            <Text style={styles.subtitle}>What is it?</Text>
-            <Text style={styles.description}>{topic.description}</Text>
-
-            {/* Show “Need help?” only if there are videos */}
-            {topic.help.videos.length > 0 && (
-              <TouchableOpacity
-                style={styles.helpToggle}
-                onPress={() => toggleHelp(topic.key)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.helpTitle}>
-                  Need help? {openSections[topic.key] ? '▲' : '▼'}
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {/* Collapsible help content */}
-            {openSections[topic.key] && (
-              <View style={styles.helpContent}>
-                {topic.help.videos.length > 0 && (
-                  <>
-                    <Text style={styles.helpLabel}>Videos</Text>
-                    {topic.help.videos.map((video, idx) => (
-                      <Text
-                        key={idx}
-                        style={styles.linkText}
-                        onPress={() => Linking.openURL(video.url)}
-                      >
-                        • {video.title}
-                      </Text>
-                    ))}
-                  </>
-                )}
-              </View>
-            )}
-          </View>
-        </View>
-      ))}
-    </ScrollView>
-  );
+export default function ReadingScreen() {
+  return <ClassTopicScreen title={"Reading"} classKey="Reading" fallbackTopics={topics} />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    backgroundColor: '#F9F9F9',
-    paddingBottom: 40,
-  },
-  mainTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#333',
-  },
-  card: {
-    marginBottom: 24,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  headerBar: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  headerText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  sectionBody: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  subtitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-    color: '#555',
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 12,
-    color: '#444',
-  },
-  helpToggle: {
-    marginTop: 8,
-  },
-  helpTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  helpContent: {
-    marginTop: 8,
-    padding: 12,
-    backgroundColor: '#EFEFEF',
-    borderRadius: 8,
-  },
-  helpLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 6,
-    color: '#333',
-  },
-  linkText: {
-    fontSize: 14,
-    color: '#1e88e5',
-    marginLeft: 8,
-    marginTop: 4,
-    textDecorationLine: 'underline',
-  },
-});

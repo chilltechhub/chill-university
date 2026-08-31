@@ -5,27 +5,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   FlatList, Linking, Modal, TextInput, KeyboardAvoidingView,
-  Platform, ActivityIndicator, Alert, Switch,
+  Platform, ActivityIndicator, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../../api/supabaseClient';
-
-// ─── Theme ────────────────────────────────────────────────────────────────────
-const DARK = {
-  bg:       '#0B0D17', bg1:    '#141829', bg2:   '#06080F',
-  border:   '#1F263E', text1:  '#FFFFFF', text2: '#A0AABF',
-  text3:    '#8E9BB0', text4:  '#626D82',
-  cyan:     '#00F0FF', gold:   '#FFB800', green: '#00E676',
-  purple:   '#7C4DFF', pink:   '#FF4081',
-};
-const LIGHT = {
-  bg:       '#F4F6FB', bg1:    '#FFFFFF', bg2:   '#EEF1F8',
-  border:   '#DDE2EF', text1:  '#0B0D17', text2: '#2D3550',
-  text3:    '#4A5568', text4:  '#8E9BB0',
-  cyan:     '#0097A7', gold:   '#B8860B', green: '#2E7D32',
-  purple:   '#5E35B1', pink:   '#C2185B',
-};
+import { useTheme } from '../../../context/ThemeContext';
 
 // ─── Suit/badge maps ──────────────────────────────────────────────────────────
 const SUIT_COLORS = {
@@ -148,8 +133,16 @@ const ic = StyleSheet.create({
 
 // ─── Main PortfolioScreen ─────────────────────────────────────────────────────
 export default function PortfolioScreen() {
-  const [darkMode,       setDarkMode]       = useState(false);
-  const th = darkMode ? DARK : LIGHT;
+  const { colors: rawColors } = useTheme();
+  // Adapter: keeps every existing `th.xxx` reference below working unchanged,
+  // now backed by the real app-wide theme instead of a screen-local copy.
+  const th = {
+    bg: rawColors.bg0, bg1: rawColors.bg1, bg2: rawColors.bg2,
+    border: rawColors.border,
+    text1: rawColors.text1, text2: rawColors.text2, text3: rawColors.text3, text4: rawColors.text4,
+    cyan: rawColors.teal, gold: rawColors.gold, green: rawColors.financial,
+    purple: rawColors.purple, pink: rawColors.physical,
+  };
 
   const [loading,        setLoading]        = useState(true);
   const [profile,        setProfile]        = useState(null);
@@ -176,16 +169,13 @@ export default function PortfolioScreen() {
     try {
       const [profileRes, projectsRes, researchRes, skillsRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', uid).maybeSingle(),
-        supabase.from('projects').select('id,title,objective,category,status,emoji,color,skills,created_at').eq('user_id', uid).order('created_at', { ascending: false }),
+        supabase.from('projects').select('id,title,objective,category,status,emoji,color,skills,created_at').eq('user_id', uid).is('deleted_at', null).order('created_at', { ascending: false }),
         supabase.from('project_research').select('id,title,type,url,notes').eq('user_id', uid).order('created_at', { ascending: false }).limit(20),
         supabase.from('project_tasks').select('project_id').eq('user_id', uid).eq('completed', true).limit(1),
       ]);
 
       const prof = profileRes.data || {};
       setProfile(prof);
-
-      // Set dark mode from profile preference
-      if (prof.theme === 'dark') setDarkMode(true);
 
       // ── Projects — from projects table
       const projects = (projectsRes.data || []).map(p => ({
@@ -299,15 +289,6 @@ export default function PortfolioScreen() {
               <View>
                 <Text style={{ color: th.cyan, fontSize: 10, letterSpacing: 2, fontWeight: '800' }}>COMMAND VAULT</Text>
                 <Text style={{ color: th.text1, fontSize: 22, fontWeight: 'bold' }}>Portfolio</Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <Ionicons name={darkMode ? 'sunny-outline' : 'moon-outline'} size={16} color={th.text3} />
-                <Switch
-                  value={darkMode}
-                  onValueChange={setDarkMode}
-                  trackColor={{ false: '#DDE2EF', true: '#1F263E' }}
-                  thumbColor={darkMode ? th.cyan : '#8E9BB0'}
-                />
               </View>
             </View>
 

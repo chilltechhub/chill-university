@@ -1,23 +1,13 @@
-// src/screens/SpeakingAndListening.js
+// src/screens/classes/languageartClass/speakinglistening.js
+import React from 'react';
+import ClassTopicScreen from '../../../components/ClassTopicScreen';
 
-import React, { useState } from 'react';
-import {
-  ScrollView,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Linking,
-} from 'react-native';
-
-export default function SpeakingAndListening() {
-  const [openSections, setOpenSections] = useState({});
-
-  const topics = [
+const topics = [
     // Comprehension & Collaboration (Teal)
     {
       key: 'activeListening',
       title: 'Active Listening',
+      grade: 'K-2',
       color: '#009688',
       description:
         'Focusing fully on the speaker, understanding their message, and responding thoughtfully.',
@@ -33,6 +23,7 @@ export default function SpeakingAndListening() {
     {
       key: 'participatingDiscussions',
       title: 'Participating in Discussions',
+      grade: '3-5',
       color: '#009688',
       description:
         'Engaging respectfully with others by sharing ideas, asking questions, and building on peers’ contributions.',
@@ -48,6 +39,7 @@ export default function SpeakingAndListening() {
     {
       key: 'askingAnsweringQuestions',
       title: 'Asking & Answering Questions',
+      grade: 'K-2',
       color: '#009688',
       description:
         'Formulating clear questions and providing thoughtful answers in conversations or group settings.',
@@ -65,6 +57,7 @@ export default function SpeakingAndListening() {
     {
       key: 'oralPresentations',
       title: 'Oral Presentations',
+      grade: '6-8',
       color: '#FFC107',
       description:
         'Organizing and delivering information verbally to inform or persuade an audience.',
@@ -75,6 +68,7 @@ export default function SpeakingAndListening() {
     {
       key: 'storytellingDramaticReadings',
       title: 'Storytelling & Dramatic Readings',
+      grade: '3-5',
       color: '#FFC107',
       description:
         'Using expressive voice and gestures to tell stories or perform excerpts from texts.',
@@ -85,6 +79,7 @@ export default function SpeakingAndListening() {
     {
       key: 'multimediaVisualAids',
       title: 'Use of Multimedia/Visual Aids',
+      grade: '9-12',
       color: '#FFC107',
       description:
         'Incorporating images, slides, or audio to enhance understanding during a presentation.',
@@ -94,139 +89,6 @@ export default function SpeakingAndListening() {
     },
   ];
 
-  const toggleHelp = (key) => {
-    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.mainTitle}>Speaking & Listening</Text>
-
-      {topics.map((topic) => (
-        <View key={topic.key} style={styles.card}>
-          {/* Colored Header */}
-          <View style={[styles.headerBar, { backgroundColor: topic.color }]}>
-            <Text style={styles.headerText}>{topic.title}</Text>
-          </View>
-
-          {/* Body */}
-          <View style={styles.sectionBody}>
-            <Text style={styles.subtitle}>What is it?</Text>
-            <Text style={styles.description}>{topic.description}</Text>
-
-            {/* Show “Need help?” toggle only if there are videos */}
-            {topic.help.videos.length > 0 && (
-              <TouchableOpacity
-                style={styles.helpToggle}
-                onPress={() => toggleHelp(topic.key)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.helpTitle}>
-                  Need help? {openSections[topic.key] ? '▲' : '▼'}
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {/* Collapsible help content */}
-            {openSections[topic.key] && (
-              <View style={styles.helpContent}>
-                {topic.help.videos.length > 0 && (
-                  <>
-                    <Text style={styles.helpLabel}>Videos</Text>
-                    {topic.help.videos.map((video, idx) => (
-                      <Text
-                        key={idx}
-                        style={styles.linkText}
-                        onPress={() => Linking.openURL(video.url)}
-                      >
-                        • {video.title}
-                      </Text>
-                    ))}
-                  </>
-                )}
-              </View>
-            )}
-          </View>
-        </View>
-      ))}
-    </ScrollView>
-  );
+export default function SpeakingAndListening() {
+  return <ClassTopicScreen title={"Speaking & Listening"} classKey="SpeakingAndListening" fallbackTopics={topics} />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    backgroundColor: '#F9F9F9',
-    paddingBottom: 40,
-  },
-  mainTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#333',
-  },
-  card: {
-    marginBottom: 24,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  headerBar: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  headerText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  sectionBody: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  subtitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-    color: '#555',
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 12,
-    color: '#444',
-  },
-  helpToggle: {
-    marginTop: 8,
-  },
-  helpTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  helpContent: {
-    marginTop: 8,
-    padding: 12,
-    backgroundColor: '#EFEFEF',
-    borderRadius: 8,
-  },
-  helpLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 6,
-    color: '#333',
-  },
-  linkText: {
-    fontSize: 14,
-    color: '#1e88e5',
-    marginLeft: 8,
-    marginTop: 4,
-    textDecorationLine: 'underline',
-  },
-});

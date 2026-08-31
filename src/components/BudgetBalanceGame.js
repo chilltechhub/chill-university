@@ -2,97 +2,68 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import GameShell, { G } from './GameShell';
+import GameShell, { useGameTheme } from './GameShell';
 import GameOver from './GameOver';
+import GradeSelectCard from './GradeSelectCard';
 import useGame from '../logic/useGame';
+import useGradeLevel, { levelForTier } from '../logic/useGradeLevel';
+import { createAdaptiveTier, nextAdaptiveTier } from '../logic/difficultyAdapter';
+import { BUDGET_BANK } from '../data/gameContent/budgetBalance';
 
-const SCENARIOS = [
-  {
-    title: 'School Supplies Budget',
-    budget: 30, difficulty: 1,
-    story: 'You have $30 for school. Pick which items to cut to stay in budget.',
-    expenses: [
-      { item:'📓 Notebooks',    cost:8,  essential:true },
-      { item:'✏️ Pencils',      cost:3,  essential:true },
-      { item:'🎒 Backpack',     cost:20, essential:true },
-      { item:'🧸 Toy',          cost:12, essential:false },
-      { item:'🎬 Movie Ticket', cost:10, essential:false },
-    ],
-    lesson: 'Always buy what you need first, then wants with leftover money.',
-  },
-  {
-    title: 'Lunch Money',
-    budget: 15, difficulty: 1,
-    story: 'You have $15 for lunch this week. What can you cut?',
-    expenses: [
-      { item:'🍱 Lunch Box',    cost:8,  essential:true },
-      { item:'💧 Water Bottle', cost:2,  essential:true },
-      { item:'🍬 Candy',        cost:4,  essential:false },
-      { item:'🎮 Video Game',   cost:6,  essential:false },
-    ],
-    lesson: 'Needs first, wants second — always.',
-  },
-  {
-    title: 'Weekend Fun Budget',
-    budget: 20, difficulty: 2,
-    story: 'You have $20 for the weekend. What do you cut to stay in budget?',
-    expenses: [
-      { item:'🚌 Bus Fare',     cost:4,  essential:true },
-      { item:'🥪 Lunch',        cost:7,  essential:true },
-      { item:'🍦 Ice Cream',    cost:5,  essential:false },
-      { item:'🎧 Headphones',   cost:15, essential:false },
-    ],
-    lesson: 'Transport and food are needs — entertainment is a want.',
-  },
-  {
-    title: 'Grocery Run',
-    budget: 25, difficulty: 2,
-    story: 'You have $25 for groceries. What gets cut?',
-    expenses: [
-      { item:'🥚 Eggs',         cost:4,  essential:true },
-      { item:'🍞 Bread',        cost:3,  essential:true },
-      { item:'🥛 Milk',         cost:4,  essential:true },
-      { item:'🍕 Restaurant',   cost:14, essential:false },
-      { item:'👟 Designer Shoes',cost:60,essential:false },
-    ],
-    lesson: 'Basic food is essential. Dining out and luxury items are wants.',
-  },
-  {
-    title: 'Birthday Budget',
-    budget: 40, difficulty: 3,
-    story: 'You have $40 for your birthday party. What stays?',
-    expenses: [
-      { item:'🎂 Cake',         cost:20, essential:true },
-      { item:'🎈 Decorations',  cost:10, essential:true },
-      { item:'📱 New Phone',    cost:300,essential:false },
-      { item:'🎨 Art Supplies', cost:15, essential:false },
-      { item:'☕ Coffee Shop',  cost:25, essential:false },
-    ],
-    lesson: 'A $300 phone isn\'t a party necessity — stay focused on what the event needs.',
-  },
-];
+const SESSION_LENGTH = 4;
+
+const BLURBS = {
+  'K-2': 'Small budgets, obvious needs vs wants.',
+  '3-5': 'Bigger budgets, sneakier "want" items.',
+  '6-8': 'Savings-first thinking and fundraiser math.',
+  '9-12': 'Real-world budgets — rent, loans, paychecks.',
+};
+
+function pickNext(pool, avoidTitle) {
+  const choices = pool.filter(sc => sc.title !== avoidTitle);
+  const list = choices.length ? choices : pool;
+  return list[Math.floor(Math.random() * list.length)];
+}
 
 export default function BudgetBalanceGame({ onGameEnd }) {
   const navigation = useNavigation();
-  const [idx, setIdx]         = useState(0);
-  const [cuts, setCuts]       = useState([]);
+  const G = useGameTheme();
+  const s = makeStyles(G);
+  const { level, setLevel, tier: savedTier } = useGradeLevel('budget');
+  const [started, setStarted] = useState(false);
+
+  const [adaptive, setAdaptive] = useState(() => createAdaptiveTier(savedTier));
+  const [sc, setSc] = useState(null);
+  const [asked, setAsked] = useState(0);
+  const [cuts, setCuts] = useState([]);
   const [feedback, setFeedback] = useState(null);
   const [startTime, setStartTime] = useState(Date.now());
 
-  const game = useGame({ subject: 'general', difficulty: 2, onGameEnd });
-  const sc = SCENARIOS[idx];
+  const game = useGame({ subject: 'finance', difficulty: adaptive.tier, skillLevel: level, onGameEnd });
+
+  const beginRun = () => {
+    const initial = createAdaptiveTier(savedTier);
+    setAdaptive(initial);
+    const first = pickNext(BUDGET_BANK[levelForTier(initial.tier)], null);
+    setSc(first);
+    setAsked(0);
+    setCuts([]);
+    setFeedback(null);
+    setStartTime(Date.now());
+    setStarted(true);
+  };
 
   const toggleCut = (item) => {
     if (feedback) return;
     setCuts(prev => prev.includes(item) ? prev.filter(c => c !== item) : [...prev, item]);
   };
 
-  const totalAfterCuts = sc.expenses
+  const totalAfterCuts = sc ? sc.expenses
     .filter(e => !cuts.includes(e.item))
-    .reduce((sum, e) => sum + e.cost, 0);
+    .reduce((sum, e) => sum + e.cost, 0) : 0;
 
   const checkAnswer = useCallback(() => {
-    if (feedback) return;
+    if (feedback || !sc) return;
     const withinBudget = totalAfterCuts <= sc.budget;
     const cutEssential = cuts.some(c => {
       const exp = sc.expenses.find(e => e.item === c);
@@ -101,6 +72,9 @@ export default function BudgetBalanceGame({ onGameEnd }) {
     const isCorrect = withinBudget && !cutEssential;
     const speed = (Date.now() - startTime) / 1000;
     game.answer(isCorrect, { speedBonus: speed < 15 ? 5 : 0 });
+
+    const nextAdaptiveState = nextAdaptiveTier(adaptive, isCorrect);
+    setAdaptive(nextAdaptiveState);
 
     let msg = isCorrect
       ? `✓ Budget balanced! $${totalAfterCuts} of $${sc.budget}`
@@ -114,31 +88,46 @@ export default function BudgetBalanceGame({ onGameEnd }) {
       setFeedback(null);
       setCuts([]);
       setStartTime(Date.now());
-      if (game.lives - (isCorrect ? 0 : 1) <= 0 || idx >= SCENARIOS.length - 1) {
+      const willEnd = game.lives - (isCorrect ? 0 : 1) <= 0 || asked + 1 >= SESSION_LENGTH;
+      if (willEnd) {
         game.endGame();
       } else {
-        setIdx(i => i + 1);
+        const pool = BUDGET_BANK[levelForTier(nextAdaptiveState.tier)];
+        const next = pickNext(pool, sc.title);
+        setSc(next);
+        setAsked(a => a + 1);
       }
     }, 2200);
-  }, [cuts, sc, totalAfterCuts, feedback, game, idx, startTime]);
+  }, [cuts, sc, totalAfterCuts, feedback, game, asked, startTime, adaptive]);
+
+  if (!started) {
+    return (
+      <GradeSelectCard
+        title="Budget Balance" emoji="💰" subjectLabel="Financial Literacy"
+        blurbs={BLURBS} level={level} onSelectLevel={setLevel} onStart={beginRun}
+      />
+    );
+  }
 
   if (game.done) return (
     <GameOver
       score={game.score} correct={game.correct} total={game.attempted}
       streak={game.bestStreak} title="Budget Master!"
-      onPlayAgain={() => { game.reset(); setIdx(0); setCuts([]); setFeedback(null); }}
+      onPlayAgain={() => { game.reset(); setStarted(false); }}
       onQuit={() => navigation.goBack()}
     />
   );
 
+  if (!sc) return null;
+
   return (
     <GameShell
-      title="Budget Balance" emoji="💰" subject="Financial Literacy"
+      title="Budget Balance" emoji="💰" subject={`Financial Literacy · ${levelForTier(adaptive.tier)}`}
       score={game.score} lives={game.lives} streak={game.streak}
-      progress={idx / SCENARIOS.length}
+      progress={asked / SESSION_LENGTH}
     >
       <ScrollView contentContainerStyle={s.scroll}>
-        <Text style={s.progress}>Scenario {idx + 1} of {SCENARIOS.length}</Text>
+        <Text style={s.progress}>Scenario {asked + 1} of {SESSION_LENGTH}</Text>
 
         <View style={s.card}>
           <Text style={s.scenarioTitle}>{sc.title}</Text>
@@ -170,7 +159,6 @@ export default function BudgetBalanceGame({ onGameEnd }) {
           );
         })}
 
-        {/* Running total */}
         <View style={[s.totalRow, { borderColor: totalAfterCuts <= sc.budget ? G.success : G.error }]}>
           <Text style={s.totalLabel}>Total after cuts</Text>
           <Text style={[s.totalAmount, { color: totalAfterCuts <= sc.budget ? G.success : G.error }]}>
@@ -199,7 +187,7 @@ export default function BudgetBalanceGame({ onGameEnd }) {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (G) => StyleSheet.create({
   scroll:         { padding: 16, paddingBottom: 40 },
   progress:       { fontSize: 11, color: G.muted, textAlign: 'center', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 },
   card:           { backgroundColor: G.card, borderRadius: 14, padding: 16, borderWidth: 0.5, borderColor: G.border, marginBottom: 14 },

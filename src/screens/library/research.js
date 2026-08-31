@@ -9,6 +9,9 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../../api/supabaseClient';
 import { useTheme } from '../../../context/ThemeContext';
+import useFolders from '../../logic/useFolders';
+import FolderRow from '../../components/FolderRow';
+import FolderAssignSheet from '../../components/FolderAssignSheet';
 
 const { width } = Dimensions.get('window');
 
@@ -111,7 +114,10 @@ export default function ResearchScreen() {
   const [selectedTag, setSelectedTag] = useState(null);
   const [catFilter, setCatFilter] = useState(null); // Discover-only category filter
   const [sortBy, setSortBy] = useState('recent');
-  const [showSort, setShowSort] = useState(false);
+  const [folderFilter, setFolderFilter] = useState(null);
+  const [assigningEntry, setAssigningEntry] = useState(null);
+
+  const { folders, createFolder, renameFolder, deleteFolder } = useFolders('research', userId);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -234,6 +240,23 @@ export default function ResearchScreen() {
     Share.share({ message: item.url ? `${item.title} — ${item.url}` : item.title }).catch(() => {});
   };
 
+  const assignFolder = (item, folderId) => {
+    const nextMeta = { ...(item.url_meta || {}), folder: folderId || undefined };
+    if (!folderId) delete nextMeta.folder;
+    setEntries((prev) => prev.map((e) => (e.id === item.id ? { ...e, url_meta: nextMeta } : e)));
+    if (selectedEntry?.id === item.id) setSelectedEntry((prev) => ({ ...prev, url_meta: nextMeta }));
+    supabase.from('captures').update({ url_meta: nextMeta }).eq('id', item.id).then(() => {});
+    setAssigningEntry(null);
+  };
+
+  const handleDeleteFolder = (folderId) => {
+    deleteFolder(folderId);
+    if (folderFilter === folderId) setFolderFilter(null);
+    // Clear the folder off any entries that were in it, rather than leaving
+    // them silently pointing at a folder that no longer exists.
+    entries.filter((e) => e.url_meta?.folder === folderId).forEach((e) => assignFolder(e, null));
+  };
+
   // Extract unique tags across all entries (excludes catalog category tags so
   // the chip row stays focused on the user's own organization)
   const allTags = Array.from(
@@ -248,7 +271,8 @@ export default function ResearchScreen() {
         e.body?.toLowerCase().includes(search.toLowerCase());
       const matchType = typeFilter === 'all' || e.type === typeFilter;
       const matchTag = !selectedTag || (e.tags && e.tags.includes(selectedTag));
-      return matchSearch && matchType && matchTag;
+      const matchFolder = !folderFilter || e.url_meta?.folder === folderFilter;
+      return matchSearch && matchType && matchTag && matchFolder;
     });
     if (sortBy === 'oldest') {
       list = [...list].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
@@ -261,7 +285,7 @@ export default function ResearchScreen() {
     }
     // 'recent' — already ordered by created_at desc from the query
     return list;
-  }, [entries, search, typeFilter, selectedTag, sortBy]);
+  }, [entries, search, typeFilter, selectedTag, sortBy, folderFilter]);
 
   const discoverFiltered = useMemo(() => {
     const list = CATALOG.filter((item) => {
@@ -276,7 +300,6 @@ export default function ResearchScreen() {
   }, [search, catFilter]);
 
   const data = tab === 'vault' ? vaultFiltered : discoverFiltered;
-  const activeSort = SORT_OPTIONS.find((s) => s.key === sortBy);
 
   return (
     <View style={styles.container}>
@@ -327,30 +350,43 @@ export default function ResearchScreen() {
             </TouchableOpacity>
           ) : null}
         </View>
-        {tab === 'vault' && (
-          <TouchableOpacity style={styles.sortBtn} onPress={() => setShowSort((v) => !v)}>
-            <Ionicons name={activeSort.icon} size={16} color={c.teal} />
-            <Ionicons name={showSort ? 'chevron-up' : 'chevron-down'} size={12} color={c.text3} />
-          </TouchableOpacity>
-        )}
       </View>
 
-      {tab === 'vault' && showSort && (
-        <View style={styles.sortPanel}>
-          {SORT_OPTIONS.map((opt) => (
-            <TouchableOpacity
-              key={opt.key}
-              style={[styles.sortOption, sortBy === opt.key && styles.sortOptionActive]}
-              onPress={() => { setSortBy(opt.key); setShowSort(false); }}
-            >
-              <Ionicons name={opt.icon} size={13} color={sortBy === opt.key ? c.teal : c.text3} />
-              <Text style={[styles.sortOptionText, sortBy === opt.key && { color: c.teal, fontWeight: 'bold' }]}>
-                {opt.label}
-              </Text>
-              {sortBy === opt.key && <Ionicons name="checkmark" size={14} color={c.teal} />}
-            </TouchableOpacity>
-          ))}
+      {/* Sort Selector (Vault only) */}
+      {tab === 'vault' && (
+        <View style={styles.filterBarContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+            <View style={styles.sortLabelWrap}>
+              <Ionicons name="swap-vertical-outline" size={13} color={c.text4} />
+              <Text style={styles.sortLabel}>Sort</Text>
+            </View>
+            {SORT_OPTIONS.map((opt) => {
+              const isActive = sortBy === opt.key;
+              return (
+                <TouchableOpacity
+                  key={opt.key}
+                  style={[styles.typeChip, isActive && styles.typeChipActiveCyan]}
+                  onPress={() => setSortBy(opt.key)}
+                >
+                  <Ionicons name={opt.icon} size={12} color={isActive ? c.teal : c.text3} />
+                  <Text style={[styles.typeChipText, isActive && { color: c.teal, fontWeight: 'bold' }]}>{opt.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         </View>
+      )}
+
+      {/* Folders (Vault only) */}
+      {tab === 'vault' && (
+        <FolderRow
+          folders={folders}
+          activeFolderId={folderFilter}
+          onSelect={setFolderFilter}
+          onCreate={createFolder}
+          onRename={renameFolder}
+          onDelete={handleDeleteFolder}
+        />
       )}
 
       {/* Type & Tag Filters (Vault) / Category Filters (Discover) */}
@@ -487,6 +523,7 @@ export default function ResearchScreen() {
             const accentColor = isLink ? c.teal : c.gold;
             const starred = !!item.url_meta?.starred;
             const visits = item.url_meta?.visits || 0;
+            const folder = folders.find((f) => f.id === item.url_meta?.folder);
 
             return (
               <TouchableOpacity
@@ -515,6 +552,9 @@ export default function ResearchScreen() {
                     )}
                   </View>
 
+                  <TouchableOpacity onPress={() => setAssigningEntry(item)} style={styles.trashBtn}>
+                    <Ionicons name={folder ? 'folder' : 'folder-outline'} size={16} color={folder ? folder.color : c.text4} />
+                  </TouchableOpacity>
                   <TouchableOpacity onPress={() => toggleStar(item)} style={styles.trashBtn}>
                     <Ionicons name={starred ? 'star' : 'star-outline'} size={16} color={starred ? c.gold : c.text4} />
                   </TouchableOpacity>
@@ -529,8 +569,13 @@ export default function ResearchScreen() {
                   </Text>
                 )}
 
-                {(item.tags?.length > 0 || visits > 0) && (
+                {(item.tags?.length > 0 || visits > 0 || folder) && (
                   <View style={styles.cardTagRow}>
+                    {folder && (
+                      <View style={[styles.cardTagPill, { borderColor: folder.color + '55', backgroundColor: folder.color + '18' }]}>
+                        <Text style={[styles.cardTagText, { color: folder.color }]}>📁 {folder.name}</Text>
+                      </View>
+                    )}
                     {item.tags?.map((tg) => (
                       <View key={tg} style={styles.cardTagPill}>
                         <Text style={styles.cardTagText}>#{tg}</Text>
@@ -672,6 +717,21 @@ export default function ResearchScreen() {
                 </ScrollView>
               )}
 
+              <TouchableOpacity style={styles.folderRowBtn} onPress={() => setAssigningEntry(selectedEntry)}>
+                {(() => {
+                  const folder = folders.find((f) => f.id === selectedEntry.url_meta?.folder);
+                  return (
+                    <>
+                      <Ionicons name={folder ? 'folder' : 'folder-outline'} size={15} color={folder ? folder.color : c.text3} />
+                      <Text style={[styles.folderRowText, folder && { color: folder.color, fontWeight: 'bold' }]}>
+                        {folder ? folder.name : 'No Folder'}
+                      </Text>
+                    </>
+                  );
+                })()}
+                <Text style={styles.folderRowChange}>Change</Text>
+              </TouchableOpacity>
+
               {selectedEntry.tags?.length > 0 && (
                 <View style={styles.cardTagRow}>
                   {selectedEntry.tags.map((tg) => (
@@ -702,6 +762,15 @@ export default function ResearchScreen() {
           )}
         </View>
       </Modal>
+
+      <FolderAssignSheet
+        visible={!!assigningEntry}
+        folders={folders}
+        currentFolderId={assigningEntry?.url_meta?.folder || null}
+        onAssign={(folderId) => assignFolder(assigningEntry, folderId)}
+        onClose={() => setAssigningEntry(null)}
+        onCreateFolder={createFolder}
+      />
     </View>
   );
 }
@@ -723,11 +792,8 @@ const makeStyles = (c) => StyleSheet.create({
   searchContainer: { flexDirection: 'row', paddingHorizontal: 20, marginBottom: 10, gap: 8 },
   searchBar: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: c.bg1, borderRadius: 12, paddingHorizontal: 12, borderWidth: 1, borderColor: c.border, gap: 8 },
   searchInput: { flex: 1, paddingVertical: 10, color: c.text1, fontSize: 13 },
-  sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 10, backgroundColor: c.bg1, borderRadius: 12, borderWidth: 1, borderColor: c.border },
-  sortPanel: { marginHorizontal: 20, marginBottom: 10, backgroundColor: c.bg1, borderRadius: 12, borderWidth: 1, borderColor: c.border, overflow: 'hidden' },
-  sortOption: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: c.border },
-  sortOptionActive: { backgroundColor: c.teal + '10' },
-  sortOptionText: { flex: 1, color: c.text2, fontSize: 12 },
+  sortLabelWrap: { flexDirection: 'row', alignItems: 'center', gap: 4, marginRight: 2 },
+  sortLabel: { color: c.text4, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
 
   filterBarContainer: { marginBottom: 16 },
   filterScroll: { paddingHorizontal: 20, gap: 8, alignItems: 'center' },
@@ -783,6 +849,9 @@ const makeStyles = (c) => StyleSheet.create({
   openUrlBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: c.bg2, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: c.teal + '4d', marginBottom: 16 },
   openUrlText: { flex: 1, color: c.teal, fontSize: 12 },
   detailBodyContainer: { maxHeight: 200, marginBottom: 16 },
+  folderRowBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: c.bg2, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: c.border, marginBottom: 16 },
+  folderRowText: { flex: 1, color: c.text2, fontSize: 12.5 },
+  folderRowChange: { color: c.teal, fontSize: 11, fontWeight: 'bold' },
   detailBodyText: { color: c.text2, fontSize: 13, lineHeight: 20 },
   detailFooter: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20, borderTopWidth: 1, borderTopColor: c.border, paddingTop: 12 },
   shareDetailBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6, paddingHorizontal: 12 },

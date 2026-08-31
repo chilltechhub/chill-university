@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../../context/ThemeContext';
 import { supabase } from '../../../api/supabaseClient';
+import RelatedLinks, { EXCLUDE_LINK_FILTER } from '../RelatedLinks';
 
 const TYPES = [
   { key: 'colleague', label: 'Colleague', emoji: '💼', color: '#c9a84c' },
@@ -35,7 +36,8 @@ export default function NetworkScreen() {
 
   const load = async (uid) => {
     setLoading(true);
-    const { data } = await supabase.from('area_notes').select('*').eq('user_id', uid).eq('area_id', 'professional').order('created_at', { ascending: false }).limit(50);
+    const { data } = await EXCLUDE_LINK_FILTER(supabase.from('area_notes').select('*').eq('user_id', uid).eq('area_id', 'professional'))
+      .order('created_at', { ascending: false }).limit(50);
     if (data) setEntries(data);
     setLoading(false);
   };
@@ -101,6 +103,11 @@ export default function NetworkScreen() {
               <Text style={{ fontSize: t.sm, color: c.text3, textAlign: 'center' }}>Add colleagues, mentors, and community contacts.</Text>
             </View>
           )}
+
+          <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginTop: s.lg, marginBottom: s.md }}>
+            🔗 Related
+          </Text>
+          <RelatedLinks areaId="professional" color={color} c={c} t={t} s={s} r={r} />
         </ScrollView>
       )}
 

@@ -5,7 +5,7 @@ import { handleGameEvent } from './gamificationService';
 
 export const DIFFICULTY = { easy: 1, medium: 2, hard: 3 };
 
-export default function useGame({ subject = 'general', difficulty = 1, onGameEnd }) {
+export default function useGame({ subject = 'general', difficulty = 1, skillLevel = null, onGameEnd }) {
   const { user, recordGuestEvent } = useUserProgress();
 
   const [score,      setScore]    = useState(0);
@@ -48,6 +48,7 @@ export default function useGame({ subject = 'general', difficulty = 1, onGameEnd
           subject,
           correct: true,
           difficulty,
+          metadata: skillLevel ? { skillLevel } : undefined,
         }).catch(() => {});
       } else {
         recordGuestEvent({ correct: true, difficulty });
@@ -65,6 +66,7 @@ export default function useGame({ subject = 'general', difficulty = 1, onGameEnd
           subject,
           correct: false,
           difficulty,
+          metadata: skillLevel ? { skillLevel } : undefined,
         }).catch(() => {});
       } else {
         recordGuestEvent({ correct: false, difficulty });
@@ -72,7 +74,7 @@ export default function useGame({ subject = 'general', difficulty = 1, onGameEnd
 
       return 0;
     }
-  }, [streak, bestStreak, difficulty, user, subject, recordGuestEvent]);
+  }, [streak, bestStreak, difficulty, user, subject, recordGuestEvent, skillLevel]);
 
   const endGame = useCallback(() => {
     setDone(true);
@@ -100,6 +102,7 @@ export default function useGame({ subject = 'general', difficulty = 1, onGameEnd
           avgResponseMs: Math.round(avgMs),
           fastestMs:     Math.round(fastestMs),
           totalSeconds:  totalSec,
+          skillLevel:    skillLevel || undefined,
         },
       }).catch(e => console.warn('[useGame] endGame event error', e));
     }
@@ -114,7 +117,7 @@ export default function useGame({ subject = 'general', difficulty = 1, onGameEnd
 
     if (onGameEnd) onGameEnd(result);
     return result;
-  }, [score, correct, attempted, accuracy, bestStreak, user, subject, difficulty, onGameEnd]);
+  }, [score, correct, attempted, accuracy, bestStreak, user, subject, difficulty, skillLevel, onGameEnd]);
 
   const reset = useCallback(() => {
     setScore(0); setLives(3); setStreak(0);

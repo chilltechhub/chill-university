@@ -16,6 +16,7 @@ export async function getCaptures(userId, { status = 'inbox', type = null } = {}
       .select('*')
       .eq('user_id', userId)
       .eq('status', status)
+      .is('deleted_at', null)
       .order('created_at', { ascending: false });
     if (type) q = q.eq('type', type);
     const { data, error } = await q;
@@ -42,6 +43,7 @@ export async function getSaveForLater(userId, type = null) {
       .eq('user_id', userId)
       .not('save_for_later', 'is', null)
       .eq('completed', false)
+      .is('deleted_at', null)
       .order('created_at', { ascending: false });
     if (type) q = q.eq('save_for_later', type);
     const { data, error } = await q;
@@ -119,10 +121,12 @@ export async function saveForLater(captureId, type) {
   return updateCapture(captureId, { save_for_later: type });
 }
 
+// Soft delete — moves the item to Recently Deleted (Capture Inbox) for 7
+// days instead of removing it. See src/api/trashService.js.
 export async function deleteCapture(captureId) {
   const { error } = await supabase
     .from('captures')
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .eq('id', captureId);
   if (error) throw error;
 }
@@ -165,6 +169,7 @@ export async function getProjects(userId, status = null) {
       .from('projects')
       .select('*')
       .eq('user_id', userId)
+      .is('deleted_at', null)
       .order('sort_order');
     if (status) q = q.eq('status', status);
     const { data, error } = await q;
@@ -193,10 +198,12 @@ export async function upsertProject(userId, project) {
   return data;
 }
 
+// Soft delete — moves the project to Recently Deleted (Capture Inbox) for 7
+// days instead of removing it. See src/api/trashService.js.
 export async function deleteProject(projectId) {
   const { error } = await supabase
     .from('projects')
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .eq('id', projectId);
   if (error) throw error;
 }
