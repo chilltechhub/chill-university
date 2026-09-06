@@ -72,8 +72,9 @@ export function useBlueprint() {
 //    absolutely positioned parent with no resolved size, native layout
 //    collapses those children to zero and the entire grid renders invisible,
 //    while still looking perfect on web.
-//  - Real line widths (1/2pt), never StyleSheet.hairlineWidth — a hairline is
-//    ~0.33pt on a 3x screen and vanishes against this pale palette.
+//  - Avoid StyleSheet.hairlineWidth — ~0.33pt on a 3x screen, too faint for
+//    this pale palette. The weights below match the original Svg stroke
+//    widths exactly, so the paper looks the way it always did.
 //
 // NOTE: projects.js carries its own copy of this as WorkshopGrid. Any fix
 // here needs to be made there too (or the two consolidated).
@@ -84,8 +85,8 @@ export function BlueprintGrid({ bp }) {
   const { width, height } = useWindowDimensions();
   const rows = Math.ceil(height / MINOR) + 1;
   const cols = Math.ceil(width / MINOR) + 1;
-  const MINOR_W = 1;
-  const MAJOR_W = 2;
+  const MINOR_W = 0.6; // matches the old Svg strokeWidth
+  const MAJOR_W = 1;
 
   return (
     <View

@@ -30,10 +30,13 @@ import TourSpot from '../../components/TourSpot';
 //     OVER the header/search/build list on iOS regardless of JSX order or
 //     zIndex, leaving a screen of blank graph paper. It looked fine on web the
 //     whole time.
-//  2. Real line widths (1/2pt), never StyleSheet.hairlineWidth — a hairline is
-//     ~0.33pt on a 3x screen and vanishes against this pale palette.
-const GRID_STEP = 17;      // px between minor rules
+//  2. Avoid StyleSheet.hairlineWidth — ~0.33pt on a 3x screen, too faint for
+//     this pale palette. The weights below match the original SVG's stroke
+//     widths exactly, so the paper looks the way it always did.
+const GRID_STEP = 17;       // px between minor rules
 const GRID_MAJOR_EVERY = 5; // every 5th rule is heavy (85px)
+const GRID_MINOR_W = 0.6;   // matches the old Svg strokeWidth
+const GRID_MAJOR_W = 1;
 
 function WorkshopGrid({ bp }) {
   const { width, height } = useWindowDimensions();
@@ -60,7 +63,7 @@ function WorkshopGrid({ bp }) {
             key={`h${i}`}
             style={{
               position: 'absolute', left: 0, top: i * GRID_STEP,
-              width, height: major ? 2 : 1,
+              width, height: major ? GRID_MAJOR_W : GRID_MINOR_W,
               backgroundColor: major ? bp.gridMajor : bp.grid,
             }}
           />
@@ -73,7 +76,7 @@ function WorkshopGrid({ bp }) {
             key={`v${i}`}
             style={{
               position: 'absolute', top: 0, left: i * GRID_STEP,
-              height, width: major ? 2 : 1,
+              height, width: major ? GRID_MAJOR_W : GRID_MINOR_W,
               backgroundColor: major ? bp.gridMajor : bp.grid,
             }}
           />
