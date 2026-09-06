@@ -5,8 +5,7 @@
 // respects the user's light/dark preference via useTheme().isDark.
 
 import React from 'react';
-import { View, Text, Dimensions, StyleSheet } from 'react-native';
-import Svg, { Defs, Pattern, Path, Rect } from 'react-native-svg';
+import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { useTheme } from '../../../context/ThemeContext';
 import { FONTS } from '../../theme';
 
@@ -55,24 +54,74 @@ export function useBlueprint() {
   return isDark ? DARK : LIGHT;
 }
 
-// Fixed graph-paper backdrop — a minor grid every ~17px, a heavier grid
-// every 5th line. Painted once behind the screen; content scrolls over it.
+// Fixed graph-paper backdrop — a minor grid every 17px, a heavier line
+// every 5th one (85px). Painted once behind the screen; content sits over it.
+//
+// Drawn with plain Views, NOT react-native-svg, and that is deliberate. As an
+// <Svg>, this backdrop painted OVER the screen's content on iOS no matter
+// what — it came first in JSX, it had a lower zIndex, and it was wrapped in
+// an absolutely-positioned View, and the header/search/build list still
+// ended up underneath it, leaving nothing but blank graph paper on device
+// (it rendered correctly on web the whole time, which is what made it such
+// a difficult one to pin down). Plain Views layer predictably everywhere, so
+// the grid stays behind where it belongs. Keep it that way.
+//
+// Two more rules, both learned the hard way on device:
+//  - Every box carries EXPLICIT pixel width/height. Never size a rule with
+//    `left:0 + right:0` (or `top:0 + bottom:0`) edge-stretching: inside an
+//    absolutely positioned parent with no resolved size, native layout
+//    collapses those children to zero and the entire grid renders invisible,
+//    while still looking perfect on web.
+//  - Real line widths (1/2pt), never StyleSheet.hairlineWidth — a hairline is
+//    ~0.33pt on a 3x screen and vanishes against this pale palette.
+//
+// NOTE: projects.js carries its own copy of this as WorkshopGrid. Any fix
+// here needs to be made there too (or the two consolidated).
+const MINOR = 17;   // px between minor rules
+const MAJOR_EVERY = 5; // every 5th rule is a heavy one (85px)
+
 export function BlueprintGrid({ bp }) {
-  const { width, height } = Dimensions.get('window');
+  const { width, height } = useWindowDimensions();
+  const rows = Math.ceil(height / MINOR) + 1;
+  const cols = Math.ceil(width / MINOR) + 1;
+  const MINOR_W = 1;
+  const MAJOR_W = 2;
+
   return (
-    <Svg width={width} height={height} style={StyleSheet.absoluteFillObject} pointerEvents="none">
-      <Defs>
-        <Pattern id="bpMinor" width={17} height={17} patternUnits="userSpaceOnUse">
-          <Path d="M17 0 L0 0 0 17" fill="none" stroke={bp.grid} strokeWidth={0.6} />
-        </Pattern>
-        <Pattern id="bpMajor" width={85} height={85} patternUnits="userSpaceOnUse">
-          <Path d="M85 0 L0 0 0 85" fill="none" stroke={bp.gridMajor} strokeWidth={1} />
-        </Pattern>
-      </Defs>
-      <Rect width="100%" height="100%" fill={bp.paper} />
-      <Rect width="100%" height="100%" fill="url(#bpMinor)" />
-      <Rect width="100%" height="100%" fill="url(#bpMajor)" />
-    </Svg>
+    <View
+      style={{
+        position: 'absolute', top: 0, left: 0, width, height,
+        backgroundColor: bp.paper, overflow: 'hidden',
+      }}
+      pointerEvents="none"
+    >
+      {Array.from({ length: rows }, (_, i) => {
+        const major = i % MAJOR_EVERY === 0;
+        return (
+          <View
+            key={`h${i}`}
+            style={{
+              position: 'absolute', left: 0, top: i * MINOR,
+              width, height: major ? MAJOR_W : MINOR_W,
+              backgroundColor: major ? bp.gridMajor : bp.grid,
+            }}
+          />
+        );
+      })}
+      {Array.from({ length: cols }, (_, i) => {
+        const major = i % MAJOR_EVERY === 0;
+        return (
+          <View
+            key={`v${i}`}
+            style={{
+              position: 'absolute', top: 0, left: i * MINOR,
+              height, width: major ? MAJOR_W : MINOR_W,
+              backgroundColor: major ? bp.gridMajor : bp.grid,
+            }}
+          />
+        );
+      })}
+    </View>
   );
 }
 

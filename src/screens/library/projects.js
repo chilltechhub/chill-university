@@ -8,13 +8,80 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   TextInput, Modal, ActivityIndicator, RefreshControl,
-  Alert, KeyboardAvoidingView, Platform,
+  Alert, KeyboardAvoidingView, Platform, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import { supabase } from '../../api/supabaseClient';
+import { cacheRead, cacheWrite, isOnline } from '../../api/offlineCache';
 import { FONTS } from '../../theme';
-import { useBlueprint, BlueprintGrid, CornerTicks, Stamp, RulerBar } from './blueprint';
+import { useUIPrefs } from '../../../context/UIPrefsContext';
+import { useBlueprint, CornerTicks, Stamp, RulerBar } from './blueprint';
+import TourSpot from '../../components/TourSpot';
+
+// ─── Graph-paper backdrop ───────────────────────────────────────────────────
+// Defined here rather than imported so this screen's background is visible in
+// one place while we chase a device-only layering bug. (Which file a component
+// lives in has no effect on how it renders — but keeping it local means one
+// less thing to wonder about.)
+//
+// Two hard-won rules, do not undo either:
+//  1. Plain Views, never react-native-svg. As an <Svg> this backdrop painted
+//     OVER the header/search/build list on iOS regardless of JSX order or
+//     zIndex, leaving a screen of blank graph paper. It looked fine on web the
+//     whole time.
+//  2. Real line widths (1/2pt), never StyleSheet.hairlineWidth — a hairline is
+//     ~0.33pt on a 3x screen and vanishes against this pale palette.
+const GRID_STEP = 17;      // px between minor rules
+const GRID_MAJOR_EVERY = 5; // every 5th rule is heavy (85px)
+
+function WorkshopGrid({ bp }) {
+  const { width, height } = useWindowDimensions();
+  const rows = Math.ceil(height / GRID_STEP) + 1;
+  const cols = Math.ceil(width / GRID_STEP) + 1;
+
+  // Every box below carries EXPLICIT pixel width/height. Nothing here may
+  // rely on `left:0 + right:0` edge-stretching: inside an absolutely
+  // positioned parent that has no resolved size of its own, native layout can
+  // collapse such a child to zero width, which renders the whole grid
+  // invisible on device while looking perfect on web.
+  return (
+    <View
+      style={{
+        position: 'absolute', top: 0, left: 0, width, height,
+        backgroundColor: bp.paper, overflow: 'hidden',
+      }}
+      pointerEvents="none"
+    >
+      {Array.from({ length: rows }, (_, i) => {
+        const major = i % GRID_MAJOR_EVERY === 0;
+        return (
+          <View
+            key={`h${i}`}
+            style={{
+              position: 'absolute', left: 0, top: i * GRID_STEP,
+              width, height: major ? 2 : 1,
+              backgroundColor: major ? bp.gridMajor : bp.grid,
+            }}
+          />
+        );
+      })}
+      {Array.from({ length: cols }, (_, i) => {
+        const major = i % GRID_MAJOR_EVERY === 0;
+        return (
+          <View
+            key={`v${i}`}
+            style={{
+              position: 'absolute', top: 0, left: i * GRID_STEP,
+              height, width: major ? 2 : 1,
+              backgroundColor: major ? bp.gridMajor : bp.grid,
+            }}
+          />
+        );
+      })}
+    </View>
+  );
+}
 
 const BUILD_TYPES = [
   '🔬 Science',  '💻 Coding',   '🎨 Art',      '📝 Writing',
@@ -47,6 +114,7 @@ function stageFor(project) {
 // ─── New Build Modal ───────────────────────────────────────────────────────
 function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, initialType }) {
   const s = makeModalStyles(bp);
+  const { showEmojis } = useUIPrefs();
   const [title,     setTitle]     = useState('');
   const [objective, setObjective] = useState('');
   const [emoji,     setEmoji]     = useState('🏗️');
@@ -102,7 +170,7 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
         <View style={s.sheet}>
           <View style={s.handle} />
           <Text style={s.sheetEyebrow}>NEW BUILD · DRAFT SHEET</Text>
-          <Text style={s.sheetTitle}>🏗️ Start a New Build</Text>
+          <Text style={s.sheetTitle}>{showEmojis ? '🏗️ ' : ''}Start a New Build</Text>
 
           {/* Preview */}
           <View style={{ alignItems: 'center', marginBottom: 20 }}>
@@ -161,7 +229,7 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
               <TouchableOpacity onPress={start} disabled={!title.trim() || saving}
                 style={[s.startBtn, { backgroundColor: color, opacity: (!title.trim() || saving) ? 0.5 : 1 }]}>
                 {saving ? <ActivityIndicator color={bp.onStamp} size="small" />
-                  : <Text style={{ color: bp.onStamp, fontWeight: '800', fontFamily: FONTS.mono, fontSize: 13, letterSpacing: 0.5 }}>🏗️ START BUILDING</Text>}
+                  : <Text style={{ color: bp.onStamp, fontWeight: '800', fontFamily: FONTS.mono, fontSize: 13, letterSpacing: 0.5 }}>{showEmojis ? '🏗️ ' : ''}START BUILDING</Text>}
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -219,6 +287,13 @@ function BuildCard({ project, bp, onPress, onFavorite, onDelete }) {
         </View>
       </View>
 
+      {project.next_action ? (
+        <View style={s.nextActionRow}>
+          <Ionicons name="flag" size={11} color={color} />
+          <Text style={[s.nextActionText, { color }]} numberOfLines={1}>{project.next_action}</Text>
+        </View>
+      ) : null}
+
       {total > 0 && (
         <View style={{ marginTop: 11 }}>
           <RulerBar pct={pct} color={color} bp={bp} />
@@ -255,6 +330,8 @@ const makeCardStyles = bp => StyleSheet.create({
   title:     { color: bp.ink, fontSize: 14.5, fontWeight: '700', marginBottom: 2 },
   objective: { color: bp.ink2, fontSize: 12, lineHeight: 16 },
   progressText: { fontSize: 9.5, fontFamily: FONTS.mono, color: bp.ink3, marginTop: 5, letterSpacing: 0.4 },
+  nextActionRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8 },
+  nextActionText: { fontSize: 11, fontWeight: '700', flexShrink: 1 },
   actions:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 11 },
   outlineBtn:  { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderRadius: 3, paddingHorizontal: 9, paddingVertical: 5 },
   outlineBtnText: { fontSize: 10, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 0.3 },
@@ -266,6 +343,7 @@ export default function ProjectsScreen() {
   const route = useRoute();
   const bp = useBlueprint();
   const s = makeStyles(bp);
+  const { showEmojis } = useUIPrefs();
   const buildColors = [bp.accent, bp.stamp, bp.approved, bp.violet, bp.draft, bp.ink2];
 
   const [projects,   setProjects]   = useState([]);
@@ -304,11 +382,18 @@ export default function ProjectsScreen() {
 
   const load = async (uid) => {
     setLoading(true);
+    const cacheKey = `projects_list_${uid}`;
     try {
+      const cached = await cacheRead(cacheKey);
+      if (cached) setProjects(cached);
+
+      if (!(await isOnline())) { setLoading(false); return; }
+
       const { data } = await supabase
         .from('projects').select('*').eq('user_id', uid).is('deleted_at', null)
         .order('updated_at', { ascending: false });
       const list = data || [];
+      let withTasks = [];
       if (list.length) {
         const ids = list.map(p => p.id);
         const { data: taskRows } = await supabase
@@ -319,10 +404,12 @@ export default function ProjectsScreen() {
           byProject[tk.project_id].total += 1;
           if (tk.completed) byProject[tk.project_id].done += 1;
         });
-        setProjects(list.map(p => ({ ...p, tasks: byProject[p.id] || null })));
+        withTasks = list.map(p => ({ ...p, tasks: byProject[p.id] || null }));
+        setProjects(withTasks);
       } else {
         setProjects([]);
       }
+      await cacheWrite(cacheKey, withTasks);
     } catch (e) { console.warn('ProjectsScreen', e); }
     setLoading(false);
   };
@@ -372,19 +459,34 @@ export default function ProjectsScreen() {
 
   return (
     <View style={s.screen}>
-      <BlueprintGrid bp={bp} />
-      <View style={{ flex: 1 }}>
+      <WorkshopGrid bp={bp} />
 
+      {/* Pinned chrome — header, rule, and search stay put while the builds
+          scroll beneath them. Kept OUTSIDE the ScrollView (rather than as
+          sticky headers) so their layout never depends on scroll-content
+          measurement. backgroundColor: 'transparent' on these layers is
+          load-bearing: an opaque one would hide the grid behind it. */}
+      <View style={{ zIndex: 1, backgroundColor: 'transparent' }}>
         {/* Header */}
         <View style={s.header}>
-          <View>
-            <Text style={s.headerSub}>DRAFTING TABLE</Text>
-            <Text style={s.headerTitle}>The Workshop</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <TouchableOpacity
+              onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('LibraryScreen'))}
+              style={{ padding: 2 }}
+            >
+              <Ionicons name="chevron-back" size={22} color={bp.accent} />
+            </TouchableOpacity>
+            <View>
+              <Text style={s.headerSub}>DRAFTING TABLE</Text>
+              <Text style={s.headerTitle}>The Workshop</Text>
+            </View>
           </View>
+          <TourSpot id="projects-add">
           <TouchableOpacity style={s.newBtn} onPress={() => setShowNew(true)}>
             <Ionicons name="add" size={15} color={bp.onStamp} />
             <Text style={s.newBtnText}>NEW BUILD</Text>
           </TouchableOpacity>
+          </TourSpot>
         </View>
         <View style={s.headerRuleWrap}>
           <View style={s.headerRuleThick} />
@@ -392,17 +494,25 @@ export default function ProjectsScreen() {
         </View>
 
         {/* Search */}
+        <TourSpot id="projects-search">
         <View style={s.searchWrap}>
           <Ionicons name="search" size={15} color={bp.ink3} style={{ marginRight: 8 }} />
           <TextInput style={s.searchInput}
             value={search} onChangeText={setSearch}
             placeholder="Search builds..." placeholderTextColor={bp.ink3} />
         </View>
+        </TourSpot>
+      </View>
+
+      <ScrollView
+        style={{ flex: 1, zIndex: 1, backgroundColor: 'transparent' }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={bp.accent} />}
+        contentContainerStyle={{ paddingBottom: 60, backgroundColor: 'transparent' }}
+      >
 
         {loading ? <ActivityIndicator style={{ marginTop: 40 }} color={bp.accent} /> : (
-          <ScrollView showsVerticalScrollIndicator={false}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={bp.accent} />}
-            contentContainerStyle={{ paddingBottom: 60 }}>
+          <>
 
             {/* Hero — Continue Building */}
             {hero && filter === 'all' && !search && (
@@ -428,6 +538,12 @@ export default function ProjectsScreen() {
                   {hero.objective && (
                     <Text style={s.heroObj} numberOfLines={2}>{hero.objective}</Text>
                   )}
+                  <View style={[s.heroNextRow, { borderColor: hero.next_action ? (hero.color || bp.accent) : bp.border, borderStyle: hero.next_action ? 'solid' : 'dashed' }]}>
+                    <Ionicons name="flag" size={12} color={hero.next_action ? (hero.color || bp.accent) : bp.ink3} />
+                    <Text style={[s.heroNextText, !hero.next_action && s.heroNextTextEmpty]} numberOfLines={1}>
+                      {hero.next_action || 'No next action set — open the build to set one'}
+                    </Text>
+                  </View>
                   {heroTotal > 0 && (
                     <View style={{ marginTop: 12 }}>
                       <RulerBar pct={heroPct} color={hero.color || bp.accent} bp={bp} height={11} />
@@ -446,6 +562,7 @@ export default function ProjectsScreen() {
             )}
 
             {/* Stage filter */}
+            <TourSpot id="projects-list">
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.catBar}>
               {STAGES.map(stage => {
                 const isAct = filter === stage.id;
@@ -458,6 +575,7 @@ export default function ProjectsScreen() {
                 );
               })}
             </ScrollView>
+            </TourSpot>
 
             {/* Stats row */}
             {filter === 'all' && !search && (
@@ -486,7 +604,7 @@ export default function ProjectsScreen() {
 
               {filtered.length === 0 ? (
                 <View style={s.empty}>
-                  <Text style={{ fontSize: 40, marginBottom: 12 }}>🧰</Text>
+                  {showEmojis ? <Text style={{ fontSize: 40, marginBottom: 12 }}>🧰</Text> : <Ionicons name="construct-outline" size={36} color={bp.ink2} style={{ marginBottom: 12 }} />}
                   <Text style={s.emptyTitle}>{search ? 'No builds found' : 'No builds yet'}</Text>
                   <Text style={s.emptyText}>{search ? 'Try a different search' : 'Tap New Build to start your first project'}</Text>
                 </View>
@@ -500,20 +618,20 @@ export default function ProjectsScreen() {
                 ))
               )}
             </View>
-          </ScrollView>
+          </>
         )}
+      </ScrollView>
 
-        <NewBuildModal
-          visible={showNew} userId={userId} bp={bp} buildColors={buildColors}
-          initialType={route.params?.presetType}
-          onCreated={(proj) => {
-            setProjects(prev => [{ ...proj, tasks: null }, ...prev]);
-            setShowNew(false);
-            navigation.navigate('ProjectDetail', { project: proj });
-          }}
-          onClose={() => setShowNew(false)}
-        />
-      </View>
+      <NewBuildModal
+        visible={showNew} userId={userId} bp={bp} buildColors={buildColors}
+        initialType={route.params?.presetType}
+        onCreated={(proj) => {
+          setProjects(prev => [{ ...proj, tasks: null }, ...prev]);
+          setShowNew(false);
+          navigation.navigate('ProjectDetail', { project: proj });
+        }}
+        onClose={() => setShowNew(false)}
+      />
     </View>
   );
 }
@@ -539,6 +657,9 @@ const makeStyles = bp => StyleSheet.create({
   heroMeta:    { color: bp.ink3, fontSize: 10, fontFamily: FONTS.mono, marginLeft: 'auto' },
   heroTitle:   { color: bp.ink, fontSize: 19, fontFamily: FONTS.display, fontWeight: '800' },
   heroObj:     { color: bp.ink2, fontSize: 13, lineHeight: 18, marginTop: 11 },
+  heroNextRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 12, borderWidth: 1, borderRadius: 4, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: bp.paper },
+  heroNextText: { flex: 1, color: bp.ink, fontSize: 12.5, fontWeight: '700' },
+  heroNextTextEmpty: { color: bp.ink3, fontWeight: '600', fontStyle: 'italic' },
   progressText: { fontSize: 10, fontFamily: FONTS.mono, color: bp.ink3, marginTop: 6, letterSpacing: 0.4 },
   heroFooter:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 },
   outlineBtnLg:{ flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 3, paddingHorizontal: 11, paddingVertical: 7 },
