@@ -1,25 +1,27 @@
-// src/screens/HealthAndWellnessScreen.js
+// src/screens/classes/homeecworkshopClass/health.js
+import React from 'react';
+import ClassTopicScreen from '../../../components/ClassTopicScreen';
 
-import React, { useState } from 'react';
-import {
-  ScrollView,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Linking,
-} from 'react-native';
-
-export default function HealthAndWellnessScreen() {
-  const [openSections, setOpenSections] = useState({});
-
-  const topics = [
+const topics = [
     {
       key: 'personalHygiene',
       title: 'Personal Hygiene & Self-Care',
+      grade: 'K-2',
       color: '#009688', // Teal
       description:
         'Practicing proper hygiene habits and self-care routines to maintain cleanliness and overall health.',
+      learn: [
+        { heading: 'Everyday Hygiene Habits', body: 'Washing your hands with soap for 20 seconds, brushing your teeth twice a day, and taking a bath or shower regularly are simple habits that keep germs away and help your body stay healthy. These habits are most helpful when they become part of your daily routine, like right after using the bathroom or before eating.' },
+        { heading: 'Self-Care Means Taking Care of You', body: 'Self-care includes getting enough sleep, eating healthy food, and taking time to rest or play — it helps your body and mind feel good. Asking a grown-up for help when you\'re not feeling well or need new hygiene supplies is part of taking care of yourself too.' },
+      ],
+      practice: [
+        { question: 'How long should you wash your hands with soap to clean them well?', options: ['2 seconds', 'About 20 seconds', '1 minute', 'You don\'t need soap'], answerIndex: 1, explanation: 'Washing with soap for about 20 seconds — roughly the time it takes to hum a short song twice — helps remove germs effectively.' },
+        { question: 'Which of these is an example of self-care?', options: ['Skipping meals', 'Getting enough sleep', 'Staying up all night', 'Ignoring when you feel sick'], answerIndex: 1, explanation: 'Getting enough sleep helps your body and mind rest and stay healthy, making it an important self-care habit.' },
+      ],
+      apply: {
+        prompt: 'With a grown-up, make a simple daily hygiene checklist (like washing hands, brushing teeth, and bathing) and check it off for one full day.',
+        checklist: ['Made a hygiene checklist', 'Included hand washing', 'Included teeth brushing', 'Checked off each item for one day'],
+      },
       help: {
         readings: [
           {
@@ -37,9 +39,22 @@ export default function HealthAndWellnessScreen() {
     {
       key: 'stressManagement',
       title: 'Stress Management & Mental Health',
+      grade: '6-8',
       color: '#9C27B0', // Purple
       description:
         'Techniques to manage stress, support mental well-being, and recognize signs of emotional health needs.',
+      learn: [
+        { heading: 'Stress Has Warning Signs', body: 'Stress can show up as physical signs (headaches, trouble sleeping), emotional signs (feeling irritable or overwhelmed), or behavioral signs (avoiding friends, changes in appetite). Recognizing these early signs helps you respond before stress builds up too much.' },
+        { heading: 'Coping Strategies That Actually Help', body: 'Techniques like deep breathing, physical activity, talking to a trusted friend or adult, and breaking big problems into smaller steps can reduce stress in healthy ways. It\'s normal to need support sometimes — reaching out to a counselor, teacher, or trusted adult is a sign of strength, not weakness.' },
+      ],
+      practice: [
+        { question: 'Which of these is a physical sign of stress?', options: ['Trouble sleeping', 'Getting straight A\'s', 'Feeling well-rested', 'Having no opinions'], answerIndex: 0, explanation: 'Stress often shows up physically, including through sleep problems, headaches, or fatigue.' },
+        { question: 'What is a healthy way to cope with stress?', options: ['Bottling up feelings and avoiding everyone', 'Talking to a trusted friend or adult', 'Ignoring the problem completely', 'Skipping sleep to worry more'], answerIndex: 1, explanation: 'Talking to someone you trust is a healthy coping strategy that can help you process stress and find solutions.' },
+      ],
+      apply: {
+        prompt: 'The next time you feel stressed this week, try one coping technique (deep breathing, a short walk, or talking to someone) and write a sentence about how it made you feel.',
+        checklist: ['Noticed a stressful moment', 'Tried one coping technique', 'Wrote how it felt before', 'Wrote how it felt after'],
+      },
       help: {
         readings: [
           {
@@ -57,9 +72,22 @@ export default function HealthAndWellnessScreen() {
     {
       key: 'firstAid',
       title: 'First Aid & Safety Basics',
+      grade: '6-8',
       color: '#F44336', // Red
       description:
         'Basic emergency response skills to treat common injuries and ensure safety in everyday situations.',
+      learn: [
+        { heading: 'Check, Call, Care', body: 'The basic first aid sequence is: check the scene and person for danger, call for help (an adult or 911) if it\'s serious, and care for the injury using safe, simple steps. For a minor cut, that means washing your hands, rinsing the wound, applying pressure to stop bleeding, and covering it with a clean bandage.' },
+        { heading: 'Know When to Get an Adult', body: 'Small scrapes and minor burns can often be treated with basic first aid, but deep cuts, heavy bleeding, burns that blister badly, or any injury involving trouble breathing always need an adult or emergency services right away. First aid is about helping safely — it\'s never worth risking your own safety to help someone else.' },
+      ],
+      practice: [
+        { question: 'What is the correct first step when treating a minor cut?', options: ['Cover it immediately without cleaning', 'Wash your hands before touching the wound', 'Ignore it', 'Apply a bandage over dirt'], answerIndex: 1, explanation: 'Washing your hands first helps prevent introducing germs into the wound.' },
+        { question: 'When should you always get an adult for help with an injury?', options: ['For any small paper cut', 'When there is heavy bleeding or trouble breathing', 'Only if it doesn\'t hurt', 'Never, kids should always handle it alone'], answerIndex: 1, explanation: 'Serious signs like heavy bleeding or breathing trouble mean it is time to get an adult or call emergency services immediately.' },
+      ],
+      apply: {
+        prompt: 'With an adult, find or put together a basic first aid kit at home and identify what each item is used for (bandages, antiseptic wipes, gauze, etc.).',
+        checklist: ['Located or assembled a first aid kit', 'Identified at least 4 items', 'Explained what each item is for', 'Checked with an adult where the kit is stored'],
+      },
       help: {
         readings: [
           {
@@ -80,148 +108,6 @@ export default function HealthAndWellnessScreen() {
     },
   ];
 
-  const toggleHelp = (key) => {
-    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.mainTitle}>Health & Wellness</Text>
-
-      {topics.map((topic) => (
-        <View key={topic.key} style={styles.card}>
-          <View style={[styles.headerBar, { backgroundColor: topic.color }]}>  
-            <Text style={styles.headerText}>{topic.title}</Text>
-          </View>
-          <View style={styles.sectionBody}>
-            <Text style={styles.subtitle}>What is it?</Text>
-            <Text style={styles.description}>{topic.description}</Text>
-
-            {(topic.help.readings.length > 0 || topic.help.videos.length > 0) && (
-              <TouchableOpacity
-                style={styles.helpToggle}
-                onPress={() => toggleHelp(topic.key)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.helpTitle}>
-                  Need help? {openSections[topic.key] ? '▲' : '▼'}
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {openSections[topic.key] && (
-              <View style={styles.helpContent}>
-                {topic.help.readings.length > 0 && (
-                  <>
-                    <Text style={styles.helpLabel}>Resources</Text>
-                    {topic.help.readings.map((item, idx) => (
-                      <Text
-                        key={idx}
-                        style={styles.linkText}
-                        onPress={() => Linking.openURL(item.url)}
-                      >
-                        • {item.title}
-                      </Text>
-                    ))}
-                  </>
-                )}
-                {topic.help.videos.length > 0 && (
-                  <>
-                    <Text style={styles.helpLabel}>Videos</Text>
-                    {topic.help.videos.map((video, idx) => (
-                      <Text
-                        key={idx}
-                        style={styles.linkText}
-                        onPress={() => Linking.openURL(video.url)}
-                      >
-                        • {video.title}
-                      </Text>
-                    ))}
-                  </>
-                )}
-              </View>
-            )}
-          </View>
-        </View>
-      ))}
-    </ScrollView>
-  );
+export default function HealthAndWellnessScreen() {
+  return <ClassTopicScreen title={"Health & Wellness"} classKey="HealthAndWellness" fallbackTopics={topics} />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    backgroundColor: '#F9F9F9',
-    paddingBottom: 40,
-  },
-  mainTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#333',
-  },
-  card: {
-    marginBottom: 24,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  headerBar: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  headerText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  sectionBody: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  subtitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-    color: '#555',
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 12,
-    color: '#444',
-  },
-  helpToggle: {
-    marginTop: 8,
-  },
-  helpTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  helpContent: {
-    marginTop: 8,
-    padding: 12,
-    backgroundColor: '#EFEFEF',
-    borderRadius: 8,
-  },
-  helpLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 6,
-    color: '#333',
-  },
-  linkText: {
-    fontSize: 14,
-    color: '#1e88e5',
-    marginLeft: 8,
-    marginTop: 4,
-    textDecorationLine: 'underline',
-  },
-});

@@ -12,7 +12,7 @@ export default function PlacementEditor({ visible, userId, components, areaKey, 
   console.log('PlacementEditor render', { visible, areaKey, componentCount: components?.length });
 
   return (
-    <Modal visible={!!visible} animationType="slide" onRequestClose={onCancel}>
+    <Modal visible={!!visible} animationType="slide" >
       <View style={{ flex: 1, backgroundColor: c.bg0, padding: 40 }}>
         <Text style={{ fontSize: 20, fontWeight: '700', color: c.text1, marginBottom: 20 }}>
           Placement Editor

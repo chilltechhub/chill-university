@@ -1,289 +1,102 @@
-// src/screens/AdvancedElectiveTopicsScreen.js
+// src/screens/classes/scienceClass/chemistry.js
+import React from 'react';
+import ClassTopicScreen from '../../../components/ClassTopicScreen';
 
-import React, { useState } from 'react';
-import {
-  ScrollView,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Linking,
-} from 'react-native';
-
-export default function AdvancedElectiveTopicsScreen() {
-  const [openSections, setOpenSections] = useState({});
-
-  const topics = [
-    {
-      key: 'trigonometry',
-      title: 'Trigonometry',
-      color: '#673AB7', // Deep purple
-      description:
-        'Defining sine, cosine, and tangent ratios in right and non-right triangles; exploring unit-circle definitions, graph behavior, and identities.',
-      help: {
-        readings: [
-          {
-            title: 'Sine; Cosine; Tangent (Math is Fun)',
-            url: 'https://www.mathsisfun.com/sine-cosine-tangent.html',
-          },
-        ],
-        videos: [
-          {
-            title: 'Intro to Trigonometry - sine, cosine, and tangent ratios',
-            url: 'https://youtu.be/Q9mjsjOenQQ?si=koZN_KFMj-8p77ck',
-          },
-          {
-            title: 'Non Right angled Trigonometry, the Sine and Cosine rules',
-            url: 'https://youtu.be/5iYQCdL-bz4?si=_DrZADRqE-YeZgLa',
-          },
-          {
-            title: 'The Unit Circle, Basic Introduction, Trigonometry',
-            url: 'https://youtu.be/57VrEiEPD1I?si=8M13tnSCCSfQ9Nhnaa',
-          },
-        ],
-      },
+const topics = [
+  {
+    key: 'statesOfMatter',
+    title: 'Matter & States of Matter',
+    grade: '3-5',
+    color: '#FF6B6B',
+    description:
+      'Everything around us is made of matter — solid, liquid, or gas. An introduction to elements, compounds, and how matter changes state.',
+    learn: [
+      { heading: 'Three States of Matter', body: 'A solid holds its own shape, like an ice cube or a rock. A liquid takes the shape of whatever container it is in but keeps the same amount of space, like water. A gas spreads out to fill any space it is in, like the air around us.' },
+      { heading: 'Changing State', body: 'Adding heat can turn a solid into a liquid (melting) and a liquid into a gas (evaporating), while removing heat does the opposite (freezing and condensing). The matter itself stays the same stuff — only its state changes, like water freezing into ice and melting back again.' },
+    ],
+    practice: [
+      { question: 'What happens when you heat an ice cube until it becomes water?', options: ['Freezing', 'Melting', 'Evaporating', 'Condensing'], answerIndex: 1, explanation: 'Melting is the change from a solid to a liquid caused by adding heat.' },
+      { question: 'Which state of matter spreads out to fill its whole container?', options: ['Solid', 'Liquid', 'Gas', 'None of these'], answerIndex: 2, explanation: 'Gas particles spread apart to fill all the available space in a container.' },
+    ],
+    apply: {
+      prompt: 'Put an ice cube in a cup and watch it change state over an hour, checking on it every 15 minutes.',
+      checklist: ['Recorded what the ice looked like at the start', 'Checked and noted changes every 15 minutes', 'Described the state change(s) you observed by the end'],
     },
-    {
-      key: 'precalculus',
-      title: 'Precalculus',
-      color: '#00BCD4', // Bright cyan
-      description:
-        'Delving into complex numbers, vectors, parametric and polar equations, advanced function families, and sequence/series fundamentals.',
-      help: {
-        readings: [
-          {
-            title: 'Intro to complex numbers (Khan Academy)',
-            url: 'https://www.khanacademy.org/math/algebra2/x2ec2f6f830c9fb89:complex/x2ec2f6f830c9fb89:complex-num/a/intro-to-complex-numbers',
-          },
-          {
-            title: 'Vectors (BYJU\'s)',
-            url: 'https://byjus.com/maths/vectors/',
-          },
-          {
-            title: 'Sequence and Series (BYJU\'s)',
-            url: 'https://byjus.com/maths/sequence-and-series/',
-          },
-        ],
-        videos: [
-          {
-            title:
-              'Parametric Equations Introduction, Eliminating The Parameter t, Graphing Plane Curves, Precalculus',
-            url: 'https://youtu.be/97pe-QlSGqA?si=JIYJlufBcOZbLSqf',
-          },
-          {
-            title: 'Function Families',
-            url: 'https://youtu.be/JzaeBxmvHl8?si=hiH5OcZFKKEGWqZB',
-          },
-        ],
-      },
+    help: {
+      videos: [
+        {
+          title: 'Chemical Elements & Compounds, Periodic Table, States of Matter — Chemistry Lesson for Children',
+          url: 'https://www.youtube.com/watch?v=kwQXR6lqrj4',
+        },
+      ],
     },
-    {
-      key: 'calculus',
-      title: 'Calculus',
-      color: '#FF9800', // Bright orange
-      description:
-        'Introducing limits and continuity, computing derivatives and integrals, and applying them to rate-of-change and area-under-curve problems.',
-      help: {
-        readings: [
-          {
-            title: 'Derivatives and Integrals (BYJU\'s)',
-            url: 'https://byjus.com/maths/calculus/',
-          },
-        ],
-        videos: [
-          {
-            title: 'Limits and Continuity',
-            url: 'https://youtu.be/9brk313DjV8?si=AhPWiFxsra9naUJ-',
-          },
-          {
-            title: 'Derivatives and Rate of Change',
-            url: 'https://youtu.be/xLE4C7y5Pn4?si=Q13q7N70Bl__c3p5',
-          },
-          {
-            title:
-              'Finding The Area Under The Curve Using Definite Integrals',
-            url: 'https://youtu.be/UjTTx2eYrx8?si=Y8zqAQAH5E3dBf8s',
-          },
-        ],
-      },
+  },
+  {
+    key: 'atomsElements',
+    title: 'Atoms & Elements',
+    grade: '6-8',
+    color: '#4D96FF',
+    description:
+      'Atoms are the building blocks of every element. How atoms, elements, and molecules relate to each other, with real examples.',
+    learn: [
+      { heading: 'Atoms and Elements', body: 'An atom is the smallest unit of matter that still has the properties of an element. An element is a pure substance made of only one type of atom — like oxygen, gold, or hydrogen — and there are about 118 known elements, each listed on the periodic table.' },
+      { heading: 'Molecules Are Combinations', body: 'When two or more atoms bond together, they form a molecule. Some molecules are made of one element, like O2 (two oxygen atoms), while others are compounds made of different elements bonded together, like H2O (water), which is two hydrogen atoms and one oxygen atom.' },
+    ],
+    practice: [
+      { question: 'What is an element?', options: ['A mix of different atoms', 'A pure substance made of one type of atom', 'A type of molecule only', 'A liquid'], answerIndex: 1, explanation: 'An element is a pure substance made up of only one kind of atom.' },
+      { question: 'What does the formula H2O tell you?', options: ['1 hydrogen atom and 2 oxygen atoms', '2 hydrogen atoms and 1 oxygen atom', '2 hydrogen molecules', 'Pure oxygen'], answerIndex: 1, explanation: 'H2O means each water molecule is made of two hydrogen atoms bonded to one oxygen atom.' },
+    ],
+    apply: {
+      prompt: 'Look at the ingredient list on 3 household items (like table salt, baking soda, and water) and research what elements make up each one.',
+      checklist: ['Listed 3 household substances', 'Identified the elements in each (e.g. salt = sodium + chlorine)', 'Noted whether each is an element or a compound'],
     },
-    {
-      key: 'discrete',
-      title: 'Discrete Mathematics',
-      color: '#8BC34A', // Light green
-      description:
-        '(Elective) Investigating logic and set theory, graph theory basics, recursion, and combinatorial reasoning for algorithmic thinking.',
-      help: {
-        readings: [
-          {
-            title: 'Graph Theory (DataCamp)',
-            url:
-              'https://www.datacamp.com/tutorial/introduction-to-graph-theory',
-          },
-        ],
-        videos: [
-          {
-            title: 'Logic and Set Theory',
-            url: 'https://youtu.be/dH4RHHsTf6Q?si=YBf1_L4W-s3Ul7l6',
-          },
-          {
-            title: 'Recursive Formulas For Sequences',
-            url: 'https://youtu.be/IFHZQ6MaG6w?si=SoCKhh_iesFq6uBW',
-          },
-        ],
-      },
+    help: {
+      videos: [
+        {
+          title: 'Elements and Atoms and the Periodic Table of Elements',
+          url: 'https://www.youtube.com/watch?v=ozUWPUYemf4',
+        },
+        {
+          title: 'Atoms, Elements, and Molecules with Examples | Periodic Table Chemistry',
+          url: 'https://www.youtube.com/watch?v=0d6Mhm5t8eM',
+        },
+      ],
     },
-  ];
+  },
+  {
+    key: 'periodicTable',
+    title: 'The Periodic Table',
+    grade: '9-12',
+    color: '#4CAF50',
+    description:
+      'How the periodic table organizes every known element by atomic number and electron configuration, and what that tells us about an element\'s properties.',
+    learn: [
+      { heading: 'Organized by Atomic Number', body: 'The periodic table arranges all known elements in order of atomic number — the number of protons in one atom of that element. Elements are grouped into rows (periods) and columns (groups), and elements in the same column share similar chemical properties because they have the same number of electrons in their outer shell.' },
+      { heading: 'Predicting Properties', body: 'Because of its organization, the periodic table lets scientists predict how an element will behave before ever testing it — for example, elements in the leftmost column (alkali metals) are all highly reactive with water. Metals, nonmetals, and metalloids each occupy their own regions of the table.' },
+    ],
+    practice: [
+      { question: 'What determines an element\'s position (atomic number) on the periodic table?', options: ['Its color', 'The number of protons in its atoms', 'Its melting point', 'Its weight in grams'], answerIndex: 1, explanation: 'Atomic number is defined by the number of protons in an atom, and elements are arranged in order of this number.' },
+      { question: 'Why do elements in the same column of the periodic table behave similarly?', options: ['They are the same size', 'They have similar outer electron arrangements', 'They are all metals', 'They were discovered together'], answerIndex: 1, explanation: 'Elements in the same group share a similar number of outer-shell electrons, which drives similar chemical behavior.' },
+    ],
+    apply: {
+      prompt: 'Pick 3 elements from different regions of the periodic table (a metal, a nonmetal, and a noble gas) and research one real-world use for each.',
+      checklist: ['Chose one metal, one nonmetal, and one noble gas', 'Found each element\'s atomic number', 'Recorded one real-world use for each element'],
+    },
+    help: {
+      videos: [
+        {
+          title: 'Understanding the Periodic Table — Elements, Atoms, Isotopes',
+          url: 'https://www.youtube.com/watch?v=5FZJcf8CYJQ',
+        },
+        {
+          title: 'The periodic table | Chemistry | Khan Academy',
+          url: 'https://www.youtube.com/watch?v=CtTmUlp3bBo',
+        },
+      ],
+    },
+  },
+];
 
-  const toggleHelp = (key) => {
-    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.mainTitle}>Advanced & Elective Topics</Text>
-
-      {topics.map((topic) => (
-        <View key={topic.key} style={styles.card}>
-          {/* Colored Header */}
-          <View style={[styles.headerBar, { backgroundColor: topic.color }]}>
-            <Text style={styles.headerText}>{topic.title}</Text>
-          </View>
-
-          {/* Body */}
-          <View style={styles.sectionBody}>
-            <Text style={styles.subtitle}>What is it?</Text>
-            <Text style={styles.description}>{topic.description}</Text>
-
-            {/* Show “Need help?” toggle if there are any links */}
-            {(topic.help.readings.length > 0 ||
-              topic.help.videos.length > 0) && (
-              <TouchableOpacity
-                style={styles.helpToggle}
-                onPress={() => toggleHelp(topic.key)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.helpTitle}>
-                  Need help? {openSections[topic.key] ? '▲' : '▼'}
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {/* Collapsible help content */}
-            {openSections[topic.key] && (
-              <View style={styles.helpContent}>
-                {topic.help.readings.length > 0 && (
-                  <>
-                    <Text style={styles.helpLabel}>Readings</Text>
-                    {topic.help.readings.map((item, idx) => (
-                      <Text
-                        key={idx}
-                        style={styles.linkText}
-                        onPress={() => Linking.openURL(item.url)}
-                      >
-                        • {item.title}
-                      </Text>
-                    ))}
-                  </>
-                )}
-
-                {topic.help.videos.length > 0 && (
-                  <>
-                    <Text style={styles.helpLabel}>Videos</Text>
-                    {topic.help.videos.map((video, idx) => (
-                      <Text
-                        key={idx}
-                        style={styles.linkText}
-                        onPress={() => Linking.openURL(video.url)}
-                      >
-                        • {video.title}
-                      </Text>
-                    ))}
-                  </>
-                )}
-              </View>
-            )}
-          </View>
-        </View>
-      ))}
-    </ScrollView>
-  );
+export default function ChemistryScreen() {
+  return <ClassTopicScreen title={"Chemistry"} classKey="Chemistry" fallbackTopics={topics} />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    backgroundColor: '#F5F5F5',
-    paddingBottom: 40,
-  },
-  mainTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#333',
-  },
-  card: {
-    marginBottom: 24,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  headerBar: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  headerText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  sectionBody: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  subtitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-    color: '#555',
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 12,
-    color: '#444',
-  },
-  helpToggle: {
-    marginTop: 8,
-  },
-  helpTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  helpContent: {
-    marginTop: 8,
-    padding: 12,
-    backgroundColor: '#EFEFEF',
-    borderRadius: 8,
-  },
-  helpLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 6,
-    color: '#333',
-  },
-  linkText: {
-    fontSize: 14,
-    color: '#1e88e5',
-    marginLeft: 8,
-    marginTop: 4,
-    textDecorationLine: 'underline',
-  },
-});

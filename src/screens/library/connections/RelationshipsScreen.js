@@ -1,23 +1,171 @@
 // src/screens/library/connections/RelationshipsScreen.js
-import React from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../../context/ThemeContext';
+import { useUIPrefs } from '../../../../context/UIPrefsContext';
+import { supabase } from '../../../api/supabaseClient';
+import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../../api/offlineCache';
+import RelatedLinks, { EXCLUDE_LINK_FILTER } from '../RelatedLinks';
+
+const TYPES = [
+  { key: 'romantic', label: 'Romantic', emoji: '❤️', icon: 'heart',        color: '#e05858' },
+  { key: 'family',   label: 'Family',   emoji: '🏠', icon: 'home',         color: '#f5a623' },
+  { key: 'friend',   label: 'Friend',   emoji: '⭐', icon: 'star',         color: '#7eb8e0' },
+  { key: 'mentor',   label: 'Mentor',   emoji: '🧠', icon: 'bulb',         color: '#b07be0' },
+];
 
 export default function RelationshipsScreen() {
+  const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
+  const { showEmojis, showSubtext } = useUIPrefs();
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [userId,  setUserId]  = useState(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [filter,  setFilter]  = useState('all');
+  const [name,    setName]    = useState('');
+  const [note,    setNote]    = useState('');
+  const [type,    setType]    = useState('friend');
+  const color = '#e05858';
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) { setUserId(user.id); load(user.id); }
+      else setLoading(false);
+    });
+  }, []);
+
+  const load = async (uid) => {
+    setLoading(true);
+    const cacheKey = `relationships_${uid}`;
+    const cached = await cacheRead(cacheKey);
+    if (cached) setEntries(cached);
+
+    if (await isOnline()) {
+      const { data } = await EXCLUDE_LINK_FILTER(supabase.from('area_notes').select('*').eq('user_id', uid).eq('area_id', 'social'))
+        .order('created_at', { ascending: false }).limit(50);
+      if (data) { setEntries(data); cacheWrite(cacheKey, data); }
+    }
+    setLoading(false);
+  };
+
+  const add = async () => {
+    if (!name.trim()) return;
+    const content = JSON.stringify({ name: name.trim(), note: note.trim(), type });
+    const { row: data } = await offlineWrite(supabase, 'area_notes', { user_id: userId, area_id: 'social', content, created_at: new Date().toISOString() });
+    if (data) setEntries(prev => [data, ...prev]);
+    setName(''); setNote(''); setType('friend'); setShowAdd(false);
+  };
+
+  const del = async (id) => {
+    setEntries(prev => prev.filter(e => e.id !== id));
+    await supabase.from('area_notes').delete().eq('id', id);
+  };
+
+  const parseEntry = (entry) => {
+    try { return JSON.parse(entry.content); } catch { return { name: entry.content, note: '', type: 'friend' }; }
+  };
+
+  const filtered = filter === 'all' ? entries : entries.filter(e => { try { return JSON.parse(e.content).type === filter; } catch { return true; } });
+
   return (
-    <View style={{ flex:1, backgroundColor:c.bg0 }}>
-      <View style={{ backgroundColor:c.headerBg, padding:s.lg, borderBottomWidth:0.5, borderBottomColor:c.border }}>
-        <Text style={{ fontSize:t.xxl, fontWeight:t.bold, color:c.text1 }}>❤️ Relationships</Text>
-        <Text style={{ fontSize:t.xs, color:c.text3, marginTop:3 }}>Track the people who matter most.</Text>
+    <View style={{ flex: 1, backgroundColor: c.bg0 }}>
+      <View style={{ backgroundColor: c.bg1, padding: s.lg, paddingTop: s.xxl, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: s.sm }}>
+          <Ionicons name="chevron-back" size={20} color={color} />
+        </TouchableOpacity>
+        <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>{showEmojis ? '❤️ ' : ''}Relationships</Text>
+        {showSubtext && <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 3 }}>Track the people who matter most</Text>}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingTop: s.md, gap: s.sm }}>
+          {[{ key: 'all', label: 'All' }, ...TYPES].map(tp => (
+            <TouchableOpacity key={tp.key} onPress={() => setFilter(tp.key)}
+              style={{ paddingHorizontal: s.md, paddingVertical: 6, borderRadius: r.full, borderWidth: 1, borderColor: filter === tp.key ? color : c.border, backgroundColor: filter === tp.key ? color + '22' : 'transparent' }}>
+              <Text style={{ fontSize: t.xs, color: filter === tp.key ? color : c.text3, fontWeight: filter === tp.key ? t.bold : t.regular }}>
+                {showEmojis && tp.emoji ? `${tp.emoji} ` : ''}{tp.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
-      <ScrollView contentContainerStyle={{ padding:s.lg, paddingBottom:40 }}>
-        <View style={{ alignItems:'center', paddingTop:60 }}>
-          <Text style={{ fontSize:52, marginBottom:s.lg }}>❤️</Text>
-          <Text style={{ fontSize:t.lg, fontWeight:t.bold, color:c.text1, marginBottom:s.sm }}>Coming soon</Text>
-          <Text style={{ fontSize:t.sm, color:c.text3, textAlign:'center', lineHeight:20 }}>Track the people who matter most.</Text>
-        </View>
-      </ScrollView>
+
+      <TouchableOpacity onPress={() => setShowAdd(true)}
+        style={{ margin: s.lg, flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: color + '18', borderRadius: r.md, padding: s.md, borderWidth: 1, borderColor: color + '33', borderStyle: 'dashed' }}>
+        <Ionicons name="person-add-outline" size={18} color={color} />
+        <Text style={{ color, fontWeight: '600', fontSize: t.sm }}>Add a relationship</Text>
+      </TouchableOpacity>
+
+      {loading ? <ActivityIndicator color={color} style={{ marginTop: 40 }} /> : (
+        <ScrollView contentContainerStyle={{ paddingHorizontal: s.lg, paddingBottom: 60 }}>
+          {filtered.map(entry => {
+            const p = parseEntry(entry);
+            const tp = TYPES.find(x => x.key === p.type) || TYPES[2];
+            return (
+              <View key={entry.id} style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, marginBottom: s.md, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: tp.color }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, marginBottom: p.note ? s.sm : 0 }}>
+                  <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: tp.color + '22', borderWidth: 1.5, borderColor: tp.color, alignItems: 'center', justifyContent: 'center' }}>
+                    {showEmojis ? <Text style={{ fontSize: 20 }}>{tp.emoji}</Text> : <Ionicons name={tp.icon} size={18} color={tp.color} />}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>{p.name}</Text>
+                    <View style={{ backgroundColor: tp.color + '22', borderRadius: r.full, paddingHorizontal: 7, paddingVertical: 2, alignSelf: 'flex-start', marginTop: 3 }}>
+                      <Text style={{ fontSize: 9, color: tp.color, fontWeight: t.bold, textTransform: 'uppercase' }}>{tp.label}</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity onPress={() => del(entry.id)}>
+                    <Ionicons name="close" size={16} color={c.text4} />
+                  </TouchableOpacity>
+                </View>
+                {p.note ? <Text style={{ fontSize: t.sm, color: c.text3, lineHeight: 19 }}>{p.note}</Text> : null}
+              </View>
+            );
+          })}
+          {filtered.length === 0 && (
+            <View style={{ alignItems: 'center', paddingVertical: 60 }}>
+              {showEmojis ? <Text style={{ fontSize: 48, marginBottom: s.lg }}>❤️</Text> : <Ionicons name="heart-outline" size={44} color={color} style={{ marginBottom: s.lg }} />}
+              <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.sm }}>No relationships logged</Text>
+              <Text style={{ fontSize: t.sm, color: c.text3, textAlign: 'center' }}>Add the people who matter most to you.</Text>
+            </View>
+          )}
+
+          <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginTop: s.lg, marginBottom: s.md }}>
+            {showEmojis ? '🔗 ' : ''}Related
+          </Text>
+          <RelatedLinks areaId="social" color={color} c={c} t={t} s={s} r={r} />
+        </ScrollView>
+      )}
+
+      <Modal visible={showAdd} transparent animationType="slide">
+        <KeyboardAvoidingView style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 48 }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
+            <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.md }}>Add Relationship</Text>
+            <TextInput style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: color + '44', marginBottom: s.sm }}
+              value={name} onChangeText={setName} placeholder="Name *" placeholderTextColor={c.text4} autoFocus />
+            <View style={{ flexDirection: 'row', gap: s.sm, marginBottom: s.sm }}>
+              {TYPES.map(tp => (
+                <TouchableOpacity key={tp.key} onPress={() => setType(tp.key)}
+                  style={{ flex: 1, alignItems: 'center', padding: s.sm, borderRadius: r.md, borderWidth: 1.5, borderColor: type === tp.key ? tp.color : c.border, backgroundColor: type === tp.key ? tp.color + '22' : 'transparent' }}>
+                  {showEmojis ? <Text style={{ fontSize: 18 }}>{tp.emoji}</Text> : <Ionicons name={tp.icon} size={16} color={type === tp.key ? tp.color : c.text3} />}
+                  <Text style={{ fontSize: 10, color: type === tp.key ? tp.color : c.text3, fontWeight: type === tp.key ? t.bold : t.regular, marginTop: 3 }}>{tp.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TextInput style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: c.border, minHeight: 60, textAlignVertical: 'top', marginBottom: s.md }}
+              value={note} onChangeText={setNote} placeholder="Notes (optional)" placeholderTextColor={c.text4} multiline />
+            <View style={{ flexDirection: 'row', gap: s.sm }}>
+              <TouchableOpacity onPress={() => setShowAdd(false)} style={{ flex: 1, padding: s.md, alignItems: 'center', backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border }}>
+                <Text style={{ color: c.text3 }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={add} disabled={!name.trim()} style={{ flex: 2, padding: s.md, alignItems: 'center', backgroundColor: color, borderRadius: r.md, opacity: !name.trim() ? 0.5 : 1 }}>
+                <Text style={{ color: '#fff', fontWeight: t.bold }}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }

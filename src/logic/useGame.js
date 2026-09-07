@@ -5,8 +5,17 @@ import { handleGameEvent } from './gamificationService';
 
 export const DIFFICULTY = { easy: 1, medium: 2, hard: 3 };
 
-export default function useGame({ subject = 'general', difficulty = 1, onGameEnd }) {
-  const { user, recordGuestEvent } = useUserProgress();
+export default function useGame({
+  subject = 'general', difficulty = 1, skillLevel = null, onGameEnd,
+  // Opt-in: when true, `answer()` still tracks correct/attempted/streak/
+  // lives (and the analytics event) exactly as before, but stops adding to
+  // `score` itself — points only arrive via the returned `addPoints`, for
+  // games built around a round-end "pick a prize" reward instead of points
+  // trickling in per question. Every other game leaves this off and keeps
+  // scoring exactly as it always has.
+  manualScoring = false,
+}) {
+  const { user, recordGuestEvent, refreshProfile } = useUserProgress();
 
   const [score,      setScore]    = useState(0);
   const [lives,      setLives]    = useState(3);
@@ -32,7 +41,7 @@ export default function useGame({ subject = 'general', difficulty = 1, onGameEnd
     if (isCorrect) {
       const streakBonus = streak * 3;
       const pts = Math.round((10 + streakBonus + speedBonus) * difficulty);
-      setScore(s => s + pts);
+      if (!manualScoring) setScore(s => s + pts);
       setStreak(s => {
         const next = s + 1;
         if (next > bestStreak) setBest(next);
@@ -48,6 +57,7 @@ export default function useGame({ subject = 'general', difficulty = 1, onGameEnd
           subject,
           correct: true,
           difficulty,
+          metadata: skillLevel ? { skillLevel } : undefined,
         }).catch(() => {});
       } else {
         recordGuestEvent({ correct: true, difficulty });
@@ -65,6 +75,7 @@ export default function useGame({ subject = 'general', difficulty = 1, onGameEnd
           subject,
           correct: false,
           difficulty,
+          metadata: skillLevel ? { skillLevel } : undefined,
         }).catch(() => {});
       } else {
         recordGuestEvent({ correct: false, difficulty });
@@ -72,7 +83,12 @@ export default function useGame({ subject = 'general', difficulty = 1, onGameEnd
 
       return 0;
     }
-  }, [streak, bestStreak, difficulty, user, subject, recordGuestEvent]);
+  }, [streak, bestStreak, difficulty, user, subject, recordGuestEvent, skillLevel, manualScoring]);
+
+  // For manualScoring games: called when a round-end prize is claimed.
+  const addPoints = useCallback((n) => {
+    setScore(s => s + Math.max(0, Math.round(n)));
+  }, []);
 
   const endGame = useCallback(() => {
     setDone(true);
@@ -84,7 +100,9 @@ export default function useGame({ subject = 'general', difficulty = 1, onGameEnd
     const xpEarned    = Math.round(score * 0.5);
     const pointsEarned = Math.round(score * 0.25);
 
-    // Fire GAME_COMPLETED event with full metadata
+    // Fire GAME_COMPLETED event with full metadata, then pull the fresh
+    // profile — this is what lets a level-up/rank-up notification fire
+    // right after a session ends, instead of only on next app launch.
     if (user?.id) {
       handleGameEvent({
         type: 'GAME_COMPLETED',
@@ -100,8 +118,11 @@ export default function useGame({ subject = 'general', difficulty = 1, onGameEnd
           avgResponseMs: Math.round(avgMs),
           fastestMs:     Math.round(fastestMs),
           totalSeconds:  totalSec,
+          skillLevel:    skillLevel || undefined,
         },
-      }).catch(e => console.warn('[useGame] endGame event error', e));
+      })
+        .then(() => refreshProfile())
+        .catch(e => console.warn('[useGame] endGame event error', e));
     }
 
     const result = {
@@ -114,7 +135,7 @@ export default function useGame({ subject = 'general', difficulty = 1, onGameEnd
 
     if (onGameEnd) onGameEnd(result);
     return result;
-  }, [score, correct, attempted, accuracy, bestStreak, user, subject, difficulty, onGameEnd]);
+  }, [score, correct, attempted, accuracy, bestStreak, user, subject, difficulty, skillLevel, onGameEnd, refreshProfile]);
 
   const reset = useCallback(() => {
     setScore(0); setLives(3); setStreak(0);
@@ -126,7 +147,7 @@ export default function useGame({ subject = 'general', difficulty = 1, onGameEnd
 
   return {
     score, lives, streak, bestStreak, correct, attempted,
-    accuracy, done, answer, endGame, reset,
+    accuracy, done, answer, addPoints, endGame, reset,
     isGameOver: lives <= 0,
   };
 }

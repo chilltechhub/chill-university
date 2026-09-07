@@ -1,47 +1,104 @@
 // src/components/ToolMatchGame.js
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import GameShell, { G } from './GameShell';
+import GameShell, { useGameTheme } from './GameShell';
+import { useUIPrefs } from '../../context/UIPrefsContext';
 import GameOver from './GameOver';
+import GradeSelectCard from './GradeSelectCard';
+import RushTimerBar from './RushTimerBar';
+import RoundCompleteScreen from './RoundCompleteScreen';
 import useGame from '../logic/useGame';
+import useGameFacts from '../logic/useGameFacts';
+import useGradeLevel, { levelForTier } from '../logic/useGradeLevel';
+import { createAdaptiveTier, nextAdaptiveTier, roundLength, STAGE_COUNT } from '../logic/difficultyAdapter';
+import { TOOL_BANK } from '../data/gameContent/toolMatch';
 
-const QUESTIONS = [
-  { tool:'🔨 Hammer',     correct:'Hammering nails into wood',         distractors:['Mixing batter','Cutting wood','Digging holes'],         explanation:'A hammer drives nails into surfaces.',            funFact:'First hammers were just rocks — 3 million years ago!',  tip:'Wear safety goggles when hammering.' },
-  { tool:'🥄 Whisk',      correct:'Mixing eggs and batter',            distractors:['Painting walls','Hammering nails','Cutting pipes'],      explanation:'A whisk mixes ingredients smoothly.',             funFact:'Whisks can have up to 12 wires!',                        tip:'Wash your whisk before and after cooking.' },
-  { tool:'🪚 Saw',        correct:'Cutting wood into pieces',          distractors:['Digging holes','Mixing ingredients','Painting'],         explanation:'Saw teeth cut through wood when pushed and pulled.',funFact:'Some saws can cut a tree trunk in minutes!',              tip:'Only use saws with adult supervision.' },
-  { tool:'⛏️ Shovel',     correct:'Digging holes in the ground',       distractors:['Hammering nails','Mixing cake batter','Painting'],       explanation:'A shovel digs, lifts dirt, and moves sand.',      funFact:'Shovels helped build the pyramids 5,000 years ago!',     tip:'Bend your knees when digging.' },
-  { tool:'🎨 Paintbrush', correct:'Painting walls and surfaces',       distractors:['Cutting materials','Mixing eggs','Measuring lengths'],   explanation:'Soft bristles spread paint evenly on surfaces.',  funFact:'Brushes can be made from horsehair or synthetic fibers!', tip:'Clean your brush right after painting.' },
-  { tool:'🔧 Screwdriver',correct:'Turning screws to fasten things',   distractors:['Painting furniture','Measuring angles','Digging holes'], explanation:'Clockwise tightens, counter-clockwise loosens.',   funFact:'There are 30+ types of screwdriver heads!',              tip:'Always use the right size for your screw.' },
-  { tool:'🔩 Wrench',     correct:'Tightening nuts and bolts',         distractors:['Cutting pipes','Painting metal','Measuring lengths'],    explanation:'A wrench grips and turns nuts and bolts.',        funFact:'The adjustable wrench was invented in 1892!',            tip:'Turn the wrench away from your body.' },
-  { tool:'📏 Ruler',      correct:'Measuring lengths accurately',      distractors:['Cutting paper','Hammering nails','Mixing paint'],        explanation:'A ruler measures in inches or centimeters.',      funFact:'The longest ruler ever was 100 feet — blue whale size!', tip:'Metal rulers can have sharp edges.' },
-  { tool:'✂️ Scissors',   correct:'Cutting paper, fabric, and thread', distractors:['Measuring things','Hammering tacks','Mixing liquids'],   explanation:'Two blades slide past each other to cut.',        funFact:'Scissors were invented in ancient Egypt in 1500 BC!',   tip:'Never run with scissors. Walk with them pointing down.' },
-  { tool:'🪜 Ladder',     correct:'Reaching high places safely',       distractors:['Measuring heights','Digging holes','Cutting tall items'], explanation:'Rungs let you safely climb to reach high places.', funFact:'Longest firefighter ladder: 135 feet tall!',             tip:'Have someone hold the ladder when you climb.' },
-  { tool:'🚽 Plunger',    correct:'Unclogging drains and toilets',     distractors:['Hammering tiles','Mixing cement','Painting pipes'],      explanation:'Suction pushes blockages through pipes.',         funFact:'Plungers work by changing water pressure!',              tip:'Wear gloves when using a plunger.' },
-  { tool:'🪛 Drill',      correct:'Making holes in wood or walls',     distractors:['Cutting wood','Painting surfaces','Measuring angles'],   explanation:'A spinning bit makes holes in hard materials.',   funFact:'First electric drill invented in 1889 — weighed 10 lbs!',tip:'Secure your material before drilling.' },
-];
+const BLURBS = {
+  'K-2': 'Common hand tools everyone recognizes.',
+  '3-5': 'Shop staples — saws, wrenches, ladders, levels.',
+  '6-8': 'Power tools & the safety gear that goes with them.',
+  '9-12': 'Precision instruments & pro-level shop equipment.',
+};
 
 function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
+function pickNext(pool, avoid) {
+  const choices = pool.filter(q => !avoid.includes(q.tool));
+  const list = choices.length ? choices : pool;
+  return list[Math.floor(Math.random() * list.length)];
+}
+
 export default function ToolMatchGame({ onGameEnd }) {
   const navigation = useNavigation();
-  const [idx, setIdx]         = useState(0);
+  const G = useGameTheme();
+  const s = makeStyles(G);
+  const { showEmojis } = useUIPrefs();
+  const { level, setLevel, tier: savedTier } = useGradeLevel('tools');
+  const [started, setStarted] = useState(false);
+  const [pace, setPace] = useState('relaxed');
+
+  const [adaptive, setAdaptive] = useState(() => createAdaptiveTier(savedTier));
+  const recentRef = useRef([]);
+  const [q, setQ] = useState(null);
+  const [opts, setOpts] = useState([]);
+  // Rounds within a run — shorter first round, longer as you clear more
+  // (see roundLength() in difficultyAdapter.js). No points land until a
+  // round finishes and its prize is picked (see RoundCompleteScreen).
+  const [stage, setStage] = useState(0);
+  const [stageAsked, setStageAsked] = useState(0);
+  const [stageCorrect, setStageCorrect] = useState(0);
+  const [roundComplete, setRoundComplete] = useState(null); // { correct, total, roundNumber, isLastStage }
+  const stageTarget = roundLength(stage);
   const [selected, setSelected] = useState(null);
   const [feedback, setFeedback] = useState(null);
-  const [showTutorial, setShowTutorial] = useState(true);
   const [startTime, setStartTime] = useState(Date.now());
 
-  const game = useGame({ subject: 'general', difficulty: 1, onGameEnd });
-  const q = QUESTIONS[idx];
-  const options = useState(() => shuffle([q.correct, ...q.distractors]))[0];
+  // Relaxed pace streams a fact in the question view's own empty space;
+  // Rush pace shows one fact per round instead, on RoundCompleteScreen —
+  // either way it's the SAME pool, just a different rhythm.
+  const { next: nextFact } = useGameFacts('tools');
+  const [fact, setFact] = useState(null);
+  // Relaxed pace: a fresh fact every few questions, not every one — see factCountRef below.
+  const factCountRef = useRef(0);
 
-  // Rebuild options when idx changes
-  const [currentOptions, setCurrentOptions] = useState(() =>
-    shuffle([QUESTIONS[0].correct, ...QUESTIONS[0].distractors])
-  );
+  const game = useGame({ subject: 'home_ec', difficulty: adaptive.tier, skillLevel: level, onGameEnd, manualScoring: true });
+
+  const beginRun = (selectedPace = 'relaxed') => {
+    setPace(selectedPace);
+    const initial = createAdaptiveTier(savedTier);
+    setAdaptive(initial);
+    const first = pickNext(TOOL_BANK[levelForTier(initial.tier)], []);
+    recentRef.current = [first.tool];
+    setQ(first);
+    setOpts(shuffle([first.correct, ...first.distractors]));
+    setStage(0);
+    setStageAsked(0);
+    setStageCorrect(0);
+    setRoundComplete(null);
+    setSelected(null);
+    setFeedback(null);
+    setStartTime(Date.now());
+    factCountRef.current = 0;
+    setFact(nextFact());
+    setStarted(true);
+  };
+
+  const loadNext = useCallback((tier) => {
+        const pool = TOOL_BANK[levelForTier(tier)];
+        const next = pickNext(pool, recentRef.current);
+        recentRef.current = [...recentRef.current, next.tool];
+        setQ(next);
+        setOpts(shuffle([next.correct, ...next.distractors]));
+    setSelected(null);
+    setFeedback(null);
+    setStartTime(Date.now());
+    factCountRef.current += 1;
+    setFact(factCountRef.current % 3 === 0 ? nextFact() : null);
+  }, [nextFact]);
 
   const handleAnswer = useCallback((opt) => {
-    if (selected) return;
+    if (selected || !q) return;
     setSelected(opt);
     const isCorrect = opt === q.correct;
     const speed = (Date.now() - startTime) / 1000;
@@ -49,60 +106,94 @@ export default function ToolMatchGame({ onGameEnd }) {
     game.answer(isCorrect, { speedBonus });
     setFeedback({ isCorrect, explanation: q.explanation, funFact: q.funFact, tip: q.tip });
 
+    const nextAdaptiveState = nextAdaptiveTier(adaptive, isCorrect);
+    setAdaptive(nextAdaptiveState);
+
     setTimeout(() => {
-      setFeedback(null);
-      setSelected(null);
-      setStartTime(Date.now());
-      const nextIdx = idx + 1;
-      if (game.lives - (isCorrect ? 0 : 1) <= 0 || nextIdx >= QUESTIONS.length) {
+      const newStageAsked = stageAsked + 1;
+      const newStageCorrect = stageCorrect + (isCorrect ? 1 : 0);
+      const outOfLives = game.lives - (isCorrect ? 0 : 1) <= 0;
+      const stageDone = newStageAsked >= stageTarget;
+
+      if (outOfLives) {
         game.endGame();
+      } else if (stageDone) {
+        setStageAsked(newStageAsked);
+        setStageCorrect(newStageCorrect);
+        setRoundComplete({
+          correct: newStageCorrect, total: newStageAsked,
+          roundNumber: stage + 1, isLastStage: stage + 1 >= STAGE_COUNT,
+        });
       } else {
-        setIdx(nextIdx);
-        setCurrentOptions(shuffle([QUESTIONS[nextIdx].correct, ...QUESTIONS[nextIdx].distractors]));
+        setStageAsked(newStageAsked);
+        setStageCorrect(newStageCorrect);
+        loadNext(nextAdaptiveState.tier);
       }
     }, 2200);
-  }, [selected, q, startTime, game, idx]);
+  }, [selected, q, startTime, game, stage, stageAsked, stageCorrect, stageTarget, loadNext, adaptive]);
 
-  if (showTutorial) return (
-    <GameShell title="Tool Match" emoji="🔧" subject="Home Economics" score={0} lives={3} streak={0}>
-      <ScrollView contentContainerStyle={s.scroll}>
-        <Text style={s.tutTitle}>🔧 Tool Match Game! 🔨</Text>
-        <Text style={s.tutSub}>Learn what every tool is for</Text>
-        {[
-          { e:'🔧', t:'Read the tool name' },
-          { e:'🎯', t:'Pick what it\'s used for' },
-          { e:'📚', t:'Learn a fun fact' },
-          { e:'🔥', t:'Keep your streak going!' },
-        ].map((item, i) => (
-          <View key={i} style={s.tutRow}>
-            <Text style={s.tutEmoji}>{item.e}</Text>
-            <Text style={s.tutText}>{item.t}</Text>
-          </View>
-        ))}
-        <TouchableOpacity style={s.startBtn} onPress={() => setShowTutorial(false)}>
-          <Text style={s.startBtnText}>✦ Start Quest</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </GameShell>
-  );
+  const handleClaimPrize = useCallback(() => {
+    if (roundComplete?.isLastStage) {
+      setRoundComplete(null);
+      game.endGame();
+    } else {
+      setStage(s => s + 1);
+      setStageAsked(0);
+      setStageCorrect(0);
+      setRoundComplete(null);
+      loadNext(adaptive.tier);
+    }
+  }, [game, roundComplete, adaptive.tier, loadNext]);
+
+  if (!started) {
+    return (
+      <GradeSelectCard gameId="tools" showPace
+        title="Tool Match" emoji="🔧" subjectLabel="Home Economics"
+        blurbs={BLURBS} level={level} onSelectLevel={setLevel} onStart={beginRun}
+      />
+    );
+  }
 
   if (game.done) return (
-    <GameOver
+    <GameOver gameId="tools"
       score={game.score} correct={game.correct} total={game.attempted}
       streak={game.bestStreak} title="Tools Mastered!"
-      onPlayAgain={() => { game.reset(); setIdx(0); setSelected(null); setFeedback(null); setCurrentOptions(shuffle([QUESTIONS[0].correct, ...QUESTIONS[0].distractors])); }}
+      onPlayAgain={() => { game.reset(); setStarted(false); }}
       onQuit={() => navigation.goBack()}
     />
   );
 
+
+  if (roundComplete) {
+    return (
+      <GameShell gameId="tools" disableFactToast
+      title="Tool Match" emoji="🔧" subject={`Home Economics · ${levelForTier(adaptive.tier)}`}
+        score={game.score} lives={game.lives} streak={game.streak}
+      >
+        <RoundCompleteScreen
+          roundNumber={roundComplete.roundNumber}
+          correct={roundComplete.correct}
+          total={roundComplete.total}
+          streak={game.streak}
+          difficulty={adaptive.tier}
+          fact={pace === 'rush' ? fact : null}
+          onAward={game.addPoints}
+          onAdvance={handleClaimPrize}
+        />
+      </GameShell>
+    );
+  }
+
+  if (!q) return null;
+
   return (
-    <GameShell
-      title="Tool Match" emoji="🔧" subject="Home Economics"
+    <GameShell gameId="tools" disableFactToast
+      title="Tool Match" emoji="🔧" subject={`Home Economics · ${levelForTier(adaptive.tier)}`}
       score={game.score} lives={game.lives} streak={game.streak}
-      progress={idx / QUESTIONS.length}
+      progress={stageAsked / stageTarget}
     >
       <ScrollView contentContainerStyle={s.scroll}>
-        <Text style={s.progress}>Tool {idx + 1} of {QUESTIONS.length}</Text>
+        <Text style={s.progress}>Round {stage + 1} of {STAGE_COUNT} · Tool {stageAsked + 1} of {stageTarget}</Text>
 
         <View style={s.toolCard}>
           <Text style={s.toolEmoji}>{q.tool.split(' ')[0]}</Text>
@@ -110,8 +201,9 @@ export default function ToolMatchGame({ onGameEnd }) {
           <Text style={s.toolQuestion}>What is this tool used for?</Text>
         </View>
 
+        <RushTimerBar active={pace === 'rush' && !feedback} durationMs={4000} resetKey={q} onExpire={() => handleAnswer('__TIMEOUT__')} />
         <View style={s.options}>
-          {currentOptions.map(opt => {
+          {opts.map(opt => {
             let bg = G.card, border = G.border;
             if (selected) {
               if (opt === q.correct) { bg = G.success + '22'; border = G.success; }
@@ -135,10 +227,17 @@ export default function ToolMatchGame({ onGameEnd }) {
             </Text>
             <Text style={s.feedbackText}>{feedback.explanation}</Text>
             <View style={s.factBox}>
-              <Text style={s.factLabel}>💡 Fun Fact</Text>
+              <Text style={s.factLabel}>{showEmojis ? '💡 ' : ''}Fun Fact</Text>
               <Text style={s.factText}>{feedback.funFact}</Text>
             </View>
-            <Text style={s.tipText}>🦺 {feedback.tip}</Text>
+            <Text style={s.tipText}>{showEmojis ? '🦺 ' : ''}{feedback.tip}</Text>
+          </View>
+        )}
+
+        {pace === 'relaxed' && !!fact && (
+          <View style={s.factBox}>
+            <Text style={s.factLabel}>{showEmojis ? '💡 ' : ''}Did You Know</Text>
+            <Text style={s.factText}>{fact}</Text>
           </View>
         )}
       </ScrollView>
@@ -146,16 +245,9 @@ export default function ToolMatchGame({ onGameEnd }) {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (G) => StyleSheet.create({
   scroll:     { padding: 16, paddingBottom: 40 },
   progress:   { fontSize: 11, color: G.muted, textAlign: 'center', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 },
-  tutTitle:   { fontSize: 22, fontWeight: '700', color: G.cream, textAlign: 'center', marginBottom: 6 },
-  tutSub:     { fontSize: 14, color: G.muted, textAlign: 'center', marginBottom: 24 },
-  tutRow:     { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: G.card, borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 0.5, borderColor: G.border },
-  tutEmoji:   { fontSize: 24 },
-  tutText:    { fontSize: 14, color: G.cream },
-  startBtn:   { backgroundColor: G.gold, borderRadius: 14, padding: 16, alignItems: 'center', marginTop: 16 },
-  startBtnText:{ fontSize: 16, fontWeight: '700', color: G.bg },
   toolCard:   { backgroundColor: G.card, borderRadius: 16, padding: 24, alignItems: 'center', borderWidth: 0.5, borderColor: G.border, marginBottom: 16 },
   toolEmoji:  { fontSize: 52, marginBottom: 8 },
   toolName:   { fontSize: 22, fontWeight: '700', color: G.cream, marginBottom: 6 },

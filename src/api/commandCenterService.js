@@ -2,8 +2,9 @@
 // All Supabase calls for the Library Command Center
 
 import { supabase } from './supabaseClient';
+import { todayStr, dateStr } from '../logic/dateUtils';
 
-const today = () => new Date().toISOString().split('T')[0];
+const today = todayStr; // local calendar — see logic/dateUtils
 
 // ─── User Settings ────────────────────────────────────────────────────────────
 
@@ -118,7 +119,7 @@ export async function getWeekSeconds(userId) {
     .from('timer_sessions')
     .select('duration_seconds')
     .eq('user_id', userId)
-    .gte('session_date', weekAgo.toISOString().split('T')[0]);
+    .gte('session_date', dateStr(weekAgo));
   if (error) throw error;
   return (data || []).reduce((sum, s) => sum + s.duration_seconds, 0);
 }
@@ -178,23 +179,9 @@ export async function deleteTask(taskId) {
 }
 
 // ─── Streak Calculation ───────────────────────────────────────────────────────
-
-export async function updateStreak(userId) {
-  const settings = await getSettings(userId);
-  const lastActive = settings?.last_active_date;
-  const todayStr = today();
-  const yesterdayStr = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-
-  let newStreak = settings?.streak_count || 0;
-  if (lastActive === yesterdayStr) {
-    newStreak += 1;
-  } else if (lastActive !== todayStr) {
-    newStreak = 1;
-  }
-
-  await upsertSettings(userId, {
-    streak_count: newStreak,
-    last_active_date: todayStr,
-  });
-  return newStreak;
-}
+//
+// Removed. This was a second implementation of the streak that wrote
+// streak_count/last_active_date to `user_settings`, while the whole app reads
+// them off `profiles` — and it had no callers, so it never ran either way.
+// The single source of truth is now gamificationService.touchStreak(), called
+// once per profile load from UserProgressContext.

@@ -1,289 +1,102 @@
-// src/screens/AdvancedElectiveTopicsScreen.js
+// src/screens/classes/scienceClass/oceanography.js
+import React from 'react';
+import ClassTopicScreen from '../../../components/ClassTopicScreen';
 
-import React, { useState } from 'react';
-import {
-  ScrollView,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Linking,
-} from 'react-native';
-
-export default function AdvancedElectiveTopicsScreen() {
-  const [openSections, setOpenSections] = useState({});
-
-  const topics = [
-    {
-      key: 'trigonometry',
-      title: 'Trigonometry',
-      color: '#673AB7', // Deep purple
-      description:
-        'Defining sine, cosine, and tangent ratios in right and non-right triangles; exploring unit-circle definitions, graph behavior, and identities.',
-      help: {
-        readings: [
-          {
-            title: 'Sine; Cosine; Tangent (Math is Fun)',
-            url: 'https://www.mathsisfun.com/sine-cosine-tangent.html',
-          },
-        ],
-        videos: [
-          {
-            title: 'Intro to Trigonometry - sine, cosine, and tangent ratios',
-            url: 'https://youtu.be/Q9mjsjOenQQ?si=koZN_KFMj-8p77ck',
-          },
-          {
-            title: 'Non Right angled Trigonometry, the Sine and Cosine rules',
-            url: 'https://youtu.be/5iYQCdL-bz4?si=_DrZADRqE-YeZgLa',
-          },
-          {
-            title: 'The Unit Circle, Basic Introduction, Trigonometry',
-            url: 'https://youtu.be/57VrEiEPD1I?si=8M13tnSCCSfQ9Nhnaa',
-          },
-        ],
-      },
+const topics = [
+  {
+    key: 'oceanBasics',
+    title: 'Ocean Basics & Marine Life',
+    grade: 'K-2',
+    color: '#FF6B6B',
+    description:
+      "A first look at Earth's oceans and the huge variety of animals and plants that live in them.",
+    learn: [
+      { heading: 'A Big Blue World', body: "Oceans cover most of Earth's surface with salty water, and they are home to an enormous number of living things, from tiny plankton to giant whales. Ocean animals need water to breathe (through gills) or to swim to the surface for air, like dolphins and whales." },
+      { heading: 'Many Kinds of Ocean Life', body: 'Fish, crabs, octopuses, sea turtles, and coral are just a few of the many kinds of animals living in the ocean, and each has special body parts to help it survive underwater, like fins for swimming or shells for protection. Plants and plant-like ocean life, like seaweed, use sunlight near the surface to grow, just like plants on land.' },
+    ],
+    practice: [
+      { question: 'How do fish breathe underwater?', options: ['With lungs', 'With gills', 'They hold their breath', 'They do not need to breathe'], answerIndex: 1, explanation: 'Fish use gills to take oxygen directly from the water.' },
+      { question: 'Which ocean animal must swim to the surface to breathe air?', options: ['A crab', 'A dolphin', 'A fish', 'A jellyfish'], answerIndex: 1, explanation: 'Dolphins are mammals and must surface to breathe air through their blowhole, unlike fish.' },
+    ],
+    apply: {
+      prompt: 'Choose 3 ocean animals and draw or describe one special body part each uses to survive in the water (like fins, gills, or a shell).',
+      checklist: ['Chose 3 different ocean animals', 'Named one special body part for each', 'Explained how that body part helps it survive'],
     },
-    {
-      key: 'precalculus',
-      title: 'Precalculus',
-      color: '#00BCD4', // Bright cyan
-      description:
-        'Delving into complex numbers, vectors, parametric and polar equations, advanced function families, and sequence/series fundamentals.',
-      help: {
-        readings: [
-          {
-            title: 'Intro to complex numbers (Khan Academy)',
-            url: 'https://www.khanacademy.org/math/algebra2/x2ec2f6f830c9fb89:complex/x2ec2f6f830c9fb89:complex-num/a/intro-to-complex-numbers',
-          },
-          {
-            title: 'Vectors (BYJU\'s)',
-            url: 'https://byjus.com/maths/vectors/',
-          },
-          {
-            title: 'Sequence and Series (BYJU\'s)',
-            url: 'https://byjus.com/maths/sequence-and-series/',
-          },
-        ],
-        videos: [
-          {
-            title:
-              'Parametric Equations Introduction, Eliminating The Parameter t, Graphing Plane Curves, Precalculus',
-            url: 'https://youtu.be/97pe-QlSGqA?si=JIYJlufBcOZbLSqf',
-          },
-          {
-            title: 'Function Families',
-            url: 'https://youtu.be/JzaeBxmvHl8?si=hiH5OcZFKKEGWqZB',
-          },
-        ],
-      },
+    help: {
+      videos: [
+        {
+          title: 'Ocean Animals for Kids | Learn all about the Animals and Plants that Live in the Ocean',
+          url: 'https://www.youtube.com/watch?v=8adtdg0N2-g',
+        },
+      ],
     },
-    {
-      key: 'calculus',
-      title: 'Calculus',
-      color: '#FF9800', // Bright orange
-      description:
-        'Introducing limits and continuity, computing derivatives and integrals, and applying them to rate-of-change and area-under-curve problems.',
-      help: {
-        readings: [
-          {
-            title: 'Derivatives and Integrals (BYJU\'s)',
-            url: 'https://byjus.com/maths/calculus/',
-          },
-        ],
-        videos: [
-          {
-            title: 'Limits and Continuity',
-            url: 'https://youtu.be/9brk313DjV8?si=AhPWiFxsra9naUJ-',
-          },
-          {
-            title: 'Derivatives and Rate of Change',
-            url: 'https://youtu.be/xLE4C7y5Pn4?si=Q13q7N70Bl__c3p5',
-          },
-          {
-            title:
-              'Finding The Area Under The Curve Using Definite Integrals',
-            url: 'https://youtu.be/UjTTx2eYrx8?si=Y8zqAQAH5E3dBf8s',
-          },
-        ],
-      },
+  },
+  {
+    key: 'wavesTidesCurrents',
+    title: 'Waves, Tides & Currents',
+    grade: '3-5',
+    color: '#4D96FF',
+    description:
+      'What causes ocean waves, tides, and currents, and how they keep the ocean constantly moving.',
+    learn: [
+      { heading: 'Waves and Tides', body: 'Waves are usually caused by wind blowing across the surface of the water, pushing it into rolling shapes. Tides are the regular rise and fall of ocean water levels, caused mainly by the pull of the Moon\'s gravity on Earth\'s oceans, and most coastlines get two high tides and two low tides each day.' },
+      { heading: 'Ocean Currents', body: 'Currents are like rivers within the ocean — large, steady movements of water caused by wind, temperature differences, and the rotation of the Earth. Currents carry warm and cold water around the globe, which affects weather and helps sea creatures travel and find food.' },
+    ],
+    practice: [
+      { question: 'What mainly causes ocean waves?', options: ['The Moon\'s gravity', 'Wind blowing across the water', 'Fish swimming', 'Earth spinning'], answerIndex: 1, explanation: 'Waves are primarily created by wind pushing across the surface of the ocean.' },
+      { question: 'What mainly causes ocean tides?', options: ['Wind', 'The Moon\'s gravitational pull', 'Ocean currents', 'Boat traffic'], answerIndex: 1, explanation: "The Moon's gravity pulls on Earth's oceans, causing the regular rise and fall we call tides." },
+    ],
+    apply: {
+      prompt: 'If you live near a coast, observe the tide at two different times of day (or look up a tide chart online) and note how the water line changes.',
+      checklist: ['Checked or looked up the tide at two different times', 'Noted whether the water was higher or lower each time', 'Explained the change using the Moon\'s pull'],
     },
-    {
-      key: 'discrete',
-      title: 'Discrete Mathematics',
-      color: '#8BC34A', // Light green
-      description:
-        '(Elective) Investigating logic and set theory, graph theory basics, recursion, and combinatorial reasoning for algorithmic thinking.',
-      help: {
-        readings: [
-          {
-            title: 'Graph Theory (DataCamp)',
-            url:
-              'https://www.datacamp.com/tutorial/introduction-to-graph-theory',
-          },
-        ],
-        videos: [
-          {
-            title: 'Logic and Set Theory',
-            url: 'https://youtu.be/dH4RHHsTf6Q?si=YBf1_L4W-s3Ul7l6',
-          },
-          {
-            title: 'Recursive Formulas For Sequences',
-            url: 'https://youtu.be/IFHZQ6MaG6w?si=SoCKhh_iesFq6uBW',
-          },
-        ],
-      },
+    help: {
+      videos: [
+        {
+          title: 'The Ocean in Motion — Tides, Waves, and Currents!',
+          url: 'https://www.youtube.com/watch?v=t1d-8domJQ0',
+        },
+        {
+          title: 'Easy Ocean Currents Science Experiment — What are Ocean Currents and How Do They Work?',
+          url: 'https://www.youtube.com/watch?v=fKGqmnR6_pY',
+        },
+      ],
     },
-  ];
+  },
+  {
+    key: 'oceanEcosystems',
+    title: 'Ocean Ecosystems & Human Impact',
+    grade: '9-12',
+    color: '#4CAF50',
+    description:
+      'How ocean currents shape marine ecosystems and climate, and how tides and human activity affect the plants and animals that depend on the sea.',
+    learn: [
+      { heading: 'Currents Shape Ecosystems and Climate', body: 'Ocean currents distribute heat around the planet, moderating regional climates — for example, the Gulf Stream keeps parts of Western Europe milder than their latitude would otherwise suggest. Currents also transport nutrients that support entire marine food webs, from plankton to whales.' },
+      { heading: 'Human Impact on the Ocean', body: 'Human activities like overfishing, plastic pollution, and rising carbon dioxide emissions (which cause ocean acidification and warming) are disrupting marine ecosystems worldwide. Coral reefs, which support roughly a quarter of all marine species, are especially sensitive to small changes in ocean temperature and pH.' },
+    ],
+    practice: [
+      { question: 'How do ocean currents affect regional climate?', options: ['They have no effect', 'They distribute heat around the planet', 'They only affect rainfall', 'They cool the entire Earth equally'], answerIndex: 1, explanation: 'Currents like the Gulf Stream carry warm or cold water that moderates the climate of nearby land regions.' },
+      { question: 'Why are coral reefs especially vulnerable to climate change?', options: ['They need cold water only', 'They are sensitive to small shifts in temperature and pH', 'They do not support other species', 'They grow faster when oceans warm'], answerIndex: 1, explanation: 'Coral is highly sensitive to changes in ocean temperature and acidity, which can cause bleaching and die-offs.' },
+    ],
+    apply: {
+      prompt: 'Research one specific human impact on the ocean (such as coral bleaching, plastic pollution, or overfishing) and outline one realistic action individuals can take to reduce it.',
+      checklist: ['Chose one specific human impact on oceans', 'Explained how it affects marine ecosystems', 'Listed one realistic individual action to help'],
+    },
+    help: {
+      videos: [
+        {
+          title: 'Oceans and Marine Life – Currents, Ecosystems, and Human Impacts',
+          url: 'https://www.youtube.com/watch?v=8JWu92I7G28',
+        },
+        {
+          title: 'How Do Ocean Tides Affect Marine Life?',
+          url: 'https://www.youtube.com/watch?v=fUnwvCbs96Q',
+        },
+      ],
+    },
+  },
+];
 
-  const toggleHelp = (key) => {
-    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.mainTitle}>Advanced & Elective Topics</Text>
-
-      {topics.map((topic) => (
-        <View key={topic.key} style={styles.card}>
-          {/* Colored Header */}
-          <View style={[styles.headerBar, { backgroundColor: topic.color }]}>
-            <Text style={styles.headerText}>{topic.title}</Text>
-          </View>
-
-          {/* Body */}
-          <View style={styles.sectionBody}>
-            <Text style={styles.subtitle}>What is it?</Text>
-            <Text style={styles.description}>{topic.description}</Text>
-
-            {/* Show “Need help?” toggle if there are any links */}
-            {(topic.help.readings.length > 0 ||
-              topic.help.videos.length > 0) && (
-              <TouchableOpacity
-                style={styles.helpToggle}
-                onPress={() => toggleHelp(topic.key)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.helpTitle}>
-                  Need help? {openSections[topic.key] ? '▲' : '▼'}
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {/* Collapsible help content */}
-            {openSections[topic.key] && (
-              <View style={styles.helpContent}>
-                {topic.help.readings.length > 0 && (
-                  <>
-                    <Text style={styles.helpLabel}>Readings</Text>
-                    {topic.help.readings.map((item, idx) => (
-                      <Text
-                        key={idx}
-                        style={styles.linkText}
-                        onPress={() => Linking.openURL(item.url)}
-                      >
-                        • {item.title}
-                      </Text>
-                    ))}
-                  </>
-                )}
-
-                {topic.help.videos.length > 0 && (
-                  <>
-                    <Text style={styles.helpLabel}>Videos</Text>
-                    {topic.help.videos.map((video, idx) => (
-                      <Text
-                        key={idx}
-                        style={styles.linkText}
-                        onPress={() => Linking.openURL(video.url)}
-                      >
-                        • {video.title}
-                      </Text>
-                    ))}
-                  </>
-                )}
-              </View>
-            )}
-          </View>
-        </View>
-      ))}
-    </ScrollView>
-  );
+export default function OceanographyScreen() {
+  return <ClassTopicScreen title={"Oceanography"} classKey="Oceanography" fallbackTopics={topics} />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    backgroundColor: '#F5F5F5',
-    paddingBottom: 40,
-  },
-  mainTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#333',
-  },
-  card: {
-    marginBottom: 24,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  headerBar: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  headerText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  sectionBody: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  subtitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-    color: '#555',
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 12,
-    color: '#444',
-  },
-  helpToggle: {
-    marginTop: 8,
-  },
-  helpTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  helpContent: {
-    marginTop: 8,
-    padding: 12,
-    backgroundColor: '#EFEFEF',
-    borderRadius: 8,
-  },
-  helpLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 6,
-    color: '#333',
-  },
-  linkText: {
-    fontSize: 14,
-    color: '#1e88e5',
-    marginLeft: 8,
-    marginTop: 4,
-    textDecorationLine: 'underline',
-  },
-});

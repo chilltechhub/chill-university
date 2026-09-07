@@ -1,25 +1,27 @@
-// src/screens/HouseholdAndResourceManagementScreen.js
+// src/screens/classes/homeecworkshopClass/house.js
+import React from 'react';
+import ClassTopicScreen from '../../../components/ClassTopicScreen';
 
-import React, { useState } from 'react';
-import {
-  ScrollView,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Linking,
-} from 'react-native';
-
-export default function HouseholdAndResourceManagementScreen() {
-  const [openSections, setOpenSections] = useState({});
-
-  const topics = [
+const topics = [
     {
       key: 'homeOrganization',
       title: 'Home Organization & Time Management',
+      grade: '3-5',
       color: '#FF5722', // Deep Orange
       description:
         'Techniques to keep home orderly and strategies to manage daily tasks efficiently.',
+      learn: [
+        { heading: 'A Place for Everything', body: 'Home organization works best when every item has a specific "home" — a designated spot it always returns to — so things are easy to find and put away. Grouping similar items together (like all school supplies in one bin) makes cleanup faster and keeps clutter from spreading.' },
+        { heading: 'Time Management Uses Simple Tools', body: 'A daily or weekly checklist helps break big chores into small, manageable steps, and doing a little bit each day (like making your bed or tidying one shelf) is easier than one huge cleaning session. Setting a timer for a task, like 10 minutes of tidying, can make chores feel less overwhelming.' },
+      ],
+      practice: [
+        { question: 'What does it mean to give an item a "home" in an organized space?', options: ['Throwing it away', 'Giving it one designated spot it always returns to', 'Hiding it in a random drawer', 'Buying a new one each time'], answerIndex: 1, explanation: 'A designated spot for each item makes it quick to find and easy to put away, keeping spaces tidy.' },
+        { question: 'What is one benefit of using a timer for a cleaning task?', options: ['It makes the task take longer', 'It can make the task feel more manageable and less overwhelming', 'It has no effect', 'It replaces the need to clean'], answerIndex: 1, explanation: 'Breaking a chore into a short, timed burst makes it feel achievable rather than overwhelming.' },
+      ],
+      apply: {
+        prompt: 'Pick one messy area at home (a desk, drawer, or shelf) and organize it in 15 minutes, giving each item a designated spot.',
+        checklist: ['Picked one messy area', 'Set a 15-minute timer', 'Grouped similar items together', 'Gave each item a specific spot'],
+      },
       help: {
         readings: [
           {
@@ -37,9 +39,22 @@ export default function HouseholdAndResourceManagementScreen() {
     {
       key: 'interiorDesign',
       title: 'Interior Design & Housing Choices',
+      grade: '9-12',
       color: '#3F51B5', // Indigo
       description:
         'Basics of arranging living spaces, decorating principles, and evaluating housing options.',
+      learn: [
+        { heading: 'Function Before Décor', body: 'Good interior design starts with how a room will be used — furniture placement should support traffic flow and daily activities before adding decorative elements like color or artwork. A common rule is leaving at least 30 inches of walking space in main pathways.' },
+        { heading: 'Housing Options Have Tradeoffs', body: 'Renting an apartment offers flexibility and fewer maintenance responsibilities, while owning a house builds equity but comes with property taxes, repairs, and a bigger upfront cost. Comparing housing options means weighing cost, location, space needs, and long-term goals.' },
+      ],
+      practice: [
+        { question: 'What should be considered first when arranging furniture in a room?', options: ['Wall paint color', 'How the room will be used and traffic flow', 'The most expensive furniture piece', 'Matching curtains'], answerIndex: 1, explanation: 'Function and traffic flow should guide furniture placement before decorative choices are made.' },
+        { question: 'What is one advantage of renting over owning a home?', options: ['Building equity', 'More flexibility and fewer maintenance responsibilities', 'Lower total lifetime cost', 'Unlimited customization'], answerIndex: 1, explanation: 'Renters typically are not responsible for major repairs and can move more easily than homeowners.' },
+      ],
+      apply: {
+        prompt: 'Sketch a simple floor plan for your bedroom or living room, showing furniture placement that keeps at least 30 inches of walking space in the main path.',
+        checklist: ['Sketched the room outline', 'Placed furniture on the sketch', 'Marked a clear walking path', 'Checked the path is wide enough'],
+      },
       help: {
         readings: [
           {
@@ -57,9 +72,22 @@ export default function HouseholdAndResourceManagementScreen() {
     {
       key: 'sustainability',
       title: 'Environmental Sustainability & Energy Conservation',
+      grade: '9-12',
       color: '#4CAF50', // Green
       description:
         'Practices to reduce environmental impact, conserve resources, and save energy at home.',
+      learn: [
+        { heading: 'Small Habits, Big Impact', body: 'Environmental sustainability at home means using resources — water, energy, materials — in ways that don\'t deplete them for the future. Simple habits like turning off lights when leaving a room, taking shorter showers, and unplugging unused electronics reduce both waste and utility bills.' },
+        { heading: 'Energy Conservation Targets the Biggest Users', body: 'Heating and cooling systems typically use the most energy in a home, so sealing drafts around windows and doors and adjusting the thermostat a few degrees can save significant energy. Switching to LED light bulbs uses up to 75% less energy than older incandescent bulbs.' },
+      ],
+      practice: [
+        { question: 'Which home system typically uses the most energy overall?', options: ['Lighting', 'Heating and cooling', 'Phone chargers', 'Doorbells'], answerIndex: 1, explanation: 'Heating and cooling systems are usually the largest energy consumers in a home.' },
+        { question: 'About how much less energy do LED bulbs use compared to older incandescent bulbs?', options: ['About 5%', 'About 25%', 'Up to 75%', 'They use the same amount'], answerIndex: 2, explanation: 'LED bulbs are far more efficient, using up to about 75% less energy than incandescent bulbs.' },
+      ],
+      apply: {
+        prompt: 'Do a simple energy audit of one room in your home: count the light bulbs, note if any are LED, and check for drafts around one window or door.',
+        checklist: ['Counted light bulbs in the room', 'Noted bulb type (LED or not)', 'Checked for drafts', 'Suggested one improvement'],
+      },
       help: {
         readings: [
           {
@@ -80,148 +108,6 @@ export default function HouseholdAndResourceManagementScreen() {
     },
   ];
 
-  const toggleHelp = (key) => {
-    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.mainTitle}>Household & Resource Management</Text>
-
-      {topics.map((topic) => (
-        <View key={topic.key} style={styles.card}>
-          <View style={[styles.headerBar, { backgroundColor: topic.color }]}>  
-            <Text style={styles.headerText}>{topic.title}</Text>
-          </View>
-          <View style={styles.sectionBody}>
-            <Text style={styles.subtitle}>What is it?</Text>
-            <Text style={styles.description}>{topic.description}</Text>
-
-            {(topic.help.readings.length > 0 || topic.help.videos.length > 0) && (
-              <TouchableOpacity
-                style={styles.helpToggle}
-                onPress={() => toggleHelp(topic.key)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.helpTitle}>
-                  Need help? {openSections[topic.key] ? '▲' : '▼'}
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {openSections[topic.key] && (
-              <View style={styles.helpContent}>
-                {topic.help.readings.length > 0 && (
-                  <>
-                    <Text style={styles.helpLabel}>Resources</Text>
-                    {topic.help.readings.map((item, idx) => (
-                      <Text
-                        key={idx}
-                        style={styles.linkText}
-                        onPress={() => Linking.openURL(item.url)}
-                      >
-                        • {item.title}
-                      </Text>
-                    ))}
-                  </>
-                )}
-                {topic.help.videos.length > 0 && (
-                  <>
-                    <Text style={styles.helpLabel}>Videos</Text>
-                    {topic.help.videos.map((video, idx) => (
-                      <Text
-                        key={idx}
-                        style={styles.linkText}
-                        onPress={() => Linking.openURL(video.url)}
-                      >
-                        • {video.title}
-                      </Text>
-                    ))}
-                  </>
-                )}
-              </View>
-            )}
-          </View>
-        </View>
-      ))}
-    </ScrollView>
-  );
+export default function HouseholdAndResourceManagementScreen() {
+  return <ClassTopicScreen title={"Household & Resource Management"} classKey="HouseholdAndResourceManagement" fallbackTopics={topics} />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    backgroundColor: '#F9F9F9',
-    paddingBottom: 40,
-  },
-  mainTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#333',
-  },
-  card: {
-    marginBottom: 24,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  headerBar: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  headerText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  sectionBody: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  subtitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-    color: '#555',
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 12,
-    color: '#444',
-  },
-  helpToggle: {
-    marginTop: 8,
-  },
-  helpTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  helpContent: {
-    marginTop: 8,
-    padding: 12,
-    backgroundColor: '#EFEFEF',
-    borderRadius: 8,
-  },
-  helpLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 6,
-    color: '#333',
-  },
-  linkText: {
-    fontSize: 14,
-    color: '#1e88e5',
-    marginLeft: 8,
-    marginTop: 4,
-    textDecorationLine: 'underline',
-  },
-});

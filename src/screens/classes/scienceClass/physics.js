@@ -1,289 +1,106 @@
-// src/screens/AdvancedElectiveTopicsScreen.js
+// src/screens/classes/scienceClass/physics.js
+import React from 'react';
+import ClassTopicScreen from '../../../components/ClassTopicScreen';
 
-import React, { useState } from 'react';
-import {
-  ScrollView,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Linking,
-} from 'react-native';
-
-export default function AdvancedElectiveTopicsScreen() {
-  const [openSections, setOpenSections] = useState({});
-
-  const topics = [
-    {
-      key: 'trigonometry',
-      title: 'Trigonometry',
-      color: '#673AB7', // Deep purple
-      description:
-        'Defining sine, cosine, and tangent ratios in right and non-right triangles; exploring unit-circle definitions, graph behavior, and identities.',
-      help: {
-        readings: [
-          {
-            title: 'Sine; Cosine; Tangent (Math is Fun)',
-            url: 'https://www.mathsisfun.com/sine-cosine-tangent.html',
-          },
-        ],
-        videos: [
-          {
-            title: 'Intro to Trigonometry - sine, cosine, and tangent ratios',
-            url: 'https://youtu.be/Q9mjsjOenQQ?si=koZN_KFMj-8p77ck',
-          },
-          {
-            title: 'Non Right angled Trigonometry, the Sine and Cosine rules',
-            url: 'https://youtu.be/5iYQCdL-bz4?si=_DrZADRqE-YeZgLa',
-          },
-          {
-            title: 'The Unit Circle, Basic Introduction, Trigonometry',
-            url: 'https://youtu.be/57VrEiEPD1I?si=8M13tnSCCSfQ9Nhnaa',
-          },
-        ],
-      },
+const topics = [
+  {
+    key: 'forcesMotion',
+    title: 'Forces & Motion',
+    grade: '3-5',
+    color: '#FF6B6B',
+    description:
+      'How pushes and pulls make things move, speed up, slow down, or change direction.',
+    learn: [
+      { heading: 'What Is a Force?', body: 'A force is simply a push or a pull. Every time you throw a ball, open a door, or kick a soccer ball, you are using a force to make something move, stop, or change direction.' },
+      { heading: 'Bigger Push, Bigger Change', body: 'A bigger force makes an object speed up, slow down, or change direction more. A gentle push rolls a toy car slowly, while a hard push sends it zooming — and friction, the rubbing between surfaces, is a force that slows moving things down.' },
+    ],
+    practice: [
+      { question: 'Which of these is an example of a force?', options: ['A color', 'A push', 'A sound', 'A smell'], answerIndex: 1, explanation: 'A push (or a pull) is a force — it can start, stop, or change an object\'s motion.' },
+      { question: 'What force slows down a rolling ball on the ground?', options: ['Gravity', 'Friction', 'Magnetism', 'Light'], answerIndex: 1, explanation: 'Friction is the rubbing force between the ball and the ground that slows it down.' },
+    ],
+    apply: {
+      prompt: 'Roll a ball or toy car on three different surfaces (like carpet, wood floor, and grass) with the same push each time, and see which surface lets it roll the farthest.',
+      checklist: ['Tested on at least 3 different surfaces', 'Used about the same push each time', 'Recorded which surface let it roll farthest and guessed why'],
     },
-    {
-      key: 'precalculus',
-      title: 'Precalculus',
-      color: '#00BCD4', // Bright cyan
-      description:
-        'Delving into complex numbers, vectors, parametric and polar equations, advanced function families, and sequence/series fundamentals.',
-      help: {
-        readings: [
-          {
-            title: 'Intro to complex numbers (Khan Academy)',
-            url: 'https://www.khanacademy.org/math/algebra2/x2ec2f6f830c9fb89:complex/x2ec2f6f830c9fb89:complex-num/a/intro-to-complex-numbers',
-          },
-          {
-            title: 'Vectors (BYJU\'s)',
-            url: 'https://byjus.com/maths/vectors/',
-          },
-          {
-            title: 'Sequence and Series (BYJU\'s)',
-            url: 'https://byjus.com/maths/sequence-and-series/',
-          },
-        ],
-        videos: [
-          {
-            title:
-              'Parametric Equations Introduction, Eliminating The Parameter t, Graphing Plane Curves, Precalculus',
-            url: 'https://youtu.be/97pe-QlSGqA?si=JIYJlufBcOZbLSqf',
-          },
-          {
-            title: 'Function Families',
-            url: 'https://youtu.be/JzaeBxmvHl8?si=hiH5OcZFKKEGWqZB',
-          },
-        ],
-      },
+    help: {
+      videos: [
+        {
+          title: 'FORCE & MOTION How Things Move *Explained* | Science for Kids!',
+          url: 'https://www.youtube.com/watch?v=rfeVlNL7d9U',
+        },
+        {
+          title: 'Motion in a Straight Line: Crash Course Physics #1',
+          url: 'https://www.youtube.com/watch?v=ZM8ECpBuQYE',
+        },
+      ],
     },
-    {
-      key: 'calculus',
-      title: 'Calculus',
-      color: '#FF9800', // Bright orange
-      description:
-        'Introducing limits and continuity, computing derivatives and integrals, and applying them to rate-of-change and area-under-curve problems.',
-      help: {
-        readings: [
-          {
-            title: 'Derivatives and Integrals (BYJU\'s)',
-            url: 'https://byjus.com/maths/calculus/',
-          },
-        ],
-        videos: [
-          {
-            title: 'Limits and Continuity',
-            url: 'https://youtu.be/9brk313DjV8?si=AhPWiFxsra9naUJ-',
-          },
-          {
-            title: 'Derivatives and Rate of Change',
-            url: 'https://youtu.be/xLE4C7y5Pn4?si=Q13q7N70Bl__c3p5',
-          },
-          {
-            title:
-              'Finding The Area Under The Curve Using Definite Integrals',
-            url: 'https://youtu.be/UjTTx2eYrx8?si=Y8zqAQAH5E3dBf8s',
-          },
-        ],
-      },
+  },
+  {
+    key: 'energyWorkMachines',
+    title: 'Energy, Work & Simple Machines',
+    grade: '6-8',
+    color: '#4D96FF',
+    description:
+      'What "work" means in physics, how energy moves and transforms, and how simple machines make work easier.',
+    learn: [
+      { heading: 'Work and Energy', body: 'In physics, "work" happens only when a force moves an object over a distance — pushing on a wall that doesn\'t budge is not scientific work. Energy is the ability to do work, and it can change forms, like when the chemical energy in food becomes kinetic energy when you run.' },
+      { heading: 'Simple Machines', body: 'Simple machines like levers, pulleys, wheels, and inclined planes don\'t create new energy — they just change the size or direction of a force, making a task easier to do. A ramp, for example, lets you move something heavy upward using less force spread over a longer distance.' },
+    ],
+    practice: [
+      { question: 'In physics, when does "work" actually happen?', options: ['Whenever you feel tired', 'When a force moves an object over a distance', 'Only when using a machine', 'When energy is destroyed'], answerIndex: 1, explanation: 'Scientific work requires a force to actually move an object across some distance.' },
+      { question: 'What do simple machines like ramps and levers actually do?', options: ['Create new energy', 'Destroy energy', 'Change the size or direction of a force', 'Store electricity'], answerIndex: 2, explanation: 'Simple machines make tasks easier by changing how much force is needed or which direction it is applied, not by creating energy.' },
+    ],
+    apply: {
+      prompt: 'Build a simple ramp (a board propped on books) and compare how much easier it feels to slide a heavy book up the ramp versus lifting it straight up.',
+      checklist: ['Built a ramp at one incline', 'Tried lifting the object straight up and noted the effort', 'Tried sliding it up the ramp and compared the effort'],
     },
-    {
-      key: 'discrete',
-      title: 'Discrete Mathematics',
-      color: '#8BC34A', // Light green
-      description:
-        '(Elective) Investigating logic and set theory, graph theory basics, recursion, and combinatorial reasoning for algorithmic thinking.',
-      help: {
-        readings: [
-          {
-            title: 'Graph Theory (DataCamp)',
-            url:
-              'https://www.datacamp.com/tutorial/introduction-to-graph-theory',
-          },
-        ],
-        videos: [
-          {
-            title: 'Logic and Set Theory',
-            url: 'https://youtu.be/dH4RHHsTf6Q?si=YBf1_L4W-s3Ul7l6',
-          },
-          {
-            title: 'Recursive Formulas For Sequences',
-            url: 'https://youtu.be/IFHZQ6MaG6w?si=SoCKhh_iesFq6uBW',
-          },
-        ],
-      },
+    help: {
+      videos: [
+        {
+          title: 'Work, Energy, and Power: Crash Course Physics #9',
+          url: 'https://www.youtube.com/watch?v=w4QFJb9a8vo',
+        },
+        {
+          title: 'Force and motion | Science for kids | Energy | Machines | Types of force',
+          url: 'https://www.youtube.com/watch?v=NnejP0Zn75M',
+        },
+      ],
     },
-  ];
+  },
+  {
+    key: 'motionThermodynamics',
+    title: 'Advanced Motion & Thermodynamics',
+    grade: '9-12',
+    color: '#4CAF50',
+    description:
+      'Repeating motion like springs and pendulums (simple harmonic motion), plus the basics of heat, energy transfer, and thermodynamics.',
+    learn: [
+      { heading: 'Simple Harmonic Motion', body: 'Simple harmonic motion is a repeating back-and-forth movement, like a pendulum swinging or a spring bouncing, where the restoring force pulling the object back to center is proportional to how far it has moved. The time for one full swing, called the period, stays constant for a given pendulum length, regardless of how wide the swing is.' },
+      { heading: 'Heat and Thermodynamics', body: 'Thermodynamics is the study of heat and energy transfer. Heat always flows from a hotter object to a colder one until they reach the same temperature, and the total energy in a closed system is always conserved — it just changes form, as described by the first law of thermodynamics.' },
+    ],
+    practice: [
+      { question: 'What determines the period of a simple pendulum?', options: ['How wide it swings', 'Its length', 'Its color', 'How heavy the bob is'], answerIndex: 1, explanation: 'A pendulum\'s period depends mainly on its length (and gravity), not its swing width or mass.' },
+      { question: 'According to thermodynamics, which direction does heat naturally flow?', options: ['Cold to hot', 'Hot to cold', 'It never moves', 'Randomly'], answerIndex: 1, explanation: 'Heat spontaneously flows from a hotter object to a colder one until thermal equilibrium is reached.' },
+    ],
+    apply: {
+      prompt: 'Build a simple pendulum with string and a small weight, then test how changing the string length affects the time for 10 full swings.',
+      checklist: ['Timed 10 swings at one string length', 'Changed the length and timed 10 swings again', 'Compared results and explained the relationship between length and period'],
+    },
+    help: {
+      videos: [
+        {
+          title: 'Simple Harmonic Motion: Crash Course Physics #16',
+          url: 'https://www.youtube.com/watch?v=jxstE6A_CYQ',
+        },
+        {
+          title: 'Thermodynamics: Crash Course Physics #23',
+          url: 'https://www.youtube.com/watch?v=4i1MUWJoI0U',
+        },
+      ],
+    },
+  },
+];
 
-  const toggleHelp = (key) => {
-    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.mainTitle}>Advanced & Elective Topics</Text>
-
-      {topics.map((topic) => (
-        <View key={topic.key} style={styles.card}>
-          {/* Colored Header */}
-          <View style={[styles.headerBar, { backgroundColor: topic.color }]}>
-            <Text style={styles.headerText}>{topic.title}</Text>
-          </View>
-
-          {/* Body */}
-          <View style={styles.sectionBody}>
-            <Text style={styles.subtitle}>What is it?</Text>
-            <Text style={styles.description}>{topic.description}</Text>
-
-            {/* Show “Need help?” toggle if there are any links */}
-            {(topic.help.readings.length > 0 ||
-              topic.help.videos.length > 0) && (
-              <TouchableOpacity
-                style={styles.helpToggle}
-                onPress={() => toggleHelp(topic.key)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.helpTitle}>
-                  Need help? {openSections[topic.key] ? '▲' : '▼'}
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {/* Collapsible help content */}
-            {openSections[topic.key] && (
-              <View style={styles.helpContent}>
-                {topic.help.readings.length > 0 && (
-                  <>
-                    <Text style={styles.helpLabel}>Readings</Text>
-                    {topic.help.readings.map((item, idx) => (
-                      <Text
-                        key={idx}
-                        style={styles.linkText}
-                        onPress={() => Linking.openURL(item.url)}
-                      >
-                        • {item.title}
-                      </Text>
-                    ))}
-                  </>
-                )}
-
-                {topic.help.videos.length > 0 && (
-                  <>
-                    <Text style={styles.helpLabel}>Videos</Text>
-                    {topic.help.videos.map((video, idx) => (
-                      <Text
-                        key={idx}
-                        style={styles.linkText}
-                        onPress={() => Linking.openURL(video.url)}
-                      >
-                        • {video.title}
-                      </Text>
-                    ))}
-                  </>
-                )}
-              </View>
-            )}
-          </View>
-        </View>
-      ))}
-    </ScrollView>
-  );
+export default function PhysicsScreen() {
+  return <ClassTopicScreen title={"Physics"} classKey="Physics" fallbackTopics={topics} />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    backgroundColor: '#F5F5F5',
-    paddingBottom: 40,
-  },
-  mainTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#333',
-  },
-  card: {
-    marginBottom: 24,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  headerBar: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  headerText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  sectionBody: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  subtitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-    color: '#555',
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 12,
-    color: '#444',
-  },
-  helpToggle: {
-    marginTop: 8,
-  },
-  helpTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  helpContent: {
-    marginTop: 8,
-    padding: 12,
-    backgroundColor: '#EFEFEF',
-    borderRadius: 8,
-  },
-  helpLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 6,
-    color: '#333',
-  },
-  linkText: {
-    fontSize: 14,
-    color: '#1e88e5',
-    marginLeft: 8,
-    marginTop: 4,
-    textDecorationLine: 'underline',
-  },
-});

@@ -1,289 +1,106 @@
-// src/screens/AdvancedElectiveTopicsScreen.js
+// src/screens/classes/socialscienceClass/psychology.js
+import React from 'react';
+import ClassTopicScreen from '../../../components/ClassTopicScreen';
 
-import React, { useState } from 'react';
-import {
-  ScrollView,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Linking,
-} from 'react-native';
-
-export default function AdvancedElectiveTopicsScreen() {
-  const [openSections, setOpenSections] = useState({});
-
-  const topics = [
-    {
-      key: 'trigonometry',
-      title: 'Trigonometry',
-      color: '#673AB7', // Deep purple
-      description:
-        'Defining sine, cosine, and tangent ratios in right and non-right triangles; exploring unit-circle definitions, graph behavior, and identities.',
-      help: {
-        readings: [
-          {
-            title: 'Sine; Cosine; Tangent (Math is Fun)',
-            url: 'https://www.mathsisfun.com/sine-cosine-tangent.html',
-          },
-        ],
-        videos: [
-          {
-            title: 'Intro to Trigonometry - sine, cosine, and tangent ratios',
-            url: 'https://youtu.be/Q9mjsjOenQQ?si=koZN_KFMj-8p77ck',
-          },
-          {
-            title: 'Non Right angled Trigonometry, the Sine and Cosine rules',
-            url: 'https://youtu.be/5iYQCdL-bz4?si=_DrZADRqE-YeZgLa',
-          },
-          {
-            title: 'The Unit Circle, Basic Introduction, Trigonometry',
-            url: 'https://youtu.be/57VrEiEPD1I?si=8M13tnSCCSfQ9Nhnaa',
-          },
-        ],
-      },
+const topics = [
+  {
+    key: 'understandingEmotions',
+    title: 'Understanding Emotions',
+    grade: '3-5',
+    color: '#FF6B6B',
+    description:
+      'What emotions are, how they show up in our bodies and faces, and how stress connects to our feelings and health.',
+    learn: [
+      { heading: 'Emotions Show Up in Your Body', body: 'Emotions are not just thoughts — they show up in your body too, like a fast heartbeat when you are scared or a smile when you are happy. Your face and body often tell others how you feel even before you say any words.' },
+      { heading: 'Stress and Feelings Are Connected', body: 'Stress happens when something feels hard or worrying, like a big test or a fight with a friend. Too much stress for too long can make your body feel tired or sick, so it helps to notice stress early and find ways to calm down, like deep breathing or talking to someone.' },
+    ],
+    practice: [
+      { question: 'How do emotions often show up besides in your thoughts?', options: ['They never show up anywhere else', 'In your body, like your heartbeat or face', 'Only in your dreams', 'Only when you are alone'], answerIndex: 1, explanation: 'Emotions show up physically too, like a racing heart when scared or a smile when happy.' },
+      { question: 'What can happen if stress lasts too long?', options: ['Nothing changes at all', 'It can make your body feel tired or unwell', 'It always makes you stronger', 'It disappears on its own instantly'], answerIndex: 1, explanation: 'Long-lasting stress can affect the body and make a person feel tired or unwell.' },
+    ],
+    apply: {
+      prompt: 'For one day, notice 3 moments when you feel an emotion. Write down the emotion, what your body did (like your face or heartbeat), and what caused it.',
+      checklist: ['Recorded 3 different emotional moments', 'Described a body signal for each', 'Named what caused each emotion'],
     },
-    {
-      key: 'precalculus',
-      title: 'Precalculus',
-      color: '#00BCD4', // Bright cyan
-      description:
-        'Delving into complex numbers, vectors, parametric and polar equations, advanced function families, and sequence/series fundamentals.',
-      help: {
-        readings: [
-          {
-            title: 'Intro to complex numbers (Khan Academy)',
-            url: 'https://www.khanacademy.org/math/algebra2/x2ec2f6f830c9fb89:complex/x2ec2f6f830c9fb89:complex-num/a/intro-to-complex-numbers',
-          },
-          {
-            title: 'Vectors (BYJU\'s)',
-            url: 'https://byjus.com/maths/vectors/',
-          },
-          {
-            title: 'Sequence and Series (BYJU\'s)',
-            url: 'https://byjus.com/maths/sequence-and-series/',
-          },
-        ],
-        videos: [
-          {
-            title:
-              'Parametric Equations Introduction, Eliminating The Parameter t, Graphing Plane Curves, Precalculus',
-            url: 'https://youtu.be/97pe-QlSGqA?si=JIYJlufBcOZbLSqf',
-          },
-          {
-            title: 'Function Families',
-            url: 'https://youtu.be/JzaeBxmvHl8?si=hiH5OcZFKKEGWqZB',
-          },
-        ],
-      },
+    help: {
+      videos: [
+        {
+          title: 'Feeling All the Feels: Crash Course Psychology #25',
+          url: 'https://www.youtube.com/watch?v=gAMbkJk6gnE',
+        },
+        {
+          title: 'Emotion, Stress, and Health: Crash Course Psychology #26',
+          url: 'https://www.youtube.com/watch?v=4KbSRXP0wik',
+        },
+      ],
     },
-    {
-      key: 'calculus',
-      title: 'Calculus',
-      color: '#FF9800', // Bright orange
-      description:
-        'Introducing limits and continuity, computing derivatives and integrals, and applying them to rate-of-change and area-under-curve problems.',
-      help: {
-        readings: [
-          {
-            title: 'Derivatives and Integrals (BYJU\'s)',
-            url: 'https://byjus.com/maths/calculus/',
-          },
-        ],
-        videos: [
-          {
-            title: 'Limits and Continuity',
-            url: 'https://youtu.be/9brk313DjV8?si=AhPWiFxsra9naUJ-',
-          },
-          {
-            title: 'Derivatives and Rate of Change',
-            url: 'https://youtu.be/xLE4C7y5Pn4?si=Q13q7N70Bl__c3p5',
-          },
-          {
-            title:
-              'Finding The Area Under The Curve Using Definite Integrals',
-            url: 'https://youtu.be/UjTTx2eYrx8?si=Y8zqAQAH5E3dBf8s',
-          },
-        ],
-      },
+  },
+  {
+    key: 'socialThinking',
+    title: 'How We Think & Relate to Others',
+    grade: '6-8',
+    color: '#4D96FF',
+    description:
+      'Why people act differently in groups than alone, and how the people around us shape our choices and behavior.',
+    learn: [
+      { heading: 'Groups Change Behavior', body: 'People often act differently in a group than they would by themselves — a behavior called conformity. Someone might go along with what everyone else is doing, even if they privately disagree, because fitting in feels safer than standing out.' },
+      { heading: 'Social Influence Is Powerful', body: 'The people around us — friends, family, and even strangers — shape our choices without us always noticing. This can be positive, like a friend encouraging you to try harder, or negative, like feeling pressured to do something you know is not a good idea.' },
+    ],
+    practice: [
+      { question: 'What is conformity?', options: ['Always disagreeing with a group', 'Going along with a group even if you privately disagree', 'Making decisions completely alone', 'Ignoring everyone around you'], answerIndex: 1, explanation: 'Conformity is adjusting your behavior to match a group, sometimes even against your own private opinion.' },
+      { question: 'Can social influence be a good thing?', options: ['No, it is always bad', 'Yes, like a friend encouraging positive behavior', 'It only affects adults', 'It only happens online'], answerIndex: 1, explanation: 'Social influence can be positive, such as friends motivating each other to do better.' },
+    ],
+    apply: {
+      prompt: 'Think of a time you did something differently because you were in a group versus alone. Write 2-3 sentences describing what happened and whether the group\'s influence was positive or negative.',
+      checklist: ['Described a real group situation', 'Explained how behavior changed', 'Judged whether the influence was positive or negative'],
     },
-    {
-      key: 'discrete',
-      title: 'Discrete Mathematics',
-      color: '#8BC34A', // Light green
-      description:
-        '(Elective) Investigating logic and set theory, graph theory basics, recursion, and combinatorial reasoning for algorithmic thinking.',
-      help: {
-        readings: [
-          {
-            title: 'Graph Theory (DataCamp)',
-            url:
-              'https://www.datacamp.com/tutorial/introduction-to-graph-theory',
-          },
-        ],
-        videos: [
-          {
-            title: 'Logic and Set Theory',
-            url: 'https://youtu.be/dH4RHHsTf6Q?si=YBf1_L4W-s3Ul7l6',
-          },
-          {
-            title: 'Recursive Formulas For Sequences',
-            url: 'https://youtu.be/IFHZQ6MaG6w?si=SoCKhh_iesFq6uBW',
-          },
-        ],
-      },
+    help: {
+      videos: [
+        {
+          title: 'Social Thinking: Crash Course Psychology #37',
+          url: 'https://www.youtube.com/watch?v=h6HLDV0T5Q8',
+        },
+        {
+          title: 'Social Influence: Crash Course Psychology #38',
+          url: 'https://www.youtube.com/watch?v=UGxGDdQnC1Y',
+        },
+      ],
     },
-  ];
+  },
+  {
+    key: 'introPsychSociety',
+    title: 'Intro to Psychology & Society',
+    grade: '9-12',
+    color: '#4CAF50',
+    description:
+      'What psychology actually studies, and how sociology looks at how people grow and connect within a wider society.',
+    learn: [
+      { heading: 'Psychology vs. Sociology', body: 'Psychology is the scientific study of the mind and individual behavior — how a single person thinks, feels, and acts. Sociology studies people at a broader level: how groups, institutions, and social structures shape human behavior and how individuals develop within society.' },
+      { heading: 'Socialization Across a Lifetime', body: 'Socialization is the lifelong process by which people learn the norms, values, and roles of their society, starting with family and expanding to schools, peer groups, and media. This process explains why people from different cultures or generations can hold very different beliefs about what is "normal."' },
+    ],
+    practice: [
+      { question: 'What is the main focus of psychology?', options: ['Government structures', 'The mind and individual behavior', 'International trade', 'Weather patterns'], answerIndex: 1, explanation: 'Psychology is the scientific study of the mind and individual behavior.' },
+      { question: 'What does sociology study that psychology typically does not?', options: ['Individual dreams', 'How groups and social structures shape behavior', 'Brain chemistry', 'Personal memory'], answerIndex: 1, explanation: 'Sociology looks at the broader level of groups, institutions, and social structures, not just the individual mind.' },
+    ],
+    apply: {
+      prompt: 'Interview someone from a different generation than you (a parent, grandparent, or older sibling). Ask what "normal" behavior for teenagers looked like when they were young, then compare it to today in 3-4 sentences.',
+      checklist: ['Conducted the interview', 'Recorded what was considered normal in their generation', 'Compared it to today in your own words'],
+    },
+    help: {
+      videos: [
+        {
+          title: 'Intro to Psychology: Crash Course Psychology #1',
+          url: 'https://www.youtube.com/watch?v=vo4pMVb0R6M',
+        },
+        {
+          title: 'Social Development: Crash Course Sociology #13',
+          url: 'https://www.youtube.com/watch?v=WbBm_YLwowc',
+        },
+      ],
+    },
+  },
+];
 
-  const toggleHelp = (key) => {
-    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.mainTitle}>Advanced & Elective Topics</Text>
-
-      {topics.map((topic) => (
-        <View key={topic.key} style={styles.card}>
-          {/* Colored Header */}
-          <View style={[styles.headerBar, { backgroundColor: topic.color }]}>
-            <Text style={styles.headerText}>{topic.title}</Text>
-          </View>
-
-          {/* Body */}
-          <View style={styles.sectionBody}>
-            <Text style={styles.subtitle}>What is it?</Text>
-            <Text style={styles.description}>{topic.description}</Text>
-
-            {/* Show “Need help?” toggle if there are any links */}
-            {(topic.help.readings.length > 0 ||
-              topic.help.videos.length > 0) && (
-              <TouchableOpacity
-                style={styles.helpToggle}
-                onPress={() => toggleHelp(topic.key)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.helpTitle}>
-                  Need help? {openSections[topic.key] ? '▲' : '▼'}
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {/* Collapsible help content */}
-            {openSections[topic.key] && (
-              <View style={styles.helpContent}>
-                {topic.help.readings.length > 0 && (
-                  <>
-                    <Text style={styles.helpLabel}>Readings</Text>
-                    {topic.help.readings.map((item, idx) => (
-                      <Text
-                        key={idx}
-                        style={styles.linkText}
-                        onPress={() => Linking.openURL(item.url)}
-                      >
-                        • {item.title}
-                      </Text>
-                    ))}
-                  </>
-                )}
-
-                {topic.help.videos.length > 0 && (
-                  <>
-                    <Text style={styles.helpLabel}>Videos</Text>
-                    {topic.help.videos.map((video, idx) => (
-                      <Text
-                        key={idx}
-                        style={styles.linkText}
-                        onPress={() => Linking.openURL(video.url)}
-                      >
-                        • {video.title}
-                      </Text>
-                    ))}
-                  </>
-                )}
-              </View>
-            )}
-          </View>
-        </View>
-      ))}
-    </ScrollView>
-  );
+export default function PsychologySociologyScreen() {
+  return <ClassTopicScreen title={"Psychology & Sociology"} classKey="PsychologicalAndSociology" fallbackTopics={topics} />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    backgroundColor: '#F5F5F5',
-    paddingBottom: 40,
-  },
-  mainTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#333',
-  },
-  card: {
-    marginBottom: 24,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  headerBar: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  headerText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  sectionBody: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  subtitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-    color: '#555',
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 12,
-    color: '#444',
-  },
-  helpToggle: {
-    marginTop: 8,
-  },
-  helpTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  helpContent: {
-    marginTop: 8,
-    padding: 12,
-    backgroundColor: '#EFEFEF',
-    borderRadius: 8,
-  },
-  helpLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 6,
-    color: '#333',
-  },
-  linkText: {
-    fontSize: 14,
-    color: '#1e88e5',
-    marginLeft: 8,
-    marginTop: 4,
-    textDecorationLine: 'underline',
-  },
-});

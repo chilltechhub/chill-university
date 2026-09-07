@@ -5,6 +5,7 @@
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
 const SUPABASE_URL = Constants.expoConfig?.extra?.SUPABASE_URL
   || process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -21,6 +22,12 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     storage: AsyncStorage,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    // Password-reset (and email-confirmation) links land back on the app
+    // with the token in the URL — on web that's a real URL supabase-js can
+    // read directly (window.location), so let it parse it and fire the
+    // PASSWORD_RECOVERY auth event (see App.js). Native has no such URL to
+    // read here; its recovery link instead comes in as a deep link,
+    // handled separately via Linking in App.js.
+    detectSessionInUrl: Platform.OS === 'web',
   },
 });

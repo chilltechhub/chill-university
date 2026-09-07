@@ -1,9 +1,14 @@
 // src/screens/ClassesStack.js
 
 import React from 'react';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createStackNavigator, TransitionPresets } from '@react-navigation/stack';
 
 import Classes from './Classes';  // your expandable list
+
+// Classroom Day Lesson Plan Builder — separate from the per-topic classes
+// above; see LessonBuilder.js for why.
+import LessonBuilder from './LessonBuilder';
+import MyLessonPlans from './MyLessonPlans';
 
 // Math
 import NumbersAndOperations from './classes/mathClass/numbersandoperations';
@@ -49,20 +54,17 @@ import Construction from './classes/homeecworkshopClass/construction';
 import Automotive from './classes/homeecworkshopClass/automotive';
 import ToolSafetyAndShopPractices from './classes/homeecworkshopClass/toolsafety';
 
-/*
 // Technology & Engineering
-import TechnologyAndEngineering from './classes/technologyAndEngineering/TechnologyAndEngineering';
+import TechnologyAndEngineering from './classes/technologyEngineeringClass/foundations';
 
 // Foreign Language
-import ForeignLanguage from './classes/foreignLanguage/ForeignLanguage';
+import ForeignLanguage from './classes/foreignLanguageClass/spanishFoundations';
 
 // Health & Fitness
-import HealthAndFitness from './classes/healthAndFitness/HealthAndFitness';
+import HealthAndFitness from './classes/healthFitnessClass/foundations';
 
 // Business & Finance
-import BusinessAndFinance from './classes/businessAndFinance/BusinessAndFinance';
-
-*/
+import BusinessAndFinance from './classes/businessFinanceClass/foundations';
 
 const Stack = createStackNavigator();
 
@@ -70,9 +72,13 @@ export default function ClassesStack() {
   return (
     <Stack.Navigator
       initialRouteName="ClassesMain"
-      screenOptions={{ headerShown: false }}
+      screenOptions={{ headerShown: false, ...TransitionPresets.SlideFromRightIOS }}
     >
       <Stack.Screen name="ClassesMain" component={Classes} />
+
+      {/* Classroom Day Lesson Plan Builder */}
+      <Stack.Screen name="LessonBuilder" component={LessonBuilder} />
+      <Stack.Screen name="MyLessonPlans" component={MyLessonPlans} />
 
       {/* Math */}
       <Stack.Screen name="NumbersAndOperations" component={NumbersAndOperations} />
@@ -123,6 +129,12 @@ export default function ClassesStack() {
         name="ToolSafetyAndShopPractices"
         component={ToolSafetyAndShopPractices}
       />
+
+      {/* Technology & Engineering / Foreign Language / Health & Fitness / Business & Finance */}
+      <Stack.Screen name="TechnologyAndEngineering" component={TechnologyAndEngineering} />
+      <Stack.Screen name="ForeignLanguage" component={ForeignLanguage} />
+      <Stack.Screen name="HealthAndFitness" component={HealthAndFitness} />
+      <Stack.Screen name="BusinessAndFinance" component={BusinessAndFinance} />
     </Stack.Navigator>
   );
 }

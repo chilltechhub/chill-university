@@ -1,289 +1,102 @@
-// src/screens/AdvancedElectiveTopicsScreen.js
+// src/screens/classes/scienceClass/space.js
+import React from 'react';
+import ClassTopicScreen from '../../../components/ClassTopicScreen';
 
-import React, { useState } from 'react';
-import {
-  ScrollView,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Linking,
-} from 'react-native';
-
-export default function AdvancedElectiveTopicsScreen() {
-  const [openSections, setOpenSections] = useState({});
-
-  const topics = [
-    {
-      key: 'trigonometry',
-      title: 'Trigonometry',
-      color: '#673AB7', // Deep purple
-      description:
-        'Defining sine, cosine, and tangent ratios in right and non-right triangles; exploring unit-circle definitions, graph behavior, and identities.',
-      help: {
-        readings: [
-          {
-            title: 'Sine; Cosine; Tangent (Math is Fun)',
-            url: 'https://www.mathsisfun.com/sine-cosine-tangent.html',
-          },
-        ],
-        videos: [
-          {
-            title: 'Intro to Trigonometry - sine, cosine, and tangent ratios',
-            url: 'https://youtu.be/Q9mjsjOenQQ?si=koZN_KFMj-8p77ck',
-          },
-          {
-            title: 'Non Right angled Trigonometry, the Sine and Cosine rules',
-            url: 'https://youtu.be/5iYQCdL-bz4?si=_DrZADRqE-YeZgLa',
-          },
-          {
-            title: 'The Unit Circle, Basic Introduction, Trigonometry',
-            url: 'https://youtu.be/57VrEiEPD1I?si=8M13tnSCCSfQ9Nhnaa',
-          },
-        ],
-      },
+const topics = [
+  {
+    key: 'solarSystem',
+    title: 'The Sun, Moon & Solar System',
+    grade: 'K-2',
+    color: '#FF6B6B',
+    description:
+      'A tour of our solar system — the Sun, the planets, and our Moon — and how they all fit together.',
+    learn: [
+      { heading: 'Our Sun and Planets', body: 'The Sun is a giant ball of hot, glowing gas at the center of our solar system. Eight planets, including Earth, travel around the Sun in big circles called orbits. The Sun gives us light and heat, and without it nothing on Earth could live.' },
+      { heading: 'Our Moon', body: 'The Moon travels around the Earth, not the Sun. It does not make its own light — we see it glow because it reflects sunlight, like a mirror. The Moon changes shape in the sky over about a month; that is called its phases.' },
+    ],
+    practice: [
+      { question: 'What is at the center of our solar system?', options: ['The Moon', 'The Sun', 'Earth', 'A star cluster'], answerIndex: 1, explanation: 'The Sun sits at the center, and the planets orbit around it.' },
+      { question: 'Why does the Moon appear to glow at night?', options: ['It makes its own light', 'It reflects sunlight', 'It is on fire', 'It is made of light'], answerIndex: 1, explanation: "The Moon has no light of its own — we see sunlight bouncing off it." },
+    ],
+    apply: {
+      prompt: 'Watch the Moon every night for a week (or look at photos online) and draw what shape it is each night.',
+      checklist: ['Drew or noted the Moon shape for at least 5 nights', 'Circled the night it looked most "full"', 'Circled the night it looked most "thin" or hidden'],
     },
-    {
-      key: 'precalculus',
-      title: 'Precalculus',
-      color: '#00BCD4', // Bright cyan
-      description:
-        'Delving into complex numbers, vectors, parametric and polar equations, advanced function families, and sequence/series fundamentals.',
-      help: {
-        readings: [
-          {
-            title: 'Intro to complex numbers (Khan Academy)',
-            url: 'https://www.khanacademy.org/math/algebra2/x2ec2f6f830c9fb89:complex/x2ec2f6f830c9fb89:complex-num/a/intro-to-complex-numbers',
-          },
-          {
-            title: 'Vectors (BYJU\'s)',
-            url: 'https://byjus.com/maths/vectors/',
-          },
-          {
-            title: 'Sequence and Series (BYJU\'s)',
-            url: 'https://byjus.com/maths/sequence-and-series/',
-          },
-        ],
-        videos: [
-          {
-            title:
-              'Parametric Equations Introduction, Eliminating The Parameter t, Graphing Plane Curves, Precalculus',
-            url: 'https://youtu.be/97pe-QlSGqA?si=JIYJlufBcOZbLSqf',
-          },
-          {
-            title: 'Function Families',
-            url: 'https://youtu.be/JzaeBxmvHl8?si=hiH5OcZFKKEGWqZB',
-          },
-        ],
-      },
+    help: {
+      videos: [
+        {
+          title: 'Space for Kids | Learn About Planets, The Sun & the Solar System',
+          url: 'https://www.youtube.com/watch?v=j9TsI_klm1s',
+        },
+        {
+          title: 'Exploring Our Solar System: Planets and Space for Kids — FreeSchool',
+          url: 'https://www.youtube.com/watch?v=Qd6nLM2QlWw',
+        },
+      ],
     },
-    {
-      key: 'calculus',
-      title: 'Calculus',
-      color: '#FF9800', // Bright orange
-      description:
-        'Introducing limits and continuity, computing derivatives and integrals, and applying them to rate-of-change and area-under-curve problems.',
-      help: {
-        readings: [
-          {
-            title: 'Derivatives and Integrals (BYJU\'s)',
-            url: 'https://byjus.com/maths/calculus/',
-          },
-        ],
-        videos: [
-          {
-            title: 'Limits and Continuity',
-            url: 'https://youtu.be/9brk313DjV8?si=AhPWiFxsra9naUJ-',
-          },
-          {
-            title: 'Derivatives and Rate of Change',
-            url: 'https://youtu.be/xLE4C7y5Pn4?si=Q13q7N70Bl__c3p5',
-          },
-          {
-            title:
-              'Finding The Area Under The Curve Using Definite Integrals',
-            url: 'https://youtu.be/UjTTx2eYrx8?si=Y8zqAQAH5E3dBf8s',
-          },
-        ],
-      },
+  },
+  {
+    key: 'starsGalaxies',
+    title: 'Stars & Galaxies',
+    grade: '6-8',
+    color: '#4D96FF',
+    description:
+      'Zooming out from our solar system to our home galaxy, the Milky Way, and the billions of stars it contains.',
+    learn: [
+      { heading: 'What Is a Galaxy?', body: 'A galaxy is a huge collection of stars, gas, dust, and planets all held together by gravity. Our solar system is just one tiny part of the Milky Way galaxy, which contains hundreds of billions of stars arranged in a spinning, spiral shape.' },
+      { heading: 'Stars Are Suns', body: 'Every star you see at night is a giant ball of burning gas, just like our Sun — they only look small and dim because they are unimaginably far away. Stars come in different sizes, colors, and temperatures, and some are much bigger and hotter than our own Sun.' },
+    ],
+    practice: [
+      { question: 'What galaxy is our solar system located in?', options: ['Andromeda', 'The Milky Way', 'The Sombrero Galaxy', 'The Orion Nebula'], answerIndex: 1, explanation: 'Our solar system is one small part of the spiral-shaped Milky Way galaxy.' },
+      { question: 'Why do stars look tiny in the night sky even though many are bigger than the Sun?', options: ['They are actually small', 'They are extremely far away', 'They are dying out', 'They are made of ice'], answerIndex: 1, explanation: 'Stars are so far from Earth that their enormous size appears as a tiny point of light.' },
+    ],
+    apply: {
+      prompt: 'On a clear night, go outside (or use a stargazing app) and try to spot a patch of sky that looks hazy or "milky" — that band is part of our own Milky Way galaxy viewed from inside it.',
+      checklist: ['Found a dark viewing spot away from bright lights', 'Located or identified the Milky Way band or a star app equivalent', 'Counted how many individual stars you could see with just your eyes'],
     },
-    {
-      key: 'discrete',
-      title: 'Discrete Mathematics',
-      color: '#8BC34A', // Light green
-      description:
-        '(Elective) Investigating logic and set theory, graph theory basics, recursion, and combinatorial reasoning for algorithmic thinking.',
-      help: {
-        readings: [
-          {
-            title: 'Graph Theory (DataCamp)',
-            url:
-              'https://www.datacamp.com/tutorial/introduction-to-graph-theory',
-          },
-        ],
-        videos: [
-          {
-            title: 'Logic and Set Theory',
-            url: 'https://youtu.be/dH4RHHsTf6Q?si=YBf1_L4W-s3Ul7l6',
-          },
-          {
-            title: 'Recursive Formulas For Sequences',
-            url: 'https://youtu.be/IFHZQ6MaG6w?si=SoCKhh_iesFq6uBW',
-          },
-        ],
-      },
+    help: {
+      videos: [
+        {
+          title: 'Get to Know Your Galaxy! | Astronomy for Kids',
+          url: 'https://www.youtube.com/watch?v=DtiRn0Ecpjc',
+        },
+        {
+          title: 'The Milky Way for Children, Galaxies and Space: Astronomy for Kids — FreeSchool',
+          url: 'https://www.youtube.com/watch?v=RubnGwhcT6E',
+        },
+      ],
     },
-  ];
+  },
+  {
+    key: 'spaceExploration',
+    title: 'Beyond Our Galaxy & Space Exploration',
+    grade: '9-12',
+    color: '#4CAF50',
+    description:
+      "Our place in the wider universe — what lies beyond the Milky Way, and how astronomers study galaxies far beyond our own.",
+    learn: [
+      { heading: 'A Universe of Galaxies', body: 'Beyond the Milky Way lie billions of other galaxies, each containing billions of stars of its own, spread across the observable universe. Galaxies come in different shapes — spiral, elliptical, and irregular — and are grouped into clusters held together by gravity.' },
+      { heading: 'How We Study Them', body: 'Astronomers use telescopes that detect visible light, radio waves, and infrared radiation to study galaxies too far away to visit. Because light takes time to travel, looking at a distant galaxy means seeing it as it looked millions or billions of years ago.' },
+    ],
+    practice: [
+      { question: 'Which of these is NOT a common galaxy shape?', options: ['Spiral', 'Elliptical', 'Irregular', 'Cubic'], answerIndex: 3, explanation: 'Galaxies are generally classified as spiral, elliptical, or irregular — not cubic.' },
+      { question: 'Why does looking at a distant galaxy show us the past?', options: ['Telescopes are old technology', 'Light takes time to travel across space', 'Galaxies move backward in time', 'Old photos are used'], answerIndex: 1, explanation: 'Because light travels at a fixed speed, light from far away left its source long ago, so we see it as it was in the past.' },
+    ],
+    apply: {
+      prompt: 'Research one real galaxy other than the Milky Way (such as Andromeda) and create a short fact sheet about its shape, distance from Earth, and how it was discovered.',
+      checklist: ['Named the galaxy and its shape', 'Recorded its approximate distance from Earth in light-years', 'Noted the telescope or method used to study it'],
+    },
+    help: {
+      videos: [
+        {
+          title: 'Beyond the Solar System — Exploring the Galaxies of the Universe',
+          url: 'https://www.youtube.com/watch?v=v2d-9hjxai8',
+        },
+      ],
+    },
+  },
+];
 
-  const toggleHelp = (key) => {
-    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.mainTitle}>Advanced & Elective Topics</Text>
-
-      {topics.map((topic) => (
-        <View key={topic.key} style={styles.card}>
-          {/* Colored Header */}
-          <View style={[styles.headerBar, { backgroundColor: topic.color }]}>
-            <Text style={styles.headerText}>{topic.title}</Text>
-          </View>
-
-          {/* Body */}
-          <View style={styles.sectionBody}>
-            <Text style={styles.subtitle}>What is it?</Text>
-            <Text style={styles.description}>{topic.description}</Text>
-
-            {/* Show “Need help?” toggle if there are any links */}
-            {(topic.help.readings.length > 0 ||
-              topic.help.videos.length > 0) && (
-              <TouchableOpacity
-                style={styles.helpToggle}
-                onPress={() => toggleHelp(topic.key)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.helpTitle}>
-                  Need help? {openSections[topic.key] ? '▲' : '▼'}
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {/* Collapsible help content */}
-            {openSections[topic.key] && (
-              <View style={styles.helpContent}>
-                {topic.help.readings.length > 0 && (
-                  <>
-                    <Text style={styles.helpLabel}>Readings</Text>
-                    {topic.help.readings.map((item, idx) => (
-                      <Text
-                        key={idx}
-                        style={styles.linkText}
-                        onPress={() => Linking.openURL(item.url)}
-                      >
-                        • {item.title}
-                      </Text>
-                    ))}
-                  </>
-                )}
-
-                {topic.help.videos.length > 0 && (
-                  <>
-                    <Text style={styles.helpLabel}>Videos</Text>
-                    {topic.help.videos.map((video, idx) => (
-                      <Text
-                        key={idx}
-                        style={styles.linkText}
-                        onPress={() => Linking.openURL(video.url)}
-                      >
-                        • {video.title}
-                      </Text>
-                    ))}
-                  </>
-                )}
-              </View>
-            )}
-          </View>
-        </View>
-      ))}
-    </ScrollView>
-  );
+export default function AstronomySpaceScreen() {
+  return <ClassTopicScreen title={"Astronomy & Space"} classKey="AstronomyAndSpace" fallbackTopics={topics} />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    backgroundColor: '#F5F5F5',
-    paddingBottom: 40,
-  },
-  mainTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#333',
-  },
-  card: {
-    marginBottom: 24,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  headerBar: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  headerText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  sectionBody: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  subtitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-    color: '#555',
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 12,
-    color: '#444',
-  },
-  helpToggle: {
-    marginTop: 8,
-  },
-  helpTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  helpContent: {
-    marginTop: 8,
-    padding: 12,
-    backgroundColor: '#EFEFEF',
-    borderRadius: 8,
-  },
-  helpLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 6,
-    color: '#333',
-  },
-  linkText: {
-    fontSize: 14,
-    color: '#1e88e5',
-    marginLeft: 8,
-    marginTop: 4,
-    textDecorationLine: 'underline',
-  },
-});

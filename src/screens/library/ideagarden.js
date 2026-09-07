@@ -9,17 +9,23 @@ import {
   Platform, useWindowDimensions,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
+import * as Clipboard from 'expo-clipboard';
+import { useTheme } from '../../../context/ThemeContext';
+import { useUIPrefs } from '../../../context/UIPrefsContext';
+import { ideasToMarkdown, ideasToCSV } from '../../logic/exportUtils';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { supabase } from '../../api/supabaseClient';
 import {
   getCores, upsertCore, updateCorePosition, updateCoreProgress, deleteCore,
   addPetal, updatePetal, deletePetal, togglePetal,
   getVines, addVine, updateVine, deleteVine,
   addUpdate,
+  promoteCoreToProject, getLinkedProjectInfo,
 } from '../../api/gardenService';
 import LinkedText from '../../components/LinkedText';
 import LinkSuggest from '../../components/LinkSuggest';
+import TourSpot from '../../components/TourSpot';
 
 // SW/SH/CANVAS_H are now dynamic via useWindowDimensions inside the component
 
@@ -39,12 +45,13 @@ const PETAL_TYPES = [
 ];
 
 // ─── WebView HTML builder ─────────────────────────────────────────────────────
-function buildGardenHTML(cores, vines, openId, connectMode, connectFrom, canvasW, canvasH) {
+function buildGardenHTML(cores, vines, openId, connectMode, connectFrom, canvasW, canvasH, goldColor) {
   const coresJSON = JSON.stringify(cores.map(c => ({
     id: c.id, title: c.title, plant_type: c.plant_type,
     color: c.color, color_light: c.color_light || '#a5d6a7',
     pos_x: c.pos_x, pos_y: c.pos_y,
     is_project: c.is_project, project_progress: c.project_progress || 0,
+    linked: !!c.project_id,
     petals: (c.garden_petals || []).map(p => ({
       id: p.id, title: p.title, petal_type: p.petal_type, completed: p.completed,
     })),
@@ -71,6 +78,7 @@ const CORES=${coresJSON};
 const VINES=${vinesJSON};
 const IW=${canvasW};
 const IH=${canvasH};
+const GOLD=${JSON.stringify(goldColor || '#e8b34a')};
 let openId=${openId ? '"' + openId + '"' : 'null'};
 let connectMode=${connectMode};
 let connectFrom=${connectFrom ? '"' + connectFrom + '"' : 'null'};
@@ -217,8 +225,20 @@ function draw(){
     ctx.font='500 10px -apple-system,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='top';
     ctx.fillStyle=isOpen?'#e8f5e9':(core.color_light||'#a5d6a7');
     const words=core.title.split(' '),mid=Math.ceil(words.length/2);
-    ctx.fillText(words.slice(0,mid).join(' '),cx,cy+r+7);
-    if(words.length>mid) ctx.fillText(words.slice(mid).join(' '),cx,cy+r+19);
+    const line1=words.slice(0,mid).join(' ');
+    const line2=words.length>mid?words.slice(mid).join(' '):null;
+    ctx.fillText(line1,cx,cy+r+7);
+    if(line2) ctx.fillText(line2,cx,cy+r+19);
+
+    // Gold trim — circle the name (not the icon) when this idea is also a real Workshop build.
+    if(core.linked){
+      const textW=Math.max(ctx.measureText(line1).width,line2?ctx.measureText(line2).width:0);
+      const textH=line2?24:12;
+      const midY=cy+r+7+textH/2;
+      ctx.beginPath();
+      ctx.ellipse(cx,midY,textW/2+9,textH/2+6,0,0,Math.PI*2);
+      ctx.strokeStyle=GOLD; ctx.lineWidth=2; ctx.stroke();
+    }
   });
 }
 
@@ -437,7 +457,24 @@ const PLANT_TYPES_MAP = { tree: '🌳', flower: '🌸', plant: '🌿', sprout: '
 // ─── NotePanel ─────────────────────────────────────────────────────────────────
 // Unified note-style view/edit panel for cores and petals.
 // Tap = read. Hold = edit. Autosaves on blur.
-function NotePanel({ item, editing, cores, plantTypes, petalTypes, onClose, onSave, onAddPetal, onProgress, onToggle, onDelete, onLinkPress }) {
+
+// Garden palette — keeps its own forest-green identity, but the neutrals
+// (background/border/text) now come from the real app theme so this screen
+// stops being permanently dark regardless of the user's light/dark setting.
+function buildGardenColors(c) {
+  return {
+    bg0: c.bg0, bg1: c.bg1, bg2: c.bg2, border: c.border,
+    text1: c.text1, text2: c.text2, text3: c.text3, text4: c.text4,
+    green: c.success, greenLight: c.successLight, danger: c.error, dangerLight: c.errorLight,
+    gold: c.gold,
+    white: '#ffffff',
+  };
+}
+
+function NotePanel({ item, editing, cores, plantTypes, petalTypes, onClose, onSave, onAddPetal, onProgress, onToggle, onDelete, onLinkPress, linkedProject, onPromote, onOpenWorkshop }) {
+  const { colors: c } = useTheme();
+  const gc = buildGardenColors(c);
+  const styles = makeStyles(gc);
   const [isEditing, setIsEditing] = useState(editing);
   const [titleVal, setTitleVal] = useState(item.title || '');
   const [bodyVal, setBodyVal] = useState(item.isPetal ? (item.body || '') : (item.description || ''));
@@ -461,7 +498,8 @@ function NotePanel({ item, editing, cores, plantTypes, petalTypes, onClose, onSa
 
   const meta = isPetal
     ? `${item.petal_type} · ${item.parentTitle}`
-    : `${item.is_project ? 'Project · ' + (item.project_progress || 0) + '%' : 'Idea'} · ${(item.garden_petals || []).length} petals`;
+    : `${linkedProject ? 'Workshop Build · ' + (linkedProject.pct ?? 0) + '%'
+        : item.is_project ? 'Project · ' + (item.project_progress || 0) + '%' : 'Idea'} · ${(item.garden_petals || []).length} petals`;
 
   // Linked plants — find vines where this core appears
   const linkedCores = !isPetal ? (item._linkedCores || []) : [];
@@ -469,7 +507,7 @@ function NotePanel({ item, editing, cores, plantTypes, petalTypes, onClose, onSa
   return (
     <View style={styles.panel}>
       <TouchableOpacity style={styles.panelClose} onPress={onClose}>
-        <Ionicons name="close" size={18} color="#4a7a4a" />
+        <Ionicons name="close" size={18} color={gc.text4} />
       </TouchableOpacity>
 
       <View style={styles.panelHeader}>
@@ -482,10 +520,10 @@ function NotePanel({ item, editing, cores, plantTypes, petalTypes, onClose, onSa
               onChangeText={v => { setTitleVal(v); debounce('title', v); }}
               onBlur={() => onSave('title', titleVal)}
               placeholder="Title..."
-              placeholderTextColor="#3a5a3a"
+              placeholderTextColor={gc.text4}
             />
           ) : (
-            <TouchableOpacity onLongPress={() => setIsEditing(true)}>
+            <TouchableOpacity onLongPress={() => setIsEditing(true)} style={linkedProject ? styles.nameGoldRing : null}>
               <Text style={styles.panelTitle}>{item.title}</Text>
             </TouchableOpacity>
           )}
@@ -500,7 +538,7 @@ function NotePanel({ item, editing, cores, plantTypes, petalTypes, onClose, onSa
             value={bodyVal}
             onChangeText={v => { setBodyVal(v); debounce(isPetal ? 'body' : 'description', v); }}
             placeholder={isPetal ? "Write your note here... type [[ to link" : "Describe this idea... type [[ to link"}
-            placeholderTextColor="#3a5a3a"
+            placeholderTextColor={gc.text4}
             multiline
             inputStyle={styles.noteBodyInput}
             style={{ flex: 1 }}
@@ -531,28 +569,41 @@ function NotePanel({ item, editing, cores, plantTypes, petalTypes, onClose, onSa
       <View style={styles.panelActions}>
         {!isPetal && onAddPetal && (
           <TouchableOpacity style={styles.panelBtn} onPress={onAddPetal}>
-            <Ionicons name="add-circle-outline" size={16} color="#8fbc8f" />
+            <Ionicons name="add-circle-outline" size={16} color={gc.text2} />
             <Text style={styles.panelBtnText}>Petal</Text>
           </TouchableOpacity>
         )}
         {!isPetal && item.is_project && onProgress && (
           <TouchableOpacity style={styles.panelBtn} onPress={onProgress}>
-            <Ionicons name="stats-chart" size={16} color="#8fbc8f" />
+            <Ionicons name="stats-chart" size={16} color={gc.text2} />
             <Text style={styles.panelBtnText}>Progress</Text>
           </TouchableOpacity>
         )}
         {isPetal && onToggle && (
           <TouchableOpacity style={styles.panelBtn} onPress={onToggle}>
-            <Ionicons name={item.completed ? 'refresh' : 'checkmark-circle-outline'} size={16} color="#8fbc8f" />
+            <Ionicons name={item.completed ? 'refresh' : 'checkmark-circle-outline'} size={16} color={gc.text2} />
             <Text style={styles.panelBtnText}>{item.completed ? 'Reopen' : 'Done'}</Text>
           </TouchableOpacity>
         )}
+        {!isPetal && (linkedProject ? (
+          <TouchableOpacity style={[styles.panelBtn, styles.panelBtnGold]} onPress={onOpenWorkshop}>
+            <Ionicons name="hammer" size={16} color="#3a2a06" />
+            <Text style={[styles.panelBtnText, { color: '#3a2a06' }]}>
+              Workshop{linkedProject.pct != null ? ` · ${linkedProject.pct}%` : ''}
+            </Text>
+          </TouchableOpacity>
+        ) : onPromote && (
+          <TouchableOpacity style={styles.panelBtn} onPress={onPromote}>
+            <Ionicons name="hammer-outline" size={16} color={gc.text2} />
+            <Text style={styles.panelBtnText}>Make it a Project</Text>
+          </TouchableOpacity>
+        ))}
         <TouchableOpacity style={styles.panelBtn} onPress={() => setIsEditing(e => !e)}>
-          <Ionicons name={isEditing ? 'eye-outline' : 'pencil'} size={16} color="#8fbc8f" />
+          <Ionicons name={isEditing ? 'eye-outline' : 'pencil'} size={16} color={gc.text2} />
           <Text style={styles.panelBtnText}>{isEditing ? 'View' : 'Edit'}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.panelBtn, styles.panelBtnDanger]} onPress={onDelete}>
-          <Ionicons name="trash-outline" size={16} color="#e57373" />
+          <Ionicons name="trash-outline" size={16} color={gc.danger} />
         </TouchableOpacity>
       </View>
     </View>
@@ -560,6 +611,12 @@ function NotePanel({ item, editing, cores, plantTypes, petalTypes, onClose, onSa
 }
 
 export default function IdeaGardenScreen() {
+  const { colors: gardenThemeColors } = useTheme();
+  const { showEmojis } = useUIPrefs();
+  const gc = buildGardenColors(gardenThemeColors);
+  const styles = makeStyles(gc);
+  const navigation = useNavigation();
+  const route = useRoute();
   const { width: SW, height: SH } = useWindowDimensions();
   const CANVAS_H = Math.max(SH * 0.75, 500);
   const webviewRef = useRef(null);
@@ -568,6 +625,9 @@ export default function IdeaGardenScreen() {
   const [userId, setUserId] = useState(null);
   const [cores, setCores] = useState([]);
   const [vines, setVines] = useState([]);
+  // project_id -> live { title, objective, status, color, emoji, tasksTotal, tasksDone, pct }
+  // for every core linked to a real Workshop build.
+  const [projectInfo, setProjectInfo] = useState({});
   const [openVine, setOpenVine] = useState(null);
   const [vineNote, setVineNote] = useState('');
   const [vineNoteEditing, setVineNoteEditing] = useState(false);
@@ -576,11 +636,16 @@ export default function IdeaGardenScreen() {
   const [openItem, setOpenItem] = useState(null);
   const [connectMode, setConnectMode] = useState(false);
   const [connectFrom, setConnectFrom] = useState(null);
-  const [view, setView] = useState('map');
+  // react-native-webview has no web implementation — the map view's canvas
+  // is a WebView, which throws "does not support this platform" on web
+  // instead of rendering anything. Default to List there so the screen
+  // isn't broken on first load; native keeps the map default.
+  const [view, setView] = useState(Platform.OS === 'web' ? 'list' : 'map');
 
   const [coreModal, setCoreModal] = useState(false);
   const [editingCore, setEditingCore] = useState(null);
   const [coreDraft, setCoreDraft] = useState({ title: '', description: '', plant_type: 'plant', is_project: false, project_status: 'idea', color: '#2e7d32', color_light: '#a5d6a7' });
+  const [savingCore, setSavingCore] = useState(false);
 
   const [petalModal, setPetalModal] = useState(false);
   const [petalParent, setPetalParent] = useState(null);
@@ -610,6 +675,46 @@ export default function IdeaGardenScreen() {
   const reload = async (uid) => {
     const [c, v] = await Promise.all([getCores(uid), getVines(uid)]);
     setCores(c); setVines(v);
+    const linkedIds = c.filter(x => x.project_id).map(x => x.project_id);
+    try { setProjectInfo(linkedIds.length ? await getLinkedProjectInfo(linkedIds) : {}); }
+    catch (e) { console.warn('linked project info error', e); }
+  };
+
+  // Arrived from the Workshop's "Open in Garden" — pop that idea's panel open.
+  useEffect(() => {
+    if (!route.params?.focusCoreId || !cores.length) return;
+    const core = cores.find(c => c.id === route.params.focusCoreId);
+    if (core) {
+      const linkedCores = vines
+        .filter(v => v.core_a === core.id || v.core_b === core.id)
+        .map(v => cores.find(c => c.id === (v.core_a === core.id ? v.core_b : v.core_a)))
+        .filter(Boolean);
+      setOpenItem({ type: 'core', data: { ...core, _linkedCores: linkedCores }, editing: false });
+    }
+    navigation.setParams({ focusCoreId: undefined });
+  }, [route.params?.focusCoreId, cores]);
+
+  // Turn an idea into a real Workshop build — creates the project row and
+  // links this core to it, so from now on they share one record.
+  const handlePromote = async (core) => {
+    try {
+      const { core: updatedCore, project } = await promoteCoreToProject(userId, core);
+      setCores(prev => prev.map(c => c.id === core.id
+        ? { ...updatedCore, garden_petals: c.garden_petals, garden_updates: c.garden_updates }
+        : c));
+      setProjectInfo(prev => ({ ...prev, [project.id]: { ...project, tasksTotal: 0, tasksDone: 0, pct: null } }));
+      setOpenItem(null);
+      Alert.alert('🏗️ Sent to the Workshop', `"${core.title}" is now a real build. Open it now?`, [
+        { text: 'Stay here', style: 'cancel' },
+        { text: 'Open Workshop', onPress: () => navigation.navigate('ProjectDetail', { project }) },
+      ]);
+    } catch (e) {
+      console.warn('promote error', e);
+      const missingColumn = /project_id/.test(e?.message || '');
+      Alert.alert('Could not link this idea', missingColumn
+        ? 'Run the latest database migration first (supabase/migrations/20260826_link_garden_cores_to_projects.sql).'
+        : 'Something went wrong — try again.');
+    }
   };
 
   // Debounced vine note save
@@ -702,6 +807,15 @@ export default function IdeaGardenScreen() {
   };
 
   // ─── Core CRUD ────────────────────────────────────────────────────────────
+  const exportGarden = () => {
+    if (cores.length === 0) { Alert.alert('Nothing to export', 'Plant an idea first.'); return; }
+    Alert.alert('Export garden', `${cores.length} idea${cores.length === 1 ? '' : 's'} — pick a format`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Markdown', onPress: async () => { await Clipboard.setStringAsync(ideasToMarkdown(cores)); Alert.alert('Copied', 'Garden copied as Markdown.'); } },
+      { text: 'CSV', onPress: async () => { await Clipboard.setStringAsync(ideasToCSV(cores)); Alert.alert('Copied', 'Garden copied as CSV.'); } },
+    ]);
+  };
+
   const openNewCore = () => {
     setEditingCore(null);
     setCoreDraft({ title: '', description: '', plant_type: 'plant', is_project: false, project_status: 'idea', color: '#2e7d32', color_light: '#a5d6a7' });
@@ -712,6 +826,8 @@ export default function IdeaGardenScreen() {
 
   const saveCore = async () => {
     if (!coreDraft.title.trim()) return Alert.alert('Add a title');
+    if (savingCore) return; // already in flight — a fast double-tap on "Plant it" was creating duplicate ideas
+    setSavingCore(true);
     const pt = PLANT_TYPES.find(p => p.id === coreDraft.plant_type);
     try {
       const { _linkedCores: _lc, garden_petals: _gp, garden_updates: _gu, ...cleanDraft } = coreDraft;
@@ -729,10 +845,11 @@ export default function IdeaGardenScreen() {
       );
       setCoreModal(false);
     } catch { Alert.alert('Error saving'); }
+    setSavingCore(false);
   };
 
   const confirmDeleteCore = (core) => {
-    Alert.alert('Remove plant?', `"${core.title}" and all its petals will be removed.`, [
+    Alert.alert('Remove plant?', `"${core.title}" moves to Recently Deleted in the Capture Inbox, kept for 7 days before it's gone for good.`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Remove', style: 'destructive', onPress: async () => {
         await deleteCore(core.id);
@@ -792,14 +909,14 @@ export default function IdeaGardenScreen() {
     setProgressModal(false);
   };
 
-  if (loading) return <View style={styles.centered}><ActivityIndicator color="#2e7d32" size="large" /></View>;
+  if (loading) return <View style={styles.centered}><ActivityIndicator color={gc.green} size="large" /></View>;
 
   const openCore = openItem?.type === 'core' ? openItem.data : null;
   const openPetal = openItem?.type === 'petal' ? openItem.data : null;
   const openPetalParent = openItem?.type === 'petal' ? openItem.parent : null;
 
   const GARDEN_SCROLL_H = Math.max(SH * 1.4, 900);
-  const gardenHTML = buildGardenHTML(cores, vines, openItem?.data?.id || null, connectMode, connectFrom, SW, GARDEN_SCROLL_H);
+  const gardenHTML = buildGardenHTML(cores, vines, openItem?.data?.id || null, connectMode, connectFrom, SW, GARDEN_SCROLL_H, gc.gold);
 
   return (
     <KeyboardAvoidingView
@@ -810,30 +927,56 @@ export default function IdeaGardenScreen() {
 
       {/* Top bar */}
       <View style={styles.topbar}>
-        <View>
-          <Text style={styles.topbarSub}>idea garden</Text>
-          <Text style={styles.topbarTitle}>🌿 Your Ecosystem</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <TouchableOpacity
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('LibraryScreen'))}
+            style={styles.backBtn}
+          >
+            <Ionicons name="chevron-back" size={20} color={gc.text2} />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.topbarSub}>idea garden</Text>
+            <Text style={styles.topbarTitle}>{showEmojis ? '🌿 ' : ''}Your Ecosystem</Text>
+          </View>
         </View>
         <View style={styles.topbarRight}>
           <TouchableOpacity style={[styles.connectBtn, connectMode && styles.connectBtnActive]} onPress={toggleConnectMode}>
-            <Ionicons name="git-network" size={16} color={connectMode ? '#fff' : '#8fbc8f'} />
-            <Text style={[styles.connectBtnText, connectMode && { color: '#fff' }]}>Vine</Text>
+            <Ionicons name="git-network" size={16} color={connectMode ? gc.white : gc.text2} />
+            <Text style={[styles.connectBtnText, connectMode && { color: gc.white }]}>Vine</Text>
           </TouchableOpacity>
           <View style={styles.viewToggle}>
             {['map', 'list'].map(v => (
               <TouchableOpacity key={v} style={[styles.viewBtn, view === v && styles.viewBtnActive]} onPress={() => setView(v)}>
-                <Ionicons name={v === 'map' ? 'leaf' : 'list'} size={14} color={view === v ? '#0d1f0d' : '#8fbc8f'} />
+                <Ionicons name={v === 'map' ? 'leaf' : 'list'} size={14} color={view === v ? gc.bg0 : gc.text2} />
               </TouchableOpacity>
             ))}
           </View>
-          <TouchableOpacity style={styles.addBtn} onPress={openNewCore}>
-            <Ionicons name="add" size={18} color="#fff" />
+          <TouchableOpacity style={styles.exportBtn} onPress={exportGarden}>
+            <Ionicons name="share-outline" size={18} color={gc.text2} />
           </TouchableOpacity>
+          <TourSpot id="ideas-list">
+          <TouchableOpacity style={styles.addBtn} onPress={openNewCore}>
+            <Ionicons name="add" size={18} color={gc.white} />
+          </TouchableOpacity>
+          </TourSpot>
         </View>
       </View>
 
-      {/* Map view — WebView canvas */}
-      {view === 'map' && (
+      {/* Map view — WebView canvas (native only, see the `view` default above) */}
+      {view === 'map' && Platform.OS === 'web' && (
+        <View style={styles.canvasWrap}>
+          <View style={styles.emptyGarden}>
+            <Ionicons name="leaf-outline" size={28} color={gc.text3} style={{ marginBottom: 8 }} />
+            <Text style={styles.emptyGardenText}>The growing map isn't available on web yet</Text>
+            <Text style={styles.emptyGardenSub}>It needs a native canvas — switch to List below to see and manage every idea.</Text>
+            <TouchableOpacity style={[styles.viewBtn, styles.viewBtnActive, { marginTop: 14, paddingHorizontal: 16, width: 'auto', flexDirection: 'row', gap: 6 }]} onPress={() => setView('list')}>
+              <Ionicons name="list" size={14} color={gc.bg0} />
+              <Text style={{ color: gc.bg0, fontWeight: '700', fontSize: 13 }}>Switch to List</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+      {view === 'map' && Platform.OS !== 'web' && (
         <View style={styles.canvasWrap}>
           <ScrollView
             style={{ flex: 1 }}
@@ -845,7 +988,7 @@ export default function IdeaGardenScreen() {
             <WebView
               ref={webviewRef}
               source={{ html: gardenHTML }}
-              style={{ width: SW, height: GARDEN_SCROLL_H, backgroundColor: '#0d1f0d' }}
+              style={{ width: SW, height: GARDEN_SCROLL_H, backgroundColor: gc.bg0 }}
               onMessage={onWebMessage}
               scrollEnabled={false}
               bounces={false}
@@ -869,18 +1012,24 @@ export default function IdeaGardenScreen() {
           {cores.map(core => {
             const pt = PLANT_TYPES.find(p => p.id === core.plant_type);
             const petals = core.garden_petals || [];
+            const linked = core.project_id ? projectInfo[core.project_id] : null;
             return (
               <View key={core.id} style={[styles.listCard, { borderLeftColor: core.color }]}>
                 <View style={styles.listCardHeader}>
                   <View style={styles.listCardLeft}>
                     <Text style={styles.listCardEmoji}>{pt?.emoji}</Text>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.listCardTitle}>{core.title}</Text>
-                      <Text style={styles.listCardMeta}>{pt?.label} · {petals.length} petals{core.is_project ? ` · ${core.project_progress || 0}%` : ''}</Text>
+                      <View style={linked ? styles.nameGoldRing : null}>
+                        <Text style={styles.listCardTitle}>{core.title}</Text>
+                      </View>
+                      <Text style={styles.listCardMeta}>
+                        {pt?.label} · {petals.length} petals
+                        {linked ? ` · ${linked.pct ?? 0}% built` : (core.is_project ? ` · ${core.project_progress || 0}%` : '')}
+                      </Text>
                     </View>
                   </View>
                   <TouchableOpacity onPress={() => openEditCore(core)} style={{ padding: 4 }}>
-                    <Ionicons name="pencil" size={14} color="#4a7a4a" />
+                    <Ionicons name="pencil" size={14} color={gc.text4} />
                   </TouchableOpacity>
                 </View>
                 {core.description ? (
@@ -897,7 +1046,7 @@ export default function IdeaGardenScreen() {
                       const pt2 = PETAL_TYPES.find(x => x.id === p.petal_type);
                       return (
                         <TouchableOpacity key={p.id} style={styles.petalRow} onPress={() => handleTogglePetal(p, core)}>
-                          <Ionicons name={p.completed ? 'checkmark-circle' : 'ellipse-outline'} size={16} color={p.completed ? '#2e7d32' : '#4a7a4a'} />
+                          <Ionicons name={p.completed ? 'checkmark-circle' : 'ellipse-outline'} size={16} color={p.completed ? gc.green : gc.text4} />
                           <Text style={[styles.petalRowText, p.completed && styles.petalDone]}>{pt2?.emoji} {p.title}</Text>
                         </TouchableOpacity>
                       );
@@ -906,17 +1055,28 @@ export default function IdeaGardenScreen() {
                 )}
                 <View style={styles.listCardActions}>
                   <TouchableOpacity style={styles.listAction} onPress={() => openNewPetal(core)}>
-                    <Ionicons name="add-circle-outline" size={14} color="#4a7a4a" />
+                    <Ionicons name="add-circle-outline" size={14} color={gc.text4} />
                     <Text style={styles.listActionText}>Add petal</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.listAction} onPress={() => openUpdateLog(core)}>
-                    <Ionicons name="journal-outline" size={14} color="#4a7a4a" />
+                    <Ionicons name="journal-outline" size={14} color={gc.text4} />
                     <Text style={styles.listActionText}>Log update</Text>
                   </TouchableOpacity>
                   {core.is_project && (
                     <TouchableOpacity style={styles.listAction} onPress={() => openProgress(core)}>
-                      <Ionicons name="stats-chart" size={14} color="#4a7a4a" />
+                      <Ionicons name="stats-chart" size={14} color={gc.text4} />
                       <Text style={styles.listActionText}>Progress</Text>
+                    </TouchableOpacity>
+                  )}
+                  {linked ? (
+                    <TouchableOpacity style={styles.listAction} onPress={() => navigation.navigate('ProjectDetail', { project: linked })}>
+                      <Ionicons name="hammer-outline" size={14} color={gc.gold} />
+                      <Text style={[styles.listActionText, { color: gc.gold, fontWeight: '700' }]}>Open in Workshop</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity style={styles.listAction} onPress={() => handlePromote(core)}>
+                      <Ionicons name="hammer-outline" size={14} color={gc.text4} />
+                      <Text style={styles.listActionText}>Make it a project</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -950,6 +1110,12 @@ export default function IdeaGardenScreen() {
           onProgress={() => openProgress(openCore)}
           onDelete={() => confirmDeleteCore(openCore)}
           onLinkPress={(linked) => setOpenItem({ type: 'core', data: linked, editing: false })}
+          linkedProject={openCore.project_id ? projectInfo[openCore.project_id] : null}
+          onPromote={() => handlePromote(openCore)}
+          onOpenWorkshop={() => {
+            const p = openCore.project_id ? projectInfo[openCore.project_id] : null;
+            if (p) { setOpenItem(null); navigation.navigate('ProjectDetail', { project: p }); }
+          }}
         />
       )}
 
@@ -980,10 +1146,10 @@ export default function IdeaGardenScreen() {
       {openVine && (
         <View style={styles.vinePanel}>
           <TouchableOpacity style={styles.panelClose} onPress={() => setOpenVine(null)}>
-            <Ionicons name="close" size={18} color="#4a7a4a" />
+            <Ionicons name="close" size={18} color={gc.text4} />
           </TouchableOpacity>
           <View style={styles.vinePanelHeader}>
-            <Text style={styles.vinePanelEmoji}>🌿</Text>
+            {showEmojis ? <Text style={styles.vinePanelEmoji}>🌿</Text> : <Ionicons name="leaf-outline" size={18} color={gc.text2} />}
             <View style={{ flex: 1 }}>
               <Text style={styles.vinePanelTitle}>
                 {vines.find(v => v.id === openVine.id)?.label || 'Vine connection'}
@@ -1002,7 +1168,7 @@ export default function IdeaGardenScreen() {
                 saveVineNote(openVine, openVine.label || '', v);
               }}
               placeholder="Write notes about this connection..."
-              placeholderTextColor="#3a5a3a"
+              placeholderTextColor={gc.text4}
               multiline
               autoFocus
             />
@@ -1024,7 +1190,7 @@ export default function IdeaGardenScreen() {
                 saveVineNote(openVine, v, vineNote);
               }}
               placeholder="Label this vine (e.g. 'inspires', 'blocks')"
-              placeholderTextColor="#3a5a3a"
+              placeholderTextColor={gc.text4}
             />
             <TouchableOpacity
               style={styles.vineDeleteBtn}
@@ -1039,7 +1205,7 @@ export default function IdeaGardenScreen() {
                 ]);
               }}
             >
-              <Ionicons name="trash-outline" size={16} color="#e57373" />
+              <Ionicons name="trash-outline" size={16} color={gc.danger} />
             </TouchableOpacity>
           </View>
         </View>
@@ -1049,14 +1215,25 @@ export default function IdeaGardenScreen() {
       <Modal visible={coreModal} transparent animationType="slide">
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>{editingCore ? 'Edit Plant' : 'Plant New Idea'}</Text>
-            <TextInput style={styles.modalInput} value={coreDraft.title} onChangeText={v => setCoreDraft(p => ({ ...p, title: v }))} placeholder="Title" placeholderTextColor="#3a5a3a" autoFocus />
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={styles.modalTitle}>{editingCore ? 'Edit Plant' : 'Plant New Idea'}</Text>
+              {editingCore && (
+                <TouchableOpacity
+                  onPress={() => { setCoreModal(false); confirmDeleteCore(editingCore); }}
+                  style={{ padding: 6 }}
+                  accessibilityLabel="Delete this idea"
+                >
+                  <Ionicons name="trash-outline" size={20} color={gc.error || '#c0392b'} />
+                </TouchableOpacity>
+              )}
+            </View>
+            <TextInput style={styles.modalInput} value={coreDraft.title} onChangeText={v => setCoreDraft(p => ({ ...p, title: v }))} placeholder="Title" placeholderTextColor={gc.text4} autoFocus />
             <LinkSuggest
               cores={cores.filter(c => c.id !== editingCore?.id)}
               value={coreDraft.description || ''}
               onChangeText={v => setCoreDraft(p => ({ ...p, description: v }))}
               placeholder="Description — type [[ to link to another plant"
-              placeholderTextColor="#3a5a3a"
+              placeholderTextColor={gc.text4}
               multiline
               inputStyle={[styles.modalInput, { height: 70 }]}
               style={{ marginBottom: 0 }}
@@ -1072,7 +1249,7 @@ export default function IdeaGardenScreen() {
               ))}
             </ScrollView>
             <TouchableOpacity style={styles.projectToggle} onPress={() => setCoreDraft(p => ({ ...p, is_project: !p.is_project }))}>
-              <Ionicons name={coreDraft.is_project ? 'checkbox' : 'square-outline'} size={20} color="#2e7d32" />
+              <Ionicons name={coreDraft.is_project ? 'checkbox' : 'square-outline'} size={20} color={gc.green} />
               <Text style={styles.projectToggleText}>This is also a project (track progress)</Text>
             </TouchableOpacity>
             {coreDraft.is_project && (
@@ -1089,7 +1266,11 @@ export default function IdeaGardenScreen() {
             )}
             <View style={styles.modalBtns}>
               <TouchableOpacity onPress={() => setCoreModal(false)} style={styles.modalCancel}><Text style={styles.modalCancelText}>Cancel</Text></TouchableOpacity>
-              <TouchableOpacity onPress={saveCore} style={styles.modalSave}><Text style={styles.modalSaveText}>{editingCore ? 'Update' : 'Plant it'}</Text></TouchableOpacity>
+              <TouchableOpacity onPress={saveCore} disabled={savingCore} style={[styles.modalSave, savingCore && { opacity: 0.6 }]}>
+                {savingCore
+                  ? <ActivityIndicator size="small" color={gc.white} />
+                  : <Text style={styles.modalSaveText}>{editingCore ? 'Update' : 'Plant it'}</Text>}
+              </TouchableOpacity>
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -1100,13 +1281,13 @@ export default function IdeaGardenScreen() {
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>{editingPetal ? 'Edit Petal' : `Add to "${petalParent?.title}"`}</Text>
-            <TextInput style={styles.modalInput} value={petalDraft.title} onChangeText={v => setPetalDraft(p => ({ ...p, title: v }))} placeholder="Title" placeholderTextColor="#3a5a3a" autoFocus />
+            <TextInput style={styles.modalInput} value={petalDraft.title} onChangeText={v => setPetalDraft(p => ({ ...p, title: v }))} placeholder="Title" placeholderTextColor={gc.text4} autoFocus />
             <LinkSuggest
               cores={cores}
               value={petalDraft.body || ''}
               onChangeText={v => setPetalDraft(p => ({ ...p, body: v }))}
               placeholder="Notes — type [[ to link to another plant"
-              placeholderTextColor="#3a5a3a"
+              placeholderTextColor={gc.text4}
               multiline
               inputStyle={[styles.modalInput, { height: 70 }]}
               style={{ marginBottom: 0 }}
@@ -1138,7 +1319,7 @@ export default function IdeaGardenScreen() {
               value={updateText}
               onChangeText={setUpdateText}
               placeholder="What's the latest? Type [[ to link to a plant"
-              placeholderTextColor="#3a5a3a"
+              placeholderTextColor={gc.text4}
               multiline
               autoFocus
               inputStyle={[styles.modalInput, { height: 100 }]}
@@ -1175,11 +1356,11 @@ export default function IdeaGardenScreen() {
             <View style={styles.quickBtns}>
               {[0, 25, 50, 75, 100].map(v => (
                 <TouchableOpacity key={v} style={[styles.quickBtn, progressVal === v && { backgroundColor: progressCore?.color }]} onPress={() => setProgressVal(v)}>
-                  <Text style={[styles.quickBtnText, progressVal === v && { color: '#fff' }]}>{v}%</Text>
+                  <Text style={[styles.quickBtnText, progressVal === v && { color: gc.white }]}>{v}%</Text>
                 </TouchableOpacity>
               ))}
             </View>
-            <TextInput style={styles.modalInput} value={String(progressVal)} onChangeText={v => { const n = parseInt(v); if (!isNaN(n)) setProgressVal(Math.min(100, Math.max(0, n))); }} keyboardType="numeric" placeholder="0–100" placeholderTextColor="#3a5a3a" />
+            <TextInput style={styles.modalInput} value={String(progressVal)} onChangeText={v => { const n = parseInt(v); if (!isNaN(n)) setProgressVal(Math.min(100, Math.max(0, n))); }} keyboardType="numeric" placeholder="0–100" placeholderTextColor={gc.text4} />
             <View style={styles.modalBtns}>
               <TouchableOpacity onPress={() => setProgressModal(false)} style={styles.modalCancel}><Text style={styles.modalCancelText}>Cancel</Text></TouchableOpacity>
               <TouchableOpacity onPress={saveProgress} style={styles.modalSave}><Text style={styles.modalSaveText}>Update</Text></TouchableOpacity>
@@ -1192,107 +1373,112 @@ export default function IdeaGardenScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0d1f0d' },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0d1f0d' },
-  topbar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, paddingTop: 16, backgroundColor: '#0a180a', borderBottomWidth: 0.5, borderBottomColor: '#1a3a1a' },
-  topbarSub: { fontSize: 10, color: '#2a5a2a', letterSpacing: 1, textTransform: 'uppercase' },
-  topbarTitle: { fontSize: 17, fontWeight: '600', color: '#8fbc8f' },
+const makeStyles = (gc) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: gc.bg0 },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: gc.bg0 },
+  topbar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, paddingTop: 16, backgroundColor: gc.bg1, borderBottomWidth: 0.5, borderBottomColor: gc.border },
+  backBtn: { padding: 2 },
+  topbarSub: { fontSize: 10, color: gc.text4, letterSpacing: 1, textTransform: 'uppercase' },
+  topbarTitle: { fontSize: 17, fontWeight: '600', color: gc.text2 },
   topbarRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  connectBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: '#1a3a1a' },
-  connectBtnActive: { backgroundColor: '#2e7d32', borderColor: '#2e7d32' },
-  connectBtnText: { fontSize: 12, color: '#8fbc8f' },
-  viewToggle: { flexDirection: 'row', backgroundColor: '#1a3a1a', borderRadius: 8, padding: 2 },
+  connectBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: gc.border },
+  connectBtnActive: { backgroundColor: gc.green, borderColor: gc.green },
+  connectBtnText: { fontSize: 12, color: gc.text2 },
+  viewToggle: { flexDirection: 'row', backgroundColor: gc.bg2, borderRadius: 8, padding: 2 },
   viewBtn: { padding: 6, borderRadius: 6 },
-  viewBtnActive: { backgroundColor: '#8fbc8f' },
-  addBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#2e7d32', alignItems: 'center', justifyContent: 'center' },
+  viewBtnActive: { backgroundColor: gc.green },
+  exportBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  addBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: gc.green, alignItems: 'center', justifyContent: 'center' },
   canvasWrap: { flex: 1, position: 'relative', overflow: 'hidden' },
   emptyGarden: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' },
-  emptyGardenText: { fontSize: 16, color: '#4a7a4a', fontWeight: '500' },
-  emptyGardenSub: { fontSize: 13, color: '#2a5a2a', marginTop: 4 },
-  listView: { flex: 1, backgroundColor: '#0d1f0d' },
-  listCard: { backgroundColor: '#0a180a', borderRadius: 12, padding: 14, borderLeftWidth: 4, borderWidth: 0.5, borderColor: '#1a3a1a', marginBottom: 8 },
+  emptyGardenText: { fontSize: 16, color: gc.text4, fontWeight: '500' },
+  emptyGardenSub: { fontSize: 13, color: gc.text4, marginTop: 4 },
+  listView: { flex: 1, backgroundColor: gc.bg0 },
+  listCard: { backgroundColor: gc.bg1, borderRadius: 12, padding: 14, borderLeftWidth: 4, borderWidth: 0.5, borderColor: gc.border, marginBottom: 8 },
+  // Gold ring around just the name — this idea is also a real Workshop build.
+  nameGoldRing: { alignSelf: 'flex-start', borderWidth: 1.5, borderColor: gc.gold, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 1 },
   listCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   listCardLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
   listCardEmoji: { fontSize: 22 },
-  listCardTitle: { fontSize: 15, fontWeight: '600', color: '#c8e6c8' },
-  listCardMeta: { fontSize: 11, color: '#4a7a4a', marginTop: 1 },
-  listCardDesc: { fontSize: 13, color: '#6a9a6a', lineHeight: 18, marginBottom: 8 },
+  listCardTitle: { fontSize: 15, fontWeight: '600', color: gc.text1 },
+  listCardMeta: { fontSize: 11, color: gc.text4, marginTop: 1 },
+  listCardDesc: { fontSize: 13, color: gc.text3, lineHeight: 18, marginBottom: 8 },
   petalList: { gap: 4, marginBottom: 10 },
   petalRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
-  petalRowText: { fontSize: 13, color: '#8fbc8f' },
-  petalDone: { textDecorationLine: 'line-through', color: '#3a6a3a' },
+  petalRowText: { fontSize: 13, color: gc.text2 },
+  petalDone: { textDecorationLine: 'line-through', color: gc.text4 },
   listCardActions: { flexDirection: 'row', gap: 8, marginTop: 4 },
-  listAction: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 10, backgroundColor: '#1a3a1a', borderRadius: 8 },
-  listActionText: { fontSize: 12, color: '#4a7a4a' },
+  listAction: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 10, backgroundColor: gc.bg2, borderRadius: 8 },
+  listActionText: { fontSize: 12, color: gc.text4 },
   emptyList: { alignItems: 'center', paddingTop: 60 },
-  emptyListText: { fontSize: 14, color: '#3a5a3a' },
-  panel: { backgroundColor: '#0a180a', borderTopWidth: 0.5, borderTopColor: '#1a3a1a', padding: 16, paddingBottom: 24 },
+  emptyListText: { fontSize: 14, color: gc.text4 },
+  panel: { backgroundColor: gc.bg1, borderTopWidth: 0.5, borderTopColor: gc.border, padding: 16, paddingBottom: 24 },
   panelClose: { position: 'absolute', top: 12, right: 12, padding: 4 },
   panelHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6, paddingRight: 30 },
   panelEmoji: { fontSize: 24 },
-  panelTitle: { fontSize: 16, fontWeight: '600', color: '#c8e6c8' },
-  panelMeta: { fontSize: 11, color: '#4a7a4a', marginTop: 2 },
-  panelDesc: { fontSize: 13, color: '#6a9a6a', lineHeight: 18, marginBottom: 10 },
+  panelTitle: { fontSize: 16, fontWeight: '600', color: gc.text1 },
+  panelMeta: { fontSize: 11, color: gc.text4, marginTop: 2 },
+  panelDesc: { fontSize: 13, color: gc.text3, lineHeight: 18, marginBottom: 10 },
   panelActions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  panelBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#1a3a1a', borderRadius: 8 },
-  panelBtnText: { fontSize: 12, color: '#8fbc8f' },
-  panelBtnDanger: { backgroundColor: '#2a1a1a' },
+  panelBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: gc.bg2, borderRadius: 8 },
+  panelBtnText: { fontSize: 12, color: gc.text2 },
+  panelBtnDanger: { backgroundColor: gc.dangerLight },
+  panelBtnGold: { backgroundColor: gc.gold },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: '#0d1f0d', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, borderTopWidth: 0.5, borderColor: '#1a3a1a' },
-  modalTitle: { fontSize: 17, fontWeight: '700', color: '#c8e6c8', marginBottom: 14 },
-  modalLabel: { fontSize: 11, fontWeight: '600', color: '#4a7a4a', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
-  modalInput: { borderWidth: 1, borderColor: '#1a3a1a', borderRadius: 10, padding: 12, fontSize: 15, color: '#c8e6c8', backgroundColor: '#0a180a', marginBottom: 12 },
+  modalCard: { backgroundColor: gc.bg0, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, borderTopWidth: 0.5, borderColor: gc.border },
+  modalTitle: { fontSize: 17, fontWeight: '700', color: gc.text1, marginBottom: 14 },
+  modalLabel: { fontSize: 11, fontWeight: '600', color: gc.text4, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
+  modalInput: { borderWidth: 1, borderColor: gc.border, borderRadius: 10, padding: 12, fontSize: 15, color: gc.text1, backgroundColor: gc.bg1, marginBottom: 12 },
   modalBtns: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 8 },
   modalCancel: { paddingVertical: 12, paddingHorizontal: 18 },
-  modalCancelText: { fontSize: 14, color: '#4a7a4a' },
-  modalSave: { backgroundColor: '#2e7d32', borderRadius: 10, paddingVertical: 12, paddingHorizontal: 22 },
-  modalSaveText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  typeChip: { width: 120, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: '#1a3a1a', marginRight: 8, backgroundColor: '#0a180a' },
+  modalCancelText: { fontSize: 14, color: gc.text4 },
+  modalSave: { backgroundColor: gc.green, borderRadius: 10, paddingVertical: 12, paddingHorizontal: 22 },
+  modalSaveText: { color: gc.white, fontWeight: '700', fontSize: 14 },
+  typeChip: { width: 120, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: gc.border, marginRight: 8, backgroundColor: gc.bg1 },
   typeChipEmoji: { fontSize: 20, marginBottom: 4 },
-  typeChipLabel: { fontSize: 13, fontWeight: '600', color: '#8fbc8f', marginBottom: 2 },
-  typeChipDesc: { fontSize: 10, color: '#3a6a3a', lineHeight: 13 },
+  typeChipLabel: { fontSize: 13, fontWeight: '600', color: gc.text2, marginBottom: 2 },
+  typeChipDesc: { fontSize: 10, color: gc.text4, lineHeight: 13 },
   projectToggle: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, marginBottom: 8 },
-  projectToggleText: { fontSize: 14, color: '#8fbc8f' },
+  projectToggleText: { fontSize: 14, color: gc.text2 },
   statusRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 12 },
-  statusChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: '#1a3a1a', backgroundColor: '#0a180a' },
-  statusChipActive: { backgroundColor: '#1a3a1a', borderColor: '#2e7d32' },
-  statusChipText: { fontSize: 12, color: '#4a7a4a' },
-  statusChipTextActive: { color: '#8fbc8f' },
+  statusChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: gc.border, backgroundColor: gc.bg1 },
+  statusChipActive: { backgroundColor: gc.bg2, borderColor: gc.green },
+  statusChipText: { fontSize: 12, color: gc.text4 },
+  statusChipTextActive: { color: gc.text2 },
   petalTypeRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 12 },
-  petalTypeChip: { alignItems: 'center', padding: 8, borderRadius: 10, borderWidth: 1, borderColor: '#1a3a1a', backgroundColor: '#0a180a', minWidth: 58 },
-  petalTypeChipActive: { backgroundColor: '#1a3a1a', borderColor: '#2e7d32' },
+  petalTypeChip: { alignItems: 'center', padding: 8, borderRadius: 10, borderWidth: 1, borderColor: gc.border, backgroundColor: gc.bg1, minWidth: 58 },
+  petalTypeChipActive: { backgroundColor: gc.bg2, borderColor: gc.green },
   petalTypeEmoji: { fontSize: 18, marginBottom: 2 },
-  petalTypeLabel: { fontSize: 11, color: '#4a7a4a' },
-  petalTypeLabelActive: { color: '#8fbc8f' },
-  updateEntry: { backgroundColor: '#0a180a', borderRadius: 8, padding: 10, marginBottom: 6, borderLeftWidth: 2, borderLeftColor: '#2e7d32' },
-  updateDate: { fontSize: 10, color: '#3a6a3a', marginBottom: 2 },
-  updateText: { fontSize: 13, color: '#6a9a6a' },
-  progressBig: { fontSize: 48, fontWeight: '700', color: '#c8e6c8', textAlign: 'center', marginBottom: 8 },
-  progressTrack: { height: 8, backgroundColor: '#1a3a1a', borderRadius: 4, overflow: 'hidden', marginBottom: 16 },
+  petalTypeLabel: { fontSize: 11, color: gc.text4 },
+  petalTypeLabelActive: { color: gc.text2 },
+  updateEntry: { backgroundColor: gc.bg1, borderRadius: 8, padding: 10, marginBottom: 6, borderLeftWidth: 2, borderLeftColor: gc.green },
+  updateDate: { fontSize: 10, color: gc.text4, marginBottom: 2 },
+  updateText: { fontSize: 13, color: gc.text3 },
+  progressBig: { fontSize: 48, fontWeight: '700', color: gc.text1, textAlign: 'center', marginBottom: 8 },
+  progressTrack: { height: 8, backgroundColor: gc.bg2, borderRadius: 4, overflow: 'hidden', marginBottom: 16 },
   progressFill: { height: 8, borderRadius: 4 },
   quickBtns: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  quickBtn: { flex: 1, alignItems: 'center', paddingVertical: 10, backgroundColor: '#1a3a1a', borderRadius: 8 },
-  quickBtnText: { fontSize: 13, fontWeight: '600', color: '#4a7a4a' },
+  quickBtn: { flex: 1, alignItems: 'center', paddingVertical: 10, backgroundColor: gc.bg2, borderRadius: 8 },
+  quickBtnText: { fontSize: 13, fontWeight: '600', color: gc.text4 },
   // Note panel
   noteBody: { flex: 1, minHeight: 60, maxHeight: 120, marginBottom: 10 },
-  noteTitleInput: { fontSize: 16, fontWeight: '600', color: '#c8e6c8', paddingVertical: 2, borderBottomWidth: 0.5, borderBottomColor: '#2e7d32', marginBottom: 4 },
-  noteBodyInput: { fontSize: 14, color: '#8fbc8f', lineHeight: 20, minHeight: 60, textAlignVertical: 'top' },
-  noteBodyPlaceholder: { fontSize: 14, color: '#2a5a2a', fontStyle: 'italic' },
+  noteTitleInput: { fontSize: 16, fontWeight: '600', color: gc.text1, paddingVertical: 2, borderBottomWidth: 0.5, borderBottomColor: gc.green, marginBottom: 4 },
+  noteBodyInput: { fontSize: 14, color: gc.text2, lineHeight: 20, minHeight: 60, textAlignVertical: 'top' },
+  noteBodyPlaceholder: { fontSize: 14, color: gc.text4, fontStyle: 'italic' },
   // Vine panel
-  vinePanel: { backgroundColor: '#0a180a', borderTopWidth: 0.5, borderTopColor: '#1a3a1a', padding: 16, paddingBottom: 20 },
+  vinePanel: { backgroundColor: gc.bg1, borderTopWidth: 0.5, borderTopColor: gc.border, padding: 16, paddingBottom: 20 },
   vinePanelHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10, paddingRight: 28 },
   vinePanelEmoji: { fontSize: 20 },
-  vinePanelTitle: { fontSize: 15, fontWeight: '600', color: '#c8e6c8' },
-  vinePanelMeta: { fontSize: 11, color: '#4a7a4a', marginTop: 2 },
-  vineNoteInput: { fontSize: 14, color: '#8fbc8f', borderWidth: 0.5, borderColor: '#1a3a1a', borderRadius: 8, padding: 10, minHeight: 60, textAlignVertical: 'top', marginBottom: 10, backgroundColor: '#0d1f0d' },
+  vinePanelTitle: { fontSize: 15, fontWeight: '600', color: gc.text1 },
+  vinePanelMeta: { fontSize: 11, color: gc.text4, marginTop: 2 },
+  vineNoteInput: { fontSize: 14, color: gc.text2, borderWidth: 0.5, borderColor: gc.border, borderRadius: 8, padding: 10, minHeight: 60, textAlignVertical: 'top', marginBottom: 10, backgroundColor: gc.bg0 },
   linkedRow: { flexDirection: 'row', marginBottom: 10 },
-  linkedChip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 5, marginRight: 6, backgroundColor: '#0a180a' },
+  linkedChip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 5, marginRight: 6, backgroundColor: gc.bg1 },
   linkedChipEmoji: { fontSize: 13 },
   linkedChipText: { fontSize: 12, fontWeight: '500' },
-  vineNoteText: { fontSize: 14, color: '#6a9a6a', lineHeight: 20, marginBottom: 10 },
-  vineNotePlaceholder: { fontSize: 13, color: '#2a5a2a', fontStyle: 'italic', marginBottom: 10 },
+  vineNoteText: { fontSize: 14, color: gc.text3, lineHeight: 20, marginBottom: 10 },
+  vineNotePlaceholder: { fontSize: 13, color: gc.text4, fontStyle: 'italic', marginBottom: 10 },
   vineLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  vineLabelInput: { flex: 1, fontSize: 13, color: '#8fbc8f', borderWidth: 0.5, borderColor: '#1a3a1a', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#0d1f0d' },
+  vineLabelInput: { flex: 1, fontSize: 13, color: gc.text2, borderWidth: 0.5, borderColor: gc.border, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: gc.bg0 },
   vineDeleteBtn: { padding: 8 },
 });

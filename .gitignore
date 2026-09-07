@@ -28,6 +28,8 @@ yarn-error.*
 
 # macOS
 .DS_Store
+._*
+__MACOSX/
 *.pem
 
 # local env files
@@ -35,3 +37,6 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# Supabase CLI local state
+supabase/.temp/

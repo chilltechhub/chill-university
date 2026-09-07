@@ -1,102 +1,214 @@
 // src/components/FoodSortGame.js
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import GameShell, { G } from './GameShell';
+import GameShell, { useGameTheme } from './GameShell';
+import { useUIPrefs } from '../../context/UIPrefsContext';
 import GameOver from './GameOver';
+import GradeSelectCard from './GradeSelectCard';
+import RushTimerBar from './RushTimerBar';
+import RoundCompleteScreen from './RoundCompleteScreen';
 import useGame from '../logic/useGame';
+import useGameFacts from '../logic/useGameFacts';
+import useGradeLevel, { levelForTier } from '../logic/useGradeLevel';
+import { createAdaptiveTier, nextAdaptiveTier, roundLength, STAGE_COUNT } from '../logic/difficultyAdapter';
+import { FOOD_BANK, NUTRITION_TIPS } from '../data/gameContent/foodSort';
 
-const FOODS = [
-  { food:'🍎 Apple',       category:'Healthy',   emoji:'🍎', fact:'Apples contain fiber that helps digestion.' },
-  { food:'🍔 Burger',      category:'Junk',      emoji:'🍔', fact:'Burgers are high in saturated fat and sodium.' },
-  { food:'🥦 Broccoli',    category:'Healthy',   emoji:'🥦', fact:'Broccoli has more vitamin C than an orange!' },
-  { food:'🍕 Pizza',       category:'Moderate',  emoji:'🍕', fact:'Pizza can be healthy with veggie toppings.' },
-  { food:'🍭 Lollipop',    category:'Junk',      emoji:'🍭', fact:'Sugar spikes blood sugar quickly.' },
-  { food:'🥕 Carrot',      category:'Healthy',   emoji:'🥕', fact:'Carrots boost night vision thanks to beta-carotene.' },
-  { food:'🍟 Fries',       category:'Junk',      emoji:'🍟', fact:'Deep frying removes most nutrients from potatoes.' },
-  { food:'🍇 Grapes',      category:'Healthy',   emoji:'🍇', fact:'Grapes contain antioxidants that fight disease.' },
-  { food:'🌮 Taco',        category:'Moderate',  emoji:'🌮', fact:'Tacos can include healthy beans and veggies.' },
-  { food:'🥤 Soda',        category:'Junk',      emoji:'🥤', fact:'A can of soda has about 10 teaspoons of sugar.' },
-  { food:'🥑 Avocado',     category:'Healthy',   emoji:'🥑', fact:'Avocados are full of healthy monounsaturated fats.' },
-  { food:'🍦 Ice Cream',   category:'Junk',      emoji:'🍦', fact:'Ice cream is mostly sugar and saturated fat.' },
-  { food:'🐟 Fish',        category:'Healthy',   emoji:'🐟', fact:'Fish provides omega-3 fatty acids for brain health.' },
-  { food:'🧃 Juice',       category:'Moderate',  emoji:'🧃', fact:'Juice has vitamins but often lacks fiber.' },
-  { food:'🥚 Egg',         category:'Healthy',   emoji:'🥚', fact:'Eggs are a complete protein with all amino acids.' },
-  { food:'🍰 Cake',        category:'Junk',      emoji:'🍰', fact:'Cake is mostly refined flour and sugar.' },
-  { food:'🫘 Beans',       category:'Healthy',   emoji:'🫘', fact:'Beans are high in protein and fiber.' },
-  { food:'🍫 Chocolate',   category:'Moderate',  emoji:'🍫', fact:'Dark chocolate has antioxidants — in small amounts!' },
-  { food:'🥜 Peanuts',     category:'Healthy',   emoji:'🥜', fact:'Peanuts are protein-packed and heart-healthy.' },
-  { food:'🥓 Bacon',       category:'Junk',      emoji:'🥓', fact:'Bacon is very high in sodium and processed fat.' },
-];
-
-const CAT_CONFIG = {
-  Healthy:  { color: G.success, label: '✓ Healthy',  bg: G.success + '22' },
-  Moderate: { color: G.warning, label: '~ Moderate', bg: G.warning + '22' },
-  Junk:     { color: G.error,   label: '✗ Junk',     bg: G.error + '22' },
+const BLURBS = {
+  'K-2': 'Obvious healthy vs junk food picks.',
+  '3-5': 'Adds "moderate" foods — pizza, cheese, juice.',
+  '6-8': 'Sneaky ones — granola bars, trail mix, sports drinks.',
+  '9-12': 'Nutrition science — glycemic index, processed protein, additives.',
 };
 
-function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
+function getCatConfig(G) {
+  return {
+    Healthy:  { color: G.success, label: '✓ Healthy',  bg: G.success + '22' },
+    Moderate: { color: G.warning, label: '~ Moderate', bg: G.warning + '22' },
+    Junk:     { color: G.error,   label: '✗ Junk',     bg: G.error + '22' },
+  };
+}
+
+function pickNext(pool, avoid) {
+  const choices = pool.filter(q => !avoid.includes(q.food));
+  const list = choices.length ? choices : pool;
+  return list[Math.floor(Math.random() * list.length)];
+}
 
 export default function FoodSortGame({ onGameEnd }) {
   const navigation = useNavigation();
-  const [questions]  = useState(() => shuffle(FOODS).slice(0, 15));
-  const [idx, setIdx] = useState(0);
+  const G = useGameTheme();
+  const s = makeStyles(G);
+  const { showEmojis } = useUIPrefs();
+  const CAT_CONFIG = getCatConfig(G);
+  const { level, setLevel, tier: savedTier } = useGradeLevel('junk');
+  const [started, setStarted] = useState(false);
+  const [pace, setPace] = useState('relaxed');
+
+  const [adaptive, setAdaptive] = useState(() => createAdaptiveTier(savedTier));
+  const recentRef = useRef([]);
+  const [q, setQ] = useState(null);
+  // Rounds within a run — shorter first round, longer as you clear more
+  // (see roundLength() in difficultyAdapter.js). No points land until a
+  // round finishes and its prize is picked (see RoundCompleteScreen).
+  const [stage, setStage] = useState(0);
+  const [stageAsked, setStageAsked] = useState(0);
+  const [stageCorrect, setStageCorrect] = useState(0);
+  const [roundComplete, setRoundComplete] = useState(null); // { correct, total, roundNumber, isLastStage }
+  const stageTarget = roundLength(stage);
+  const [tip] = useState(() => NUTRITION_TIPS[Math.floor(Math.random() * NUTRITION_TIPS.length)]);
   const [selected, setSelected] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [startTime, setStartTime] = useState(Date.now());
 
-  const game = useGame({ subject: 'science', difficulty: 1, onGameEnd });
-  const q = questions[idx];
+  // Relaxed pace streams a fact in the question view's own empty space;
+  // Rush pace shows one fact per round instead, on RoundCompleteScreen —
+  // either way it's the SAME pool, just a different rhythm.
+  const { next: nextFact } = useGameFacts('junk');
+  const [fact, setFact] = useState(null);
+  // Relaxed pace: a fresh fact every few questions, not every one — see factCountRef below.
+  const factCountRef = useRef(0);
+
+  const game = useGame({ subject: 'health', difficulty: adaptive.tier, skillLevel: level, onGameEnd, manualScoring: true });
+
+  const beginRun = (selectedPace = 'relaxed') => {
+    setPace(selectedPace);
+    const initial = createAdaptiveTier(savedTier);
+    setAdaptive(initial);
+    const first = pickNext(FOOD_BANK[levelForTier(initial.tier)], []);
+    recentRef.current = [first.food];
+    setQ(first);
+    setStage(0);
+    setStageAsked(0);
+    setStageCorrect(0);
+    setRoundComplete(null);
+    setSelected(null);
+    setFeedback(null);
+    setStartTime(Date.now());
+    factCountRef.current = 0;
+    setFact(nextFact());
+    setStarted(true);
+  };
+
+  const loadNext = useCallback((tier) => {
+        const pool = FOOD_BANK[levelForTier(tier)];
+        const next = pickNext(pool, recentRef.current);
+        recentRef.current = [...recentRef.current, next.food];
+        setQ(next);
+    setSelected(null);
+    setFeedback(null);
+    setStartTime(Date.now());
+    factCountRef.current += 1;
+    setFact(factCountRef.current % 3 === 0 ? nextFact() : null);
+  }, [nextFact]);
 
   const handleAnswer = useCallback((cat) => {
-    if (selected) return;
+    if (selected || !q) return;
     setSelected(cat);
     const isCorrect = cat === q.category;
     const speed = (Date.now() - startTime) / 1000;
-    const speedBonus = speed < 3 ? 5 : 0;
-    game.answer(isCorrect, { speedBonus });
+    game.answer(isCorrect, { speedBonus: speed < 3 ? 5 : 0 });
     setFeedback({ isCorrect, fact: q.fact, correct: q.category });
 
+    const nextAdaptiveState = nextAdaptiveTier(adaptive, isCorrect);
+    setAdaptive(nextAdaptiveState);
+
     setTimeout(() => {
-      setFeedback(null);
-      setSelected(null);
-      setStartTime(Date.now());
-      if (game.lives - (isCorrect ? 0 : 1) <= 0 || idx >= questions.length - 1) {
+      const newStageAsked = stageAsked + 1;
+      const newStageCorrect = stageCorrect + (isCorrect ? 1 : 0);
+      const outOfLives = game.lives - (isCorrect ? 0 : 1) <= 0;
+      const stageDone = newStageAsked >= stageTarget;
+
+      if (outOfLives) {
         game.endGame();
+      } else if (stageDone) {
+        setStageAsked(newStageAsked);
+        setStageCorrect(newStageCorrect);
+        setRoundComplete({
+          correct: newStageCorrect, total: newStageAsked,
+          roundNumber: stage + 1, isLastStage: stage + 1 >= STAGE_COUNT,
+        });
       } else {
-        setIdx(i => i + 1);
+        setStageAsked(newStageAsked);
+        setStageCorrect(newStageCorrect);
+        loadNext(nextAdaptiveState.tier);
       }
     }, 1800);
-  }, [selected, q, startTime, game, idx, questions]);
+  }, [selected, q, startTime, game, stage, stageAsked, stageCorrect, stageTarget, loadNext, adaptive]);
+
+  const handleClaimPrize = useCallback(() => {
+    if (roundComplete?.isLastStage) {
+      setRoundComplete(null);
+      game.endGame();
+    } else {
+      setStage(s => s + 1);
+      setStageAsked(0);
+      setStageCorrect(0);
+      setRoundComplete(null);
+      loadNext(adaptive.tier);
+    }
+  }, [game, roundComplete, adaptive.tier, loadNext]);
+
+  if (!started) {
+    return (
+      <GradeSelectCard gameId="junk" showPace
+        title="Food Sort" emoji="🍎" subjectLabel="Health"
+        blurbs={BLURBS} level={level} onSelectLevel={setLevel} onStart={beginRun}
+      />
+    );
+  }
 
   if (game.done) return (
-    <GameOver
+    <GameOver gameId="junk"
       score={game.score} correct={game.correct} total={game.attempted}
       streak={game.bestStreak} title="Nutrition Expert!"
-      onPlayAgain={() => { game.reset(); setIdx(0); setSelected(null); setFeedback(null); }}
+      onPlayAgain={() => { game.reset(); setStarted(false); }}
       onQuit={() => navigation.goBack()}
     />
   );
 
+
+  if (roundComplete) {
+    return (
+      <GameShell gameId="junk" disableFactToast
+      title="Food Sort" emoji="🍎" subject={`Health & Nutrition · ${levelForTier(adaptive.tier)}`}
+        score={game.score} lives={game.lives} streak={game.streak}
+      >
+        <RoundCompleteScreen
+          roundNumber={roundComplete.roundNumber}
+          correct={roundComplete.correct}
+          total={roundComplete.total}
+          streak={game.streak}
+          difficulty={adaptive.tier}
+          fact={pace === 'rush' ? fact : null}
+          onAward={game.addPoints}
+          onAdvance={handleClaimPrize}
+        />
+      </GameShell>
+    );
+  }
+
+  if (!q) return null;
+
   return (
-    <GameShell
-      title="Food Sort" emoji="🍎" subject="Health & Nutrition"
+    <GameShell gameId="junk" disableFactToast
+      title="Food Sort" emoji="🍎" subject={`Health & Nutrition · ${levelForTier(adaptive.tier)}`}
       score={game.score} lives={game.lives} streak={game.streak}
-      progress={idx / questions.length}
+      progress={stageAsked / stageTarget}
     >
       <ScrollView contentContainerStyle={s.scroll}>
-        <Text style={s.progress}>{idx + 1} / {questions.length}</Text>
+        <Text style={s.progress}>Round {stage + 1} of {STAGE_COUNT} · {stageAsked + 1} / {stageTarget}</Text>
 
-        {/* Random nutrition tip */}
         <View style={s.tipBanner}>
-          <Text style={s.tipText}>💡 Calcium from milk and cheese makes your bones strong!</Text>
+          <Text style={s.tipText}>{tip}</Text>
         </View>
 
         <View style={s.foodCard}>
           <Text style={s.foodEmoji}>{q.emoji}</Text>
-          <Text style={s.foodName}>Is {q.food.replace(/^\S+\s/, '')} healthy or junk food?</Text>
+          <Text style={s.foodName}>Is {q.food.replace(/^\S+\s/, '')} healthy, moderate, or junk food?</Text>
         </View>
 
+        <RushTimerBar active={pace === 'rush' && !feedback} durationMs={3000} resetKey={q} onExpire={() => handleAnswer('__TIMEOUT__')} />
         <View style={s.options}>
           {Object.entries(CAT_CONFIG).map(([cat, cfg]) => {
             let bg = cfg.bg, border = cfg.color;
@@ -118,9 +230,16 @@ export default function FoodSortGame({ onGameEnd }) {
         {feedback && (
           <View style={[s.feedback, { borderColor: feedback.isCorrect ? G.success : G.error }]}>
             <Text style={[s.feedbackTitle, { color: feedback.isCorrect ? G.success : G.error }]}>
-              {feedback.isCorrect ? '✓ Correct!' : `✗ It\'s ${feedback.correct}!`}
+              {feedback.isCorrect ? '✓ Correct!' : `✗ It's ${feedback.correct}!`}
             </Text>
             <Text style={s.feedbackFact}>{q.fact}</Text>
+          </View>
+        )}
+
+        {pace === 'relaxed' && !!fact && (
+          <View style={s.factBox}>
+            <Text style={s.factLabel}>{showEmojis ? '💡 ' : ''}Did You Know</Text>
+            <Text style={s.factText}>{fact}</Text>
           </View>
         )}
       </ScrollView>
@@ -128,7 +247,7 @@ export default function FoodSortGame({ onGameEnd }) {
   );
 }
 
-const s = StyleSheet.create({
+const makeStyles = (G) => StyleSheet.create({
   scroll:       { padding: 16, paddingBottom: 40 },
   progress:     { fontSize: 11, color: G.muted, textAlign: 'center', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 },
   tipBanner:    { backgroundColor: G.goldL, borderRadius: 10, padding: 12, marginBottom: 14, borderWidth: 0.5, borderColor: G.gold },
@@ -142,4 +261,7 @@ const s = StyleSheet.create({
   feedback:     { backgroundColor: G.card, borderWidth: 1, borderRadius: 12, padding: 16 },
   feedbackTitle:{ fontSize: 15, fontWeight: '700', marginBottom: 6 },
   feedbackFact: { fontSize: 13, color: G.cream, lineHeight: 18 },
+  factBox:     { backgroundColor: G.card, borderWidth: 0.5, borderColor: G.border, borderRadius: 12, padding: 14, marginTop: 16 },
+  factLabel:   { fontSize: 11, color: G.gold, fontWeight: '700', marginBottom: 4 },
+  factText:    { fontSize: 13, color: G.cream, lineHeight: 18 },
 });

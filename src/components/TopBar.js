@@ -8,12 +8,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { useTheme } from '../../context/ThemeContext';
-import { RANK_LABELS } from '../theme';
+import { useUIPrefs } from '../../context/UIPrefsContext';
+import { RANK_LABELS, FONTS } from '../theme';
 import LoginScreen from '../screens/LoginScreen';
 
 export default function TopBar() {
-  const { user, points, rank, progress, loading, pendingRewards, streakDays } = useUserProgress();
+  const { user, points, rank, level, progress, loading, pendingRewards, streakDays } = useUserProgress();
   const { colors, typography, spacing, shadows } = useTheme();
+  const { showEmojis } = useUIPrefs();
   const navigation = useNavigation();
   const [showLogin, setShowLogin] = useState(false);
 
@@ -31,12 +33,14 @@ export default function TopBar() {
   return (
     <>
       <View style={s.container}>
-        {/* Streak */}
-        {streakDays > 0 && (
-          <View style={s.streak}>
-            <Text style={s.streakText}>🔥 {streakDays}</Text>
-          </View>
-        )}
+        {/* Crest */}
+        <TouchableOpacity
+          style={s.crest}
+          onPress={() => user ? navigation.navigate('Profile') : setShowLogin(true)}
+          activeOpacity={0.75}
+        >
+          <Text style={s.crestEmoji}>{rankInfo.emoji}</Text>
+        </TouchableOpacity>
 
         {/* Rank + progress */}
         <TouchableOpacity
@@ -46,11 +50,10 @@ export default function TopBar() {
         >
           <View style={s.rankRow}>
             <Text style={s.rankName}>
-              {rankInfo.emoji} {rankInfo.label}
-              {user ? ` · ${rank}` : ''}
+              {user ? `LV ${level} · ${rankInfo.label}` : rankInfo.label}
             </Text>
             <Text style={s.rankPct}>
-              {user ? `${Math.round(progress)}%` : 'Guest'}
+              {user ? `${Math.round(progress)}%` : 'GUEST'}
             </Text>
           </View>
           <View style={s.barBg}>
@@ -58,11 +61,18 @@ export default function TopBar() {
           </View>
         </TouchableOpacity>
 
+        {/* Streak */}
+        {streakDays > 0 && (
+          <View style={s.streak}>
+            <Text style={s.streakText}>{showEmojis ? '🔥' : ''}{streakDays}</Text>
+          </View>
+        )}
+
         {/* Points or Sign In */}
         {user ? (
           <View style={s.ptsSection}>
             <Text style={s.ptsNum}>{points.toLocaleString()}</Text>
-            <Text style={s.ptsLabel}>pts</Text>
+            <Text style={s.ptsLabel}>PTS</Text>
           </View>
         ) : (
           <TouchableOpacity style={s.signInBtn} onPress={() => setShowLogin(true)}>
@@ -77,7 +87,7 @@ export default function TopBar() {
             style={s.rewardBtn}
             onPress={() => navigation.navigate('Profile', { tab: 'rewards' })}
           >
-            <Text style={{ fontSize: 20 }}>🎁</Text>
+            {showEmojis ? <Text style={{ fontSize: 20 }}>🎁</Text> : <Ionicons name="gift-outline" size={18} color={colors.gold} />}
             <View style={s.rewardDot}>
               <Text style={s.rewardDotText}>{pendingRewards.length}</Text>
             </View>
@@ -97,12 +107,21 @@ const makeStyles = (c, t, s, sh) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: s.lg,
-    paddingVertical: s.sm + 2,
+    paddingVertical: s.sm,
     backgroundColor: c.headerBg,
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
     borderBottomColor: c.border,
+    borderTopWidth: 0,
     ...sh.sm,
   },
+  crest: {
+    width: 30, height: 30, borderRadius: 8,
+    borderWidth: 1.5, borderColor: c.gold,
+    backgroundColor: c.goldLight,
+    alignItems: 'center', justifyContent: 'center',
+    marginRight: s.sm,
+  },
+  crestEmoji: { fontSize: 15 },
   streak: {
     backgroundColor: c.goldLight,
     borderWidth: 0.5,
@@ -112,16 +131,16 @@ const makeStyles = (c, t, s, sh) => StyleSheet.create({
     paddingVertical: 4,
     marginRight: s.sm,
   },
-  streakText: { fontSize: t.xs, fontWeight: t.bold, color: c.gold },
+  streakText: { fontSize: t.xs, fontWeight: t.bold, color: c.gold, fontFamily: FONTS.mono },
   rankSection: { flex: 1, marginRight: s.sm },
   rankRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 },
-  rankName: { fontSize: t.xs + 1, fontWeight: t.bold, color: c.gold },
-  rankPct: { fontSize: t.xs, color: c.text3 },
+  rankName: { fontSize: t.sm, fontWeight: t.bold, color: c.gold, fontFamily: FONTS.display, letterSpacing: 0.3 },
+  rankPct: { fontSize: t.xs, color: c.text3, fontFamily: FONTS.mono },
   barBg: { height: 5, backgroundColor: c.bg2, borderRadius: 3, overflow: 'hidden' },
   barFill: { height: 5, backgroundColor: c.goldMid, borderRadius: 3 },
   ptsSection: { alignItems: 'flex-end' },
-  ptsNum: { fontSize: t.lg, fontWeight: t.bold, color: c.gold },
-  ptsLabel: { fontSize: 9, color: c.text4, textTransform: 'uppercase', letterSpacing: 1 },
+  ptsNum: { fontSize: t.lg, fontWeight: t.bold, color: c.gold, fontFamily: FONTS.mono },
+  ptsLabel: { fontSize: 9, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, fontFamily: FONTS.mono },
   signInBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: c.teal, borderRadius: 14,

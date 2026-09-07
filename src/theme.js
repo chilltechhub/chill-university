@@ -1,24 +1,24 @@
 // src/theme.js
-// Royal Mythical Library — Light + Dark themes
+// Base Command — Light + Dark themes
 // Import: import { useTheme } from '../context/ThemeContext';
 // Then: const { theme, colors } = useTheme();
 
 export const THEMES = {
 
-  // ── Light: Illuminated Parchment ─────────────────────────────────────────
+  // ── Light: Daylight Ops ──────────────────────────────────────────────────
   light: {
     name: 'light',
-    label: 'Parchment',
+    label: 'Daylight',
 
-    // Backgrounds
-    bg0:        '#faf8f4',   // page canvas
-    bg1:        '#f2ede4',   // card / surface
-    bg2:        '#e8e0d0',   // inset / subtle
-    bg3:        '#ddd5c0',   // input bg
+    // Backgrounds — cool steel/paper, not warm parchment
+    bg0:        '#eef1f6',   // page canvas
+    bg1:        '#ffffff',   // card / surface
+    bg2:        '#e3e8f0',   // inset / subtle
+    bg3:        '#dbe1ec',   // input bg
 
     // Borders
-    border:     '#d4c9b0',
-    borderStrong:'#b8a888',
+    border:     '#c7cedd',
+    borderStrong:'#aab3c8',
 
     // Gold — rank, points, primary CTA
     gold:       '#9a7228',
@@ -38,10 +38,10 @@ export const THEMES = {
     purpleDim:  '#4a2070',
 
     // Text
-    text1:      '#2a2018',   // primary
-    text2:      '#5a4a30',   // body
-    text3:      '#8a7a60',   // secondary
-    text4:      '#b0a080',   // muted / caption
+    text1:      '#161b28',   // primary
+    text2:      '#454f66',   // body
+    text3:      '#7a839c',   // secondary
+    text4:      '#a7b0c6',   // muted / caption
 
     // Semantic
     success:    '#2a8a4a',
@@ -80,49 +80,50 @@ export const THEMES = {
     digital:    '#2a4ac9',
 
     // UI chrome
-    tabBar:     '#f2ede4',
-    tabActive:  '#c9a84c',
-    tabInactive:'#b0a080',
-    headerBg:   '#faf8f4',
-    modalBg:    '#faf8f4',
-    inputBg:    '#e8e0d0',
-    inputBorder:'#c8bda0',
+    tabBar:     '#ffffff',
+    tabActive:  '#9a7228',
+    tabInactive:'#a7b0c6',
+    headerBg:   '#eef1f6',
+    modalBg:    '#ffffff',
+    inputBg:    '#dbe1ec',
+    inputBorder:'#c7cedd',
 
     // Glyph / ornament
     glyph:      '#c9a84c',
   },
 
-  // ── Dark: Royal Midnight Library ─────────────────────────────────────────
+  // ── Dark: Command Deck ────────────────────────────────────────────────────
   dark: {
     name: 'dark',
-    label: 'Royal',
+    label: 'Command',
 
-    bg0:        '#0e0818',
-    bg1:        '#150e28',
-    bg2:        '#1e1035',
-    bg3:        '#2a1a40',
+    // Backgrounds — neutral slate, not purple-midnight
+    bg0:        '#12161f',
+    bg1:        '#1a2030',
+    bg2:        '#0d1119',
+    bg3:        '#212942',
 
-    border:     '#2d1f4e',
-    borderStrong:'#3d2f5e',
+    border:     '#2c3550',
+    borderStrong:'#3a4568',
 
-    gold:       '#c9a84c',
-    goldMid:    '#e4c97a',
-    goldLight:  '#2a1f06',
-    goldDim:    '#8a6a2a',
+    gold:       '#e8b34a',
+    goldMid:    '#f0c164',
+    goldLight:  '#2a2007',
+    goldDim:    '#a97a24',
 
-    teal:       '#2bb5a0',
-    tealMid:    '#5ce0c8',
-    tealLight:  '#0a2825',
-    tealDim:    '#1a7a6a',
+    teal:       '#3fcf9e',
+    tealMid:    '#6ce0b8',
+    tealLight:  '#0a2822',
+    tealDim:    '#1e8f6f',
 
     purple:     '#8b4fc4',
     purpleLight:'#2a0a4a',
     purpleDim:  '#5a2a8a',
 
-    text1:      '#e8dfc8',
-    text2:      '#c4b090',
-    text3:      '#7a6a9a',
-    text4:      '#4a3a6a',
+    text1:      '#eef1f8',
+    text2:      '#a7b0c6',
+    text3:      '#6d7690',
+    text4:      '#414a68',
 
     success:    '#3ac860',
     successLight:'#0a2818',
@@ -157,16 +158,25 @@ export const THEMES = {
     spiritual:  '#8b4fc4',
     digital:    '#5a80e8',
 
-    tabBar:     '#0e0818',
-    tabActive:  '#c9a84c',
-    tabInactive:'#4a3a6a',
-    headerBg:   '#0e0818',
-    modalBg:    '#150e28',
-    inputBg:    '#0e0818',
-    inputBorder:'#2d1f4e',
+    tabBar:     '#12161f',
+    tabActive:  '#e8b34a',
+    tabInactive:'#414a68',
+    headerBg:   '#12161f',
+    modalBg:    '#1a2030',
+    inputBg:    '#212942',
+    inputBorder:'#2c3550',
 
     glyph:      '#c9a84c',
   },
+};
+
+// HUD fonts — Rajdhani for display/numbers, JetBrains Mono for readouts/labels.
+// Loaded via useFonts() in App.js; body text stays on the system font.
+export const FONTS = {
+  display:         'Rajdhani_700Bold',
+  displaySemibold: 'Rajdhani_600SemiBold',
+  mono:            'JetBrainsMono_500Medium',
+  monoSemibold:    'JetBrainsMono_600SemiBold',
 };
 
 // Typography — same across both themes
@@ -198,21 +208,21 @@ export const radius = {
 // Shadows
 export const makeShadows = (dark) => ({
   sm: {
-    shadowColor: dark ? '#000' : '#2a2018',
+    shadowColor: dark ? '#000' : '#161b28',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: dark ? 0.3 : 0.06,
     shadowRadius: 3,
     elevation: 2,
   },
   md: {
-    shadowColor: dark ? '#000' : '#2a2018',
+    shadowColor: dark ? '#000' : '#161b28',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: dark ? 0.4 : 0.1,
     shadowRadius: 8,
     elevation: 4,
   },
   lg: {
-    shadowColor: dark ? '#000' : '#2a2018',
+    shadowColor: dark ? '#000' : '#161b28',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: dark ? 0.5 : 0.14,
     shadowRadius: 16,
