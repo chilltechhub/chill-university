@@ -1,5 +1,5 @@
 // src/screens/PlayScreen.js
-import React, { useRef, useEffect } from 'react';
+import React from 'react';
 import { View, StyleSheet, Platform, StatusBar } from 'react-native';
 import GameFeed from '../components/GameFeed';
 import { useRoute } from '@react-navigation/native';
@@ -7,23 +7,18 @@ import { useRoute } from '@react-navigation/native';
 export default function PlayScreen() {
   const route = useRoute();
   const { index, gameId } = route.params || {};
-  const feedRef = useRef(null);
 
-  useEffect(() => {
-    if (typeof index === 'number' && feedRef.current) {
-      feedRef.current.goToIndex(index);
-    } else if (gameId && feedRef.current) {
-      feedRef.current.goToGameId(gameId);
-    }
-  }, [index, gameId]);
+  // Every "Start" everywhere (Training grid, skill cards, Classes
+  // recommendations, HomeScreen's game picker) passes a specific gameId;
+  // the two generic "just start playing something" PLAY buttons pass a
+  // numeric index instead. GameFeed opens scrolled to whichever one this
+  // is and lets you swipe up/down to the next from there — see
+  // GameFeed.js for why this used to bypass the feed entirely instead.
+  const initialGame = gameId != null ? gameId : (typeof index === 'number' ? index : 0);
 
-  // If you have a top nav/header height, apply the same offset logic you used for PAGE_HEIGHT
   return (
     <View style={styles.container}>
-      <GameFeed ref={feedRef} 
-       initialIndex={typeof index === 'number' ? index : 0} 
-       targetGameKey={gameId}
-       />
+      <GameFeed initialGame={initialGame} />
     </View>
   );
 }

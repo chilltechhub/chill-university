@@ -3,14 +3,16 @@ import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import GameShell, { useGameTheme } from './GameShell';
+import { useUIPrefs } from '../../context/UIPrefsContext';
 import GameOver from './GameOver';
 import GradeSelectCard from './GradeSelectCard';
+import RushTimerBar from './RushTimerBar';
+import RoundCompleteScreen from './RoundCompleteScreen';
 import useGame from '../logic/useGame';
+import useGameFacts from '../logic/useGameFacts';
 import useGradeLevel, { levelForTier } from '../logic/useGradeLevel';
-import { createAdaptiveTier, nextAdaptiveTier } from '../logic/difficultyAdapter';
+import { createAdaptiveTier, nextAdaptiveTier, roundLength, STAGE_COUNT } from '../logic/difficultyAdapter';
 import { WORD_BANK, WORD_TYPE_COLORS } from '../data/gameContent/wordDetective';
-
-const SESSION_LENGTH = 15;
 
 const BLURBS = {
   'K-2': 'Simple sentences — noun, verb, adjective, adverb.',
@@ -29,32 +31,68 @@ export default function WordTypeGame({ onGameEnd }) {
   const navigation = useNavigation();
   const G = useGameTheme();
   const s = makeStyles(G);
+  const { showEmojis } = useUIPrefs();
   const { level, setLevel, tier: savedTier } = useGradeLevel('word');
   const [started, setStarted] = useState(false);
+  const [pace, setPace] = useState('relaxed');
 
   const [adaptive, setAdaptive] = useState(() => createAdaptiveTier(savedTier));
   const recentRef = useRef([]);
   const [q, setQ] = useState(null);
-  const [asked, setAsked] = useState(0);
   const [selected, setSelected] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [startTime, setStartTime] = useState(Date.now());
 
-  const game = useGame({ subject: 'language_arts', difficulty: adaptive.tier, skillLevel: level, onGameEnd });
+  // Rounds within a run — shorter first round, longer as you clear more
+  // (see roundLength() in difficultyAdapter.js). No points land until a
+  // round finishes and its prize is picked (see RoundCompleteScreen).
+  const [stage, setStage] = useState(0);
+  const [stageAsked, setStageAsked] = useState(0);
+  const [stageCorrect, setStageCorrect] = useState(0);
+  const [roundComplete, setRoundComplete] = useState(null); // { correct, total, roundNumber, isLastStage }
+  const stageTarget = roundLength(stage);
 
-  const beginRun = () => {
+  // Relaxed pace streams a fact in the question view's own empty space;
+  // Rush pace shows one fact per round instead, on RoundCompleteScreen —
+  // either way it's the SAME pool, just a different rhythm.
+  const { next: nextFact } = useGameFacts('word');
+  const [fact, setFact] = useState(null);
+  // Relaxed pace: a fresh fact every few questions, not every one — see factCountRef below.
+  const factCountRef = useRef(0);
+
+  const game = useGame({ subject: 'language_arts', difficulty: adaptive.tier, skillLevel: level, onGameEnd, manualScoring: true });
+
+  const beginRun = (selectedPace = 'relaxed') => {
+    setPace(selectedPace);
     const initial = createAdaptiveTier(savedTier);
     setAdaptive(initial);
     recentRef.current = [];
     const first = pickNext(WORD_BANK[levelForTier(initial.tier)], []);
     recentRef.current = [first.word + first.sentence];
     setQ(first);
-    setAsked(0);
+    setStage(0);
+    setStageAsked(0);
+    setStageCorrect(0);
+    setRoundComplete(null);
     setSelected(null);
     setFeedback(null);
     setStartTime(Date.now());
+    factCountRef.current = 0;
+    setFact(nextFact());
     setStarted(true);
   };
+
+  const loadNext = useCallback((tier) => {
+    const pool = WORD_BANK[levelForTier(tier)];
+    const nextQ = pickNext(pool, recentRef.current);
+    recentRef.current = [...recentRef.current, nextQ.word + nextQ.sentence];
+    setQ(nextQ);
+    setSelected(null);
+    setFeedback(null);
+    setStartTime(Date.now());
+    factCountRef.current += 1;
+    setFact(factCountRef.current % 3 === 0 ? nextFact() : null);
+  }, [nextFact]);
 
   const handleAnswer = useCallback((option) => {
     if (selected || !q) return;
@@ -69,25 +107,44 @@ export default function WordTypeGame({ onGameEnd }) {
     setAdaptive(nextAdaptiveState);
 
     setTimeout(() => {
-      setFeedback(null);
-      setSelected(null);
-      setStartTime(Date.now());
-      const willEnd = game.lives - (isCorrect ? 0 : 1) <= 0 || asked + 1 >= SESSION_LENGTH;
-      if (willEnd) {
+      const newStageAsked = stageAsked + 1;
+      const newStageCorrect = stageCorrect + (isCorrect ? 1 : 0);
+      const outOfLives = game.lives - (isCorrect ? 0 : 1) <= 0;
+      const stageDone = newStageAsked >= stageTarget;
+
+      if (outOfLives) {
         game.endGame();
+      } else if (stageDone) {
+        setStageAsked(newStageAsked);
+        setStageCorrect(newStageCorrect);
+        setRoundComplete({
+          correct: newStageCorrect, total: newStageAsked,
+          roundNumber: stage + 1, isLastStage: stage + 1 >= STAGE_COUNT,
+        });
       } else {
-        const pool = WORD_BANK[levelForTier(nextAdaptiveState.tier)];
-        const nextQ = pickNext(pool, recentRef.current);
-        recentRef.current = [...recentRef.current.slice(-4), nextQ.word + nextQ.sentence];
-        setQ(nextQ);
-        setAsked(a => a + 1);
+        setStageAsked(newStageAsked);
+        setStageCorrect(newStageCorrect);
+        loadNext(nextAdaptiveState.tier);
       }
     }, 1800);
-  }, [selected, q, startTime, game, asked, adaptive]);
+  }, [selected, q, startTime, game, adaptive, stage, stageAsked, stageCorrect, stageTarget, loadNext]);
+
+  const handleClaimPrize = useCallback(() => {
+    if (roundComplete?.isLastStage) {
+      setRoundComplete(null);
+      game.endGame();
+    } else {
+      setStage(s => s + 1);
+      setStageAsked(0);
+      setStageCorrect(0);
+      setRoundComplete(null);
+      loadNext(adaptive.tier);
+    }
+  }, [game, roundComplete, adaptive.tier, loadNext]);
 
   if (!started) {
     return (
-      <GradeSelectCard
+      <GradeSelectCard gameId="word" showPace
         title="Word Detective" emoji="📖" subjectLabel="Language Arts"
         blurbs={BLURBS} level={level} onSelectLevel={setLevel} onStart={beginRun}
       />
@@ -96,7 +153,7 @@ export default function WordTypeGame({ onGameEnd }) {
 
   if (game.done) {
     return (
-      <GameOver
+      <GameOver gameId="word"
         score={game.score} correct={game.correct} total={game.attempted}
         streak={game.bestStreak} title="Case Closed, Detective!"
         onPlayAgain={() => { game.reset(); setStarted(false); }}
@@ -105,20 +162,42 @@ export default function WordTypeGame({ onGameEnd }) {
     );
   }
 
+  if (roundComplete) {
+    return (
+      <GameShell gameId="word" disableFactToast
+        title="Word Detective"
+        emoji="📖"
+        subject={`Language Arts · ${levelForTier(adaptive.tier)}`}
+        score={game.score} lives={game.lives} streak={game.streak}
+      >
+        <RoundCompleteScreen
+          roundNumber={roundComplete.roundNumber}
+          correct={roundComplete.correct}
+          total={roundComplete.total}
+          streak={game.streak}
+          difficulty={adaptive.tier}
+          fact={pace === 'rush' ? fact : null}
+          onAward={game.addPoints}
+          onAdvance={handleClaimPrize}
+        />
+      </GameShell>
+    );
+  }
+
   if (!q) return null;
 
   return (
-    <GameShell
+    <GameShell gameId="word" disableFactToast
       title="Word Detective"
       emoji="📖"
       subject={`Language Arts · ${levelForTier(adaptive.tier)}`}
       score={game.score}
       lives={game.lives}
       streak={game.streak}
-      progress={asked / SESSION_LENGTH}
+      progress={stageAsked / stageTarget}
     >
       <ScrollView contentContainerStyle={s.scroll}>
-        <Text style={s.progress}>Question {asked + 1} of {SESSION_LENGTH}</Text>
+        <Text style={s.progress}>Round {stage + 1} of {STAGE_COUNT} · Question {stageAsked + 1} of {stageTarget}</Text>
 
         <View style={s.card}>
           <Text style={s.label}>What type of word is...</Text>
@@ -137,6 +216,7 @@ export default function WordTypeGame({ onGameEnd }) {
           </Text>
         </View>
 
+        <RushTimerBar active={pace === 'rush' && !feedback} durationMs={3000} resetKey={q} onExpire={() => handleAnswer('__TIMEOUT__')} />
         <View style={s.options}>
           {q.options.map(opt => {
             let bg = G.card;
@@ -167,6 +247,13 @@ export default function WordTypeGame({ onGameEnd }) {
             <Text style={s.feedbackText}>{feedback.explanation}</Text>
           </View>
         )}
+
+        {pace === 'relaxed' && !!fact && (
+          <View style={s.factBox}>
+            <Text style={s.factLabel}>{showEmojis ? '💡 ' : ''}Did You Know</Text>
+            <Text style={s.factText}>{fact}</Text>
+          </View>
+        )}
       </ScrollView>
     </GameShell>
   );
@@ -188,4 +275,7 @@ const makeStyles = (G) => StyleSheet.create({
   feedback:    { backgroundColor: G.card, borderWidth: 1, borderRadius: 12, padding: 16 },
   feedbackTitle:{ fontSize: 15, fontWeight: '700', marginBottom: 6 },
   feedbackText:{ fontSize: 13, color: G.cream, lineHeight: 18 },
+  factBox:     { backgroundColor: G.card, borderWidth: 0.5, borderColor: G.border, borderRadius: 12, padding: 14, marginTop: 16 },
+  factLabel:   { fontSize: 11, color: G.gold, fontWeight: '700', marginBottom: 4 },
+  factText:    { fontSize: 13, color: G.cream, lineHeight: 18 },
 });

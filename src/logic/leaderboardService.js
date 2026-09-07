@@ -16,7 +16,15 @@ import { supabase } from '../api/supabaseClient';
 export const LEADERBOARD_NOT_CONFIGURED = 'LEADERBOARD_NOT_CONFIGURED';
 
 function isMissingFunction(error) {
-  return error?.code === '42883' || /function .* does not exist/i.test(error?.message || '');
+  // PostgREST returns PGRST202/404 ("Could not find the function ... in
+  // the schema cache") when an RPC name genuinely doesn't exist yet, not
+  // Postgres's own 42883 — verified directly against the live endpoint
+  // while adding a second RPC-gated feature (organizationService.js). The
+  // 42883/message check below never actually matched here; kept as a
+  // fallback in case a different call path does raise it.
+  return error?.code === '42883' || error?.code === 'PGRST202'
+    || /function .* does not exist/i.test(error?.message || '')
+    || /could not find the function/i.test(error?.message || '');
 }
 
 /**

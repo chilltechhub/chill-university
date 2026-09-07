@@ -1,32 +1,37 @@
 // src/api/gardenService.js
 
 import { supabase } from './supabaseClient';
+import { cacheRead, cacheWrite, isOnline, offlineWrite } from './offlineCache';
+import { todayStr } from '../logic/dateUtils';
 
 // ─── Cores ────────────────────────────────────────────────────────────────────
 
 export async function getCores(userId) {
+  const cacheKey = `garden_cores_${userId}`;
+  if (!(await isOnline())) return (await cacheRead(cacheKey)) || [];
+
   const { data, error } = await supabase
     .from('garden_cores')
     .select('*, garden_petals(*), garden_updates(*)')
     .eq('user_id', userId)
     .is('deleted_at', null)
     .order('created_at');
-  if (error) throw error;
+  if (error) {
+    const cached = await cacheRead(cacheKey);
+    if (cached) return cached;
+    throw error;
+  }
+  await cacheWrite(cacheKey, data || []);
   return data || [];
 }
 
 export async function upsertCore(userId, core) {
-  const { data, error } = await supabase
-    .from('garden_cores')
-    .upsert({
-      user_id: userId,
-      ...core,
-      updated_at: new Date().toISOString(),
-    })
-    .select('*, garden_petals(*), garden_updates(*)')
-    .single();
-  if (error) throw error;
-  return data;
+  const { row } = await offlineWrite(supabase, 'garden_cores', {
+    user_id: userId,
+    ...core,
+    updated_at: new Date().toISOString(),
+  }, { type: 'UPSERT', selectQuery: '*, garden_petals(*), garden_updates(*)' });
+  return row;
 }
 
 export async function updateCorePosition(coreId, posX, posY) {
@@ -162,7 +167,7 @@ export async function promoteCoreToProject(userId, core) {
   await supabase.from('project_milestones').insert({
     user_id: userId, project_id: project.id,
     title: '🌱 Grown from an idea in the Garden', type: 'project_created',
-    date: new Date().toISOString().split('T')[0],
+    date: todayStr(),
   });
 
   const { data: updatedCore, error: coreErr } = await supabase

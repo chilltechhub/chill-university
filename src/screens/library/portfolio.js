@@ -8,9 +8,13 @@ import {
   Platform, ActivityIndicator, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import * as Clipboard from 'expo-clipboard';
 import { supabase } from '../../api/supabaseClient';
+import { cacheRead, cacheWrite, isOnline } from '../../api/offlineCache';
 import { useTheme } from '../../../context/ThemeContext';
+import { useUIPrefs } from '../../../context/UIPrefsContext';
+import TourSpot from '../../components/TourSpot';
 
 // ─── Suit/badge maps ──────────────────────────────────────────────────────────
 const SUIT_COLORS = {
@@ -104,9 +108,11 @@ function ItemCard({ item, accent, onDelete, th }) {
         {item.status && (
           <Text style={[ic.status, { color: accent }]}>{item.status}</Text>
         )}
-        <TouchableOpacity onPress={onDelete} style={{ marginLeft: 'auto', padding: 2 }}>
-          <Ionicons name="trash-outline" size={15} color={th.text4} />
-        </TouchableOpacity>
+        {!item.source && (
+          <TouchableOpacity onPress={onDelete} style={{ marginLeft: 'auto', padding: 2 }}>
+            <Ionicons name="trash-outline" size={15} color={th.text4} />
+          </TouchableOpacity>
+        )}
       </View>
       <Text style={[ic.title, { color: th.text1 }]}>{item.title}</Text>
       {item.desc ? <Text style={[ic.desc, { color: th.text3 }]}>{item.desc}</Text> : null}
@@ -133,7 +139,9 @@ const ic = StyleSheet.create({
 
 // ─── Main PortfolioScreen ─────────────────────────────────────────────────────
 export default function PortfolioScreen() {
+  const navigation = useNavigation();
   const { colors: rawColors } = useTheme();
+  const { showEmojis } = useUIPrefs();
   // Adapter: keeps every existing `th.xxx` reference below working unchanged,
   // now backed by the real app-wide theme instead of a screen-local copy.
   const th = {
@@ -164,21 +172,26 @@ export default function PortfolioScreen() {
     if (userId) loadAll(userId);
   }, [userId]));
 
-  const loadAll = async (uid) => {
-    setLoading(true);
-    try {
-      const [profileRes, projectsRes, researchRes, skillsRes] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', uid).maybeSingle(),
-        supabase.from('projects').select('id,title,objective,category,status,emoji,color,skills,created_at').eq('user_id', uid).is('deleted_at', null).order('created_at', { ascending: false }),
-        supabase.from('project_research').select('id,title,type,url,notes').eq('user_id', uid).order('created_at', { ascending: false }).limit(20),
-        supabase.from('project_tasks').select('project_id').eq('user_id', uid).eq('completed', true).limit(1),
-      ]);
+  // Runs the projects/skills/research/passions derivation against whichever
+  // raw {prof, projects, research} bundle it's handed — cached or fresh, so
+  // a cold offline launch renders identically to a live one.
+  const applyRaw = (raw) => {
+    const prof = raw.prof || {};
+    setProfile(prof);
 
-      const prof = profileRes.data || {};
-      setProfile(prof);
+      // ── Manually-added entries (public.portfolio_entries) — the only
+      // persistence Experience has; merged into every other section
+      // alongside its auto-derived items.
+      const entriesBySection = { projects: [], skills: [], experience: [], research: [], passions: [] };
+      (raw.entries || []).forEach(e => {
+        (entriesBySection[e.section] || (entriesBySection[e.section] = [])).push({
+          id: e.id, title: e.title, desc: e.description || '', link: e.link || '', tag: e.tag || 'General',
+        });
+      });
 
       // ── Projects — from projects table
-      const projects = (projectsRes.data || []).map(p => ({
+      const rawProjects = raw.projects || [];
+      const projects = rawProjects.map(p => ({
         id: p.id, title: p.title,
         desc: p.objective || '',
         tag: p.category || 'General',
@@ -202,7 +215,7 @@ export default function PortfolioScreen() {
         });
       }
       // Collect skills from completed projects
-      (projectsRes.data || []).forEach(p => {
+      rawProjects.forEach(p => {
         (p.skills || []).forEach(s => skillSet.add(s));
       });
 
@@ -211,7 +224,7 @@ export default function PortfolioScreen() {
       }));
 
       // ── Research — from project_research
-      const research = (researchRes.data || []).map(r => ({
+      const research = (raw.research || []).map(r => ({
         id: r.id, title: r.title,
         desc: r.notes || '',
         link: r.url || '',
@@ -236,20 +249,74 @@ export default function PortfolioScreen() {
         passions.push({ id: 'goal_0', title: prof.primary_goal, desc: 'Primary goal', tag: 'Goal', source: 'auto' });
       }
 
-      // ── Experience — starts empty, user fills in
-      setData({ projects, skills, experience: [], research, passions });
+      // ── Experience — entirely manual (public.portfolio_entries)
+      setData({
+        projects: [...entriesBySection.projects, ...projects],
+        skills: [...entriesBySection.skills, ...skills],
+        experience: entriesBySection.experience,
+        research: [...entriesBySection.research, ...research],
+        passions: [...entriesBySection.passions, ...passions],
+      });
+  };
 
+  const loadAll = async (uid) => {
+    setLoading(true);
+    const cacheKey = `portfolio_${uid}`;
+    try {
+      const cached = await cacheRead(cacheKey);
+      if (cached) applyRaw(cached);
+
+      if (!(await isOnline())) { setLoading(false); return; }
+
+      const [profileRes, projectsRes, researchRes, entriesRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', uid).maybeSingle(),
+        supabase.from('projects').select('id,title,objective,category,status,emoji,color,skills,created_at').eq('user_id', uid).is('deleted_at', null).order('created_at', { ascending: false }),
+        supabase.from('project_research').select('id,title,type,url,notes').eq('user_id', uid).order('created_at', { ascending: false }).limit(20),
+        supabase.from('portfolio_entries').select('id,section,title,description,link,tag,created_at').eq('user_id', uid).order('created_at', { ascending: false }),
+      ]);
+
+      const raw = { prof: profileRes.data || {}, projects: projectsRes.data || [], research: researchRes.data || [], entries: entriesRes.data || [] };
+      applyRaw(raw);
+      await cacheWrite(cacheKey, raw);
     } catch (e) { console.warn('PortfolioScreen', e); }
     setLoading(false);
   };
 
-  const addItem = (item) => {
-    const newItem = { id: Date.now().toString(), ...item };
-    setData(prev => ({ ...prev, [activeSection]: [newItem, ...prev[activeSection]] }));
+  const addItem = async (item) => {
+    if (!userId) return;
+    // Optimistic local id so it appears immediately; replaced once the
+    // insert comes back with its real one.
+    const tempId = 'temp_' + Date.now();
+    const optimistic = { id: tempId, ...item };
+    setData(prev => ({ ...prev, [activeSection]: [optimistic, ...prev[activeSection]] }));
+    try {
+      const { data: row, error } = await supabase.from('portfolio_entries').insert({
+        user_id: userId, section: activeSection,
+        title: item.title, description: item.desc || null, link: item.link || null, tag: item.tag || null,
+      }).select('id').single();
+      if (error) throw error;
+      setData(prev => ({
+        ...prev,
+        [activeSection]: prev[activeSection].map(it => it.id === tempId ? { ...it, id: row.id } : it),
+      }));
+    } catch (e) {
+      console.warn('PortfolioScreen addItem', e);
+      setData(prev => ({ ...prev, [activeSection]: prev[activeSection].filter(it => it.id !== tempId) }));
+      Alert.alert("Couldn't save that", 'Try again in a moment.');
+    }
   };
 
-  const deleteItem = (id) => {
-    setData(prev => ({ ...prev, [activeSection]: prev[activeSection].filter(it => it.id !== id) }));
+  const deleteItem = async (item) => {
+    // Auto-derived items (source: 'auto') aren't real rows here — nothing
+    // to delete, and ItemCard already hides the trash icon for them.
+    if (item.source) return;
+    setData(prev => ({ ...prev, [activeSection]: prev[activeSection].filter(it => it.id !== item.id) }));
+    const { error } = await supabase.from('portfolio_entries').delete().eq('id', item.id);
+    if (error) {
+      console.warn('PortfolioScreen deleteItem', error);
+      setData(prev => ({ ...prev, [activeSection]: [item, ...prev[activeSection]] }));
+      Alert.alert("Couldn't delete that", 'Try again in a moment.');
+    }
   };
 
   const currentSection = SECTIONS.find(s => s.key === activeSection);
@@ -269,6 +336,30 @@ export default function PortfolioScreen() {
   const totalSkills   = data.skills.length;
   const streak        = profile?.streak_count || 0;
 
+  // Copies a plain-text summary to the clipboard — the same "copy as
+  // Markdown" pattern ProjectDetail.js uses for a single build, applied to
+  // the whole portfolio so it can be pasted into a resume, application, or
+  // message to someone else.
+  const sharePortfolio = async () => {
+    const lines = [
+      `${displayName} — Level ${level} · ${xp} XP${streak ? ` · ${streak}-day streak` : ''}`,
+      lifeStage ? lifeStage : null,
+      primaryGoal ? `Goal: ${primaryGoal}` : null,
+      '',
+      `Projects (${totalProjects})`,
+      ...data.projects.slice(0, 8).map(p => `- ${p.title}`),
+      '',
+      `Skills (${totalSkills})`,
+      ...data.skills.slice(0, 12).map(sk => `- ${sk.title}`),
+    ];
+    if (data.experience.length) {
+      lines.push('', `Experience (${data.experience.length})`, ...data.experience.slice(0, 8).map(e => `- ${e.title}`));
+    }
+    const text = lines.filter(l => l !== null).join('\n');
+    await Clipboard.setStringAsync(text);
+    Alert.alert('Copied', 'Your portfolio summary was copied — paste it into a resume, application, or message.');
+  };
+
   if (loading) return (
     <View style={{ flex: 1, backgroundColor: th.bg, alignItems: 'center', justifyContent: 'center' }}>
       <ActivityIndicator color={th.cyan} size="large" />
@@ -286,9 +377,17 @@ export default function PortfolioScreen() {
           <>
             {/* ── Header bar ── */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 20, marginBottom: 20 }}>
-              <View>
-                <Text style={{ color: th.cyan, fontSize: 10, letterSpacing: 2, fontWeight: '800' }}>COMMAND VAULT</Text>
-                <Text style={{ color: th.text1, fontSize: 22, fontWeight: 'bold' }}>Portfolio</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <TouchableOpacity
+                  onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('LibraryScreen'))}
+                  style={{ padding: 2 }}
+                >
+                  <Ionicons name="chevron-back" size={22} color={th.cyan} />
+                </TouchableOpacity>
+                <View>
+                  <Text style={{ color: th.cyan, fontSize: 10, letterSpacing: 2, fontWeight: '800' }}>COMMAND VAULT</Text>
+                  <Text style={{ color: th.text1, fontSize: 22, fontWeight: 'bold' }}>Portfolio</Text>
+                </View>
               </View>
             </View>
 
@@ -311,15 +410,16 @@ export default function PortfolioScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={[ph.name, { color: th.text1 }]}>{displayName}</Text>
                   {lifeStage ? <Text style={[ph.sub, { color: th.text3 }]}>{lifeStage}</Text> : null}
-                  {primaryGoal ? <Text style={[ph.goal, { color: th.cyan }]}>🎯 {primaryGoal}</Text> : null}
+                  {primaryGoal ? <Text style={[ph.goal, { color: th.cyan }]}>{showEmojis ? '🎯 ' : ''}{primaryGoal}</Text> : null}
                 </View>
 
-                <TouchableOpacity style={[ph.shareBtn, { backgroundColor: th.gold + '18', borderColor: th.gold + '55' }]}>
+                <TouchableOpacity onPress={sharePortfolio} style={[ph.shareBtn, { backgroundColor: th.gold + '18', borderColor: th.gold + '55' }]}>
                   <Ionicons name="share-social-outline" size={18} color={th.gold} />
                 </TouchableOpacity>
               </View>
 
               {/* Stats row */}
+              <TourSpot id="portfolio-stats">
               <View style={[ph.statsRow, { borderTopColor: th.border }]}>
                 {[
                   { label: 'XP EARNED',  val: xp.toLocaleString(),    color: th.gold   },
@@ -333,6 +433,7 @@ export default function PortfolioScreen() {
                   </View>
                 ))}
               </View>
+              </TourSpot>
             </View>
 
             {/* ── Life areas strip ── */}
@@ -342,10 +443,11 @@ export default function PortfolioScreen() {
                   {(profile.active_life_areas || []).map((area, i) => {
                     const areaColors = { physical:'#e05858',mental:'#8b4fc4',social:'#2bb5a0',financial:'#3ac860',professional:'#c9a84c',spiritual:'#6b9fe8',creative:'#e0a830',digital:'#5a9ae0' };
                     const areaEmojis = { physical:'💪',mental:'🧠',social:'🤝',financial:'💰',professional:'🚀',spiritual:'✨',creative:'🎨',digital:'💻' };
+                    const areaIcons  = { physical:'fitness',mental:'bulb',social:'people',financial:'cash',professional:'rocket',spiritual:'sparkles',creative:'color-palette',digital:'laptop' };
                     const col = areaColors[area] || th.cyan;
                     return (
                       <View key={i} style={{ alignItems: 'center', backgroundColor: col + '18', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: col + '44' }}>
-                        <Text style={{ fontSize: 16 }}>{areaEmojis[area] || '⭐'}</Text>
+                        {showEmojis ? <Text style={{ fontSize: 16 }}>{areaEmojis[area] || '⭐'}</Text> : <Ionicons name={`${areaIcons[area] || 'star'}-outline`} size={15} color={col} />}
                         <Text style={{ fontSize: 10, color: col, fontWeight: '700', marginTop: 2, textTransform: 'capitalize' }}>{area}</Text>
                       </View>
                     );
@@ -355,6 +457,7 @@ export default function PortfolioScreen() {
             )}
 
             {/* ── Section chips ── */}
+            <TourSpot id="portfolio-sections">
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 {SECTIONS.map(sec => {
@@ -373,6 +476,7 @@ export default function PortfolioScreen() {
                 })}
               </View>
             </ScrollView>
+            </TourSpot>
 
             {/* ── Section header ── */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
@@ -383,18 +487,20 @@ export default function PortfolioScreen() {
                 </Text>
                 <Text style={{ color: th.text4, fontSize: 12 }}>({currentItems.length})</Text>
               </View>
+              <TourSpot id="portfolio-add">
               <TouchableOpacity onPress={() => setShowAdd(true)}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: accent, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 12 }}>
                 <Ionicons name="add" size={15} color={th.bg} />
                 <Text style={{ color: th.bg, fontWeight: '800', fontSize: 12 }}>Add Entry</Text>
               </TouchableOpacity>
+              </TourSpot>
             </View>
 
             {/* Auto-populate notice for experience */}
             {activeSection === 'experience' && currentItems.length === 0 && (
               <View style={[{ backgroundColor: th.bg1, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: th.border, marginBottom: 12 }]}>
                 <Text style={{ color: th.text4, fontSize: 12, lineHeight: 18 }}>
-                  💼 Add your work history, roles, internships, and other experience here. Tap "Add Entry" to get started.
+                  {showEmojis ? '💼 ' : ''}Add your work history, roles, internships, and other experience here. Tap "Add Entry" to get started.
                 </Text>
               </View>
             )}
@@ -402,9 +508,13 @@ export default function PortfolioScreen() {
         )}
         ListEmptyComponent={() => (
           <View style={{ alignItems: 'center', paddingVertical: 50 }}>
-            <Text style={{ fontSize: 44, marginBottom: 12 }}>
-              {currentSection?.icon === 'rocket-outline' ? '🛸' : '📭'}
-            </Text>
+            {showEmojis ? (
+              <Text style={{ fontSize: 44, marginBottom: 12 }}>
+                {currentSection?.icon === 'rocket-outline' ? '🛸' : '📭'}
+              </Text>
+            ) : (
+              <Ionicons name={currentSection?.icon || 'file-tray-outline'} size={40} color={th.text4} style={{ marginBottom: 12 }} />
+            )}
             <Text style={{ color: th.text1, fontSize: 16, fontWeight: 'bold', marginBottom: 6 }}>
               No {currentSection?.label} yet
             </Text>
@@ -423,7 +533,7 @@ export default function PortfolioScreen() {
           <ItemCard
             item={item}
             accent={accent}
-            onDelete={() => deleteItem(item.id)}
+            onDelete={() => deleteItem(item)}
             th={th}
           />
         )}

@@ -11,13 +11,19 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
+import { useUIPrefs } from '../../context/UIPrefsContext';
 import { supabase } from '../api/supabaseClient';
 import {
   AREAS, getInstances, getPresetComponents,
   getUserSubscriptions, generateInstances,
-  completeInstance, skipInstance, addNoteToInstance,
+  completeInstance, skipInstance, rescheduleInstance, addNoteToInstance,
 } from '../api/plannerService';
+import { schedulePlanReminder, cancelPlanReminder, hasScheduledReminder } from '../logic/planReminderActions';
 import DailyCheckin from '../components/DailyCheckin';
+import TourSpot from '../components/TourSpot';
+import { CLASS_SUBJECTS, CLASS_SCREEN_MAP } from '../data/classCatalog';
+import { getEnabledGames, getGame } from '../services/gameRegistry';
+import { dateStr } from '../logic/dateUtils';
 
 const { width: SW } = Dimensions.get('window');
 const PANEL_W      = Math.min(SW * 0.82, 370);
@@ -26,33 +32,8 @@ const HOUR_H       = 64; // px per hour in time view
 const DAY_START    = 6;  // 6am
 const DAY_END      = 22; // 10pm
 
-// ─── Notification helper ──────────────────────────────────────────────────────
-let Notifs = null;
-try { Notifs = require('expo-notifications'); } catch {}
-
-async function scheduleNotif(title, dateStr, timeStr, minutesBefore = 15) {
-  if (!Notifs || !timeStr) return null;
-  try {
-    const { status } = await Notifs.requestPermissionsAsync();
-    if (status !== 'granted') return null;
-    const [h, m]  = timeStr.split(':').map(Number);
-    const trigger = new Date(dateStr + 'T' + timeStr);
-    trigger.setMinutes(trigger.getMinutes() - minutesBefore);
-    if (trigger <= new Date()) return null;
-    return await Notifs.scheduleNotificationAsync({
-      content: { title: '📓 Planner', body: title, sound: true },
-      trigger,
-    });
-  } catch { return null; }
-}
-
-async function cancelNotif(id) {
-  if (!Notifs || !id) return;
-  try { await Notifs.cancelScheduledNotificationAsync(id); } catch {}
-}
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function toISO(d) { return d.toISOString().split('T')[0]; }
+function toISO(d) { return dateStr(d); } // local calendar, not UTC
 function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
 function getWeekDays(anchor) {
   const base = new Date(anchor);
@@ -133,6 +114,7 @@ function MiniCalendar({ value, onChange, color, c, t, s, r }) {
 
 // ─── Add / Edit instance modal ────────────────────────────────────────────────
 function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onClose, c, t, s, r }) {
+  const { showEmojis } = useUIPrefs();
   const [title,       setTitle]       = useState('');
   const [area,        setArea]        = useState('physical');
   const [cadence,     setCadence]     = useState('daily');
@@ -144,6 +126,17 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
   const [reminder,    setReminder]    = useState(false);
   const [reminderMin, setReminderMin] = useState(15);
   const [saving,      setSaving]      = useState(false);
+  // Link to Class / Project / Game — see supabase/migrations/20260905150000_planner_links.sql.
+  // linkScreen carries a ClassesStack screen name for 'class' or a
+  // gameRegistry id for 'game'; linkId carries a projects.id for 'project'.
+  // Only one of the two is ever meaningful, matching the columns' own split.
+  const [linkType,    setLinkType]    = useState(null);
+  const [linkScreen,  setLinkScreen]  = useState(null);
+  const [linkId,      setLinkId]      = useState(null);
+  const [linkLabel,   setLinkLabel]   = useState('');
+  const [linkSubject, setLinkSubject] = useState(null); // class-picker browsing state only
+  const [projects,       setProjects]       = useState(null); // null = not fetched yet
+  const [loadingProjects, setLoadingProjects] = useState(false);
   const isEdit = !!instance;
 
   useEffect(() => {
@@ -156,18 +149,75 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
       setTimeVal(instance.start_time || '');
       setDuration(instance.duration_minutes ? String(instance.duration_minutes) : '');
       setNotes(instance.notes || '');
+      setReminder(false); // corrected right after, once the id-map lookup below resolves
+      hasScheduledReminder(instance.id).then(setReminder);
+
+      // Resolve a display label for whatever's already linked, if anything.
+      setLinkType(instance.link_type || null);
+      setLinkScreen(instance.link_screen || null);
+      setLinkId(instance.link_id || null);
+      setLinkSubject(null);
+      if (instance.link_type === 'class') {
+        const found = Object.entries(CLASS_SCREEN_MAP).find(([, screen]) => screen === instance.link_screen);
+        setLinkLabel(found ? found[0] : (instance.link_screen || ''));
+      } else if (instance.link_type === 'game') {
+        setLinkLabel(getGame(instance.link_screen)?.name || instance.link_screen || '');
+      } else if (instance.link_type === 'project' && instance.link_id) {
+        setLinkLabel('');
+        supabase.from('projects').select('title').eq('id', instance.link_id).maybeSingle()
+          .then(({ data }) => { if (data) setLinkLabel(data.title); });
+      } else {
+        setLinkLabel('');
+      }
     } else {
       setTitle(''); setArea('physical'); setCadence('daily');
       setSelectedDate(date ? new Date(date + 'T00:00:00') : new Date());
       setTimeVal(''); setDuration(''); setNotes(''); setReminder(false);
+      setLinkType(null); setLinkScreen(null); setLinkId(null); setLinkLabel(''); setLinkSubject(null);
+      setProjects(null);
     }
   }, [instance, visible, date]);
+
+  // Lazy-load the user's open projects the first time the Project link tab
+  // is opened, instead of fetching on every modal open regardless of need.
+  useEffect(() => {
+    if (linkType === 'project' && projects === null && userId) {
+      setLoadingProjects(true);
+      supabase.from('projects').select('id,title,next_action,status')
+        .eq('user_id', userId).is('deleted_at', null).neq('status', 'completed')
+        .order('created_at', { ascending: false })
+        .then(({ data, error }) => {
+          if (!error) setProjects(data || []);
+          setLoadingProjects(false);
+        });
+    }
+  }, [linkType]);
+
+  const clearLink = () => { setLinkScreen(null); setLinkId(null); setLinkLabel(''); setLinkSubject(null); };
+  const pickClass = (label) => {
+    setLinkScreen(CLASS_SCREEN_MAP[label] || null);
+    setLinkId(null);
+    setLinkLabel(label);
+    if (!title.trim()) setTitle(`Study: ${label}`);
+  };
+  const pickProject = (p) => {
+    setLinkId(p.id);
+    setLinkScreen(null);
+    setLinkLabel(p.title);
+    if (!title.trim()) setTitle(p.next_action || p.title);
+  };
+  const pickGame = (g) => {
+    setLinkScreen(g.id);
+    setLinkId(null);
+    setLinkLabel(g.name);
+    if (!title.trim()) setTitle(`Practice: ${g.name}`);
+  };
 
   const save = async () => {
     if (!title.trim()) return;
     setSaving(true);
     try {
-      const payload = {
+      const basePayload = {
         user_id:          userId,
         title:            title.trim(),
         area,
@@ -180,36 +230,58 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
         completed:        false,
         skipped:          false,
       };
+      const linkFields = {
+        link_type:   linkType || null,
+        link_screen: (linkType === 'class' || linkType === 'game') ? linkScreen : null,
+        link_id:     linkType === 'project' ? linkId : null,
+      };
+
+      const writeRow = (payload) => isEdit
+        ? supabase.from('agenda_instances').update(payload).eq('id', instance.id).select().single()
+        : supabase.from('agenda_instances').insert(payload).select().single();
 
       let saved;
-      if (isEdit) {
-        const { data } = await supabase
-          .from('agenda_instances').update(payload).eq('id', instance.id).select().single();
-        saved = data;
-      } else {
-        const { data } = await supabase
-          .from('agenda_instances').insert(payload).select().single();
-        saved = data;
+      let { data, error } = await writeRow({ ...basePayload, ...linkFields });
+      if (error) {
+        // supabase/migrations/20260905150000_planner_links.sql hasn't been
+        // run yet on this database — the link_type/link_screen/link_id
+        // columns don't exist. Rather than blocking Add/Edit entirely until
+        // the user applies it, retry once without them so everything else
+        // still works; the link itself is just silently dropped this once.
+        const missingLinkColumns = error.code === 'PGRST204'
+          || /link_type|link_screen|link_id/i.test(error.message || '');
+        if (!missingLinkColumns) throw error;
+        console.warn('planner link columns missing — retrying without them; run the migration to enable links', error);
+        ({ data, error } = await writeRow(basePayload));
+        if (error) throw error;
       }
+      saved = data;
 
       // Sync to other tables
       if (area === 'professional' && !isEdit) {
-        await supabase.from('tasks').insert({ user_id: userId, title: title.trim(), due_date: payload.date, category: 'professional', priority: 2 });
+        const { error } = await supabase.from('tasks').insert({ user_id: userId, title: title.trim(), due_date: basePayload.date, category: 'professional', priority: 2 });
+        if (error) throw error;
       }
       if (area === 'mental' && title.toLowerCase().includes('focus')) {
-        await supabase.from('daily_focus').upsert({ user_id: userId, focus_text: title.trim(), date: payload.date });
+        const { error } = await supabase.from('daily_focus').upsert({ user_id: userId, focus_text: title.trim(), focus_date: basePayload.date });
+        if (error) throw error;
       }
 
-      // Schedule reminder
+      // Schedule (or cancel) the reminder. Its notification id lives in a
+      // local id map, not this row — see planReminderActions.js — so this
+      // never touches (and can't clobber) whatever the user actually typed
+      // in Notes above.
       if (reminder && timeVal && saved) {
-        const notifId = await scheduleNotif(title.trim(), payload.date, timeVal, reminderMin);
-        if (notifId) {
-          await supabase.from('agenda_instances').update({ notes: `notif:${notifId}` }).eq('id', saved.id);
-        }
+        await schedulePlanReminder(saved, reminderMin);
+      } else if (saved) {
+        await cancelPlanReminder(saved.id);
       }
 
       onSave(saved);
-    } catch (e) { console.warn('InstanceModal save', e); }
+    } catch (e) {
+      console.warn('InstanceModal save', e);
+      Alert.alert("Couldn't save", e?.message || 'Something went wrong — try again.');
+    }
     setSaving(false);
   };
 
@@ -217,6 +289,7 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
     Alert.alert('Remove', 'Remove this item from your agenda?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Remove', style: 'destructive', onPress: async () => {
+        await cancelPlanReminder(instance.id);
         await supabase.from('agenda_instances').delete().eq('id', instance.id);
         onDelete(instance.id);
       }},
@@ -308,6 +381,90 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
               </View>
             </View>
 
+            {/* Link to Class / Project / Game */}
+            <View>
+              <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Link to (optional)</Text>
+              <View style={{ flexDirection: 'row', gap: s.sm, marginBottom: s.sm }}>
+                {[
+                  { key: null,      label: 'None',    icon: 'close-outline' },
+                  { key: 'class',   label: 'Class',   icon: 'school-outline' },
+                  { key: 'project', label: 'Project', icon: 'hammer-outline' },
+                  { key: 'game',    label: 'Game',    icon: 'game-controller-outline' },
+                ].map(opt => (
+                  <TouchableOpacity key={opt.label} onPress={() => { setLinkType(opt.key); clearLink(); }}
+                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: s.sm, borderRadius: r.md, borderWidth: 1, borderColor: linkType === opt.key ? areaColor : c.border, backgroundColor: linkType === opt.key ? areaColor + '22' : 'transparent' }}>
+                    <Ionicons name={opt.icon} size={13} color={linkType === opt.key ? areaColor : c.text3} />
+                    <Text style={{ fontSize: t.xs, color: linkType === opt.key ? areaColor : c.text3, fontWeight: linkType === opt.key ? t.bold : t.regular }}>{opt.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {linkType && linkLabel ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: areaColor + '15', borderRadius: r.md, padding: s.sm }}>
+                  <Ionicons name="link-outline" size={13} color={areaColor} />
+                  <Text style={{ flex: 1, fontSize: t.xs, color: areaColor, fontWeight: t.semibold }} numberOfLines={1}>{linkLabel}</Text>
+                  <TouchableOpacity onPress={clearLink}>
+                    <Ionicons name="close-circle" size={15} color={areaColor} />
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              {linkType === 'class' && !linkLabel && (
+                <View>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View style={{ flexDirection: 'row', gap: s.sm }}>
+                      {CLASS_SUBJECTS.filter(sub => sub.children).map(sub => (
+                        <TouchableOpacity key={sub.title} onPress={() => setLinkSubject(linkSubject === sub.title ? null : sub.title)}
+                          style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: linkSubject === sub.title ? sub.color : c.border, backgroundColor: linkSubject === sub.title ? sub.color + '22' : 'transparent' }}>
+                          <Text style={{ fontSize: 11, fontWeight: '600', color: linkSubject === sub.title ? sub.color : c.text3 }}>{sub.title}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </ScrollView>
+                  {linkSubject && (
+                    <View style={{ marginTop: s.sm, gap: 6 }}>
+                      {CLASS_SUBJECTS.find(sub => sub.title === linkSubject)?.children.map(ch => (
+                        <TouchableOpacity key={ch.label} onPress={() => pickClass(ch.label)}
+                          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: s.sm, borderRadius: r.sm, backgroundColor: c.bg0, borderWidth: 1, borderColor: c.border }}>
+                          <Text style={{ fontSize: t.xs, color: c.text1 }}>{ch.label}</Text>
+                          <Ionicons name="chevron-forward" size={13} color={c.text4} />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {linkType === 'project' && !linkLabel && (
+                loadingProjects ? <ActivityIndicator color={areaColor} style={{ marginTop: s.sm }} /> :
+                !projects || projects.length === 0 ? (
+                  <Text style={{ fontSize: t.xs, color: c.text4, marginTop: s.sm }}>No open projects in the Workshop yet.</Text>
+                ) : (
+                  <View style={{ gap: 6, marginTop: s.sm }}>
+                    {projects.map(p => (
+                      <TouchableOpacity key={p.id} onPress={() => pickProject(p)}
+                        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: s.sm, borderRadius: r.sm, backgroundColor: c.bg0, borderWidth: 1, borderColor: c.border }}>
+                        <Text style={{ flex: 1, fontSize: t.xs, color: c.text1 }} numberOfLines={1}>{p.title}</Text>
+                        <Ionicons name="chevron-forward" size={13} color={c.text4} />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )
+              )}
+
+              {linkType === 'game' && !linkLabel && (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: s.sm }}>
+                  {getEnabledGames().map(g => (
+                    <TouchableOpacity key={g.id} onPress={() => pickGame(g)}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 14, borderWidth: 1, borderColor: c.border, backgroundColor: c.bg0 }}>
+                      <Text style={{ fontSize: 11 }}>{g.icon}</Text>
+                      <Text style={{ fontSize: 10, color: c.text3, fontWeight: '600' }}>{g.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
+
             {/* Time + duration */}
             <View style={{ flexDirection: 'row', gap: s.sm }}>
               <View style={{ flex: 1 }}>
@@ -333,7 +490,7 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
             {/* Reminder */}
             <View>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: reminder ? s.sm : 0 }}>
-                <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1 }}>🔔 Reminder</Text>
+                <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1 }}>{showEmojis ? '🔔 ' : ''}Reminder</Text>
                 <Switch value={reminder} onValueChange={setReminder}
                   trackColor={{ false: c.bg2, true: areaColor + '88' }}
                   thumbColor={reminder ? areaColor : c.text4} />
@@ -377,7 +534,7 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
 }
 
 // ─── Agenda item row ──────────────────────────────────────────────────────────
-function AgendaRow({ instance, onUpdate, onEdit, onReschedule, c, t, s, r }) {
+function AgendaRow({ instance, onUpdate, onEdit, navigation, c, t, s, r }) {
   const [expanded, setExpanded] = useState(false);
   const [saving,   setSaving]   = useState(false);
   const area     = AREAS[instance.area] || AREAS.physical;
@@ -388,9 +545,38 @@ function AgendaRow({ instance, onUpdate, onEdit, onReschedule, c, t, s, r }) {
   const handle = async (fn) => {
     setSaving(true);
     try { const updated = await fn(instance.id); if (onUpdate) onUpdate(updated); }
-    catch (e) { console.warn('AgendaRow', e); }
+    catch (e) {
+      console.warn('AgendaRow', e);
+      Alert.alert("Couldn't update that", 'Something went wrong — try again.');
+    }
     setSaving(false);
   };
+
+  // Jump to whatever this item is linked to (Class topic / Workshop project /
+  // Training game) — see supabase/migrations/20260905150000_planner_links.sql.
+  // Projects link by id, so this needs a fresh fetch (the project's own
+  // title/status can have changed since the item was linked); class and game
+  // links carry their destination directly, no lookup needed.
+  const openLink = async () => {
+    if (!instance.link_type || !navigation) return;
+    try {
+      if (instance.link_type === 'class' && instance.link_screen) {
+        navigation.navigate('ClassesStack', { screen: instance.link_screen });
+      } else if (instance.link_type === 'game' && instance.link_screen) {
+        navigation.navigate('Play', { gameId: instance.link_screen });
+      } else if (instance.link_type === 'project' && instance.link_id) {
+        const { data, error } = await supabase.from('projects').select('*').eq('id', instance.link_id).maybeSingle();
+        if (error || !data) { Alert.alert('Not found', "That project isn't there anymore."); return; }
+        navigation.navigate('ProjectDetail', { project: data });
+      }
+    } catch (e) {
+      console.warn('openLink', e);
+      Alert.alert("Couldn't open that", 'Something went wrong — try again.');
+    }
+  };
+  const linkLabel = instance.link_type === 'class' ? 'Open Class'
+    : instance.link_type === 'project' ? 'Open Project'
+    : instance.link_type === 'game' ? 'Open Game' : null;
 
   return (
     <View style={{
@@ -439,6 +625,20 @@ function AgendaRow({ instance, onUpdate, onEdit, onReschedule, c, t, s, r }) {
         <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={14} color={c.text4} />
       </TouchableOpacity>
 
+      {/* Missed-item quick actions — one tap, no need to expand first.
+          Do Now = completeInstance, Move = rescheduleInstance (defaults to
+          today), Drop = skipInstance; see plannerService.js. */}
+      {overdue && !done && (
+        <View style={{ flexDirection: 'row', gap: s.sm, paddingHorizontal: s.md, paddingBottom: s.md, flexWrap: 'wrap' }}>
+          <ActionBtn label="Do Now" icon="checkmark-circle-outline" color={area.color}
+            onPress={() => handle(() => completeInstance(instance.id, true))} />
+          <ActionBtn label="Move" icon="calendar-outline" color={c.text3}
+            onPress={() => handle(() => rescheduleInstance(instance.id))} />
+          <ActionBtn label="Drop" icon="close-circle-outline" color="#e05858"
+            onPress={() => handle(() => skipInstance(instance.id))} />
+        </View>
+      )}
+
       {/* Expanded actions */}
       {expanded && (
         <View style={{ paddingHorizontal: s.md, paddingBottom: s.md, borderTopWidth: 0.5, borderTopColor: c.border, paddingTop: s.sm, gap: s.sm }}>
@@ -458,12 +658,11 @@ function AgendaRow({ instance, onUpdate, onEdit, onReschedule, c, t, s, r }) {
               <ActionBtn label="Skip" icon="play-skip-forward-outline" color={c.text4}
                 onPress={() => handle(() => skipInstance(instance.id))} />
             )}
-            {(overdue && !done) && (
-              <ActionBtn label="Reschedule" icon="calendar-outline" color="#e05858"
-                onPress={() => onReschedule(instance)} />
-            )}
             <ActionBtn label="Edit" icon="pencil-outline" color={c.text3}
               onPress={() => onEdit(instance)} />
+            {linkLabel && (
+              <ActionBtn label={linkLabel} icon="open-outline" color={area.color} onPress={openLink} />
+            )}
           </View>
         </View>
       )}
@@ -482,7 +681,7 @@ function ActionBtn({ label, icon, color, onPress }) {
 }
 
 // ─── Time-based daily view ────────────────────────────────────────────────────
-function TimeView({ instances, onUpdate, onEdit, onReschedule, c, t, s, r }) {
+function TimeView({ instances, onUpdate, onEdit, navigation, c, t, s, r }) {
   const hours = Array.from({ length: DAY_END - DAY_START }, (_, i) => DAY_START + i);
   const timed   = instances.filter(i => i.start_time);
   const untimed = instances.filter(i => !i.start_time && !i.skipped);
@@ -494,7 +693,7 @@ function TimeView({ instances, onUpdate, onEdit, onReschedule, c, t, s, r }) {
         <View style={{ padding: s.lg, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
           <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>No time set</Text>
           {untimed.map(inst => (
-            <AgendaRow key={inst.id} instance={inst} onUpdate={onUpdate} onEdit={onEdit} onReschedule={onReschedule} c={c} t={t} s={s} r={r} />
+            <AgendaRow key={inst.id} instance={inst} onUpdate={onUpdate} onEdit={onEdit} navigation={navigation} c={c} t={t} s={s} r={r} />
           ))}
         </View>
       )}
@@ -552,7 +751,8 @@ function CurrentTimeLine({ c }) {
 }
 
 // ─── List daily view ──────────────────────────────────────────────────────────
-function ListView({ instances, onUpdate, onEdit, onReschedule, c, t, s, r }) {
+function ListView({ instances, onUpdate, onEdit, navigation, c, t, s, r }) {
+  const { showEmojis } = useUIPrefs();
   const overdue  = instances.filter(i => isOverdue(i));
   const today    = instances.filter(i => !isOverdue(i) && !i.skipped);
   const skipped  = instances.filter(i => i.skipped);
@@ -563,14 +763,14 @@ function ListView({ instances, onUpdate, onEdit, onReschedule, c, t, s, r }) {
         {label} · {items.filter(i => i.completed).length}/{items.length}
       </Text>
       {items.map(inst => (
-        <AgendaRow key={inst.id} instance={inst} onUpdate={onUpdate} onEdit={onEdit} onReschedule={onReschedule} c={c} t={t} s={s} r={r} />
+        <AgendaRow key={inst.id} instance={inst} onUpdate={onUpdate} onEdit={onEdit} navigation={navigation} c={c} t={t} s={s} r={r} />
       ))}
     </View>
   );
 
   if (instances.length === 0) return (
     <View style={{ alignItems: 'center', paddingTop: 60 }}>
-      <Text style={{ fontSize: 44, marginBottom: s.lg }}>📋</Text>
+      {showEmojis ? <Text style={{ fontSize: 44, marginBottom: s.lg }}>📋</Text> : <Ionicons name="clipboard-outline" size={40} color={c.text3} style={{ marginBottom: s.lg }} />}
       <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.sm }}>Nothing scheduled</Text>
       <Text style={{ fontSize: t.sm, color: c.text3 }}>Tap + to add something</Text>
     </View>
@@ -578,7 +778,7 @@ function ListView({ instances, onUpdate, onEdit, onReschedule, c, t, s, r }) {
 
   return (
     <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 80 }}>
-      <Section label="⚠️ Missed" items={overdue} color="#e05858" />
+      <Section label={showEmojis ? '⚠️ Missed' : 'Missed'} items={overdue} color="#e05858" />
       <Section label="Today" items={today} />
       <Section label="Skipped" items={skipped} />
     </ScrollView>
@@ -586,12 +786,17 @@ function ListView({ instances, onUpdate, onEdit, onReschedule, c, t, s, r }) {
 }
 
 // ─── Daily page ───────────────────────────────────────────────────────────────
-function DailyPage({ userId, date, activeAreas, timeMode, onUpdate, onEdit, onReschedule, refreshKey, c, t, s, r }) {
+function DailyPage({ userId, date, activeAreas, timeMode, onUpdate, onEdit, navigation, refreshKey, c, t, s, r }) {
   const [instances,  setInstances]  = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => { load(); }, [date, refreshKey]);
+  // activeAreas has to be a dependency here — load() reads it to filter the
+  // fetched rows, so without it in the array, toggling a filter chip updates
+  // the parent's state and re-renders this component with a new prop, but
+  // never actually re-runs load() to apply it. The chip would visually
+  // highlight while the list underneath stayed exactly as it was.
+  useEffect(() => { load(); }, [date, refreshKey, activeAreas]);
 
   const load = async () => {
     setLoading(true);
@@ -614,7 +819,7 @@ function DailyPage({ userId, date, activeAreas, timeMode, onUpdate, onEdit, onRe
 
   if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color={c.teal} />;
 
-  const sharedProps = { instances, onUpdate: handleUpdate, onEdit, onReschedule, c, t, s, r };
+  const sharedProps = { instances, onUpdate: handleUpdate, onEdit, navigation, c, t, s, r };
 
   return (
     <View style={{ flex: 1 }}>
@@ -645,7 +850,8 @@ function WeeklyView({ userId, anchor, activeAreas, onDayPress, refreshKey, c, t,
   const weekDays = getWeekDays(anchor);
   const today    = toISO(new Date());
 
-  useEffect(() => { load(); }, [anchor, refreshKey]);
+  // Same missing-dependency bug as DailyPage — see its comment above.
+  useEffect(() => { load(); }, [anchor, refreshKey, activeAreas]);
 
   const load = async () => {
     setLoading(true);
@@ -714,7 +920,8 @@ function MonthlyView({ userId, anchor, activeAreas, onDayPress, refreshKey, c, t
   const firstDay     = new Date(year, month, 1).getDay();
   const daysInMonth  = new Date(year, month + 1, 0).getDate();
 
-  useEffect(() => { load(); }, [anchor, refreshKey]);
+  // Same missing-dependency bug as DailyPage — see its comment above.
+  useEffect(() => { load(); }, [anchor, refreshKey, activeAreas]);
 
   const load = async () => {
     setLoading(true);
@@ -916,6 +1123,7 @@ function SidePanel({ visible, onClose, userId, onAdded, c, t, s, r }) {
 // ─── Main PlannerScreen ───────────────────────────────────────────────────────
 export default function PlannerScreen() {
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
+  const { showEmojis } = useUIPrefs();
   const navigation = useNavigation();
 
   const [userId,      setUserId]  = useState(null);
@@ -971,12 +1179,6 @@ export default function PlannerScreen() {
 
   const openAdd = () => { setEditInst(null); setModalDate(toISO(anchor)); setShowModal(true); };
   const openEdit = (inst) => { setEditInst(inst); setModalDate(inst.date); setShowModal(true); };
-  const openReschedule = async (inst) => {
-    // Move missed instance to today
-    const todayStr = toISO(new Date());
-    await supabase.from('agenda_instances').update({ date: todayStr }).eq('id', inst.id);
-    setRefresh(k => k + 1);
-  };
 
   if (loading) return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.bg0 }}>
@@ -997,8 +1199,13 @@ export default function PlannerScreen() {
       <View style={{ backgroundColor: c.headerBg, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
         {/* Title + actions */}
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: s.lg, paddingTop: s.md, paddingBottom: s.sm }}>
-          <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1, flex: 1 }}>📓 Planner</Text>
+          <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1, flex: 1 }}>{showEmojis ? '📓 ' : ''}Planner</Text>
           <View style={{ flexDirection: 'row', gap: s.sm }}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('WeeklyReviewScreen')}
+              style={{ padding: 6, borderRadius: r.md, backgroundColor: c.bg2, borderWidth: 0.5, borderColor: c.border }}>
+              <Ionicons name="stats-chart-outline" size={18} color={c.text3} />
+            </TouchableOpacity>
             {view === 'Daily' && (
               <TouchableOpacity
                 onPress={() => setTimeMode(m => !m)}
@@ -1006,12 +1213,14 @@ export default function PlannerScreen() {
                 <Ionicons name={timeMode ? 'list' : 'time-outline'} size={18} color={timeMode ? '#fff' : c.text3} />
               </TouchableOpacity>
             )}
+            <TourSpot id="planner-add">
             <TouchableOpacity
               onPress={openAdd}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.teal, borderRadius: r.lg, paddingHorizontal: s.md, paddingVertical: 6 }}>
               <Ionicons name="add" size={16} color="#fff" />
               <Text style={{ fontSize: t.xs, color: '#fff', fontWeight: t.bold }}>Add</Text>
             </TouchableOpacity>
+            </TourSpot>
             <TouchableOpacity onPress={() => setPanel(true)}
               style={{ padding: 6, borderRadius: r.md, backgroundColor: c.bg2, borderWidth: 0.5, borderColor: c.border }}>
               <Ionicons name="grid-outline" size={18} color={c.text3} />
@@ -1020,6 +1229,7 @@ export default function PlannerScreen() {
         </View>
 
         {/* View switcher */}
+        <TourSpot id="planner-views">
         <View style={{ flexDirection: 'row', paddingHorizontal: s.lg, gap: s.sm, paddingBottom: s.sm }}>
           {VIEWS.map(v => (
             <TouchableOpacity key={v} onPress={() => setView(v)}
@@ -1028,6 +1238,7 @@ export default function PlannerScreen() {
             </TouchableOpacity>
           ))}
         </View>
+        </TourSpot>
 
         {/* Period nav */}
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: s.lg, paddingBottom: s.sm }}>
@@ -1070,7 +1281,8 @@ export default function PlannerScreen() {
           userId={userId} date={anchor}
           activeAreas={activeAreas} timeMode={timeMode}
           onUpdate={() => setRefresh(k => k + 1)}
-          onEdit={openEdit} onReschedule={openReschedule}
+          onEdit={openEdit}
+          navigation={navigation}
           refreshKey={refreshKey} c={c} t={t} s={s} r={r}
         />
       ) : view === 'Weekly' ? (

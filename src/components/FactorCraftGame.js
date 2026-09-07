@@ -11,10 +11,13 @@ import {
 } from 'react-native';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import GameShell, { useGameTheme } from './GameShell';
+import { useUIPrefs } from '../../context/UIPrefsContext';
 import GameOver from './GameOver';
 import GradeSelectCard from './GradeSelectCard';
+import RoundCompleteScreen from './RoundCompleteScreen';
 import useGame from '../logic/useGame';
 import useGradeLevel from '../logic/useGradeLevel';
+import { roundLength } from '../logic/difficultyAdapter';
 
 const OPERATIONS = ['add', 'subtract', 'multiply', 'divide'];
 const OP_SYMBOLS  = { add: '+', subtract: '−', multiply: '×', divide: '÷' };
@@ -89,6 +92,7 @@ export default function FactorCraftGame({ onGameEnd }) {
   const navigation = useNavigation();
   const G = useGameTheme();
   const s = makeStyles(G);
+  const { showEmojis } = useUIPrefs();
   const OP_COLORS = getOpColors(G);
   const isFocused  = useIsFocused();
   const { level: skillLevel, setLevel: setSkillLevel } = useGradeLevel('factor');
@@ -98,13 +102,20 @@ export default function FactorCraftGame({ onGameEnd }) {
   const [selected, setSelected]     = useState([]);
   const [level, setLevel]           = useState(1);
   const [levelCorrect, setLC]       = useState(0);
+  // Rounds cleared THIS run — separate from `level` (which encodes grade-band
+  // starting difficulty). Round length grows off this, not off `level`, so
+  // every run's first round is short no matter which grade band it started
+  // at. See roundLength() in difficultyAdapter.js.
+  const [roundsCompleted, setRoundsCompleted] = useState(0);
+  const [roundMisses, setRoundMisses] = useState(0); // wrong checks this round — for the prize-screen stat only, doesn't cost round progress
+  const [roundComplete, setRoundComplete] = useState(null); // { correct, total, roundNumber, nextLevel } while showing the prize pick
   const [combo, setCombo]           = useState(0);
   const [timeLeft, setTimeLeft]     = useState(60);
   const [paused, setPaused]         = useState(false);
   const [feedback, setFeedback]     = useState(null);
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
-  const game = useGame({ subject: 'math', difficulty: Math.min(Math.ceil(level / 3), 3), skillLevel, onGameEnd });
+  const game = useGame({ subject: 'math', difficulty: Math.min(Math.ceil(level / 3), 3), skillLevel, onGameEnd, manualScoring: true });
   const hasEnded = useRef(false);
 
   const beginRun = () => {
@@ -112,6 +123,9 @@ export default function FactorCraftGame({ onGameEnd }) {
     hasEnded.current = false;
     setLevel(startLevel);
     setLC(0);
+    setRoundsCompleted(0);
+    setRoundMisses(0);
+    setRoundComplete(null);
     setCombo(0);
     setTimeLeft(STARTING_TIME[skillLevel] || 60);
     setRound(buildRound(startLevel));
@@ -144,19 +158,34 @@ export default function FactorCraftGame({ onGameEnd }) {
     setSelected([]);
     setFeedback(null);
     const newLC = currentLC + 1;
-    const needForLevel = 5 + Math.floor(currentLevel / 2);
+    const needForLevel = roundLength(roundsCompleted);
     if (newLC >= needForLevel) {
-      const nextLevel = currentLevel + 1;
-      setLevel(nextLevel);
-      setLC(0);
+      // Round cleared — pause on a prize pick instead of building the next
+      // round immediately; no points land until it's claimed. The timer
+      // bonus already earned is banked now so it's there when play resumes.
       setTimeLeft(t => Math.min(t + 10 + bonusTime, 90));
-      setRound(buildRound(nextLevel));
+      setPaused(true);
+      setRoundComplete({
+        correct: needForLevel, total: needForLevel + roundMisses,
+        roundNumber: roundsCompleted + 1, nextLevel: currentLevel + 1,
+      });
     } else {
       setLC(newLC);
       if (bonusTime) setTimeLeft(t => Math.min(t + bonusTime, 90));
       setRound(buildRound(currentLevel));
     }
-  }, []);
+  }, [roundsCompleted, roundMisses]);
+
+  const handleClaimPrize = useCallback(() => {
+    const { nextLevel } = roundComplete;
+    setLevel(nextLevel);
+    setLC(0);
+    setRoundMisses(0);
+    setRoundsCompleted(rc => rc + 1);
+    setRound(buildRound(nextLevel));
+    setRoundComplete(null);
+    setPaused(false);
+  }, [game, roundComplete]);
 
   const checkAnswer = useCallback(() => {
     if (!round || selected.length < 2 || feedback || hasEnded.current) return;
@@ -178,14 +207,21 @@ export default function FactorCraftGame({ onGameEnd }) {
       setTimeout(() => nextRound(level, levelCorrect, newCombo > 3 ? 5 : 0), 1200);
     } else {
       setCombo(0);
+      setRoundMisses(m => m + 1);
       Animated.sequence([
         Animated.timing(shakeAnim, { toValue: 8,  duration: 50, useNativeDriver: true }),
         Animated.timing(shakeAnim, { toValue: -8, duration: 50, useNativeDriver: true }),
         Animated.timing(shakeAnim, { toValue: 8,  duration: 50, useNativeDriver: true }),
         Animated.timing(shakeAnim, { toValue: 0,  duration: 50, useNativeDriver: true }),
       ]).start();
-      setFeedback({ isCorrect: false, msg: `Got ${result}, need ${round.target} · ${OP_TIPS[round.operation]}` });
-      setTimeout(() => { setFeedback(null); setSelected([]); }, 1800);
+      const outOfLives = game.lives - 1 <= 0;
+      setFeedback({ isCorrect: false, msg: outOfLives ? `Out of lives! It needed ${round.target}.` : `Got ${result}, need ${round.target} · ${OP_TIPS[round.operation]}` });
+      if (outOfLives) {
+        hasEnded.current = true;
+        setTimeout(() => game.endGame(), 1800);
+      } else {
+        setTimeout(() => { setFeedback(null); setSelected([]); }, 1800);
+      }
     }
   }, [selected, round, feedback, combo, game, level, levelCorrect, nextRound, shakeAnim]);
 
@@ -196,7 +232,7 @@ export default function FactorCraftGame({ onGameEnd }) {
 
   if (!started) {
     return (
-      <GradeSelectCard
+      <GradeSelectCard gameId="factor"
         title="Factor Craft" emoji="🔢" subjectLabel="Math"
         blurbs={BLURBS} level={skillLevel} onSelectLevel={setSkillLevel} onStart={beginRun}
       />
@@ -204,13 +240,32 @@ export default function FactorCraftGame({ onGameEnd }) {
   }
 
   if (game.done || hasEnded.current) return (
-    <GameOver
+    <GameOver gameId="factor"
       score={game.score} correct={game.correct} total={game.attempted}
       streak={game.bestStreak} title="Math Master!"
       onPlayAgain={() => { game.reset(); setStarted(false); }}
       onQuit={() => navigation.goBack()}
     />
   );
+
+  if (roundComplete) {
+    return (
+      <GameShell gameId="factor" disableFactToast
+        title="Factor Craft" emoji="🔢" subject={`Math · ${skillLevel}`}
+        score={game.score} lives={game.lives} streak={game.streak}
+      >
+        <RoundCompleteScreen
+          roundNumber={roundComplete.roundNumber}
+          correct={roundComplete.correct}
+          total={roundComplete.total}
+          streak={game.streak}
+          difficulty={Math.min(Math.ceil(level / 3), 3)}
+          onAward={game.addPoints}
+          onAdvance={handleClaimPrize}
+        />
+      </GameShell>
+    );
+  }
 
   if (!round) return null;
 
@@ -219,15 +274,15 @@ export default function FactorCraftGame({ onGameEnd }) {
   const currentResult = currentNums.length >= 2 ? calcResult(currentNums, round.operation) : null;
 
   return (
-    <GameShell
+    <GameShell gameId="factor"
       title="Factor Craft" emoji="🔢" subject={`Math · ${skillLevel}`}
       score={game.score} lives={game.lives} streak={game.streak}
-      timeLeft={timeLeft} progress={levelCorrect / (5 + Math.floor(level / 2))}
+      timeLeft={timeLeft} progress={levelCorrect / roundLength(roundsCompleted)}
     >
       <ScrollView contentContainerStyle={s.scroll}>
         <View style={s.levelRow}>
-          <Text style={s.levelText}>Round {level}</Text>
-          {combo > 1 && <Text style={s.comboText}>🔥 {combo}x Combo</Text>}
+          <Text style={s.levelText}>Level {level}</Text>
+          {combo > 1 && <Text style={s.comboText}>{showEmojis ? '🔥 ' : ''}{combo}x Combo</Text>}
         </View>
 
         {/* Target */}

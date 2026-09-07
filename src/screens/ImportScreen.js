@@ -40,6 +40,7 @@ import { itemsToMarkdown, itemsToCSV } from '../logic/exportUtils';
 import { CAPTURE_TYPES } from './CaptureInbox';
 import { LIFE_AREAS } from './library/LifeAreaScreen';
 import { FONTS } from '../theme';
+import TourSpot from '../components/TourSpot';
 
 const TYPE_MAP = Object.fromEntries(CAPTURE_TYPES.map(t => [t.key, t]));
 const LIFE_AREA_MAP = Object.fromEntries(LIFE_AREAS.map(a => [a.id, a]));
@@ -326,6 +327,7 @@ export default function ImportScreen() {
           )}
 
           {/* ── 1. Paste input ── */}
+          <TourSpot id="import-paste">
           <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, borderWidth: 0.5, borderColor: c.border, marginBottom: s.lg }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: s.sm }}>
               <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.text1 }}>Paste your stuff</Text>
@@ -353,8 +355,10 @@ export default function ImportScreen() {
               </View>
             )}
           </View>
+          </TourSpot>
 
           {/* ── 2. Format selector ── */}
+          <TourSpot id="import-format">
           <View style={{ marginBottom: s.lg }}>
             <Text style={{ fontSize: 11, fontWeight: '800', color: c.gold, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Format</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: s.sm }}>
@@ -373,8 +377,10 @@ export default function ImportScreen() {
               ))}
             </ScrollView>
           </View>
+          </TourSpot>
 
           {/* ── 3. Analyze / Parse ── */}
+          <TourSpot id="import-analyze">
           <TouchableOpacity
             onPress={analyze}
             disabled={analyzing || !pasteText.trim()}
@@ -391,6 +397,7 @@ export default function ImportScreen() {
               {analyzing ? 'Analyzing…' : willUseAI ? 'Analyze with AI' : 'Parse'}
             </Text>
           </TouchableOpacity>
+          </TourSpot>
 
           {/* ── 4. Preview list ── */}
           {items.length > 0 && (

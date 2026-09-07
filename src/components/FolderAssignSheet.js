@@ -4,7 +4,7 @@
 // existing folder, clear it, or create-and-assign a new one in one step.
 
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { FOLDER_COLORS } from '../logic/useFolders';
@@ -27,7 +27,7 @@ export default function FolderAssignSheet({ visible, folders, currentFolderId, o
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.sheet}>
           <View style={styles.handle} />
           <Text style={styles.title}>Move to Folder</Text>
@@ -82,7 +82,7 @@ export default function FolderAssignSheet({ visible, folders, currentFolderId, o
             <Text style={styles.closeBtnText}>Done</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

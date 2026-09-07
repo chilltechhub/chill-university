@@ -18,6 +18,7 @@ import { FONTS } from '../../theme';
 import { useUIPrefs } from '../../../context/UIPrefsContext';
 import { useBlueprint, CornerTicks, Stamp, RulerBar } from './blueprint';
 import TourSpot from '../../components/TourSpot';
+import { todayStr } from '../../logic/dateUtils';
 
 // ─── Graph-paper backdrop ───────────────────────────────────────────────────
 // Defined here rather than imported so this screen's background is visible in
@@ -154,7 +155,7 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
       await supabase.from('project_milestones').insert({
         user_id: userId, project_id: data.id,
         title: '🏗️ Build started', type: 'project_created',
-        date: new Date().toISOString().split('T')[0],
+        date: todayStr(),
       });
 
       onCreated(data);

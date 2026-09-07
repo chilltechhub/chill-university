@@ -5,22 +5,39 @@
 // Go; only *remote* push requires a dev client as of SDK 53+, and this
 // module never sends remote push).
 //
-// Each reminder "kind" has one stable identifier. Every sync cancels that
-// kind's previously-scheduled occurrence and, if still needed, schedules
-// a fresh one for today — so there's never more than one pending
-// notification per kind, and it always reflects today's actual state
-// (tasks done, checked in, etc.) rather than stale data from a prior day.
+// Every sync cancels a kind's previously-scheduled occurrences and reschedules
+// from scratch, so there's never a duplicate pending notification and the next
+// one always reflects the most recent state we had (tasks done, checked in).
 
 import { Platform } from 'react-native';
+import { isToday } from './dateUtils';
 
 let Notifications = null;
 try { Notifications = require('expo-notifications'); } catch {}
 
 const CHANNEL_ID = 'reminders';
-const IDS = {
-  dailyTasks: 'daily-tasks-reminder',
-  streak: 'streak-reminder',
+
+// Each reminder kind is scheduled as one-shot notifications across a rolling
+// window of days rather than a single occurrence for today.
+//
+// Why: a reminder only ever gets scheduled while the app is open, and the old
+// version scheduled today and today only. So the "Streak at risk" nudge —
+// whose entire job is to reach someone who has *not* opened the app — could
+// only exist if they had already opened the app that day, and a user who
+// skipped a day got no reminder at all on the day it mattered. It also
+// silently no-op'd for anyone whose first launch of the day was after 9:30pm.
+//
+// A rolling window fixes that without lying about state: day 0 reflects what
+// we actually know about today, and days 1..N-1 are scheduled optimistically.
+// Any day the user does open the app, this re-syncs and cancels whatever no
+// longer applies, so an optimistic reminder is only ever delivered on a day
+// the app went unopened — which is exactly when it should be.
+const WINDOW_DAYS = 7;
+const KINDS = {
+  dailyTasks: { prefix: 'daily-tasks-reminder', hour: 19, minute: 0 },
+  streak:     { prefix: 'streak-reminder',      hour: 21, minute: 30 },
 };
+const idFor = (kind, dayOffset) => `${KINDS[kind].prefix}-d${dayOffset}`;
 
 export async function ensureNotificationPermission() {
   if (!Notifications) return false;
@@ -54,17 +71,25 @@ async function cancel(id) {
   try { await Notifications.cancelScheduledNotificationAsync(id); } catch {}
 }
 
-// Schedules `id` for today at hour:minute local time, replacing any
-// previous occurrence. No-ops if that time has already passed today.
-async function scheduleForToday(id, hour, minute, title, body) {
+// Clears every day in a kind's window. Called before rescheduling so a shrunk
+// or shifted window can't leave orphaned notifications pending on the device.
+async function cancelKind(kind) {
+  for (let d = 0; d < WINDOW_DAYS; d++) await cancel(idFor(kind, d));
+}
+
+// Schedules `kind` for `dayOffset` days from now at its configured local time.
+// Silently skips a time that has already passed (only possible for day 0),
+// which is how "opened the app at 11pm" stops producing a same-evening ping.
+async function scheduleOn(kind, dayOffset, title, body) {
   if (!Notifications) return;
-  await cancel(id);
+  const { hour, minute } = KINDS[kind];
   const trigger = new Date();
+  trigger.setDate(trigger.getDate() + dayOffset);
   trigger.setHours(hour, minute, 0, 0);
   if (trigger <= new Date()) return;
   try {
     await Notifications.scheduleNotificationAsync({
-      identifier: id,
+      identifier: idFor(kind, dayOffset),
       content: { title, body, sound: true },
       trigger,
     });
@@ -77,8 +102,11 @@ async function scheduleForToday(id, hour, minute, title, body) {
 export function computeReminderState({ dailyMissions, profile }) {
   const tasksAllComplete = !dailyMissions?.length
     || dailyMissions.every((m) => m.status === 'completed' || m.progress >= m.target);
-  const checkedInToday = !!profile?.last_active_date
-    && new Date(profile.last_active_date).toDateString() === new Date().toDateString();
+  // Local calendar compare. `new Date('2026-09-05')` parses as UTC midnight, so
+  // toDateString() on it returned the previous day west of Greenwich and this
+  // read false all day for those users — meaning the "streak at risk" reminder
+  // fired every night no matter how much they'd used the app.
+  const checkedInToday = isToday(profile?.last_active_date);
   return { tasksAllComplete, checkedInToday };
 }
 
@@ -95,25 +123,41 @@ export function computeReminderState({ dailyMissions, profile }) {
  */
 export async function syncReminders({ enabled, tasksAllComplete, checkedInToday }) {
   if (!enabled) {
-    await cancel(IDS.dailyTasks);
-    await cancel(IDS.streak);
+    await cancelKind('dailyTasks');
+    await cancelKind('streak');
     return true;
   }
   const granted = await ensureNotificationPermission();
   if (!granted) return false;
   await ensureAndroidChannel();
 
-  if (tasksAllComplete) await cancel(IDS.dailyTasks);
-  else await scheduleForToday(IDS.dailyTasks, 19, 0, '📋 Still got tasks today', "You've got daily tasks waiting — a few minutes now keeps the streak alive.");
+  await cancelKind('dailyTasks');
+  await cancelKind('streak');
 
-  if (checkedInToday) await cancel(IDS.streak);
-  else await scheduleForToday(IDS.streak, 21, 30, '🔥 Don’t lose your streak', "You haven't checked in today — open the app before midnight to keep your streak.");
+  // Copy matches the vocabulary already on screen (GamesScreen's "Daily
+  // Drills" button, HomeScreen's "Base" framing) rather than generic
+  // "tasks"/"check in" language, so a notification reads like it belongs
+  // to the same app instead of a stock reminder plugin.
+  const DRILLS = ['📋 Daily Drills open', "Today's Daily Drills are still waiting — a few minutes keeps things moving."];
+  const STREAK = ['🔥 Streak at risk', "No check-in at Base yet today — open the app before midnight to keep your streak."];
+
+  for (let d = 0; d < WINDOW_DAYS; d++) {
+    // Today is the only day whose state we actually know, so it's the only day
+    // a "you're already done" cancellation applies to. Future days are always
+    // scheduled — if the user opens the app on one of them, this runs again and
+    // clears that day's reminder before it can fire.
+    if (d === 0 && tasksAllComplete) { /* nothing left to nudge about today */ }
+    else await scheduleOn('dailyTasks', d, ...DRILLS);
+
+    if (d === 0 && checkedInToday) { /* already checked in today */ }
+    else await scheduleOn('streak', d, ...STREAK);
+  }
   return true;
 }
 
 // Settings toggle turning reminders off entirely — cancels both kinds
 // immediately rather than waiting for the next sync.
 export async function cancelAllReminders() {
-  await cancel(IDS.dailyTasks);
-  await cancel(IDS.streak);
+  await cancelKind('dailyTasks');
+  await cancelKind('streak');
 }

@@ -12,7 +12,7 @@
 // associations (well-regarded programs, major employers, hiring hotspots),
 // not a ranked or exhaustive list — a starting point for research, not the
 // final word.
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, FlatList, Linking, Modal, Dimensions
@@ -20,8 +20,20 @@ import {
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../context/ThemeContext';
+import { useUIPrefs } from '../../../context/UIPrefsContext';
+import { supabase } from '../../api/supabaseClient';
+import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../api/offlineCache';
 
 const { width } = Dimensions.get('window');
+
+// Targeted careers persist as tagged rows in `area_notes` (free-form area_id;
+// 'professional' is already used by this table elsewhere). Without this,
+// "Target This Career" — the one commitment this screen asks for, and the
+// natural thing to come back to — was thrown away on unmount, and the list
+// started every session with two careers pre-bookmarked that the user never
+// chose.
+const CAREER_AREA_ID = 'professional';
+const CAREER_TAG     = 'CareerExplorer';
 
 const FIELD_COLOR_KEY = {
   Technology: 'digital', Design: 'creative', Engineering: 'professional',
@@ -46,14 +58,14 @@ const SORT_OPTIONS = [
 // point is that one interest fans out into many different paths, not a
 // single "correct" job.
 const INTERESTS = [
-  { id: 'build', label: 'Build & Make', emoji: '🛠️' },
-  { id: 'code', label: 'Code & Systems', emoji: '💻' },
-  { id: 'create', label: 'Create & Design', emoji: '🎨' },
-  { id: 'discover', label: 'Discover & Research', emoji: '🔬' },
-  { id: 'care', label: 'Help & Care', emoji: '🩺' },
-  { id: 'lead', label: 'Lead & Strategize', emoji: '📈' },
-  { id: 'teach', label: 'Teach & Communicate', emoji: '🗣️' },
-  { id: 'perform', label: 'Perform & Entertain', emoji: '🎬' },
+  { id: 'build', label: 'Build & Make', emoji: '🛠️', icon: 'hammer-outline' },
+  { id: 'code', label: 'Code & Systems', emoji: '💻', icon: 'code-slash-outline' },
+  { id: 'create', label: 'Create & Design', emoji: '🎨', icon: 'color-palette-outline' },
+  { id: 'discover', label: 'Discover & Research', emoji: '🔬', icon: 'search-outline' },
+  { id: 'care', label: 'Help & Care', emoji: '🩺', icon: 'heart-outline' },
+  { id: 'lead', label: 'Lead & Strategize', emoji: '📈', icon: 'trending-up-outline' },
+  { id: 'teach', label: 'Teach & Communicate', emoji: '🗣️', icon: 'chatbubbles-outline' },
+  { id: 'perform', label: 'Perform & Entertain', emoji: '🎬', icon: 'film-outline' },
 ];
 
 // `salaryMax` is the numeric top of the `salary` range, used for sorting.
@@ -64,7 +76,7 @@ const INTERESTS = [
 // rather than pointing somewhere that 404s.
 const CAREERS = [
   {
-    id: '1', title: 'AI / ML Systems Architect', field: 'Technology', icon: 'robot-outline',
+    id: '1', title: 'AI / ML Systems Architect', field: 'Technology', icon: 'hardware-chip-outline',
     salary: '$120k - $250k', salaryMax: 250, demand: 'Very High', trajectory: '+32% Growth',
     overview: 'Designs and builds the systems that let software learn from data — training models, deploying them at scale, and keeping them accurate and fast once they’re live.',
     dayToDay: [
@@ -94,7 +106,7 @@ const CAREERS = [
     interests: ['code','discover'],
   },
   {
-    id: '2', title: 'UX / Spatial Designer', field: 'Design', icon: 'palette-outline',
+    id: '2', title: 'UX / Spatial Designer', field: 'Design', icon: 'color-palette-outline',
     salary: '$75k - $145k', salaryMax: 145, demand: 'High', trajectory: '+15% Growth',
     overview: 'Shapes how people navigate digital products and immersive environments — turning research about real user needs into interfaces that feel obvious to use.',
     dayToDay: [
@@ -124,7 +136,7 @@ const CAREERS = [
     interests: ['create','code'],
   },
   {
-    id: '3', title: 'Quantum Data Engineer', field: 'Technology', icon: 'database-outline',
+    id: '3', title: 'Quantum Data Engineer', field: 'Technology', icon: 'analytics-outline',
     salary: '$95k - $180k', salaryMax: 180, demand: 'Very High', trajectory: '+28% Growth',
     overview: 'Builds the pipelines and infrastructure that move and process massive datasets — increasingly for next-generation computing systems, including early quantum applications.',
     dayToDay: [
@@ -819,6 +831,7 @@ const FIELDS = ['All', 'Technology', 'Design', 'Engineering', 'Healthcare', 'Fin
 
 export default function CareerExplorationScreen() {
   const { colors: c } = useTheme();
+  const { showEmojis, showSubtext } = useUIPrefs();
   const styles = makeStyles(c);
   const navigation = useNavigation();
   const DEMAND_COLORS = { 'Very High': c.financial, 'High': c.teal, 'Medium': c.gold, 'Low': c.error };
@@ -828,7 +841,8 @@ export default function CareerExplorationScreen() {
   const [activeField, setActiveField] = useState('All');
   const [sortBy, setSortBy] = useState('default');
   const [selectedCareer, setSelectedCareer] = useState(null);
-  const [savedCareers, setSavedCareers] = useState(['1', '4']);
+  const [savedCareers, setSavedCareers] = useState([]);
+  const [userId, setUserId] = useState(null);
   const [showInterestQuiz, setShowInterestQuiz] = useState(false);
   const [quizPicks, setQuizPicks] = useState([]);       // in-progress selection inside the quiz
   const [activeInterests, setActiveInterests] = useState([]); // applied to the list
@@ -870,10 +884,42 @@ export default function CareerExplorationScreen() {
     return 0; // 'default' — keep curated order
   });
 
-  const toggleSave = (id) => {
-    setSavedCareers(prev =>
-      prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
-    );
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      setUserId(user.id);
+      const cached = await cacheRead(`career_targets_${user.id}`);
+      if (cached) setSavedCareers(cached);
+      if (!(await isOnline())) return;
+      const { data } = await supabase.from('area_notes').select('content')
+        .eq('user_id', user.id).eq('area_id', CAREER_AREA_ID)
+        .ilike('content', `[${CAREER_TAG}]%`);
+      if (data) {
+        const ids = data.map(r => r.content.replace(`[${CAREER_TAG}]`, '').trim()).filter(Boolean);
+        setSavedCareers(ids);
+        cacheWrite(`career_targets_${user.id}`, ids);
+      }
+    });
+  }, []);
+
+  const toggleSave = async (id) => {
+    const wasSaved = savedCareers.includes(id);
+    const next = wasSaved ? savedCareers.filter(s => s !== id) : [...savedCareers, id];
+    setSavedCareers(next); // optimistic — the bookmark should respond instantly
+    if (!userId) return;
+    cacheWrite(`career_targets_${userId}`, next);
+    try {
+      if (wasSaved) {
+        await supabase.from('area_notes').delete()
+          .eq('user_id', userId).eq('area_id', CAREER_AREA_ID)
+          .eq('content', `[${CAREER_TAG}] ${id}`);
+      } else {
+        await offlineWrite(supabase, 'area_notes', {
+          user_id: userId, area_id: CAREER_AREA_ID,
+          content: `[${CAREER_TAG}] ${id}`, created_at: new Date().toISOString(),
+        });
+      }
+    } catch (e) { console.warn('careerexplore toggleSave', e); }
   };
 
   const startBuild = (career) => {
@@ -890,9 +936,17 @@ export default function CareerExplorationScreen() {
     <View style={styles.container}>
       {/* Top Telemetry Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.headerSubtitle}>SECTOR INTELLIGENCE</Text>
-          <Text style={styles.headerTitle}>Career Trajectories</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <TouchableOpacity
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('LibraryScreen'))}
+            style={{ padding: 2 }}
+          >
+            <Ionicons name="chevron-back" size={22} color={c.financial} />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.headerSubtitle}>SECTOR INTELLIGENCE</Text>
+            <Text style={styles.headerTitle}>Career Trajectories</Text>
+          </View>
         </View>
         <View style={styles.savedBadge}>
           <Ionicons name="bookmark" size={14} color={c.gold} />
@@ -907,10 +961,10 @@ export default function CareerExplorationScreen() {
         onPress={() => { setQuizPicks(activeInterests); setShowInterestQuiz(true); }}
         activeOpacity={0.85}
       >
-        <Text style={styles.discoverEmoji}>🧭</Text>
+        {showEmojis ? <Text style={styles.discoverEmoji}>🧭</Text> : <Ionicons name="compass-outline" size={24} color={c.gold} />}
         <View style={{ flex: 1 }}>
           <Text style={styles.discoverTitle}>Not sure where to start?</Text>
-          <Text style={styles.discoverDesc}>Discover careers by what you're drawn to, not a job title you already know.</Text>
+          {showSubtext && <Text style={styles.discoverDesc}>Discover careers by what you're drawn to, not a job title you already know.</Text>}
         </View>
         <Ionicons name="chevron-forward" size={18} color={c.gold} />
       </TouchableOpacity>
@@ -922,7 +976,7 @@ export default function CareerExplorationScreen() {
             const interest = INTERESTS.find(i => i.id === id);
             return (
               <View key={id} style={styles.activeInterestPill}>
-                <Text style={styles.activeInterestPillText}>{interest?.emoji} {interest?.label}</Text>
+                <Text style={styles.activeInterestPillText}>{showEmojis ? `${interest?.emoji} ` : ''}{interest?.label}</Text>
               </View>
             );
           })}
@@ -1046,7 +1100,7 @@ export default function CareerExplorationScreen() {
                 </TouchableOpacity>
               </View>
 
-              <Text style={styles.cardOverview} numberOfLines={2}>{item.overview}</Text>
+              {showSubtext && <Text style={styles.cardOverview} numberOfLines={2}>{item.overview}</Text>}
 
               {/* Metrics Pill Row */}
               <View style={styles.metricsRow}>
@@ -1093,9 +1147,11 @@ export default function CareerExplorationScreen() {
             <View style={styles.modalHandle} />
             <Text style={styles.quizEyebrow}>DISCOVER BY INTEREST</Text>
             <Text style={styles.quizTitle}>What are you drawn to?</Text>
-            <Text style={styles.quizSubtitle}>
-              Pick as many as you like. One interest usually leads to several very different careers — that's the point.
-            </Text>
+            {showSubtext && (
+              <Text style={styles.quizSubtitle}>
+                Pick as many as you like. One interest usually leads to several very different careers — that's the point.
+              </Text>
+            )}
 
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={styles.quizGrid}>
@@ -1108,7 +1164,11 @@ export default function CareerExplorationScreen() {
                       onPress={() => toggleQuizPick(interest.id)}
                       activeOpacity={0.8}
                     >
-                      <Text style={styles.quizCardEmoji}>{interest.emoji}</Text>
+                      {showEmojis ? (
+                        <Text style={styles.quizCardEmoji}>{interest.emoji}</Text>
+                      ) : (
+                        <Ionicons name={interest.icon} size={22} color={isPicked ? c.financial : c.text2} style={{ marginBottom: 4 }} />
+                      )}
                       <Text style={[styles.quizCardLabel, isPicked && styles.quizCardLabelActive]}>{interest.label}</Text>
                       {isPicked && (
                         <View style={styles.quizCardCheck}>
@@ -1157,7 +1217,7 @@ export default function CareerExplorationScreen() {
                   </TouchableOpacity>
                 </View>
 
-                <Text style={styles.modalSectionTitle}>📋 WHAT THEY ACTUALLY DO</Text>
+                <Text style={styles.modalSectionTitle}>{showEmojis ? '📋 ' : ''}WHAT THEY ACTUALLY DO</Text>
                 <Text style={styles.overviewText}>{selectedCareer.overview}</Text>
                 <View style={{ marginBottom: 20 }}>
                   {selectedCareer.dayToDay.map((line) => (
@@ -1181,7 +1241,7 @@ export default function CareerExplorationScreen() {
                   </View>
                 </View>
 
-                <Text style={styles.modalSectionTitle}>🎯 CORE SKILLS</Text>
+                <Text style={styles.modalSectionTitle}>{showEmojis ? '🎯 ' : ''}CORE SKILLS</Text>
                 <View style={styles.modalSkillsList}>
                   {selectedCareer.skills.map(sk => (
                     <View key={sk} style={styles.modalSkillTag}>
@@ -1191,7 +1251,7 @@ export default function CareerExplorationScreen() {
                   ))}
                 </View>
 
-                <Text style={styles.modalSectionTitle}>🧰 TOOLS OF THE TRADE</Text>
+                <Text style={styles.modalSectionTitle}>{showEmojis ? '🧰 ' : ''}TOOLS OF THE TRADE</Text>
                 <View style={styles.modalSkillsList}>
                   {selectedCareer.tools.map(tool => (
                     <View key={tool} style={[styles.modalSkillTag, { borderColor: c.teal + '55' }]}>
@@ -1201,7 +1261,7 @@ export default function CareerExplorationScreen() {
                   ))}
                 </View>
 
-                <Text style={styles.modalSectionTitle}>🎓 HOW PEOPLE GET THERE</Text>
+                <Text style={styles.modalSectionTitle}>{showEmojis ? '🎓 ' : ''}HOW PEOPLE GET THERE</Text>
                 <View style={{ marginBottom: 20 }}>
                   {selectedCareer.education.map((line) => (
                     <View key={line} style={styles.bulletRow}>
@@ -1211,7 +1271,7 @@ export default function CareerExplorationScreen() {
                   ))}
                 </View>
 
-                <Text style={styles.modalSectionTitle}>🏫 WELL-REGARDED SCHOOLS & PROGRAMS</Text>
+                <Text style={styles.modalSectionTitle}>{showEmojis ? '🏫 ' : ''}WELL-REGARDED SCHOOLS & PROGRAMS</Text>
                 <View style={styles.modalSkillsList}>
                   {selectedCareer.topSchools.map(school => (
                     <View key={school} style={[styles.modalSkillTag, { borderColor: c.gold + '55' }]}>
@@ -1221,7 +1281,7 @@ export default function CareerExplorationScreen() {
                   ))}
                 </View>
 
-                <Text style={styles.modalSectionTitle}>🏢 WHO'S HIRING</Text>
+                <Text style={styles.modalSectionTitle}>{showEmojis ? '🏢 ' : ''}WHO'S HIRING</Text>
                 <View style={styles.modalSkillsList}>
                   {selectedCareer.topCompanies.map(comp => (
                     <View key={comp} style={[styles.modalSkillTag, { borderColor: fieldColor(selectedCareer.field) + '55' }]}>
@@ -1231,7 +1291,7 @@ export default function CareerExplorationScreen() {
                   ))}
                 </View>
 
-                <Text style={styles.modalSectionTitle}>📍 WHERE THE JOBS ARE</Text>
+                <Text style={styles.modalSectionTitle}>{showEmojis ? '📍 ' : ''}WHERE THE JOBS ARE</Text>
                 <View style={styles.modalSkillsList}>
                   {selectedCareer.topLocations.map(loc => (
                     <View key={loc} style={styles.modalSkillTag}>
@@ -1244,7 +1304,7 @@ export default function CareerExplorationScreen() {
                   Schools, employers & locations are well-known reputational starting points for research — not a ranking, and not exhaustive.
                 </Text>
 
-                <Text style={styles.modalSectionTitle}>🗺️ LEARNING ROADMAP</Text>
+                <Text style={styles.modalSectionTitle}>{showEmojis ? '🗺️ ' : ''}LEARNING ROADMAP</Text>
                 <View style={styles.roadmapList}>
                   {selectedCareer.roadmap.map((stage, idx) => (
                     <View key={stage.stage} style={styles.roadmapStageRow}>
@@ -1274,14 +1334,14 @@ export default function CareerExplorationScreen() {
                   </TouchableOpacity>
                 )}
 
-                <Text style={styles.modalSectionTitle}>🚀 TAKE ACTION</Text>
+                <Text style={styles.modalSectionTitle}>{showEmojis ? '🚀 ' : ''}TAKE ACTION</Text>
                 <TouchableOpacity style={styles.actionCard} onPress={() => startBuild(selectedCareer)}>
                   <View style={[styles.actionIconBox, { backgroundColor: fieldColor(selectedCareer.field) + '18' }]}>
                     <Ionicons name="hammer-outline" size={18} color={fieldColor(selectedCareer.field)} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.actionCardTitle}>Start a {selectedCareer.buildType} build</Text>
-                    <Text style={styles.actionCardDesc}>Opens The Workshop with a matching build type ready to go</Text>
+                    {showSubtext && <Text style={styles.actionCardDesc}>Opens The Workshop with a matching build type ready to go</Text>}
                   </View>
                   <Ionicons name="chevron-forward" size={16} color={c.text4} />
                 </TouchableOpacity>
@@ -1292,7 +1352,7 @@ export default function CareerExplorationScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.actionCardTitle}>Browse Resources & Instruments</Text>
-                    <Text style={styles.actionCardDesc}>Curated courses, references & tools to start learning</Text>
+                    {showSubtext && <Text style={styles.actionCardDesc}>Curated courses, references & tools to start learning</Text>}
                   </View>
                   <Ionicons name="chevron-forward" size={16} color={c.text4} />
                 </TouchableOpacity>
@@ -1306,7 +1366,7 @@ export default function CareerExplorationScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.actionCardTitle}>Bureau of Labor Statistics</Text>
-                    <Text style={styles.actionCardDesc}>Official U.S. outlook, pay & requirements data</Text>
+                    {showSubtext && <Text style={styles.actionCardDesc}>Official U.S. outlook, pay & requirements data</Text>}
                   </View>
                   <Ionicons name="open-outline" size={14} color={c.text4} />
                 </TouchableOpacity>

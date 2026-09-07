@@ -11,8 +11,10 @@ import { Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../../context/ThemeContext';
+import { useUIPrefs } from '../../../context/UIPrefsContext';
 import { supabase } from '../../api/supabaseClient';
 import { fetchContentPool } from '../../api/remoteConfigService';
+import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../api/offlineCache';
 import RelatedLinks from './RelatedLinks';
 
 // ─── Section configs — all 18 missing sub-sections ───────────────────────────
@@ -305,6 +307,7 @@ export default function AreaSectionScreen() {
   const navigation = useNavigation();
   const route      = useRoute();
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
+  const { showEmojis, showSubtext } = useUIPrefs();
 
   // Determine which config to use — passed via route params OR via screenName
   const screenName = route.params?.screenName || route.name;
@@ -345,11 +348,17 @@ export default function AreaSectionScreen() {
 
   const load = async (uid) => {
     setLoading(true);
-    const { data } = await supabase.from('area_notes').select('*')
-      .eq('user_id', uid).eq('area_id', config.areaId)
-      .ilike('content', `%[${screenName}]%`)
-      .order('created_at', { ascending: false }).limit(30);
-    if (data) setEntries(data);
+    const cacheKey = `area_section_${uid}_${screenName}`;
+    const cached = await cacheRead(cacheKey);
+    if (cached) setEntries(cached);
+
+    if (await isOnline()) {
+      const { data } = await supabase.from('area_notes').select('*')
+        .eq('user_id', uid).eq('area_id', config.areaId)
+        .ilike('content', `%[${screenName}]%`)
+        .order('created_at', { ascending: false }).limit(30);
+      if (data) { setEntries(data); cacheWrite(cacheKey, data); }
+    }
     setLoading(false);
   };
 
@@ -359,7 +368,7 @@ export default function AreaSectionScreen() {
     const content = `[${screenName}][${category}] ${Object.entries(fields).filter(([k,v]) => v?.toString().trim()).map(([k,v]) => `${k}: ${v}`).join(' | ')}`;
     const entry = { user_id: userId, area_id: config.areaId, content, created_at: new Date().toISOString() };
     if (userId) {
-      const { data } = await supabase.from('area_notes').insert(entry).select().single();
+      const { row: data } = await offlineWrite(supabase, 'area_notes', entry);
       if (data) setEntries(prev => [data, ...prev]);
     } else {
       setEntries(prev => [{ ...entry, id: Date.now().toString() }, ...prev]);
@@ -370,7 +379,7 @@ export default function AreaSectionScreen() {
   const logHabit = async (habit) => {
     const entry = { user_id: userId, area_id: config.areaId, content: `[${screenName}][Habit] ✅ ${habit}`, created_at: new Date().toISOString() };
     if (userId) {
-      const { data } = await supabase.from('area_notes').insert(entry).select().single();
+      const { row: data } = await offlineWrite(supabase, 'area_notes', entry);
       if (data) setEntries(prev => [data, ...prev]);
     } else {
       setEntries(prev => [{ ...entry, id: Date.now().toString() }, ...prev]);
@@ -410,11 +419,11 @@ export default function AreaSectionScreen() {
           </TouchableOpacity>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, marginBottom: s.sm }}>
             <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: color + '22', borderWidth: 1.5, borderColor: color, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontSize: 24 }}>{config.emoji}</Text>
+              {showEmojis ? <Text style={{ fontSize: 24 }}>{config.emoji}</Text> : <Ionicons name="list-outline" size={22} color={color} />}
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: t.xl, fontWeight: t.bold, color: c.text1 }}>{config.title}</Text>
-              <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>{config.description}</Text>
+              {showSubtext && <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>{config.description}</Text>}
             </View>
           </View>
 
@@ -423,7 +432,10 @@ export default function AreaSectionScreen() {
             {['log','habits','related','tips'].map(tab => (
               <TouchableOpacity key={tab} onPress={() => setActiveTab(tab)}
                 style={{ flex: 1, paddingVertical: 8, borderRadius: r.md, backgroundColor: activeTab === tab ? color : c.bg2, alignItems: 'center' }}>
-                <Text style={{ fontSize: 10, fontWeight: t.bold, color: activeTab === tab ? '#fff' : c.text3, textTransform: 'capitalize' }}>{tab === 'log' ? '📝 Log' : tab === 'habits' ? '✅ Habits' : tab === 'related' ? '🔗 Related' : '💡 Tips'}</Text>
+                <Text style={{ fontSize: 10, fontWeight: t.bold, color: activeTab === tab ? '#fff' : c.text3, textTransform: 'capitalize' }}>
+                  {!showEmojis ? '' : tab === 'log' ? '📝 ' : tab === 'habits' ? '✅ ' : tab === 'related' ? '🔗 ' : '💡 '}
+                  {tab === 'log' ? 'Log' : tab === 'habits' ? 'Habits' : tab === 'related' ? 'Related' : 'Tips'}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -497,7 +509,7 @@ export default function AreaSectionScreen() {
             {loading ? <ActivityIndicator color={color} style={{ marginTop: 20 }} /> : (
               Object.keys(grouped).length === 0 ? (
                 <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-                  <Text style={{ fontSize: 44, marginBottom: s.sm }}>{config.emoji}</Text>
+                  {showEmojis ? <Text style={{ fontSize: 44, marginBottom: s.sm }}>{config.emoji}</Text> : <Ionicons name="list-outline" size={40} color={color} style={{ marginBottom: s.sm }} />}
                   <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1, marginBottom: s.xs }}>No entries yet</Text>
                   <Text style={{ fontSize: t.sm, color: c.text3, textAlign: 'center' }}>Tap above to start logging your {config.title.toLowerCase()}.</Text>
                 </View>
@@ -567,7 +579,7 @@ export default function AreaSectionScreen() {
         {activeTab === 'related' && (
           <>
             <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.md }}>
-              🔗 Linked notes, projects & resources
+              {showEmojis ? '🔗 ' : ''}Linked notes, projects & resources
             </Text>
             <RelatedLinks areaId={config.areaId} color={color} c={c} t={t} s={s} r={r} />
           </>
@@ -577,7 +589,7 @@ export default function AreaSectionScreen() {
         {activeTab === 'tips' && (
           <>
             <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.md }}>
-              💡 Tips for {config.title}
+              {showEmojis ? '💡 ' : ''}Tips for {config.title}
             </Text>
             {tips.map((tip, i) => (
               <View key={i} style={{ flexDirection: 'row', gap: s.md, backgroundColor: c.bg1, borderRadius: r.md, padding: s.lg, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: color }}>
@@ -590,7 +602,7 @@ export default function AreaSectionScreen() {
             {(config.resources || []).length > 0 && (
               <>
                 <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginTop: s.lg, marginBottom: s.sm }}>
-                  🔗 Resources
+                  {showEmojis ? '🔗 ' : ''}Resources
                 </Text>
                 {config.resources.map((res, i) => (
                   <TouchableOpacity key={i} onPress={() => Linking.openURL(res.link)}

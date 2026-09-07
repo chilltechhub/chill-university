@@ -10,6 +10,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../api/supabaseClient';
+import { cacheRead, cacheWrite, isOnline } from '../api/offlineCache';
+import { dateStr } from '../logic/dateUtils';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -66,7 +68,7 @@ function getWeekDays(anchor) {
     const d = new Date(base); d.setDate(base.getDate() + i); return d;
   });
 }
-function toISO(d)    { return d.toISOString().split('T')[0]; }
+function toISO(d)    { return dateStr(d); } // local calendar, not UTC
 function fmt12(t24)  {
   if (!t24) return '';
   const [h, m] = t24.split(':').map(Number);
@@ -88,19 +90,30 @@ function AddEventForm({ date, userId, onSave, onCancel, c, t, s, r, initialType 
     if (!title.trim()) return;
     setSaving(true);
     try {
-      const { data, error } = await supabase.from('calendar_events').insert({
-        user_id: userId, title: title.trim(),
-        description: desc.trim() || null,
-        date: toISO(date), time: allDay ? null : (time || null),
-        type, color: TYPE_COLORS[type], all_day: allDay, reminder_min: reminder,
-      }).select().single();
-      if (error) throw error;
+      // Task and Focus each already have their own dedicated table — and
+      // the week load below (loadWeek) fetches both of those AND
+      // calendar_events independently, rendering each row it finds. An
+      // unconditional calendar_events insert here on top of that dedicated
+      // row made every task/focus entry show up twice on the same day.
+      let data = null;
+      if (type === 'task') {
+        const { error: taskErr } = await supabase.from('tasks').insert({ user_id: userId, title: title.trim(), due_date: toISO(date), category: 'personal', priority: 2 });
+        if (taskErr) throw taskErr;
+      } else if (type === 'focus') {
+        const { error: focusErr } = await supabase.from('daily_focus').upsert({ user_id: userId, focus_text: title.trim(), focus_date: toISO(date) });
+        if (focusErr) throw focusErr;
+      } else {
+        const { data: evt, error } = await supabase.from('calendar_events').insert({
+          user_id: userId, title: title.trim(),
+          description: desc.trim() || null,
+          date: toISO(date), time: allDay ? null : (time || null),
+          type, color: TYPE_COLORS[type], all_day: allDay, reminder_min: reminder,
+        }).select().single();
+        if (error) throw error;
+        data = evt;
+      }
       if (reminder && time && !allDay)
         await scheduleReminder(title.trim(), toISO(date), time, reminder);
-      if (type === 'task')
-        await supabase.from('tasks').insert({ user_id: userId, title: title.trim(), due_date: toISO(date), category: 'personal', priority: 2 });
-      if (type === 'focus')
-        await supabase.from('daily_focus').upsert({ user_id: userId, focus_text: title.trim(), date: toISO(date) });
       onSave(data);
     } catch { Alert.alert('Error', 'Could not save.'); }
     setSaving(false);
@@ -194,11 +207,17 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
   const loadWeek = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
+    const cacheKey = `calendar_week_${userId}_${weekStart}_${weekEnd}`;
     try {
+      const cached = await cacheRead(cacheKey);
+      if (cached) setEvents(cached);
+
+      if (!(await isOnline())) { setLoading(false); return; }
+
       const [evtRes, taskRes, focusRes, noteRes, plannerRes] = await Promise.all([
         supabase.from('calendar_events').select('*').eq('user_id', userId).gte('date', weekStart).lte('date', weekEnd),
         supabase.from('tasks').select('id,title,due_date').eq('user_id', userId).eq('completed', false).gte('due_date', weekStart).lte('due_date', weekEnd),
-        supabase.from('daily_focus').select('id,focus_text,date').eq('user_id', userId).gte('date', weekStart).lte('date', weekEnd),
+        supabase.from('daily_focus').select('id,focus_text,focus_date').eq('user_id', userId).gte('focus_date', weekStart).lte('focus_date', weekEnd),
         supabase.from('captures').select('id,title,created_at').eq('user_id', userId).eq('status','inbox').gte('created_at', weekStart).lte('created_at', weekEnd+'T23:59:59'),
         supabase.from('agenda_instances').select('id,title,area,date,start_time').eq('user_id', userId).gte('date', weekStart).lte('date', weekEnd).eq('completed', false).eq('skipped', false),
       ]);
@@ -206,13 +225,14 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
       const push = (date, item) => { if (!map[date]) map[date]=[]; map[date].push(item); };
       (evtRes.data  ||[]).forEach(e  => push(e.date, {...e, _src:'calendar'}));
       (taskRes.data ||[]).forEach(tk => { if(tk.due_date) push(tk.due_date,{id:'task_'+tk.id, title:tk.title, type:'task', color:TYPE_COLORS.task, _src:'task'}); });
-      (focusRes.data||[]).forEach(f  => push(f.date, {id:'focus_'+f.id, title:f.focus_text, type:'focus', color:TYPE_COLORS.focus, _src:'focus'}));
+      (focusRes.data||[]).forEach(f  => push(f.focus_date, {id:'focus_'+f.id, title:f.focus_text, type:'focus', color:TYPE_COLORS.focus, _src:'focus'}));
       (noteRes.data ||[]).forEach(n  => { const d=n.created_at?.split('T')[0]; if(d) push(d,{id:'note_'+n.id, title:n.title||'Note', type:'note', color:TYPE_COLORS.note, _src:'note'}); });
       (plannerRes.data ||[]).forEach(item => {
         const area = PLANNER_AREAS[item.area] || { emoji: '•', color: c.teal };
         push(item.date, { ...item, type: 'planner', color: area.color, _src: 'planner', area: item.area, emoji: area.emoji, time: item.start_time });
       });
       setEvents(map);
+      await cacheWrite(cacheKey, map);
     } catch(e) { console.warn('CalendarModal', e); }
     setLoading(false);
   }, [userId, weekStart, weekEnd, c.teal]);

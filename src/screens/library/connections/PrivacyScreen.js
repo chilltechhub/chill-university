@@ -1,10 +1,12 @@
 // src/screens/library/connections/PrivacyScreen.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Linking, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Linking, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../../context/ThemeContext';
+import { useUIPrefs } from '../../../../context/UIPrefsContext';
 import { supabase } from '../../../api/supabaseClient';
+import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../../api/offlineCache';
 import RelatedLinks from '../RelatedLinks';
 
 const CHECKLIST = [
@@ -25,6 +27,7 @@ const SCREEN_TAG = '[Privacy]';
 export default function PrivacyScreen() {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
+  const { showEmojis, showSubtext } = useUIPrefs();
   const [checked,  setChecked]  = useState({});
   const [entries,  setEntries]  = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -42,16 +45,24 @@ export default function PrivacyScreen() {
 
   const load = async (uid) => {
     setLoading(true);
-    const [checklistRes, logRes] = await Promise.all([
-      supabase.from('area_notes').select('content').eq('user_id', uid).eq('area_id', 'digital')
-        .ilike('content', `${CHECKLIST_TAG}%`).order('created_at', { ascending: false }).limit(1).maybeSingle(),
-      supabase.from('area_notes').select('*').eq('user_id', uid).eq('area_id', 'digital')
-        .ilike('content', `%${SCREEN_TAG}%`).order('created_at', { ascending: false }).limit(30),
-    ]);
-    if (checklistRes.data) {
-      try { setChecked(JSON.parse(checklistRes.data.content.slice(CHECKLIST_TAG.length))); } catch {}
+    const cacheKey = `privacy_${uid}`;
+    const cached = await cacheRead(cacheKey);
+    if (cached) { setChecked(cached.checked || {}); setEntries(cached.entries || []); }
+
+    if (await isOnline()) {
+      const [checklistRes, logRes] = await Promise.all([
+        supabase.from('area_notes').select('content').eq('user_id', uid).eq('area_id', 'digital')
+          .ilike('content', `${CHECKLIST_TAG}%`).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('area_notes').select('*').eq('user_id', uid).eq('area_id', 'digital')
+          .ilike('content', `%${SCREEN_TAG}%`).order('created_at', { ascending: false }).limit(30),
+      ]);
+      let nextChecked = checked;
+      if (checklistRes.data) {
+        try { nextChecked = JSON.parse(checklistRes.data.content.slice(CHECKLIST_TAG.length)); setChecked(nextChecked); } catch {}
+      }
+      if (logRes.data) setEntries(logRes.data);
+      await cacheWrite(cacheKey, { checked: nextChecked, entries: logRes.data || [] });
     }
-    if (logRes.data) setEntries(logRes.data);
     setLoading(false);
   };
 
@@ -59,11 +70,11 @@ export default function PrivacyScreen() {
     const next = { ...checked, [id]: !checked[id] };
     setChecked(next);
     if (userId) {
-      supabase.from('area_notes').insert({
+      offlineWrite(supabase, 'area_notes', {
         user_id: userId, area_id: 'digital',
         content: CHECKLIST_TAG + JSON.stringify(next),
         created_at: new Date().toISOString(),
-      }).then(() => {});
+      });
     }
   };
   const done = Object.values(checked).filter(Boolean).length;
@@ -72,7 +83,7 @@ export default function PrivacyScreen() {
     const value = text.trim();
     if (!value || !userId) return;
     const entry = { user_id: userId, area_id: 'digital', content: `${SCREEN_TAG} ${value}`, created_at: new Date().toISOString() };
-    const { data } = await supabase.from('area_notes').insert(entry).select().single();
+    const { row: data } = await offlineWrite(supabase, 'area_notes', entry);
     if (data) setEntries(prev => [data, ...prev]);
     setInput(''); setShowAdd(false);
   };
@@ -83,13 +94,13 @@ export default function PrivacyScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: c.bg0 }}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg0 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={{ backgroundColor: c.bg1, padding: s.lg, paddingTop: s.xxl, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: s.sm }}>
           <Ionicons name="chevron-back" size={20} color={color} />
         </TouchableOpacity>
-        <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>🔒 Privacy</Text>
-        <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 3 }}>Control your data and digital footprint</Text>
+        <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>{showEmojis ? '🔒 ' : ''}Privacy</Text>
+        {showSubtext && <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 3 }}>Control your data and digital footprint</Text>}
       </View>
 
       <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }}>
@@ -105,11 +116,11 @@ export default function PrivacyScreen() {
             <View style={{ height: 8, borderRadius: 4, backgroundColor: color, width: `${(done / CHECKLIST.length) * 100}%` }} />
           </View>
           <Text style={{ fontSize: t.xs, color: c.text3, marginTop: s.sm }}>
-            {done === CHECKLIST.length ? '🎉 Excellent privacy hygiene!' : done > 3 ? 'Good progress — keep going!' : 'Start with the top items first.'}
+            {done === CHECKLIST.length ? `${showEmojis ? '🎉 ' : ''}Excellent privacy hygiene!` : done > 3 ? 'Good progress — keep going!' : 'Start with the top items first.'}
           </Text>
         </View>
 
-        <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.sm }}>🛡️ Privacy Checklist</Text>
+        <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.sm }}>{showEmojis ? '🛡️ ' : ''}Privacy Checklist</Text>
         {CHECKLIST.map(item => (
           <TouchableOpacity key={item.id} onPress={() => toggle(item.id)}
             style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.lg, marginBottom: s.sm, borderWidth: 0.5, borderColor: checked[item.id] ? color + '44' : c.border, flexDirection: 'row', gap: s.md, alignItems: 'flex-start' }}>
@@ -129,7 +140,7 @@ export default function PrivacyScreen() {
         ))}
 
         {/* ── Log ── */}
-        <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginTop: s.lg, marginBottom: s.sm }}>📝 Log</Text>
+        <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginTop: s.lg, marginBottom: s.sm }}>{showEmojis ? '📝 ' : ''}Log</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm, marginBottom: s.md }}>
           {PRESETS.map((p, i) => (
             <TouchableOpacity key={i} onPress={() => addLog(p)}
@@ -179,10 +190,10 @@ export default function PrivacyScreen() {
 
         {/* ── Related ── */}
         <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginTop: s.lg, marginBottom: s.md }}>
-          🔗 Related
+          {showEmojis ? '🔗 ' : ''}Related
         </Text>
         <RelatedLinks areaId="digital" color={color} c={c} t={t} s={s} r={r} />
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }

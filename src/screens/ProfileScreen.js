@@ -11,6 +11,7 @@ import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   ActivityIndicator, StyleSheet, Alert, Modal, FlatList, Image,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -19,6 +20,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useUserProgress, SUBJECT_CONFIG } from '../../context/UserProgressContext';
 import useCharacterLoadout from '../logic/useCharacterLoadout';
 import useBonusRewards from '../logic/useBonusRewards';
+import useCoinRewards from '../logic/useCoinRewards';
 import { OUTFITS, ACCESSORIES, unlockLabel } from '../data/characterOptions';
 import { PET_TIERS, petUnlockLabel } from '../data/petOptions';
 import { BACKGROUNDS, backgroundUnlockLabel } from '../data/backgroundOptions';
@@ -28,6 +30,7 @@ import PetCompanion from '../components/PetCompanion';
 import LandscapeBackground from '../components/LandscapeBackground';
 import CharacterWalker from '../components/CharacterWalker';
 import BadgeMedal from '../components/BadgeMedal';
+import TourSpot from '../components/TourSpot';
 
 const WARDROBE_TABS = [
   { key: 'outfitId', label: 'Outfit', icon: 'shirt-outline' },
@@ -46,6 +49,7 @@ export default function ProfileScreen() {
   const stats = { level, points, rank, streakDays };
   const { ready: loadoutReady, outfit, pet, accessory, background, equip } = useCharacterLoadout(stats);
   const bonusRewards = useBonusRewards(user?.id, refreshDailyMissions);
+  const coinRewards = useCoinRewards(user?.id);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -140,7 +144,7 @@ export default function ProfileScreen() {
     .slice(0, 6);
 
   return (
-    <View style={styles.screen}>
+    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.header}>
         <Text style={styles.title}>Your Profile</Text>
         <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={styles.gearBtn}>
@@ -156,9 +160,12 @@ export default function ProfileScreen() {
             rewards={bonusRewards.slots}
             onClaimReward={bonusRewards.claim}
             rewardPoints={bonusRewards.points}
+            onCoinCollected={coinRewards.collect}
+            coinRewardsRemaining={coinRewards.remaining}
+            coinRewardPoints={coinRewards.points}
           />
           <View style={styles.heroLabel}>
-            <Text style={styles.heroName} numberOfLines={1}>{displayName || 'Player'}</Text>
+            <Text style={styles.heroName} numberOfLines={1}>{displayName || 'Commander'}</Text>
             <Text style={styles.heroSub}>Level {level} · Rank #{rank}</Text>
           </View>
           <TouchableOpacity style={styles.customizeBtn} onPress={() => setWardrobeOpen(true)}>
@@ -168,12 +175,14 @@ export default function ProfileScreen() {
         </LandscapeBackground>
 
         {/* ── Stats ──────────────────────────────────────────────────────── */}
+        <TourSpot id="profile-rank">
         <View style={styles.statsRow}>
           <StatChip label="Level" value={level} icon="trending-up-outline" c={c} t={t} s={s} r={r} />
           <StatChip label="Points" value={points.toLocaleString()} icon="star-outline" c={c} t={t} s={s} r={r} />
           <StatChip label="Streak" value={`${streakDays}d`} icon="flame-outline" c={c} t={t} s={s} r={r} />
           <StatChip label="Rank" value={`#${rank}`} icon="ribbon-outline" c={c} t={t} s={s} r={r} />
         </View>
+        </TourSpot>
 
         {/* ── Skills / subject mastery ───────────────────────────────────── */}
         <Text style={styles.sectionTitle}>Skills</Text>
@@ -246,7 +255,7 @@ export default function ProfileScreen() {
         styles={styles}
         c={c}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

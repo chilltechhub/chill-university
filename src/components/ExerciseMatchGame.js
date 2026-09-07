@@ -3,14 +3,16 @@ import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import GameShell, { useGameTheme } from './GameShell';
+import { useUIPrefs } from '../../context/UIPrefsContext';
 import GameOver from './GameOver';
 import GradeSelectCard from './GradeSelectCard';
+import RushTimerBar from './RushTimerBar';
+import RoundCompleteScreen from './RoundCompleteScreen';
 import useGame from '../logic/useGame';
+import useGameFacts from '../logic/useGameFacts';
 import useGradeLevel, { levelForTier } from '../logic/useGradeLevel';
-import { createAdaptiveTier, nextAdaptiveTier } from '../logic/difficultyAdapter';
+import { createAdaptiveTier, nextAdaptiveTier, roundLength, STAGE_COUNT } from '../logic/difficultyAdapter';
 import { EXERCISE_BANK, EXERCISE_CAT_COLORS } from '../data/gameContent/exerciseMatch';
-
-const SESSION_LENGTH = 14;
 
 const BLURBS = {
   'K-2': 'Common exercises and their obvious benefits.',
@@ -31,33 +33,69 @@ export default function ExerciseMatchGame({ onGameEnd }) {
   const navigation = useNavigation();
   const G = useGameTheme();
   const s = makeStyles(G);
+  const { showEmojis } = useUIPrefs();
   const { level, setLevel, tier: savedTier } = useGradeLevel('exercise');
   const [started, setStarted] = useState(false);
+  const [pace, setPace] = useState('relaxed');
 
   const [adaptive, setAdaptive] = useState(() => createAdaptiveTier(savedTier));
   const recentRef = useRef([]);
   const [q, setQ] = useState(null);
   const [opts, setOpts] = useState([]);
-  const [asked, setAsked] = useState(0);
+  // Rounds within a run — shorter first round, longer as you clear more
+  // (see roundLength() in difficultyAdapter.js). No points land until a
+  // round finishes and its prize is picked (see RoundCompleteScreen).
+  const [stage, setStage] = useState(0);
+  const [stageAsked, setStageAsked] = useState(0);
+  const [stageCorrect, setStageCorrect] = useState(0);
+  const [roundComplete, setRoundComplete] = useState(null); // { correct, total, roundNumber, isLastStage }
+  const stageTarget = roundLength(stage);
   const [selected, setSelected] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [startTime, setStartTime] = useState(Date.now());
 
-  const game = useGame({ subject: 'health', difficulty: adaptive.tier, skillLevel: level, onGameEnd });
+  // Relaxed pace streams a fact in the question view's own empty space;
+  // Rush pace shows one fact per round instead, on RoundCompleteScreen —
+  // either way it's the SAME pool, just a different rhythm.
+  const { next: nextFact } = useGameFacts('exercise');
+  const [fact, setFact] = useState(null);
+  // Relaxed pace: a fresh fact every few questions, not every one — see factCountRef below.
+  const factCountRef = useRef(0);
 
-  const beginRun = () => {
+  const game = useGame({ subject: 'health', difficulty: adaptive.tier, skillLevel: level, onGameEnd, manualScoring: true });
+
+  const beginRun = (selectedPace = 'relaxed') => {
+    setPace(selectedPace);
     const initial = createAdaptiveTier(savedTier);
     setAdaptive(initial);
     const first = pickNext(EXERCISE_BANK[levelForTier(initial.tier)], []);
     recentRef.current = [first.exercise];
     setQ(first);
     setOpts(shuffle(first.options));
-    setAsked(0);
+    setStage(0);
+    setStageAsked(0);
+    setStageCorrect(0);
+    setRoundComplete(null);
     setSelected(null);
     setFeedback(null);
     setStartTime(Date.now());
+    factCountRef.current = 0;
+    setFact(nextFact());
     setStarted(true);
   };
+
+  const loadNext = useCallback((tier) => {
+        const pool = EXERCISE_BANK[levelForTier(tier)];
+        const next = pickNext(pool, recentRef.current);
+        recentRef.current = [...recentRef.current, next.exercise];
+        setQ(next);
+        setOpts(shuffle(next.options));
+    setSelected(null);
+    setFeedback(null);
+    setStartTime(Date.now());
+    factCountRef.current += 1;
+    setFact(factCountRef.current % 3 === 0 ? nextFact() : null);
+  }, [nextFact]);
 
   const handleAnswer = useCallback((opt) => {
     if (selected || !q) return;
@@ -71,26 +109,44 @@ export default function ExerciseMatchGame({ onGameEnd }) {
     setAdaptive(nextAdaptiveState);
 
     setTimeout(() => {
-      setFeedback(null);
-      setSelected(null);
-      setStartTime(Date.now());
-      const willEnd = game.lives - (isCorrect ? 0 : 1) <= 0 || asked + 1 >= SESSION_LENGTH;
-      if (willEnd) {
+      const newStageAsked = stageAsked + 1;
+      const newStageCorrect = stageCorrect + (isCorrect ? 1 : 0);
+      const outOfLives = game.lives - (isCorrect ? 0 : 1) <= 0;
+      const stageDone = newStageAsked >= stageTarget;
+
+      if (outOfLives) {
         game.endGame();
+      } else if (stageDone) {
+        setStageAsked(newStageAsked);
+        setStageCorrect(newStageCorrect);
+        setRoundComplete({
+          correct: newStageCorrect, total: newStageAsked,
+          roundNumber: stage + 1, isLastStage: stage + 1 >= STAGE_COUNT,
+        });
       } else {
-        const pool = EXERCISE_BANK[levelForTier(nextAdaptiveState.tier)];
-        const next = pickNext(pool, recentRef.current);
-        recentRef.current = [...recentRef.current.slice(-4), next.exercise];
-        setQ(next);
-        setOpts(shuffle(next.options));
-        setAsked(a => a + 1);
+        setStageAsked(newStageAsked);
+        setStageCorrect(newStageCorrect);
+        loadNext(nextAdaptiveState.tier);
       }
     }, 1800);
-  }, [selected, q, startTime, game, asked, adaptive]);
+  }, [selected, q, startTime, game, stage, stageAsked, stageCorrect, stageTarget, loadNext, adaptive]);
+
+  const handleClaimPrize = useCallback(() => {
+    if (roundComplete?.isLastStage) {
+      setRoundComplete(null);
+      game.endGame();
+    } else {
+      setStage(s => s + 1);
+      setStageAsked(0);
+      setStageCorrect(0);
+      setRoundComplete(null);
+      loadNext(adaptive.tier);
+    }
+  }, [game, roundComplete, adaptive.tier, loadNext]);
 
   if (!started) {
     return (
-      <GradeSelectCard
+      <GradeSelectCard gameId="exercise" showPace
         title="Exercise Match" emoji="💪" subjectLabel="Health & Fitness"
         blurbs={BLURBS} level={level} onSelectLevel={setLevel} onStart={beginRun}
       />
@@ -98,7 +154,7 @@ export default function ExerciseMatchGame({ onGameEnd }) {
   }
 
   if (game.done) return (
-    <GameOver
+    <GameOver gameId="exercise"
       score={game.score} correct={game.correct} total={game.attempted}
       streak={game.bestStreak} title="Fitness Expert!"
       onPlayAgain={() => { game.reset(); setStarted(false); }}
@@ -106,17 +162,38 @@ export default function ExerciseMatchGame({ onGameEnd }) {
     />
   );
 
+
+  if (roundComplete) {
+    return (
+      <GameShell gameId="exercise" disableFactToast
+      title="Exercise Match" emoji="💪" subject={`Health & Fitness · ${levelForTier(adaptive.tier)}`}
+        score={game.score} lives={game.lives} streak={game.streak}
+      >
+        <RoundCompleteScreen
+          roundNumber={roundComplete.roundNumber}
+          correct={roundComplete.correct}
+          total={roundComplete.total}
+          streak={game.streak}
+          difficulty={adaptive.tier}
+          fact={pace === 'rush' ? fact : null}
+          onAward={game.addPoints}
+          onAdvance={handleClaimPrize}
+        />
+      </GameShell>
+    );
+  }
+
   if (!q) return null;
   const catColor = EXERCISE_CAT_COLORS[q.category] || G.teal;
 
   return (
-    <GameShell
+    <GameShell gameId="exercise" disableFactToast
       title="Exercise Match" emoji="💪" subject={`Health & Fitness · ${levelForTier(adaptive.tier)}`}
       score={game.score} lives={game.lives} streak={game.streak}
-      progress={asked / SESSION_LENGTH}
+      progress={stageAsked / stageTarget}
     >
       <ScrollView contentContainerStyle={s.scroll}>
-        <Text style={s.progress}>{asked + 1} / {SESSION_LENGTH}</Text>
+        <Text style={s.progress}>Round {stage + 1} of {STAGE_COUNT} · {stageAsked + 1} / {stageTarget}</Text>
 
         <View style={s.exerciseCard}>
           <Text style={s.exerciseEmoji}>{q.exercise.split(' ')[0]}</Text>
@@ -127,6 +204,7 @@ export default function ExerciseMatchGame({ onGameEnd }) {
           <Text style={s.question}>What is the main benefit?</Text>
         </View>
 
+        <RushTimerBar active={pace === 'rush' && !feedback} durationMs={4000} resetKey={q} onExpire={() => handleAnswer('__TIMEOUT__')} />
         <View style={s.options}>
           {opts.map(opt => {
             let bg = G.card, border = G.border;
@@ -153,7 +231,14 @@ export default function ExerciseMatchGame({ onGameEnd }) {
               {feedback.isCorrect ? '✓ Correct!' : '✗ Not quite!'}
             </Text>
             <Text style={s.feedbackText}>{feedback.correct}</Text>
-            <Text style={s.muscleText}>🎯 Works: {feedback.muscle}</Text>
+            <Text style={s.muscleText}>{showEmojis ? '🎯 ' : ''}Works: {feedback.muscle}</Text>
+          </View>
+        )}
+
+        {pace === 'relaxed' && !!fact && (
+          <View style={s.factBox}>
+            <Text style={s.factLabel}>{showEmojis ? '💡 ' : ''}Did You Know</Text>
+            <Text style={s.factText}>{fact}</Text>
           </View>
         )}
       </ScrollView>
@@ -177,4 +262,7 @@ const makeStyles = (G) => StyleSheet.create({
   feedbackTitle:{ fontSize: 15, fontWeight: '700', marginBottom: 6 },
   feedbackText: { fontSize: 13, color: G.cream, lineHeight: 18, marginBottom: 6 },
   muscleText:   { fontSize: 12, color: G.teal, fontWeight: '600' },
+  factBox:     { backgroundColor: G.card, borderWidth: 0.5, borderColor: G.border, borderRadius: 12, padding: 14, marginTop: 16 },
+  factLabel:   { fontSize: 11, color: G.gold, fontWeight: '700', marginBottom: 4 },
+  factText:    { fontSize: 13, color: G.cream, lineHeight: 18 },
 });

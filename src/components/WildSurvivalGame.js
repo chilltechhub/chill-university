@@ -9,10 +9,12 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import GameShell, { useGameTheme } from './GameShell';
+import { useUIPrefs } from '../../context/UIPrefsContext';
 import GameOver from './GameOver';
 import GradeSelectCard from './GradeSelectCard';
+import RoundCompleteScreen from './RoundCompleteScreen';
 import useGame from '../logic/useGame';
-import useGradeLevel from '../logic/useGradeLevel';
+import useGradeLevel, { tierForLevel } from '../logic/useGradeLevel';
 import { SURVIVAL_BANK } from '../data/gameContent/wildSurvival';
 
 const BLURBS = {
@@ -26,6 +28,7 @@ export default function WildSurvivalGame({ onGameEnd }) {
   const navigation = useNavigation();
   const G = useGameTheme();
   const s = makeStyles(G);
+  const { showEmojis } = useUIPrefs();
   const { level, setLevel } = useGradeLevel('survival');
   const [started, setStarted] = useState(false);
 
@@ -33,8 +36,9 @@ export default function WildSurvivalGame({ onGameEnd }) {
   const [roundIndex, setRoundIndex] = useState(0);
   const [stamina, setStamina] = useState(0);
   const [feedback, setFeedback] = useState(null);
+  const [roundComplete, setRoundComplete] = useState(null);
 
-  const game = useGame({ subject: 'science', difficulty: 2, skillLevel: level, onGameEnd });
+  const game = useGame({ subject: 'science', difficulty: 2, skillLevel: level, onGameEnd, manualScoring: true });
 
   const beginRun = () => {
     const j = SURVIVAL_BANK[level];
@@ -67,17 +71,27 @@ export default function WildSurvivalGame({ onGameEnd }) {
         return;
       }
       const nextIdx = roundIndex + 1;
-      if (nextIdx >= journey.rounds.length) {
-        game.endGame();
-      } else {
-        setRoundIndex(nextIdx);
-      }
+      setRoundComplete({
+        correct: isCorrect ? 1 : 0,
+        total: 1,
+        roundNumber: roundIndex + 1,
+        isLastStage: nextIdx >= journey.rounds.length,
+      });
     }, 2000);
   }, [feedback, journey, roundIndex, stamina, game]);
 
+  const handleClaimPrize = useCallback(() => {
+    setRoundComplete(null);
+    if (roundComplete?.isLastStage) {
+      game.endGame();
+      return;
+    }
+    setRoundIndex(idx => idx + 1);
+  }, [game, roundComplete]);
+
   if (!started) {
     return (
-      <GradeSelectCard
+      <GradeSelectCard gameId="survival"
         title="Wild Survival" emoji="🏕️" subjectLabel="Science · Survival"
         blurbs={BLURBS} level={level} onSelectLevel={setLevel} onStart={beginRun}
       />
@@ -85,7 +99,7 @@ export default function WildSurvivalGame({ onGameEnd }) {
   }
 
   if (game.done) return (
-    <GameOver
+    <GameOver gameId="survival"
       score={game.score} correct={game.correct} total={game.attempted}
       streak={game.bestStreak} title={stamina > 0 ? 'You Survived!' : "Didn't Make It..."}
       onPlayAgain={() => { game.reset(); setStarted(false); }}
@@ -93,11 +107,30 @@ export default function WildSurvivalGame({ onGameEnd }) {
     />
   );
 
+  if (roundComplete) {
+    return (
+      <GameShell gameId="survival" disableFactToast
+        title="Wild Survival" emoji="🏕️" subject={`Science · ${level}`}
+        score={game.score} lives={game.lives} streak={game.streak}
+      >
+        <RoundCompleteScreen
+          roundNumber={roundComplete.roundNumber}
+          correct={roundComplete.correct}
+          total={roundComplete.total}
+          streak={game.streak}
+          difficulty={tierForLevel(level)}
+          onAward={game.addPoints}
+          onAdvance={handleClaimPrize}
+        />
+      </GameShell>
+    );
+  }
+
   if (!journey) return null;
   const round = journey.rounds[roundIndex];
 
   return (
-    <GameShell
+    <GameShell gameId="survival"
       title="Wild Survival" emoji="🏕️" subject={`Science · ${level}`}
       score={game.score} lives={game.lives} streak={game.streak}
       progress={roundIndex / journey.rounds.length}
@@ -130,7 +163,7 @@ export default function WildSurvivalGame({ onGameEnd }) {
         {feedback && (
           <View style={[s.feedback, { borderColor: feedback.isCorrect ? G.success : G.warning }]}>
             <Text style={[s.feedbackText, { color: feedback.isCorrect ? G.success : G.warning }]}>{feedback.msg}</Text>
-            {!feedback.survived && <Text style={s.lessonText}>💡 {journey.lesson}</Text>}
+            {!feedback.survived && <Text style={s.lessonText}>{showEmojis ? '💡 ' : ''}{journey.lesson}</Text>}
           </View>
         )}
       </ScrollView>

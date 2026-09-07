@@ -29,7 +29,7 @@ export const GAME_REGISTRY = {
     subjectLabel: 'Math',
     category: 'number-sense',
     grade: '6-8',
-    mechanic: 'quiz',
+    mechanic: 'puzzle',
 
     icon: '🔢',
     color: '#3B82F6',
@@ -47,7 +47,7 @@ export const GAME_REGISTRY = {
     subjectLabel: 'Math',
     category: 'money',
     grade: '3-5',
-    mechanic: 'quiz',
+    mechanic: 'puzzle',
 
     icon: '🪙',
     color: '#3B82F6',
@@ -101,7 +101,7 @@ export const GAME_REGISTRY = {
     subjectLabel: 'Home Ec',
     category: 'sequencing',
     grade: '3-5',
-    mechanic: 'quiz',
+    mechanic: 'building',
 
     icon: '🍳',
     color: '#e0a830',
@@ -155,7 +155,7 @@ export const GAME_REGISTRY = {
     subjectLabel: 'Finance',
     category: 'budgeting',
     grade: '6-8',
-    mechanic: 'quiz',
+    mechanic: 'strategy',
 
     icon: '💰',
     color: '#c9a84c',
@@ -363,6 +363,24 @@ export const GAME_REGISTRY = {
     enabled: true,
   },
 
+  survivemonth: {
+    id: 'survivemonth',
+    name: 'Survive the Month',
+    component: 'SurviveMonthGame',
+
+    subject: 'finance',
+    subjectLabel: 'Finance',
+    category: 'strategy',
+    grade: '6-8',
+    mechanic: 'strategy',
+
+    icon: '📅',
+    color: '#e0a830',
+    desc: 'One card a day — cash, stress, and smart choices',
+
+    enabled: true,
+  },
+
   codebreaker: {
     id: 'codebreaker',
     name: 'Code Breaker',
@@ -509,6 +527,24 @@ export const GAME_REGISTRY = {
     enabled: true,
   },
 
+  triviacatch: {
+    id: 'triviacatch',
+    name: 'Trivia Catch',
+    component: 'TriviaCatchGame',
+
+    subject: 'social_studies',
+    subjectLabel: 'Social Studies',
+    category: 'arcade-trivia',
+    grade: '3-5',
+    mechanic: 'fun',
+
+    icon: '🎯',
+    color: '#F59E0B',
+    desc: 'Catch the right answer before it lands — a fast-paced World Explorer pilot',
+
+    enabled: true,
+  },
+
   freethrow: {
     id: 'freethrow',
     name: 'Free Throw Frenzy',
@@ -535,17 +571,17 @@ export const GAME_REGISTRY = {
  * read clearly instead of looking like 23 identical cards.
  */
 export const MECHANIC_META = {
-  quiz:     { emoji: '🧠', label: 'Quiz' },
-  matching: { emoji: '🧩', label: 'Match' },
-  building: { emoji: '🏗️', label: 'Build' },
-  strategy: { emoji: '🧳', label: 'Strategy' },
-  thinking: { emoji: '🕵️', label: 'Logic' },
-  fun:      { emoji: '🎮', label: 'Just for Fun' },
-  racing:   { emoji: '🏎️', label: 'Racing' },
-  puzzle:   { emoji: '🌀', label: 'Puzzle' },
-  survival: { emoji: '🏕️', label: 'Survival' },
-  cards:    { emoji: '🃏', label: 'Card Game' },
-  sports:   { emoji: '🏀', label: 'Sports' },
+  quiz:     { emoji: '🧠', icon: 'help-circle-outline',  label: 'Quiz' },
+  matching: { emoji: '🧩', icon: 'grid-outline',         label: 'Match' },
+  building: { emoji: '🏗️', icon: 'construct-outline',    label: 'Build' },
+  strategy: { emoji: '🧳', icon: 'briefcase-outline',    label: 'Strategy' },
+  thinking: { emoji: '🕵️', icon: 'bulb-outline',         label: 'Logic' },
+  fun:      { emoji: '🎮', icon: 'game-controller-outline', label: 'Just for Fun' },
+  racing:   { emoji: '🏎️', icon: 'speedometer-outline',  label: 'Racing' },
+  puzzle:   { emoji: '🌀', icon: 'shapes-outline',       label: 'Puzzle' },
+  survival: { emoji: '🏕️', icon: 'leaf-outline',         label: 'Survival' },
+  cards:    { emoji: '🃏', icon: 'albums-outline',       label: 'Card Game' },
+  sports:   { emoji: '🏀', icon: 'basketball-outline',   label: 'Sports' },
 };
 
 /** Return one game by id. */

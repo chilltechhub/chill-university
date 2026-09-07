@@ -8,18 +8,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useUIPrefs } from '../../context/UIPrefsContext';
 import { RANK_LABELS, FONTS } from '../theme';
 import LoginScreen from '../screens/LoginScreen';
 
 export default function TopBar() {
-  const { user, points, rank, progress, loading, pendingRewards, streakDays } = useUserProgress();
+  const { user, points, rank, level, progress, loading, pendingRewards, streakDays } = useUserProgress();
   const { colors, typography, spacing, shadows } = useTheme();
+  const { showEmojis } = useUIPrefs();
   const navigation = useNavigation();
   const [showLogin, setShowLogin] = useState(false);
 
   const s = makeStyles(colors, typography, spacing, shadows);
   const rankInfo = RANK_LABELS[rank] || RANK_LABELS[20];
-  const level = rank ? 21 - rank : 1;
 
   if (loading) {
     return (
@@ -63,7 +64,7 @@ export default function TopBar() {
         {/* Streak */}
         {streakDays > 0 && (
           <View style={s.streak}>
-            <Text style={s.streakText}>🔥{streakDays}</Text>
+            <Text style={s.streakText}>{showEmojis ? '🔥' : ''}{streakDays}</Text>
           </View>
         )}
 
@@ -86,7 +87,7 @@ export default function TopBar() {
             style={s.rewardBtn}
             onPress={() => navigation.navigate('Profile', { tab: 'rewards' })}
           >
-            <Text style={{ fontSize: 20 }}>🎁</Text>
+            {showEmojis ? <Text style={{ fontSize: 20 }}>🎁</Text> : <Ionicons name="gift-outline" size={18} color={colors.gold} />}
             <View style={s.rewardDot}>
               <Text style={s.rewardDotText}>{pendingRewards.length}</Text>
             </View>

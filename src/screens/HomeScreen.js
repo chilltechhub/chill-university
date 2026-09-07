@@ -1,16 +1,22 @@
 // src/screens/HomeScreen.js
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+// Aliased: this file already has its own `dateStr` (the long, human-readable
+// header date) and its own `todayStr` const further down.
+import { dateStr as toLocalDateStr } from '../logic/dateUtils';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, RefreshControl, Modal, KeyboardAvoidingView,
-  Platform, Animated, Easing, FlatList, Alert,
+  Platform, FlatList, Alert, ActivityIndicator, Animated, Easing,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
+import { useUIPrefs } from '../../context/UIPrefsContext';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { supabase } from '../api/supabaseClient';
 import { fetchContentPool } from '../api/remoteConfigService';
+import { getMyOpenAssignments, updateAssignmentStatus } from '../api/organizationService';
+import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../api/offlineCache';
 import { syncReminders, computeReminderState } from '../logic/notificationScheduler';
 import TourSpot from '../components/TourSpot';
 import CalendarModal from '../components/CalendarModal';
@@ -19,7 +25,8 @@ import PlayerMatchBackground from '../components/PlayerMatchBackground';
 import useCharacterLoadout from '../logic/useCharacterLoadout';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import { RANK_LABELS, FONTS } from '../theme';
-import { GAMES } from './GamesScreen';
+import { GAMES_MASTER } from './GamesScreen';
+import { useConfigValue } from '../../context/RemoteConfigContext';
 
 // The four "study" destinations the STUDY button picks randomly among (tap),
 // or lets you choose explicitly (hold). Screen names match the Stack.Screen
@@ -85,7 +92,7 @@ function CommanderCard({ profile, rank, progress, c, t, onPress }) {
   const badgeEmoji = BADGE_EMOJIS[profile?.badge] || null;
   const name       = profile?.traveler_name || profile?.display_name || 'Commander';
   const rankInfo   = RANK_LABELS[rank] || RANK_LABELS[20];
-  const level      = rank ? 21 - rank : 1;
+  const level      = profile?.level || 1;
 
   return (
     <TouchableOpacity style={cmd.wrap} onPress={onPress} activeOpacity={0.85}>
@@ -136,6 +143,7 @@ function SectionHead({ title, action, onAction, c, t }) {
 
 // ─── Focus modal with presets ─────────────────────────────────────────────────
 function FocusModal({ visible, draft, setDraft, onSave, onClose, presets, onAddPreset, onDeletePreset, c, t, s, r }) {
+  const { showEmojis } = useUIPrefs();
   const [newPreset, setNewPreset] = useState('');
   const [showPresetInput, setShowPresetInput] = useState(false);
 
@@ -145,7 +153,7 @@ function FocusModal({ visible, draft, setDraft, onSave, onClose, presets, onAddP
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 48, maxHeight: '85%' }}>
           <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
-          <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.sm }}>✦ Today's Focus</Text>
+          <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.sm }}>{showEmojis ? '✦ ' : ''}Today's Focus</Text>
           <TextInput
             style={{ borderWidth: 1, borderColor: c.teal, borderRadius: r.md, padding: s.md, fontSize: t.md, color: c.text1, backgroundColor: c.bg0, minHeight: 60, textAlignVertical: 'top', marginBottom: s.lg }}
             value={draft} onChangeText={setDraft}
@@ -205,6 +213,7 @@ function FocusModal({ visible, draft, setDraft, onSave, onClose, presets, onAddP
 
 // ─── Affirmation modal with rotation pool ────────────────────────────────────
 function AffirmationModal({ visible, affirmations, onSave, onClose, c, t, s, r }) {
+  const { showEmojis, showSubtext } = useUIPrefs();
   const [input, setInput] = useState('');
   const [list,  setList]  = useState(affirmations || []);
 
@@ -224,8 +233,8 @@ function AffirmationModal({ visible, affirmations, onSave, onClose, c, t, s, r }
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 48, maxHeight: '85%' }}>
           <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
-          <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.xs }}>💛 My Affirmations</Text>
-          <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: s.lg }}>Add multiple — they rotate each day on your dashboard.</Text>
+          <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.xs }}>{showEmojis ? '💛 ' : ''}My Affirmations</Text>
+          {showSubtext && <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: s.lg }}>Add multiple — they rotate each day on your dashboard.</Text>}
 
           {/* Add input */}
           <View style={{ flexDirection: 'row', gap: s.sm, marginBottom: s.md }}>
@@ -275,6 +284,7 @@ function AffirmationModal({ visible, affirmations, onSave, onClose, c, t, s, r }
 }
 
 function IdeaPreviewCard({ idea, visible, onClose, c, t, s, r }) {
+  const { showEmojis } = useUIPrefs();
   if (!idea) return null;
 
   const plantEmoji = idea.plant_type === 'tree'   ? '🌳'
@@ -312,7 +322,7 @@ function IdeaPreviewCard({ idea, visible, onClose, c, t, s, r }) {
                 </View>
                 {idea.is_project && (
                   <View style={{ backgroundColor: c.gold + '22', borderRadius: r.full, paddingHorizontal: 8, paddingVertical: 3 }}>
-                    <Text style={{ fontSize: 10, color: c.gold, fontWeight: t.bold }}>🚀 Project</Text>
+                    <Text style={{ fontSize: 10, color: c.gold, fontWeight: t.bold }}>{showEmojis ? '🚀 ' : ''}Project</Text>
                   </View>
                 )}
               </View>
@@ -340,7 +350,7 @@ function IdeaPreviewCard({ idea, visible, onClose, c, t, s, r }) {
             {tasks.length > 0 && (
               <View style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md }}>
                 <Text style={{ fontSize: t.xs, color: ideaColor, textTransform: 'uppercase', letterSpacing: 1, fontWeight: t.bold, marginBottom: s.sm }}>
-                  ✅ Tasks ({done}/{tasks.length} done)
+                  {showEmojis ? '✅ ' : ''}Tasks ({done}/{tasks.length} done)
                 </Text>
                 {tasks.slice(0, 4).map((task, i) => (
                   <View key={task.id || i} style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, paddingVertical: 4 }}>
@@ -360,7 +370,7 @@ function IdeaPreviewCard({ idea, visible, onClose, c, t, s, r }) {
             {ideaPets.length > 0 && (
               <View style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md }}>
                 <Text style={{ fontSize: t.xs, color: c.gold, textTransform: 'uppercase', letterSpacing: 1, fontWeight: t.bold, marginBottom: s.sm }}>
-                  💡 Ideas ({ideaPets.length})
+                  {showEmojis ? '💡 ' : ''}Ideas ({ideaPets.length})
                 </Text>
                 {ideaPets.slice(0, 3).map((ip, i) => (
                   <Text key={ip.id || i} style={{ fontSize: t.xs, color: c.text2, paddingVertical: 3, borderBottomWidth: i < Math.min(ideaPets.length, 3) - 1 ? 0.5 : 0, borderBottomColor: c.border }}>
@@ -374,7 +384,7 @@ function IdeaPreviewCard({ idea, visible, onClose, c, t, s, r }) {
             {notes.length > 0 && (
               <View style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md }}>
                 <Text style={{ fontSize: t.xs, color: c.teal, textTransform: 'uppercase', letterSpacing: 1, fontWeight: t.bold, marginBottom: s.sm }}>
-                  📝 Notes ({notes.length})
+                  {showEmojis ? '📝 ' : ''}Notes ({notes.length})
                 </Text>
                 {notes.slice(0, 2).map((note, i) => (
                   <Text key={note.id || i} style={{ fontSize: t.xs, color: c.text2, paddingVertical: 3 }} numberOfLines={2}>
@@ -397,63 +407,80 @@ function IdeaPreviewCard({ idea, visible, onClose, c, t, s, r }) {
   );
 }
 
-// ─── 2. DESK ITEM PREVIEW CARD ────────────────────────────────────────────────
-function DeskItemCard({ item, visible, onClose, onNavigate, c, t, s, r }) {
-  if (!item) return null;
-  const isProject = item.source === 'project';
-  const isNote    = item.source === 'note' || item.source === 'capture';
-  const isTask    = item.source === 'task';
-  const color     = item.color || c.teal;
-
+// ─── 2. NEXT UP CARD ───────────────────────────────────────────────────────────
+// Next-action surfacing detail sheet — opened from a desk ticker chip (see
+// DeskTicker below). `actions` is a small array HomeScreen builds per item
+// kind (task/project/capture/assignment each get a different set — see
+// actionsForDeskItem) rather than this component guessing what's possible;
+// one filled "primary" button plus however many outlined ones fit.
+function ActionPill({ label, icon, tone, color, c, t, onPress }) {
+  const pillColor = tone === 'danger' ? (c.error || '#e05858') : (color || c.teal);
+  const filled = tone === 'primary';
   return (
-    <Modal visible={visible} transparent animationType="slide">
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
-        <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 48 }}>
-          <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, marginBottom: s.lg }}>
-            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: color + '22', borderWidth: 2, borderColor: color, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontSize: 22 }}>
-                {isProject ? (item.emoji || '🚀') : isNote ? '📝' : '✅'}
-              </Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>{item.title}</Text>
-              <View style={{ backgroundColor: color + '22', borderRadius: r.full, paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'flex-start', marginTop: 4 }}>
-                <Text style={{ fontSize: 10, color, fontWeight: t.bold, textTransform: 'uppercase' }}>{item.source}</Text>
-              </View>
-            </View>
-            <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
-              <Ionicons name="close" size={20} color={c.text3} />
-            </TouchableOpacity>
-          </View>
-
-          {item.notes && (
-            <Text style={{ fontSize: t.sm, color: c.text2, lineHeight: 20, marginBottom: s.lg }}>{item.notes}</Text>
-          )}
-
-          <View style={{ flexDirection: 'row', gap: s.sm }}>
-            <TouchableOpacity onPress={onClose}
-              style={{ flex: 1, padding: s.md, alignItems: 'center', backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border }}>
-              <Text style={{ color: c.text3, fontSize: t.sm }}>Dismiss</Text>
-            </TouchableOpacity>
-            {isProject && (
-              <TouchableOpacity onPress={onNavigate}
-                style={{ flex: 2, padding: s.md, alignItems: 'center', backgroundColor: color, borderRadius: r.md }}>
-                <Text style={{ color: '#fff', fontWeight: t.bold, fontSize: t.sm }}>Open Project →</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      </View>
-    </Modal>
+    <TouchableOpacity onPress={onPress}
+      style={{
+        flexDirection: 'row', alignItems: 'center', gap: 6,
+        backgroundColor: filled ? pillColor : 'transparent',
+        borderWidth: filled ? 0 : 1, borderColor: pillColor + (filled ? '' : '99'),
+        borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9,
+      }}>
+      <Ionicons name={icon} size={14} color={filled ? '#fff' : pillColor} />
+      <Text style={{ color: filled ? '#fff' : pillColor, fontWeight: t.bold, fontSize: t.xs }}>{label}</Text>
+    </TouchableOpacity>
   );
 }
 
-// ─── 3. DESK CAROUSEL ────────────────────────────────────────────────────────
-// Continuously drifting ticker — the row is rendered twice back-to-back and
-// scrolled left forever; once a full copy has scrolled past, the second
-// copy is sitting exactly where the first started, so the loop is seamless.
-function DeskCarousel({ items, onItemPress, onAdd, c, t, s, r }) {
+function NextUpCard({ item, actions, onAdd, c, t, s, r }) {
+  if (!item) {
+    return (
+      <TouchableOpacity
+        style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 0.5, borderColor: c.border, borderStyle: 'dashed' }}
+        onPress={onAdd}>
+        <Ionicons name="add-circle-outline" size={18} color={c.text4} />
+        <Text style={{ flex: 1, fontSize: t.sm, color: c.text4 }}>Add priorities from your projects, notes and ideas</Text>
+      </TouchableOpacity>
+    );
+  }
+
+  const isProject = item.kind === 'project';
+  const color = item.color || c.teal;
+  const icon  = isProject ? (item.hasNextAction ? 'flag' : 'flag-outline')
+    : item.kind === 'assignment' ? 'school-outline'
+    : item.kind === 'task' ? 'checkmark-circle-outline'
+    : 'document-text-outline';
+  const badgeLabel = isProject && !item.hasNextAction ? 'Needs next step' : item.source;
+  const headline = isProject && !item.hasNextAction ? `What's next for ${item.projectTitle}?` : item.title;
+
+  return (
+    <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.md, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: color }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: 8 }}>
+        <View style={{ backgroundColor: color + '22', borderRadius: r.full, paddingHorizontal: 8, paddingVertical: 2 }}>
+          <Text style={{ fontSize: 9, color, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>{badgeLabel}</Text>
+        </View>
+        {item.notes ? <Text style={{ flex: 1, fontSize: 10, color: c.text4 }} numberOfLines={1}>{item.notes}</Text> : null}
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm }}>
+        <Ionicons name={icon} size={18} color={color} />
+        <Text style={{ flex: 1, fontSize: t.md, fontWeight: t.bold, color: c.text1 }} numberOfLines={2}>{headline}</Text>
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm, marginTop: s.md }}>
+        {(actions || []).map(a => (
+          <ActionPill key={a.key} label={a.label} icon={a.icon} tone={a.tone} color={color} c={c} t={t} onPress={a.onPress} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// ─── Desk ticker ────────────────────────────────────────────────────────────
+// Small, continuously drifting stock-ticker row — the pre-next-action-
+// surfacing look, kept for its own sake (it's just nicer to glance at than
+// a static list). The row is rendered twice back-to-back and scrolled left
+// forever; once a full copy has scrolled past, the second copy is sitting
+// exactly where the first started, so the loop is seamless. Tapping a chip
+// opens NextUpCard's full detail — badge, headline, one-tap action, Focus
+// button — in a sheet, rather than the old bare preview-and-dismiss card.
+function DeskTicker({ items, onItemPress, onAdd, c, t, s, r }) {
   const translateX = useRef(new Animated.Value(0)).current;
   const [setWidth, setSetWidth] = useState(0);
 
@@ -527,10 +554,17 @@ function DeskCarousel({ items, onItemPress, onAdd, c, t, s, r }) {
 export default function HomeScreen() {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s, radius: r, shadows: sh } = useTheme();
+  const { showEmojis, showSubtext } = useUIPrefs();
   const { profile, streakDays, rank, progress, level, points, dailyMissions } = useUserProgress();
   const { background: playerBackground } = useCharacterLoadout({ level, points, rank, streakDays });
   // Set from Settings → Appearance, not on this screen itself.
   const [bgMode] = useSetting(SETTING_KEYS.HOME_BACKGROUND, 'plain');
+  // Admin-side kill switch — see the matching comment in GamesScreen.js.
+  const disabledGameIds = useConfigValue('disabled_games', []);
+  const GAMES = useMemo(
+    () => GAMES_MASTER.filter(g => !disabledGameIds.includes(g.key)),
+    [disabledGameIds]
+  );
 
   const [refreshing,      setRefreshing]     = useState(false);
   const [userId,          setUserId]         = useState(null);
@@ -549,9 +583,13 @@ export default function HomeScreen() {
   const [editAffirm,     setEditAffirm]     = useState(false);
 
   // Todos / desk
-  const [todos,          setTodos]          = useState([]);
+  const [todos,          setTodos]          = useState([]); // ranked next-action candidates — see loadAll
   const [todoInput,      setTodoInput]      = useState('');
   const [showTodoInput,  setShowTodoInput]  = useState(false);
+  const [selectedDeskItem, setSelectedDeskItem] = useState(null); // ticker chip tapped open, shown in NextUpCard's detail sheet
+  const [nextActionTarget, setNextActionTarget] = useState(null); // project awaiting a next_action from the quick-set sheet
+  const [nextActionDraft,  setNextActionDraft]  = useState('');
+  const [savingNextAction, setSavingNextAction] = useState(false);
 
   // Ideas
   const [ideas,          setIdeas]          = useState([]);
@@ -562,13 +600,11 @@ export default function HomeScreen() {
   const [showStudyMenu, setShowStudyMenu] = useState(false);
   const [showPlayMenu,  setShowPlayMenu]  = useState(false);
 
-  const [selectedDeskItem, setSelectedDeskItem] = useState(null);
-  const [showDeskCard,     setShowDeskCard]     = useState(false);
   const [selectedIdea,     setSelectedIdea]     = useState(null);
   const [showIdeaCard,     setShowIdeaCard]     = useState(false);
 
   const today   = new Date();
-  const todayStr = today.toISOString().split('T')[0];
+  const todayStr = toLocalDateStr(today); // local calendar — see logic/dateUtils
 
   // Rotating affirmation — changes each day
   const todaysAffirmation = affirmations.length > 0
@@ -598,9 +634,17 @@ export default function HomeScreen() {
   // incomplete" gets cancelled the moment the last one is finished. Opt-in
   // via Settings > Daily Reminders (SETTING_KEYS.DAILY_REMINDERS_ENABLED).
   const [remindersEnabled] = useSetting(SETTING_KEYS.DAILY_REMINDERS_ENABLED, false);
+  const lastReminderSyncRef = useRef(null);
   useEffect(() => {
     if (!remindersEnabled || !profile) return;
     const { tasksAllComplete, checkedInToday } = computeReminderState({ dailyMissions, profile });
+    // `profile` is a new object on every refresh, so this effect re-runs far
+    // more often than the reminders actually change — and a sync is now ~14
+    // scheduling calls (a rolling multi-day window, see notificationScheduler).
+    // Only re-sync when something that changes the outcome has changed.
+    const sig = `${tasksAllComplete}|${checkedInToday}`;
+    if (lastReminderSyncRef.current === sig) return;
+    lastReminderSyncRef.current = sig;
     syncReminders({ enabled: true, tasksAllComplete, checkedInToday });
   }, [remindersEnabled, dailyMissions, profile]);
 
@@ -608,53 +652,114 @@ export default function HomeScreen() {
     if (userId) loadAll(userId);
   }, [userId]));
 
+  // Applies a previously-cached (or freshly-fetched) desk snapshot to state.
+  // Same shape either way, so a cold offline launch and a live load render
+  // identically — nothing on Home has to know which one it got.
+  const applyDeskSnapshot = (snap) => {
+    if (!snap) return;
+    if (snap.todayFocus !== undefined) { setTodayFocus(snap.todayFocus || ''); setFocusDraft(snap.todayFocus || ''); }
+    if (snap.todos)     setTodos(snap.todos);
+    if (snap.ideas)     setIdeas(snap.ideas);
+    if (snap.affirmations)  setAffirmations(snap.affirmations);
+    if (snap.focusPresets)  setFocusPresets(snap.focusPresets);
+  };
+
   const loadAll = async (uid) => {
+    const cacheKey = `home_desk_${uid}`;
     try {
+      const cached = await cacheRead(cacheKey);
+      if (cached) applyDeskSnapshot(cached);
+
+      if (!(await isOnline())) return; // cached snapshot is as current as we can get right now
+
       const [
         focusRes, tasksRes, projRes, capturesRes,
-        ideasRes, settingsRes,
+        ideasRes, settingsRes, assignmentsRes,
       ] = await Promise.all([
-        supabase.from('daily_focus').select('focus_text').eq('user_id', uid).eq('date', todayStr).maybeSingle(),
+        supabase.from('daily_focus').select('focus_text').eq('user_id', uid).eq('focus_date', todayStr).maybeSingle(),
         supabase.from('tasks').select('id, title').eq('user_id', uid).eq('completed', false).order('priority').limit(3),
-        supabase.from('projects').select('id, title, emoji, color').eq('user_id', uid).eq('status', 'active').is('deleted_at', null).limit(3),
+        supabase.from('projects').select('id, title, emoji, color, next_action').eq('user_id', uid).eq('status', 'active').is('deleted_at', null).limit(3),
         supabase.from('captures').select('id, title, type').eq('user_id', uid).eq('status', 'inbox').is('deleted_at', null).limit(2),
         supabase.from('garden_cores').select('id, title, plant_type, color, color_light, is_project, project_progress, garden_petals(id, title, petal_type, completed)').eq('user_id', uid).is('deleted_at', null).order('created_at', { ascending: false }).limit(5),
         supabase.from('user_settings').select('affirmation, focus_presets').eq('user_id', uid).maybeSingle(),
+        // Fails soft — the institutional-layer migration may not be applied
+        // yet (ORG_NOT_CONFIGURED), and that should degrade this one rail
+        // source silently rather than blank the whole desk.
+        getMyOpenAssignments(5).catch(() => []),
       ]);
 
       // Focus
-      if (focusRes.data) { setTodayFocus(focusRes.data.focus_text); setFocusDraft(focusRes.data.focus_text); }
+      if (focusRes.data) { setTodayFocus(focusRes.data.focus_text || ''); setFocusDraft(focusRes.data.focus_text || ''); }
 
-      // Desk todos — merge tasks, projects, captures
+      // Next-action candidates — tasks, projects, captures, cohort
+      // assignments, ranked so NextUpCard always has one clear front-runner
+      // instead of 8 equally-loud chips: an actual task first (it's already
+      // a defined action), then what's due soonest, then a project that has
+      // its next_action defined (surface that action's text directly),
+      // then a project still needing one (prompts you to set it), then an
+      // unprocessed capture last.
+      // `kind` is the discriminator every handler/action-list switches on;
+      // `source` stays the human-readable badge text. Keeping them separate
+      // matters specifically for captures — a capture's own `type` can
+      // itself be 'task' (e.g. a quick-captured to-do that hasn't been
+      // routed into the real tasks table yet), which used to collide with
+      // a real task's source and made this card try to complete a
+      // captures row through the tasks table.
       const merged = [
-        ...(tasksRes.data    || []).map(tk => ({ id: 'task_' + tk.id, title: tk.title,                         source: 'task',    color: c.teal })),
-        ...(projRes.data     || []).map(p  => ({ id: 'proj_' + p.id,  title: `${p.emoji || '🚀'} ${p.title}`,  source: 'project', color: p.color || c.gold })),
-        ...(capturesRes.data || []).map(n  => ({ id: 'cap_'  + n.id,  title: n.title || 'Untitled note',        source: n.type,    color: c.gold })),
-      ].slice(0, 6);
+        ...(tasksRes.data    || []).map(tk => ({ id: 'task_' + tk.id, title: tk.title, source: 'task', kind: 'task', color: c.teal, rank: 0 })),
+        ...(assignmentsRes   || []).map(a  => ({ id: 'assign_' + a.assignment_id, title: a.title, source: 'assignment', kind: 'assignment', color: c.gold,
+                                                  notes: a.due_date ? `Due ${a.due_date} · ${a.cohort_name}` : a.cohort_name,
+                                                  meta: { assignmentId: a.assignment_id }, rank: 1 })),
+        ...(projRes.data     || []).map(p  => ({
+          id: 'proj_' + p.id,
+          title: p.next_action || `${p.emoji || '🚀'} ${p.title}`,
+          source: 'project', kind: 'project', color: p.color || c.gold,
+          projectTitle: p.title, hasNextAction: !!p.next_action,
+          meta: { project: p },
+          rank: p.next_action ? 2 : 3,
+        })),
+        ...(capturesRes.data || []).map(n  => ({
+          id: 'cap_' + n.id, title: n.title || 'Untitled note',
+          source: n.type, kind: 'capture', captureType: n.type,
+          color: c.gold, rank: 4,
+        })),
+      ].sort((a, b) => a.rank - b.rank).slice(0, 6);
       setTodos(merged);
 
       // Ideas
       if (ideasRes.data) setIdeas(ideasRes.data);
 
       // Affirmations — stored as JSON array in user_settings
+      let nextAffirmations, nextFocusPresets;
       if (settingsRes.data) {
         if (settingsRes.data.affirmation) {
           // Legacy single affirmation — migrate to array
           try {
             const parsed = JSON.parse(settingsRes.data.affirmation);
-            setAffirmations(Array.isArray(parsed) ? parsed : [settingsRes.data.affirmation]);
+            nextAffirmations = Array.isArray(parsed) ? parsed : [settingsRes.data.affirmation];
           } catch {
-            setAffirmations([settingsRes.data.affirmation]);
+            nextAffirmations = [settingsRes.data.affirmation];
           }
+          setAffirmations(nextAffirmations);
         }
         if (settingsRes.data.focus_presets) {
           try {
             const parsed = JSON.parse(settingsRes.data.focus_presets);
-            if (Array.isArray(parsed)) setFocusPresets(parsed);
+            if (Array.isArray(parsed)) { nextFocusPresets = parsed; setFocusPresets(parsed); }
           } catch {}
         }
       }
 
+      // setState above hasn't committed yet within this same tick, so cache
+      // the values just computed rather than reading the (still-stale)
+      // `affirmations`/`focusPresets` state back out.
+      await cacheWrite(cacheKey, {
+        todayFocus: focusRes.data?.focus_text ?? null,
+        todos: merged,
+        ideas: ideasRes.data || [],
+        affirmations: nextAffirmations ?? affirmations,
+        focusPresets: nextFocusPresets ?? focusPresets,
+      });
     } catch (e) { console.warn('HomeScreen loadAll', e); }
   };
 
@@ -664,7 +769,8 @@ export default function HomeScreen() {
   const saveFocus = async () => {
     setTodayFocus(focusDraft); setEditFocus(false);
     if (!userId) return;
-    await supabase.from('daily_focus').upsert({ user_id: userId, focus_text: focusDraft, date: todayStr });
+    const { error } = await supabase.from('daily_focus').upsert({ user_id: userId, focus_text: focusDraft, focus_date: todayStr });
+    if (error) console.warn('HomeScreen: saveFocus', error.message);
   };
 
   const savePresets = async (newPresets) => {
@@ -695,29 +801,187 @@ export default function HomeScreen() {
   const addTodo = async () => {
     if (!todoInput.trim()) return;
     const item = { title: todoInput.trim(), category: 'personal', priority: 2, completed: false, due_date: todayStr, sort_order: todos.length, ...(userId ? { user_id: userId } : {}) };
-    const { data } = userId
-      ? await supabase.from('tasks').insert(item).select().single()
-      : { data: { ...item, id: Date.now().toString() } };
-    if (data) setTodos(prev => [...prev, { id: 'task_' + data.id, title: data.title, source: 'task', color: c.teal }]);
+    let data;
+    if (userId) {
+      // Same id whether this lands live now or gets queued for when
+      // connectivity returns (offlineWrite) — previously this had no
+      // try/catch at all, so offline it threw and silently dropped
+      // whatever was typed (todoInput never even cleared).
+      try {
+        const { row } = await offlineWrite(supabase, 'tasks', item);
+        data = row;
+      } catch (e) { console.warn('HomeScreen addTodo', e); }
+    } else {
+      data = { ...item, id: Date.now().toString() };
+    }
+    // Whatever you just typed is the thing on your mind right now — put it
+    // straight in front of the ticker instead of appending to the back of
+    // the ranked list where it might not surface for a while.
+    if (data) setTodos(prev => [{ id: 'task_' + data.id, title: data.title, source: 'task', kind: 'task', color: c.teal, rank: -1 }, ...prev]);
     setTodoInput(''); setShowTodoInput(false);
-  };
-
-  const completeTodo = async (id) => {
-    setTodos(prev => prev.filter(tk => tk.id !== id));
-    const rawId = id.replace(/^(task_|proj_|cap_)/, '');
-    if (userId && id.startsWith('task_'))
-      await supabase.from('tasks').update({ completed: true, completed_at: new Date().toISOString() }).eq('id', rawId);
   };
 
   const dateStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
+  // Jumping straight into a nested screen on a tab that hasn't been
+  // visited yet in this session (the app opens on Home) makes React
+  // Navigation initialize that tab's stack with ONLY the target screen —
+  // no LibraryScreen underneath it, so there's nothing to swipe/pop back
+  // to. Navigating to the tab root first primes its history; the second
+  // call (deferred a tick, since two synchronous navigate() calls aren't
+  // guaranteed to apply in order) then pushes the destination on top.
+  // Every Library destination reachable this way also has its own back
+  // button as a hard backstop in case this priming doesn't land in time.
+  const goToLibraryScreen = (screen, params) => {
+    navigation.navigate('Library');
+    setTimeout(() => navigation.navigate('Library', { screen, params }), 0);
+  };
+
+  // Removes a resolved candidate from the ranked list — the ticker just
+  // renders one fewer chip next tick, nothing to re-index.
+  const dismissDeskItem = (id) => setTodos(prev => prev.filter(it => it.id !== id));
+
+  // Every one of these closes the detail sheet first — each either
+  // resolves the item, navigates away, or opens a different sheet
+  // (promptNextAction), so there's nothing left for this one to show.
+  const closeDeskSheet = () => setSelectedDeskItem(null);
+
+  const completeDeskTask = async (item) => {
+    closeDeskSheet();
+    const rawId = item.id.replace(/^task_/, '');
+    dismissDeskItem(item.id);
+    if (!userId) return;
+    try { await supabase.from('tasks').update({ completed: true, completed_at: new Date().toISOString() }).eq('id', rawId); }
+    catch (e) { console.warn('HomeScreen: complete task', e.message); }
+  };
+
+  const deleteDeskTask = async (item) => {
+    closeDeskSheet();
+    const rawId = item.id.replace(/^task_/, '');
+    dismissDeskItem(item.id);
+    try { await supabase.from('tasks').delete().eq('id', rawId); }
+    catch (e) { console.warn('HomeScreen: delete task', e.message); }
+  };
+
+  const completeDeskAssignment = async (item) => {
+    closeDeskSheet();
+    const assignmentId = item.meta?.assignmentId;
+    if (!assignmentId) return;
+    dismissDeskItem(item.id);
+    try { await updateAssignmentStatus(assignmentId, 'completed'); }
+    catch (e) { console.warn('HomeScreen: complete assignment', e.message); }
+  };
+
+  const openDeskProject = (item) => { closeDeskSheet(); goToLibraryScreen('ProjectDetail', { project: item.meta.project }); };
+
+  // Opens the quick-set sheet — used both to set a project's first next
+  // action and to replace an existing one, prefilled with whatever's
+  // there now (item.title already *is* the current next_action text once
+  // hasNextAction is true).
+  const promptNextAction = (item) => {
+    closeDeskSheet();
+    setNextActionDraft(item.hasNextAction ? item.title : '');
+    setNextActionTarget(item);
+  };
+
+  // Timer icon on a task/project candidate — jump straight into a focused
+  // Work Mode session instead of just marking done / opening the project.
+  const focusOnDeskItem = (item) => {
+    closeDeskSheet();
+    if (item.kind === 'project') { goToLibraryScreen('WorkModeScreen', { project: item.meta.project }); return; }
+    goToLibraryScreen('WorkModeScreen', { presetTitle: item.title });
+  };
+
+  // Captures — send to the inbox's full destination picker (same as
+  // tapping the item there), or resolve right from the desk for the
+  // handful of things that don't need that picker.
+  const processDeskCapture = (item) => { closeDeskSheet(); goToLibraryScreen('CaptureInbox'); };
+
+  const saveDeskCaptureForLater = async (item) => {
+    closeDeskSheet();
+    const rawId = item.id.replace(/^cap_/, '');
+    dismissDeskItem(item.id);
+    const laterType = item.captureType === 'video' ? 'watch' : 'read';
+    try { await supabase.from('captures').update({ save_for_later: laterType }).eq('id', rawId); }
+    catch (e) { console.warn('HomeScreen: save capture for later', e.message); }
+  };
+
+  const archiveDeskCapture = async (item) => {
+    closeDeskSheet();
+    const rawId = item.id.replace(/^cap_/, '');
+    dismissDeskItem(item.id);
+    try { await supabase.from('captures').update({ status: 'archived' }).eq('id', rawId); }
+    catch (e) { console.warn('HomeScreen: archive capture', e.message); }
+  };
+
+  const deleteDeskCapture = async (item) => {
+    closeDeskSheet();
+    const rawId = item.id.replace(/^cap_/, '');
+    dismissDeskItem(item.id);
+    // Soft delete — same 7-day Recently Deleted behavior as Capture Inbox's
+    // own delete (src/api/trashService.js), not a permanent removal.
+    try { await supabase.from('captures').update({ deleted_at: new Date().toISOString() }).eq('id', rawId); }
+    catch (e) { console.warn('HomeScreen: delete capture', e.message); }
+  };
+
+  // What NextUpCard's action row shows depends entirely on what kind of
+  // candidate is open — a task can be done or deleted, a project can be
+  // opened or given a next step, a capture has real routing choices. Kept
+  // here (next to the handlers above) rather than inside NextUpCard so the
+  // component itself doesn't need to know any of this domain logic.
+  const actionsForDeskItem = (item) => {
+    if (!item) return [];
+    if (item.kind === 'task') return [
+      { key: 'done',   label: 'Done',   icon: 'checkmark-circle-outline', tone: 'primary', onPress: () => completeDeskTask(item) },
+      { key: 'focus',  label: 'Focus',  icon: 'timer-outline',            tone: 'secondary', onPress: () => focusOnDeskItem(item) },
+      { key: 'delete', label: 'Delete', icon: 'trash-outline',            tone: 'danger', onPress: () => deleteDeskTask(item) },
+    ];
+    if (item.kind === 'assignment') return [
+      { key: 'complete', label: 'Complete', icon: 'checkmark-circle-outline', tone: 'primary', onPress: () => completeDeskAssignment(item) },
+    ];
+    if (item.kind === 'project') {
+      const stepAction = { key: 'step', label: item.hasNextAction ? 'New Step' : 'Set Next Step', icon: 'flag-outline', tone: item.hasNextAction ? 'secondary' : 'primary', onPress: () => promptNextAction(item) };
+      const openAction = { key: 'open', label: 'Open Project', icon: 'rocket-outline', tone: item.hasNextAction ? 'primary' : 'secondary', onPress: () => openDeskProject(item) };
+      return [
+        ...(item.hasNextAction ? [openAction, stepAction] : [stepAction, openAction]),
+        { key: 'focus', label: 'Focus', icon: 'timer-outline', tone: 'secondary', onPress: () => focusOnDeskItem(item) },
+      ];
+    }
+    // capture
+    const actions = [{ key: 'process', label: 'Process', icon: 'arrow-forward-circle-outline', tone: 'primary', onPress: () => processDeskCapture(item) }];
+    if (['link', 'video', 'resource'].includes(item.captureType)) {
+      actions.push({ key: 'later', label: item.captureType === 'video' ? 'Watch Later' : 'Read Later', icon: 'bookmark-outline', tone: 'secondary', onPress: () => saveDeskCaptureForLater(item) });
+    }
+    actions.push({ key: 'archive', label: 'Archive', icon: 'archive-outline', tone: 'secondary', onPress: () => archiveDeskCapture(item) });
+    actions.push({ key: 'delete', label: 'Delete', icon: 'trash-outline', tone: 'danger', onPress: () => deleteDeskCapture(item) });
+    return actions;
+  };
+
+  const saveNextActionFor = async () => {
+    if (!nextActionTarget || !nextActionDraft.trim()) return;
+    const projectId = nextActionTarget.meta.project.id;
+    const text = nextActionDraft.trim();
+    setSavingNextAction(true);
+    try {
+      await supabase.from('projects').update({ next_action: text, updated_at: new Date().toISOString() }).eq('id', projectId);
+      setTodos(prev => prev.map(it => it.id === nextActionTarget.id
+        ? { ...it, title: text, hasNextAction: true, meta: { project: { ...it.meta.project, next_action: text } } }
+        : it));
+      setNextActionTarget(null);
+    } catch (e) {
+      console.warn('HomeScreen: set next action', e.message);
+      Alert.alert('Could not save', 'Something went wrong — try again.');
+    }
+    setSavingNextAction(false);
+  };
+
   const goStudy = () => {
     const pick = STUDY_DESTINATIONS[Math.floor(Math.random() * STUDY_DESTINATIONS.length)];
-    navigation.navigate('Library', { screen: pick.key });
+    goToLibraryScreen(pick.key);
   };
   const pickStudy = (key) => {
     setShowStudyMenu(false);
-    navigation.navigate('Library', { screen: key });
+    goToLibraryScreen(key);
   };
 
   const goPlay = () => {
@@ -730,7 +994,12 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: c.bg0 }}>
+    // "On the Desk"'s inline add-todo input (below) sat unprotected in this
+    // main ScrollView — no KeyboardAvoidingView meant the keyboard just
+    // covered it on a real device instead of the view shifting to keep it
+    // visible, unlike the two edit modals further down which already wrap
+    // their own inputs this way.
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg0 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {bgMode === 'player' && <PlayerMatchBackground background={playerBackground} />}
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -742,7 +1011,7 @@ export default function HomeScreen() {
           <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 0.8 }}>{dateStr}</Text>
           {(streakDays || 0) > 0 && (
             <View style={{ backgroundColor: c.bg1, borderRadius: 12, paddingHorizontal: s.sm, paddingVertical: 3, borderWidth: 0.5, borderColor: c.gold }}>
-              <Text style={{ fontSize: t.xs, color: c.gold, fontWeight: t.semibold }}>🔥 {streakDays} day streak</Text>
+              <Text style={{ fontSize: t.xs, color: c.gold, fontWeight: t.semibold }}>{showEmojis ? '🔥 ' : ''}{streakDays} day streak</Text>
             </View>
           )}
         </View>
@@ -756,6 +1025,7 @@ export default function HomeScreen() {
             c={c} t={t}
             onPress={() => navigation.navigate('Profile')}
           />
+          <TourSpot id="home-study-play">
           <View style={{ flexDirection: 'row', gap: 10, marginTop: s.md }}>
             <TouchableOpacity
               style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: c.teal, backgroundColor: c.tealLight, borderRadius: r.md, paddingVertical: s.md }}
@@ -770,13 +1040,14 @@ export default function HomeScreen() {
               <Text style={{ fontSize: t.md, fontWeight: t.bold, color: '#fff', letterSpacing: 1 }}>PLAY</Text>
             </TouchableOpacity>
           </View>
+          </TourSpot>
         </View>
 
         {/* ── Quote + affirmation ── */}
         <TourSpot id="home-focus">
         <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, marginHorizontal: s.lg, marginBottom: s.md, borderLeftWidth: 3, borderLeftColor: c.teal, borderWidth: 0.5, borderColor: c.border }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: s.sm }}>
-            <Text style={{ fontSize: 10, color: c.teal, textTransform: 'uppercase', letterSpacing: 1, fontWeight: t.semibold }}>✦ Today's Wisdom</Text>
+            <Text style={{ fontSize: 10, color: c.teal, textTransform: 'uppercase', letterSpacing: 1, fontWeight: t.semibold }}>{showEmojis ? '✦ ' : ''}Today's Wisdom</Text>
             <TouchableOpacity onPress={() => setEditAffirm(true)}>
               <Ionicons name="add-circle-outline" size={20} color={c.gold} />
             </TouchableOpacity>
@@ -786,7 +1057,7 @@ export default function HomeScreen() {
           {todaysAffirmation && (
             <TouchableOpacity onPress={() => setEditAffirm(true)}
               style={{ marginTop: s.sm, borderTopWidth: 0.5, borderTopColor: c.border, paddingTop: s.sm }}>
-              <Text style={{ fontSize: 10, color: c.gold, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>💛 My Affirmation</Text>
+              <Text style={{ fontSize: 10, color: c.gold, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>{showEmojis ? '💛 ' : ''}My Affirmation</Text>
               <Text style={{ fontSize: t.sm, color: c.text1, lineHeight: 20 }}>{todaysAffirmation}</Text>
               {affirmations.length > 1 && (
                 <Text style={{ fontSize: 9, color: c.text4, marginTop: 4 }}>{affirmations.length} affirmations rotating daily</Text>
@@ -797,10 +1068,11 @@ export default function HomeScreen() {
         </TourSpot>
 
         {/* ── Focus + calendar ── */}
+        <TourSpot id="home-focus-input">
         <View style={{ paddingHorizontal: s.lg, marginBottom: s.lg, flexDirection: 'row', gap: s.sm }}>
           <TouchableOpacity
             style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 0.5, borderColor: c.border }}
-            onPress={() => { setFocusDraft(todayFocus); setEditFocus(true); }}>
+            onPress={() => { setFocusDraft(todayFocus || ''); setEditFocus(true); }}>
             <Ionicons name="bookmark" size={14} color={c.teal} />
             <Text style={{ flex: 1, fontSize: t.sm, color: todayFocus ? c.text1 : c.text4, lineHeight: 20 }} numberOfLines={2}>
               {todayFocus || "Set today's focus..."}
@@ -815,8 +1087,10 @@ export default function HomeScreen() {
             </Text>
           </TouchableOpacity>
         </View>
+        </TourSpot>
 
         {/* ── On the desk ── */}
+        <TourSpot id="home-desk">
         <View style={{ paddingHorizontal: s.lg, marginBottom: s.lg }}>
           <SectionHead title="On the Desk" action="+ Add" onAction={() => setShowTodoInput(true)} c={c} t={t} />
           {showTodoInput && (
@@ -832,13 +1106,14 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
           )}
-          <DeskCarousel
+          <DeskTicker
             items={todos}
-            onItemPress={(item) => { setSelectedDeskItem(item); setShowDeskCard(true); }}
+            onItemPress={setSelectedDeskItem}
             onAdd={() => setShowTodoInput(true)}
             c={c} t={t} s={s} r={r}
           />
         </View>
+        </TourSpot>
 
         {/* ── Latest ideas ── */}
         {ideas.length > 0 && (
@@ -892,14 +1167,54 @@ export default function HomeScreen() {
         c={c} t={t} s={s} r={r}
       />
 
-      {/* ── Desk item preview ── */}
-      <DeskItemCard
-        item={selectedDeskItem}
-        visible={showDeskCard}
-        onClose={() => setShowDeskCard(false)}
-        onNavigate={() => { setShowDeskCard(false); navigation.navigate('Library'); }}
-        c={c} t={t} s={s} r={r}
-      />
+      {/* ── Desk ticker chip, tapped open — NextUpCard's full detail ── */}
+      <Modal visible={!!selectedDeskItem} transparent animationType="slide" onRequestClose={() => setSelectedDeskItem(null)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 48 }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
+            {selectedDeskItem && (
+              <NextUpCard
+                item={selectedDeskItem}
+                actions={actionsForDeskItem(selectedDeskItem)}
+                c={c} t={t} s={s} r={r}
+              />
+            )}
+            <TouchableOpacity onPress={() => setSelectedDeskItem(null)}
+              style={{ marginTop: s.md, padding: s.md, alignItems: 'center' }}>
+              <Text style={{ color: c.text3, fontWeight: '600' }}>Dismiss</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Set next action (from the desk's "Set next step →" CTA) ── */}
+      <Modal visible={!!nextActionTarget} transparent animationType="slide" onRequestClose={() => setNextActionTarget(null)}>
+        <KeyboardAvoidingView style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 48 }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
+            <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1, marginBottom: 4 }}>
+              {showEmojis ? '🚩 ' : ''}What's next for {nextActionTarget?.projectTitle}?
+            </Text>
+            <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: s.md }}>One concrete, physical step — not the whole project.</Text>
+            <TextInput
+              style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: c.border, marginBottom: s.lg }}
+              value={nextActionDraft} onChangeText={setNextActionDraft}
+              placeholder="e.g. Sketch the first page" placeholderTextColor={c.text4}
+              autoFocus onSubmitEditing={saveNextActionFor} returnKeyType="done"
+            />
+            <View style={{ flexDirection: 'row', gap: s.sm }}>
+              <TouchableOpacity onPress={() => setNextActionTarget(null)}
+                style={{ flex: 1, padding: s.md, alignItems: 'center', backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border }}>
+                <Text style={{ color: c.text3, fontSize: t.sm }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={saveNextActionFor} disabled={!nextActionDraft.trim() || savingNextAction}
+                style={{ flex: 2, padding: s.md, alignItems: 'center', backgroundColor: c.teal, borderRadius: r.md, opacity: !nextActionDraft.trim() ? 0.5 : 1 }}>
+                {savingNextAction ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontWeight: t.bold, fontSize: t.sm }}>Save</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* ── Idea preview card ── */}
       <IdeaPreviewCard
@@ -955,6 +1270,6 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </Modal>
 
-    </View>
+    </KeyboardAvoidingView>
   );
 }

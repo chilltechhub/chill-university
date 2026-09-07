@@ -13,21 +13,42 @@ import { cacheRead, cacheWrite } from '../api/offlineCache';
 
 export const FOLDER_COLORS = ['#5c9ce0', '#4caf7d', '#9a6fd6', '#c9a84c', '#d97a7a', '#3fb8cf'];
 
-export default function useFolders(namespace, userId) {
+// `legacyNamespaces` is for screens that absorbed other screens: the first
+// time the new namespace is read and has nothing stored, the old namespaces'
+// folders are merged into it and saved. Folder ids are kept exactly as they
+// were, so every item still pointing at one (captures.url_meta.folder) lands
+// in the same folder it was already in. Two folders that happened to share a
+// name across old screens both survive — dropping either would orphan its
+// items.
+export default function useFolders(namespace, userId, legacyNamespaces = []) {
   const key = `folders:${namespace}:${userId || 'anon'}`;
+  const legacyKey = legacyNamespaces.join(',');
   const [folders, setFolders] = useState([]);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     let alive = true;
     setReady(false);
-    cacheRead(key).then(saved => {
+    (async () => {
+      const saved = await cacheRead(key);
+      let next = Array.isArray(saved) ? saved : null;
+
+      if (!next && legacyKey) {
+        const legacy = await Promise.all(
+          legacyKey.split(',').map(ns => cacheRead(`folders:${ns}:${userId || 'anon'}`))
+        );
+        const seen = new Set();
+        next = legacy.flatMap(list => (Array.isArray(list) ? list : []))
+          .filter(f => f && f.id && !seen.has(f.id) && seen.add(f.id));
+        if (next.length) await cacheWrite(key, next);
+      }
+
       if (!alive) return;
-      setFolders(Array.isArray(saved) ? saved : []);
+      setFolders(next || []);
       setReady(true);
-    });
+    })();
     return () => { alive = false; };
-  }, [key]);
+  }, [key, legacyKey]);
 
   const persist = useCallback((next) => {
     setFolders(next);

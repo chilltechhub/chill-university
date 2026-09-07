@@ -21,7 +21,13 @@ export default function LevelRing({
 
   return (
     <View style={[{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }, style]}>
-      <Svg width={size} height={size} style={{ position: 'absolute' }}>
+      {/* The -90deg lives on the Svg rather than as `rotation`/`origin` props on
+          the arc. Those are react-native-svg conveniences that its web renderer
+          forwards straight to the DOM as `transform-origin`, which React rejects
+          — an "Invalid DOM property" error on every single render of this ring
+          (Home, Games and Settings all use it). Rotating the whole element is
+          equivalent here, since both circles are concentric and centered. */}
+      <Svg width={size} height={size} style={{ position: 'absolute', transform: [{ rotate: '-90deg' }] }}>
         <Circle
           cx={size / 2} cy={size / 2} r={radius}
           stroke={trackColor} strokeWidth={strokeWidth} fill="none"
@@ -32,8 +38,6 @@ export default function LevelRing({
           strokeDasharray={`${circumference} ${circumference}`}
           strokeDashoffset={dashoffset}
           strokeLinecap="round"
-          rotation="-90"
-          origin={`${size / 2}, ${size / 2}`}
         />
       </Svg>
       {children}

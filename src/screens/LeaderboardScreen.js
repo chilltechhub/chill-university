@@ -6,17 +6,24 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { useTheme } from '../../context/ThemeContext';
 import { FONTS } from '../theme';
 import { getRank, getRankLabel } from '../logic/rankUtils';
 import { getLeaderboard, getMyLeaderboardPosition, LEADERBOARD_NOT_CONFIGURED } from '../logic/leaderboardService';
+import { getCohortLeaderboard, ORG_NOT_CONFIGURED } from '../api/organizationService';
 
 const MEDAL = { 1: '🥇', 2: '🥈', 3: '🥉' };
 
 export default function LeaderboardScreen() {
   const navigation = useNavigation();
+  // cohortId/cohortName are optional route params (see
+  // organization/CohortRosterScreen.js) — present, this screen shows a
+  // cohort-scoped board instead of the global one. The existing param-less
+  // call site (GamesScreen.js) is unaffected; both are undefined there.
+  const route = useRoute();
+  const { cohortId, cohortName } = route.params || {};
   const { user } = useUserProgress();
   const { colors: c, typography: t, spacing: s, radius: r, shadows: sh } = useTheme();
   const styles = makeStyles(c, t, s, r, sh);
@@ -30,20 +37,31 @@ export default function LeaderboardScreen() {
   const load = useCallback(async (isRefresh = false) => {
     isRefresh ? setRefreshing(true) : setLoading(true);
     try {
-      const [board, mine] = await Promise.all([
-        getLeaderboard(50),
-        getMyLeaderboardPosition(user?.id),
-      ]);
-      setRows(board);
-      setMe(mine);
-      setStatus(board.length ? 'ready' : 'empty');
+      if (cohortId) {
+        // Cohort lists are small enough that the caller's own row is
+        // already in a 50-row fetch — no separate "my position" call
+        // needed the way the (much larger) global board requires.
+        const board = await getCohortLeaderboard(cohortId, 50);
+        setRows(board);
+        setMe(board.find((row) => row.id === user?.id) || null);
+        setStatus(board.length ? 'ready' : 'empty');
+      } else {
+        const [board, mine] = await Promise.all([
+          getLeaderboard(50),
+          getMyLeaderboardPosition(user?.id),
+        ]);
+        setRows(board);
+        setMe(mine);
+        setStatus(board.length ? 'ready' : 'empty');
+      }
     } catch (e) {
-      setStatus(e?.message === LEADERBOARD_NOT_CONFIGURED ? 'not_configured' : 'error');
+      const notConfigured = e?.message === LEADERBOARD_NOT_CONFIGURED || e?.message === ORG_NOT_CONFIGURED;
+      setStatus(notConfigured ? 'not_configured' : 'error');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user?.id]);
+  }, [user?.id, cohortId]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
@@ -55,7 +73,7 @@ export default function LeaderboardScreen() {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={22} color={c.text2} />
         </TouchableOpacity>
-        <Text style={styles.title}>🏆 Leaderboard</Text>
+        <Text style={[styles.title, { flex: 1, textAlign: 'center' }]} numberOfLines={1}>🏆 {cohortName ? `${cohortName} Leaderboard` : 'Leaderboard'}</Text>
         <View style={{ width: 34 }} />
       </View>
 

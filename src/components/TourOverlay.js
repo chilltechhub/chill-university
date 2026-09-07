@@ -14,30 +14,66 @@
 // element is only ever shown, never actually reachable, so the real
 // screen underneath can't be tapped out from under an active tour. Only
 // the tooltip's own Back/Next/Skip are live.
+//
+// The tooltip card's placement is clamped to the screen on every axis: it
+// picks below/above the target (or a safe centered band with no target),
+// then caps itself with `maxHeight` and lets only the body text scroll
+// internally — the step label, title, and Back/Next/Skip footer are never
+// inside that scroll area, so they can never end up pushed off-screen no
+// matter how long a step's body copy runs (this is what was happening on
+// the Training step: a tall target left too little room below it, and the
+// uncapped card ran its Next button past the bottom edge, stranding
+// whoever hit it).
 
 import React from 'react';
-import { View, Text, TouchableOpacity, Modal, Dimensions, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, Dimensions, ScrollView, StyleSheet, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { useTour } from '../../context/TourContext';
 
 const PAD = 8;
 const SCRIM = 'rgba(0,0,0,0.72)';
+const MARGIN_V = 24;
+const MIN_CARD = 150;
+const TAB_BAR_H = Platform.OS === 'ios' ? 66 : 52;
+// Every non-tab screen sits below the persistent global TopBar (App.js) —
+// its own back chevron lands a bit further down still, in whatever header
+// that screen renders. Not pixel-exact (headers pad this differently
+// screen to screen) but close enough for a visual "it's up here" cue.
+const TOPBAR_H = 60;
 
 export default function TourOverlay() {
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   const { active, currentStep, stepIndex, steps, isLastStep, targets, nextStep, backStep, skipTour } = useTour();
+  const insets = useSafeAreaInsets();
 
   if (!active || !currentStep) return null;
 
   const { width: SW, height: SH } = Dimensions.get('window');
-  const target = currentStep.id ? targets[currentStep.id] : null;
+
+  // A real registered TourSpot, or — for the screen-tutorial's synthetic
+  // "Navigation" step — a made-up rect over the tab bar / back button, so
+  // it can still be spotlighted without either one needing to be a real
+  // TourSpot itself.
+  let target = currentStep.id ? targets[currentStep.id] : null;
+  if (!target && currentStep.navHint === 'tabbar') {
+    target = { x: 0, y: SH - TAB_BAR_H, width: SW, height: TAB_BAR_H };
+  } else if (!target && currentStep.navHint === 'back') {
+    target = { x: 4, y: insets.top + TOPBAR_H + 6, width: 70, height: 52 };
+  }
 
   // Bands covering everything except the (padded) target rect. Null when
   // there's no target yet — e.g. the welcome/closing cards, or a step
   // whose screen hasn't finished registering its TourSpot.
+  // A registered target can legitimately sit outside the current viewport —
+  // TourSpot now scrolls its own target into view on web before this reads
+  // it, but native has no such hook, and there's a real gap between "just
+  // navigated to this screen" and that scroll landing. Treat anything left
+  // off-screen (rather than let w/h go negative and silently draw nothing)
+  // the same as "no target yet": full dim, no broken hole.
   let bands = null;
   let holeBox = null;
-  if (target) {
+  if (target && target.x < SW && target.y < SH && target.x + target.width > 0 && target.y + target.height > 0) {
     const x = Math.max(0, target.x - PAD);
     const y = Math.max(0, target.y - PAD);
     const w = Math.min(SW - x, target.width + PAD * 2);
@@ -51,15 +87,28 @@ export default function TourOverlay() {
     ];
   }
 
-  // Tooltip goes below the target if there's room, otherwise above it;
-  // dead-centered when there's no target to anchor to.
+  // Tooltip goes below the target if there's room, above it if not, and
+  // falls back to a safe top/bottom-margined band (scrollable if needed)
+  // when neither side has enough — never a bare `top` with no ceiling on
+  // how tall the card is allowed to grow.
   const cardStyle = { position: 'absolute', left: s.lg, right: s.lg };
   if (holeBox) {
-    const belowY = holeBox.y + holeBox.h + 16;
-    if (belowY + 180 < SH) cardStyle.top = belowY;
-    else cardStyle.top = Math.max(60, holeBox.y - 196);
+    const spaceBelow = SH - MARGIN_V - (holeBox.y + holeBox.h + 16);
+    const spaceAbove = holeBox.y - 16 - MARGIN_V;
+    if (spaceBelow >= MIN_CARD) {
+      cardStyle.top = holeBox.y + holeBox.h + 16;
+      cardStyle.maxHeight = spaceBelow;
+    } else if (spaceAbove >= MIN_CARD) {
+      cardStyle.top = Math.max(MARGIN_V, holeBox.y - 16 - spaceAbove);
+      cardStyle.maxHeight = spaceAbove;
+    } else {
+      cardStyle.top = MARGIN_V;
+      cardStyle.maxHeight = SH - MARGIN_V * 2;
+    }
   } else {
-    cardStyle.top = SH / 2 - 100;
+    const preferredTop = SH / 2 - 100;
+    cardStyle.top = Math.max(MARGIN_V, Math.min(preferredTop, SH - MARGIN_V - MIN_CARD));
+    cardStyle.maxHeight = SH - cardStyle.top - MARGIN_V;
   }
 
   return (
@@ -85,13 +134,22 @@ export default function TourOverlay() {
           </>
         )}
 
-        <View style={[cardStyle, { backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, borderWidth: 0.5, borderColor: c.border }]}>
-          <Text style={{ fontSize: 11, color: c.text4, fontWeight: '800', letterSpacing: 1, marginBottom: 6 }}>
-            STEP {stepIndex + 1} OF {steps.length}
-          </Text>
-          <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: 6 }}>{currentStep.title}</Text>
-          <Text style={{ fontSize: t.sm, color: c.text2, lineHeight: 20, marginBottom: s.lg }}>{currentStep.body}</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={[cardStyle, { backgroundColor: c.bg1, borderRadius: r.lg, borderWidth: 0.5, borderColor: c.border, overflow: 'hidden' }]}>
+          <View style={{ paddingHorizontal: s.lg, paddingTop: s.lg, flexShrink: 0 }}>
+            <Text style={{ fontSize: 11, color: c.text4, fontWeight: '800', letterSpacing: 1, marginBottom: 6 }}>
+              STEP {stepIndex + 1} OF {steps.length}
+            </Text>
+            <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1 }}>{currentStep.title}</Text>
+          </View>
+
+          <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ paddingHorizontal: s.lg, paddingTop: 6, paddingBottom: s.md }}>
+            <Text style={{ fontSize: t.sm, color: c.text2, lineHeight: 20 }}>{currentStep.body}</Text>
+          </ScrollView>
+
+          <View style={{
+            flexShrink: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+            paddingHorizontal: s.lg, paddingBottom: s.lg, paddingTop: s.sm,
+          }}>
             <TouchableOpacity onPress={skipTour} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Text style={{ fontSize: 12, color: c.text4, fontWeight: '700' }}>Skip</Text>
             </TouchableOpacity>

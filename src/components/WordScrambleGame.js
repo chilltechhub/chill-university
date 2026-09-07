@@ -6,13 +6,23 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import GameShell, { useGameTheme } from './GameShell';
+import { useUIPrefs } from '../../context/UIPrefsContext';
 import GameOver from './GameOver';
 import GradeSelectCard from './GradeSelectCard';
+import RoundCompleteScreen from './RoundCompleteScreen';
 import useGame from '../logic/useGame';
-import useGradeLevel from '../logic/useGradeLevel';
+import useGradeLevel, { tierForLevel } from '../logic/useGradeLevel';
+import { roundLength, STAGE_COUNT } from '../logic/difficultyAdapter';
 import { SCRAMBLE_BANK } from '../data/gameContent/wordScramble';
 
-const SESSION_LENGTH = 5;
+// Stage lengths come from the same roundLength() curve every round-based
+// game shares (short first, longer as you clear more) — the opening stage
+// is 4 words, growing round over round across a full 10-round run instead
+// of a flat session length. No points land until a stage finishes and its
+// prize is picked (see RoundCompleteScreen) — `stageCleared` only counts
+// CORRECT words, so a stage can take more than its target guesses if you
+// miss a few along the way; that's by design, not a bug.
+function stageTarget(stage) { return roundLength(stage); }
 
 const BLURBS = {
   'K-2': 'Short 3-4 letter words.',
@@ -44,17 +54,21 @@ export default function WordScrambleGame({ onGameEnd }) {
   const navigation = useNavigation();
   const G = useGameTheme();
   const s = makeStyles(G);
+  const { showEmojis } = useUIPrefs();
   const { level, setLevel } = useGradeLevel('scramble');
   const [started, setStarted] = useState(false);
 
   const [current, setCurrent] = useState(null);
   const [pool, setPool] = useState([]);
   const [guess, setGuess] = useState([]);
-  const [asked, setAsked] = useState(0);
+  const [stage, setStage] = useState(0);
+  const [stageCleared, setStageCleared] = useState(0); // correct words solved within this stage
+  const [stageAttempted, setStageAttempted] = useState(0); // for the prize's "N correct" stat
+  const [roundComplete, setRoundComplete] = useState(null);
   const [recent, setRecent] = useState([]);
   const [feedback, setFeedback] = useState(null);
 
-  const game = useGame({ subject: 'language_arts', difficulty: 2, skillLevel: level, onGameEnd });
+  const game = useGame({ subject: 'language_arts', difficulty: 2, skillLevel: level, onGameEnd, manualScoring: true });
 
   const loadWord = (entry, avoidList) => {
     setCurrent(entry);
@@ -67,7 +81,10 @@ export default function WordScrambleGame({ onGameEnd }) {
   const beginRun = () => {
     const first = pickNext(SCRAMBLE_BANK[level], []);
     setRecent(loadWord(first, []));
-    setAsked(0);
+    setStage(0);
+    setStageCleared(0);
+    setStageAttempted(0);
+    setRoundComplete(null);
     setStarted(true);
   };
 
@@ -91,20 +108,46 @@ export default function WordScrambleGame({ onGameEnd }) {
     setFeedback({ isCorrect, msg: isCorrect ? `✓ ${current.word} — correct!` : `✗ It was ${current.word}` });
 
     setTimeout(() => {
-      const willEnd = game.lives - (isCorrect ? 0 : 1) <= 0 || asked + 1 >= SESSION_LENGTH;
-      if (willEnd) {
+      const newStageAttempted = stageAttempted + 1;
+      const newStageCleared = stageCleared + (isCorrect ? 1 : 0);
+      const stageDone = isCorrect && newStageCleared >= stageTarget(stage);
+      const outOfLives = game.lives - (isCorrect ? 0 : 1) <= 0;
+
+      if (outOfLives) {
         game.endGame();
+      } else if (stageDone) {
+        setStageAttempted(newStageAttempted);
+        setStageCleared(newStageCleared);
+        setRoundComplete({
+          correct: newStageCleared, total: newStageAttempted,
+          roundNumber: stage + 1, isLastStage: stage + 1 >= STAGE_COUNT,
+        });
       } else {
         const next = pickNext(SCRAMBLE_BANK[level], recent);
         setRecent(loadWord(next, recent));
-        setAsked(a => a + 1);
+        setStageAttempted(newStageAttempted);
+        setStageCleared(newStageCleared);
       }
     }, 1800);
-  }, [feedback, current, guess, game, asked, level, recent]);
+  }, [feedback, current, guess, game, stage, stageCleared, stageAttempted, level, recent]);
+
+  const handleClaimPrize = useCallback(() => {
+    if (roundComplete?.isLastStage) {
+      setRoundComplete(null);
+      game.endGame();
+    } else {
+      setStage(s => s + 1);
+      setStageCleared(0);
+      setStageAttempted(0);
+      setRoundComplete(null);
+      const next = pickNext(SCRAMBLE_BANK[level], recent);
+      setRecent(loadWord(next, recent));
+    }
+  }, [game, roundComplete, level, recent]);
 
   if (!started) {
     return (
-      <GradeSelectCard
+      <GradeSelectCard gameId="scramble"
         title="Word Scramble" emoji="🔤" subjectLabel="Language Arts"
         blurbs={BLURBS} level={level} onSelectLevel={setLevel} onStart={beginRun}
       />
@@ -112,7 +155,7 @@ export default function WordScrambleGame({ onGameEnd }) {
   }
 
   if (game.done) return (
-    <GameOver
+    <GameOver gameId="scramble"
       score={game.score} correct={game.correct} total={game.attempted}
       streak={game.bestStreak} title="Word Wizard!"
       onPlayAgain={() => { game.reset(); setStarted(false); }}
@@ -120,17 +163,36 @@ export default function WordScrambleGame({ onGameEnd }) {
     />
   );
 
+  if (roundComplete) {
+    return (
+      <GameShell gameId="scramble" disableFactToast
+        title="Word Scramble" emoji="🔤" subject={`Language Arts · ${level}`}
+        score={game.score} lives={game.lives} streak={game.streak}
+      >
+        <RoundCompleteScreen
+          roundNumber={roundComplete.roundNumber}
+          correct={roundComplete.correct}
+          total={roundComplete.total}
+          streak={game.streak}
+          difficulty={tierForLevel(level)}
+          onAward={game.addPoints}
+          onAdvance={handleClaimPrize}
+        />
+      </GameShell>
+    );
+  }
+
   if (!current) return null;
 
   return (
-    <GameShell
+    <GameShell gameId="scramble" disableFactToast
       title="Word Scramble" emoji="🔤" subject={`Language Arts · ${level}`}
       score={game.score} lives={game.lives} streak={game.streak}
-      progress={asked / SESSION_LENGTH}
+      progress={stageCleared / stageTarget(stage)}
     >
       <ScrollView contentContainerStyle={s.scroll}>
-        <Text style={s.progress}>Word {asked + 1} of {SESSION_LENGTH}</Text>
-        <Text style={s.hint}>💡 {current.hint}</Text>
+        <Text style={s.progress}>Round {stage + 1} of {STAGE_COUNT} · Word {stageCleared + 1} of {stageTarget(stage)}</Text>
+        <Text style={s.hint}>{showEmojis ? '💡 ' : ''}{current.hint}</Text>
 
         <View style={s.guessRow}>
           {current.word.split('').map((_, i) => (

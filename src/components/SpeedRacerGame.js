@@ -2,14 +2,23 @@
 // A fun, arcade racing game — not tied to a subject, just speed. Switch
 // lanes to dodge oncoming traffic; the road gets faster the longer you
 // survive, like a real race ramping up.
+//
+// No discrete rounds here (it's one continuous run), so it gets a single
+// "pick a prize" screen at the very end instead of one per round — same
+// manualScoring pattern as every other converted game, just with exactly
+// one RoundCompleteScreen instead of several. Also ends immediately on a
+// third life lost, same as every other game, instead of only stopping
+// when the clock runs out.
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import GameShell, { useGameTheme } from './GameShell';
 import GameOver from './GameOver';
 import GradeSelectCard from './GradeSelectCard';
+import RoundCompleteScreen from './RoundCompleteScreen';
 import useGame from '../logic/useGame';
+import useGameFacts from '../logic/useGameFacts';
 import useGradeLevel from '../logic/useGradeLevel';
 
 const LANES = 3;
@@ -17,11 +26,14 @@ const BOTTOM_ROW = 5;
 const LANE_HEIGHT = 260;
 const OBSTACLES = ['🚧', '🚙', '🪨', '🛢️'];
 
+// Durations trimmed from the original 45-60s down to a 15-30s range — a
+// continuous reflex arcade game like this drags once the "just for fun"
+// novelty wears off; a short, replayable burst suits it better.
 const TIER_CONFIG = {
-  'K-2':  { baseTickMs: 800, minTickMs: 500, speedupPerSec: 6,  spawnChance: 0.35, duration: 45 },
-  '3-5':  { baseTickMs: 700, minTickMs: 400, speedupPerSec: 8,  spawnChance: 0.40, duration: 50 },
-  '6-8':  { baseTickMs: 600, minTickMs: 320, speedupPerSec: 9,  spawnChance: 0.45, duration: 55 },
-  '9-12': { baseTickMs: 500, minTickMs: 250, speedupPerSec: 10, spawnChance: 0.50, duration: 60 },
+  'K-2':  { baseTickMs: 800, minTickMs: 500, speedupPerSec: 6,  spawnChance: 0.35, duration: 15 },
+  '3-5':  { baseTickMs: 700, minTickMs: 400, speedupPerSec: 8,  spawnChance: 0.40, duration: 20 },
+  '6-8':  { baseTickMs: 600, minTickMs: 320, speedupPerSec: 9,  spawnChance: 0.45, duration: 25 },
+  '9-12': { baseTickMs: 500, minTickMs: 250, speedupPerSec: 10, spawnChance: 0.50, duration: 30 },
 };
 
 const BLURBS = {
@@ -46,22 +58,49 @@ export default function SpeedRacerGame({ onGameEnd }) {
   const [timeLeft, setTimeLeft] = useState(0);
   const [paused, setPaused] = useState(false);
   const [distance, setDistance] = useState(0);
+  const [roundComplete, setRoundComplete] = useState(null);
   const hasEnded = useRef(false);
   const carLaneRef = useRef(1);
+  // Refs (not state) for the round-end tally — obstacles resolve rapidly
+  // enough that a state closure read at the exact end-of-run moment could
+  // be a tick stale; refs are always current.
+  const dodgedRef = useRef(0);
+  const crashedRef = useRef(0);
 
-  const game = useGame({ subject: 'general', difficulty: 2, skillLevel: level, onGameEnd });
+  const { next: nextFact } = useGameFacts('speedracer');
+  const game = useGame({ subject: 'general', difficulty: 2, skillLevel: level, onGameEnd, manualScoring: true });
   const cfg = TIER_CONFIG[level] || TIER_CONFIG['3-5'];
+
+  // One-shot ending for this continuous game — called either when the
+  // clock runs out or the third life is lost.
+  const finishRun = useCallback(() => {
+    if (hasEnded.current) return;
+    hasEnded.current = true;
+    setRoundComplete({
+      correct: dodgedRef.current,
+      total: dodgedRef.current + crashedRef.current,
+      fact: nextFact(),
+    });
+  }, [nextFact]);
 
   const beginRun = () => {
     hasEnded.current = false;
+    dodgedRef.current = 0;
+    crashedRef.current = 0;
     setObstacles([]);
     setCarLane(1);
     carLaneRef.current = 1;
     setTimeLeft(cfg.duration);
     setPaused(false);
     setDistance(0);
+    setRoundComplete(null);
     setStarted(true);
   };
+
+  const handleClaimPrize = useCallback(() => {
+    setRoundComplete(null);
+    game.endGame();
+  }, [game]);
 
   const moveCar = (lane) => {
     carLaneRef.current = lane;
@@ -74,14 +113,14 @@ export default function SpeedRacerGame({ onGameEnd }) {
     const id = setInterval(() => {
       setTimeLeft(t => {
         if (t <= 1) {
-          if (!hasEnded.current) { hasEnded.current = true; setTimeout(() => game.endGame(), 100); }
+          if (!hasEnded.current) setTimeout(() => finishRun(), 100);
           return 0;
         }
         return t - 1;
       });
     }, 1000);
     return () => clearInterval(id);
-  }, [started, isFocused, paused, timeLeft]);
+  }, [started, isFocused, paused, timeLeft, finishRun]);
 
   // Traffic tick — speed ramps up as timeLeft counts down
   useEffect(() => {
@@ -97,6 +136,12 @@ export default function SpeedRacerGame({ onGameEnd }) {
           if (o.row >= BOTTOM_ROW) {
             const crashed = o.lane === carLaneRef.current;
             game.answer(!crashed);
+            if (crashed) {
+              crashedRef.current += 1;
+              if (game.lives - 1 <= 0) { setTimeout(() => finishRun(), 0); }
+            } else {
+              dodgedRef.current += 1;
+            }
           } else {
             surviving.push(o);
           }
@@ -119,7 +164,7 @@ export default function SpeedRacerGame({ onGameEnd }) {
 
   if (!started) {
     return (
-      <GradeSelectCard
+      <GradeSelectCard gameId="speedracer"
         title="Speed Racer" emoji="🏎️" subjectLabel="Just for Fun"
         blurbs={BLURBS} level={level} onSelectLevel={setLevel} onStart={beginRun}
       />
@@ -127,7 +172,7 @@ export default function SpeedRacerGame({ onGameEnd }) {
   }
 
   if (game.done) return (
-    <GameOver
+    <GameOver gameId="speedracer"
       score={game.score} correct={game.correct} total={game.attempted}
       streak={game.bestStreak} title="Checkered Flag!"
       onPlayAgain={() => { game.reset(); setStarted(false); }}
@@ -135,8 +180,29 @@ export default function SpeedRacerGame({ onGameEnd }) {
     />
   );
 
+  if (roundComplete) {
+    return (
+      <GameShell gameId="speedracer" disableFactToast
+        title="Speed Racer" emoji="🏎️" subject={`Racing · ${level}`}
+        score={game.score} lives={game.lives} streak={game.streak}
+      >
+        <RoundCompleteScreen
+          roundNumber={1}
+          correct={roundComplete.correct}
+          total={roundComplete.total}
+          streak={game.streak}
+          difficulty={2}
+          funGame
+          fact={roundComplete.fact}
+          onAward={game.addPoints}
+          onAdvance={handleClaimPrize}
+        />
+      </GameShell>
+    );
+  }
+
   return (
-    <GameShell
+    <GameShell gameId="speedracer"
       title="Speed Racer" emoji="🏎️" subject={`Racing · ${level}`}
       score={game.score} lives={game.lives} streak={game.streak}
       timeLeft={timeLeft}

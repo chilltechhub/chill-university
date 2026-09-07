@@ -8,13 +8,15 @@ import {
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
-  Dimensions,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../../context/ThemeContext';
+import { useUIPrefs } from '../../../context/UIPrefsContext';
 import { useUserProgress } from '../../../context/UserProgressContext';
 import { supabase } from '../../api/supabaseClient';
+import { cacheRead, cacheWrite, isOnline } from '../../api/offlineCache';
 import { LIFE_AREAS } from './LifeAreaScreen';
 import LevelRing from '../../components/LevelRing';
 import PlayerMatchBackground from '../../components/PlayerMatchBackground';
@@ -22,10 +24,12 @@ import useCharacterLoadout from '../../logic/useCharacterLoadout';
 import useSetting, { SETTING_KEYS } from '../../logic/useSetting';
 import { FONTS } from '../../theme';
 import TourSpot from '../../components/TourSpot';
+import { todayStr } from '../../logic/dateUtils';
 
-const { width } = Dimensions.get('window');
-
-const LIBRARY_HUBS = [
+// Exported so onboarding's "Look & Layout" step (MultiStepOnboarding.js)
+// and Settings' "Library Sections" editor share this exact list instead of
+// keeping their own copy that could drift out of sync.
+export const LIBRARY_HUBS = [
   {
     id: 'academic',
     title: 'The Lab',
@@ -35,7 +39,6 @@ const LIBRARY_HUBS = [
     items: [
       { label: 'The Workshop', screen: 'ProjectsScreen', icon: 'hammer-outline', desc: 'Blueprints, builds & shipped work', featured: true },
       { label: 'Portfolio Archives', screen: 'PortfolioScreen', icon: 'briefcase-outline', desc: 'Mastery & showcase' },
-      { label: 'Research Vault', screen: 'ResearchScreen', icon: 'book-outline', desc: 'Deep dive studies' },
       { label: 'Career Expeditions', screen: 'CareerExplorationScreen', icon: 'compass-outline', desc: 'Professional horizons' },
     ],
   },
@@ -48,20 +51,69 @@ const LIBRARY_HUBS = [
     items: [
       { label: 'Academy Classes', screen: 'ClassesStack', icon: 'ribbon-outline', desc: 'Structured learning modules & coursework', featured: true },
       { label: 'Idea Garden', screen: 'IdeaGardenScreen', icon: 'leaf-outline', desc: 'Cultivate & seed thoughts' },
-      { label: 'Notes Desk', screen: 'NotesScreen', icon: 'document-text-outline', desc: 'Quick entries & logs' },
-      { label: 'Resources & Instruments', screen: 'ResourcesToolsScreen', icon: 'bookmark-outline', desc: 'Curated references & tools' },
+      // One entry, three former ones: Notes Desk, the Research Vault, and
+      // Resources & Instruments were all reading and writing the same
+      // `captures` rows, so they're now type filters inside one screen.
+      { label: 'Knowledge Vault', screen: 'KnowledgeScreen', icon: 'library-outline', desc: 'Notes, bookmarks, papers & tools' },
       { label: 'Planner', screen: 'PlannerScreen', icon: 'calendar-outline', desc: 'Agendas & key milestones' },
+      // Discover was a registered route with help copy and tour steps written
+      // for it, but no entry point anywhere in the app — unreachable in a
+      // shipped build until it was listed here.
+      { label: 'Discover', screen: 'DiscoverScreen', icon: 'people-outline', desc: 'Breakthroughs, projects & mentors' },
     ],
   },
 ];
 
+// ─── Add-life-area picker — the hidden ones from onboarding, addable later ──
+function AddAreaModal({ visible, hidden, onAdd, onClose, c, t, s, r }) {
+  const { showEmojis, showSubtext } = useUIPrefs();
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+        <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: r.xl, borderTopRightRadius: r.xl, padding: s.xl, paddingBottom: 40, maxHeight: '75%' }}>
+          <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: s.lg }}>
+            <Text style={{ fontSize: t.lg, fontWeight: '800', color: c.text1 }}>Add a Life Area</Text>
+            <TouchableOpacity onPress={onClose}><Ionicons name="close" size={22} color={c.text3} /></TouchableOpacity>
+          </View>
+          {hidden.length === 0 ? (
+            <Text style={{ fontSize: t.sm, color: c.text3, textAlign: 'center', paddingVertical: s.xl }}>
+              All eight life areas are already showing.
+            </Text>
+          ) : (
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {hidden.map(area => (
+                <TouchableOpacity
+                  key={area.id}
+                  onPress={() => onAdd(area.id)}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border }}
+                >
+                  {showEmojis ? <Text style={{ fontSize: 22 }}>{area.emoji}</Text> : <Ionicons name={area.icon} size={20} color={area.color || c.teal} />}
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: t.sm, fontWeight: '700', color: c.text1 }}>{area.label}</Text>
+                    {showSubtext && <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }} numberOfLines={1}>{area.subtitle}</Text>}
+                  </View>
+                  <Ionicons name="add-circle-outline" size={22} color={c.teal} />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function LibraryScreen() {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
+  const { showEmojis, showSubtext } = useUIPrefs();
   const { level, points, rank, streakDays } = useUserProgress();
   const { background: playerBackground } = useCharacterLoadout({ level, points, rank, streakDays });
   // Set from Settings → Appearance, not on this screen itself.
   const [bgMode] = useSetting(SETTING_KEYS.LIBRARY_BACKGROUND, 'plain');
+  // Set from Settings → Library Sections, or onboarding's Look & Layout step.
+  const [hiddenSections] = useSetting(SETTING_KEYS.HIDDEN_LIBRARY_SECTIONS, []);
 
   const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -69,6 +121,8 @@ export default function LibraryScreen() {
   const [lifeAreas, setLifeAreas] = useState([]);
   const [areaQueue, setAreaQueue] = useState({});
   const [trophies, setTrophies] = useState([]);
+  const [activeAreaIds, setActiveAreaIds] = useState(null); // null = show all (no onboarding pick on file, or legacy account)
+  const [showAddArea, setShowAddArea] = useState(false);
 
   const styles = makeStyles(c, t, s, r);
 
@@ -90,20 +144,46 @@ export default function LibraryScreen() {
   );
 
   const loadAll = async (uid) => {
+    const cacheKey = `library_hub_${uid}`;
     try {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const [areasRes, trophyRes, agendaRes] = await Promise.all([
+      const cached = await cacheRead(cacheKey);
+      if (cached) {
+        setLifeAreas(cached.lifeAreas || []);
+        setTrophies(cached.trophies || []);
+        setActiveAreaIds(cached.activeAreaIds ?? null);
+        setAreaQueue(cached.areaQueue || {});
+      }
+
+      if (!(await isOnline())) return; // cached hub is as current as we can get right now
+
+      const today = todayStr();
+      const [areasRes, trophyRes, agendaRes, profileRes] = await Promise.all([
         supabase.from('life_areas').select('*').eq('user_id', uid).order('sort_order'),
         supabase.from('projects').select('id,title,emoji,color,updated_at').eq('user_id', uid).eq('status', 'completed').is('deleted_at', null).order('updated_at', { ascending: false }).limit(6),
-        supabase.from('agenda_instances').select('area').eq('user_id', uid).eq('date', todayStr).eq('completed', false).eq('skipped', false),
+        supabase.from('agenda_instances').select('area').eq('user_id', uid).eq('date', today).eq('completed', false).eq('skipped', false),
+        supabase.from('profiles').select('active_life_areas').eq('id', uid).maybeSingle(),
       ]);
       if (areasRes.data) setLifeAreas(areasRes.data);
       if (trophyRes.data) setTrophies(trophyRes.data);
+      // An empty array means "picked zero on purpose" (still show all, since
+      // an empty Library is worse than a slightly-too-full one) — only a
+      // genuinely unset column (never onboarded through the picker, or a
+      // pre-existing account) means "show everything".
+      const picked = profileRes.data?.active_life_areas;
+      const activeAreaIds = picked && picked.length > 0 ? picked : null;
+      setActiveAreaIds(activeAreaIds);
 
       // Today's remaining agenda items per life area, for the base-bubble dots.
-      const queue = {};
-      (agendaRes.data || []).forEach(row => { queue[row.area] = (queue[row.area] || 0) + 1; });
-      setAreaQueue(queue);
+      const areaQueue = {};
+      (agendaRes.data || []).forEach(row => { areaQueue[row.area] = (areaQueue[row.area] || 0) + 1; });
+      setAreaQueue(areaQueue);
+
+      await cacheWrite(cacheKey, {
+        lifeAreas: areasRes.data || [],
+        trophies: trophyRes.data || [],
+        activeAreaIds,
+        areaQueue,
+      });
     } catch (e) {
       console.warn('LibraryScreen load error:', e);
     } finally {
@@ -117,6 +197,16 @@ export default function LibraryScreen() {
     setRefresh(false);
   };
 
+  const addArea = async (areaId) => {
+    const next = [...(activeAreaIds || LIFE_AREAS.map(a => a.id)), areaId];
+    setActiveAreaIds(next);
+    setShowAddArea(false);
+    if (userId) {
+      const hidden = LIFE_AREAS.map(a => a.id).filter(id => !next.includes(id));
+      await supabase.from('profiles').update({ active_life_areas: next, hidden_life_areas: hidden }).eq('id', userId);
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.loading}>
@@ -124,6 +214,9 @@ export default function LibraryScreen() {
       </View>
     );
   }
+
+  const visibleAreas = activeAreaIds ? LIFE_AREAS.filter(a => activeAreaIds.includes(a.id)) : LIFE_AREAS;
+  const hiddenAreas = activeAreaIds ? LIFE_AREAS.filter(a => !activeAreaIds.includes(a.id)) : [];
 
   return (
     <View style={styles.container}>
@@ -138,6 +231,7 @@ export default function LibraryScreen() {
           <View>
             <Text style={styles.headerTitle}>Library</Text>
           </View>
+          <TourSpot id="library-capture">
           <TouchableOpacity
             style={styles.captureBtn}
             onPress={() => navigation.navigate('CaptureInbox')}
@@ -146,13 +240,14 @@ export default function LibraryScreen() {
             <Ionicons name="create-outline" size={16} color="#fff" />
             <Text style={styles.captureBtnText}>Capture</Text>
           </TouchableOpacity>
+          </TourSpot>
         </View>
 
         {/* ── Life areas ── */}
         <TourSpot id="library-life-areas">
         <View style={styles.sectionContainer}>
           <View style={styles.baseGrid}>
-            {LIFE_AREAS.map((area) => {
+            {visibleAreas.map((area) => {
               const saved = lifeAreas.find((a) => a.label?.toLowerCase() === area.label.toLowerCase());
               const rating = saved?.progress || 0;
               const queued = areaQueue[area.id] || 0;
@@ -172,7 +267,7 @@ export default function LibraryScreen() {
                 >
                   <LevelRing pct={(rating / 5) * 100} size={48} strokeWidth={3} color={areaColor} trackColor={c.bg2}>
                     <View style={[styles.bubble, { backgroundColor: areaColor + '1c' }]}>
-                      <Text style={styles.areaEmoji}>{area.emoji}</Text>
+                      {showEmojis ? <Text style={styles.areaEmoji}>{area.emoji}</Text> : <Ionicons name={area.icon} size={16} color={areaColor} />}
                       {queued > 0 && (
                         <View style={[styles.bubbleDot, { backgroundColor: areaColor }]}>
                           <Text style={styles.bubbleDotText}>{queued}</Text>
@@ -184,12 +279,21 @@ export default function LibraryScreen() {
                 </TouchableOpacity>
               );
             })}
+            {hiddenAreas.length > 0 && (
+              <TouchableOpacity style={styles.bubbleWrap} onPress={() => setShowAddArea(true)} activeOpacity={0.85}>
+                <View style={[styles.bubble, styles.addBubble]}>
+                  <Ionicons name="add" size={20} color={c.text3} />
+                </View>
+                <Text style={styles.areaLabel} numberOfLines={1}>Add</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
         </TourSpot>
 
         {/* ── Trophy Hall ── */}
         {trophies.length > 0 && (
+          <TourSpot id="library-trophy-hall">
           <View style={styles.sectionContainer}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Trophy Hall</Text>
@@ -205,7 +309,7 @@ export default function LibraryScreen() {
                   onPress={() => navigation.navigate('PortfolioScreen')}
                   activeOpacity={0.85}
                 >
-                  <Text style={styles.trophyIcon}>🏆</Text>
+                  {showEmojis ? <Text style={styles.trophyIcon}>🏆</Text> : <Ionicons name="trophy-outline" size={16} color={c.gold} style={{ marginBottom: 6 }} />}
                   <Text style={styles.trophyTitle} numberOfLines={2}>{tr.emoji ? `${tr.emoji} ` : ''}{tr.title}</Text>
                   <Text style={styles.trophyDate}>
                     {tr.updated_at ? new Date(tr.updated_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Shipped'}
@@ -214,58 +318,67 @@ export default function LibraryScreen() {
               ))}
             </ScrollView>
           </View>
+          </TourSpot>
         )}
 
         {/* ── Library wings ── */}
-        {LIBRARY_HUBS.map((hub, hIdx) => {
+        {LIBRARY_HUBS.map((hub) => {
           const accent = c[hub.accentKey] || c.teal;
+          const visibleItems = hub.items.filter(item => !hiddenSections.includes(item.screen));
+          if (visibleItems.length === 0) return null;
           return (
             <View key={hub.id} style={styles.hubContainer}>
+              <TourSpot id={`hub-section-${hub.id}`}>
               <View style={styles.hubHeader}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.hubTitle}>{hub.title}</Text>
-                  <Text style={styles.hubTagline}>{hub.tagline}</Text>
+                  {showSubtext && <Text style={styles.hubTagline}>{hub.tagline}</Text>}
                 </View>
               </View>
+              </TourSpot>
 
               {/* Asymmetric grid — featured item takes full width */}
               <View style={styles.gridContainer}>
-                {hub.items.map((item, idx) => {
+                {visibleItems.map((item, idx) => {
                   if (item.featured) {
                     return (
-                      <TouchableOpacity
-                        key={idx}
-                        style={[styles.featuredCard, { borderLeftColor: accent }]}
-                        onPress={() => navigation.navigate(item.screen)}
-                        activeOpacity={0.8}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.featuredLabel}>{item.label}</Text>
-                          <Text style={styles.featuredDesc}>{item.desc}</Text>
-                        </View>
-                        <View style={[styles.featuredIconBg, { backgroundColor: accent + '18' }]}>
-                          <Ionicons name={item.icon} size={24} color={accent} />
-                        </View>
-                      </TouchableOpacity>
+                      <TourSpot key={idx} id={`hub-${item.screen}`} style={{ width: '100%' }}>
+                        <TouchableOpacity
+                          style={[styles.featuredCard, { borderLeftColor: accent }]}
+                          onPress={() => navigation.navigate(item.screen)}
+                          activeOpacity={0.8}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.featuredLabel}>{item.label}</Text>
+                            {showSubtext && <Text style={styles.featuredDesc}>{item.desc}</Text>}
+                          </View>
+                          <View style={[styles.featuredIconBg, { backgroundColor: accent + '18' }]}>
+                            <Ionicons name={item.icon} size={24} color={accent} />
+                          </View>
+                        </TouchableOpacity>
+                      </TourSpot>
                     );
                   }
 
                   return (
-                    <TouchableOpacity
-                      key={idx}
-                      style={styles.standardGridCard}
-                      onPress={() => navigation.navigate(item.screen)}
-                      activeOpacity={0.75}
-                    >
-                      <View style={styles.cardTopRow}>
-                        <Ionicons name={item.icon} size={18} color={c.text1} />
-                        <Ionicons name="arrow-forward" size={12} color={accent} />
-                      </View>
-                      <Text style={styles.cardLabel}>{item.label}</Text>
-                      <Text style={styles.cardDesc} numberOfLines={2}>
-                        {item.desc}
-                      </Text>
-                    </TouchableOpacity>
+                    <TourSpot key={idx} id={`hub-${item.screen}`} style={styles.standardGridSpot}>
+                      <TouchableOpacity
+                        style={styles.standardGridCard}
+                        onPress={() => navigation.navigate(item.screen)}
+                        activeOpacity={0.75}
+                      >
+                        <View style={styles.cardTopRow}>
+                          <Ionicons name={item.icon} size={18} color={c.text1} />
+                          <Ionicons name="arrow-forward" size={12} color={accent} />
+                        </View>
+                        <Text style={styles.cardLabel}>{item.label}</Text>
+                        {showSubtext && (
+                          <Text style={styles.cardDesc} numberOfLines={2}>
+                            {item.desc}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    </TourSpot>
                   );
                 })}
               </View>
@@ -273,6 +386,14 @@ export default function LibraryScreen() {
           );
         })}
       </ScrollView>
+
+      <AddAreaModal
+        visible={showAddArea}
+        hidden={hiddenAreas}
+        onAdd={addArea}
+        onClose={() => setShowAddArea(false)}
+        c={c} t={t} s={s} r={r}
+      />
     </View>
   );
 }
@@ -337,6 +458,10 @@ const makeStyles = (c, t, s, r) =>
       width: 40, height: 40, borderRadius: 20,
       alignItems: 'center', justifyContent: 'center',
     },
+    addBubble: {
+      backgroundColor: c.bg2,
+      borderWidth: 1.5, borderColor: c.border, borderStyle: 'dashed',
+    },
     bubbleDot: {
       position: 'absolute', top: -3, right: -3,
       minWidth: 14, height: 14, borderRadius: 7, paddingHorizontal: 3,
@@ -383,9 +508,13 @@ const makeStyles = (c, t, s, r) =>
       justifyContent: 'center',
       marginLeft: 12,
     },
-    /* Standard half-width card */
+    /* Standard card — flexGrow/flexBasis, not a fixed width, so a lone
+       leftover item (after hiding sections, or few Library sections
+       overall) stretches to fill its row instead of sitting at a fixed
+       half-width next to an empty gap. Two side by side still split ~evenly. */
+    standardGridSpot: { flexGrow: 1, flexBasis: '46%' },
     standardGridCard: {
-      width: (width - 50) / 2,
+      flex: 1,
       backgroundColor: c.bg1,
       borderRadius: r.lg,
       padding: 12,

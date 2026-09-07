@@ -33,7 +33,7 @@ function scoreItem(item, profile) {
   else if (itemLvl > userLvl + 1) score -= 5;   // too advanced, penalize
 
   // Age match
-  const ageMap = { teen: 'teen', young_adult: 'young_adult', adult: 'adult', professional: 'professional' };
+  const ageMap = { kid: 'kid', teen: 'teen', young_adult: 'young_adult', adult: 'adult', professional: 'professional' };
   if (item.age_groups?.includes(ageMap[age])) score += 3;
 
   return score;

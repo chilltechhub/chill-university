@@ -4,19 +4,22 @@ import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, KeyboardAvo
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../../context/ThemeContext';
+import { useUIPrefs } from '../../../../context/UIPrefsContext';
 import { supabase } from '../../../api/supabaseClient';
+import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../../api/offlineCache';
 import RelatedLinks, { EXCLUDE_LINK_FILTER } from '../RelatedLinks';
 
 const TYPES = [
-  { key: 'romantic', label: 'Romantic', emoji: '❤️', color: '#e05858' },
-  { key: 'family',   label: 'Family',   emoji: '🏠', color: '#f5a623' },
-  { key: 'friend',   label: 'Friend',   emoji: '⭐', color: '#7eb8e0' },
-  { key: 'mentor',   label: 'Mentor',   emoji: '🧠', color: '#b07be0' },
+  { key: 'romantic', label: 'Romantic', emoji: '❤️', icon: 'heart',        color: '#e05858' },
+  { key: 'family',   label: 'Family',   emoji: '🏠', icon: 'home',         color: '#f5a623' },
+  { key: 'friend',   label: 'Friend',   emoji: '⭐', icon: 'star',         color: '#7eb8e0' },
+  { key: 'mentor',   label: 'Mentor',   emoji: '🧠', icon: 'bulb',         color: '#b07be0' },
 ];
 
 export default function RelationshipsScreen() {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
+  const { showEmojis, showSubtext } = useUIPrefs();
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userId,  setUserId]  = useState(null);
@@ -36,16 +39,22 @@ export default function RelationshipsScreen() {
 
   const load = async (uid) => {
     setLoading(true);
-    const { data } = await EXCLUDE_LINK_FILTER(supabase.from('area_notes').select('*').eq('user_id', uid).eq('area_id', 'social'))
-      .order('created_at', { ascending: false }).limit(50);
-    if (data) setEntries(data);
+    const cacheKey = `relationships_${uid}`;
+    const cached = await cacheRead(cacheKey);
+    if (cached) setEntries(cached);
+
+    if (await isOnline()) {
+      const { data } = await EXCLUDE_LINK_FILTER(supabase.from('area_notes').select('*').eq('user_id', uid).eq('area_id', 'social'))
+        .order('created_at', { ascending: false }).limit(50);
+      if (data) { setEntries(data); cacheWrite(cacheKey, data); }
+    }
     setLoading(false);
   };
 
   const add = async () => {
     if (!name.trim()) return;
     const content = JSON.stringify({ name: name.trim(), note: note.trim(), type });
-    const { data } = await supabase.from('area_notes').insert({ user_id: userId, area_id: 'social', content, created_at: new Date().toISOString() }).select().single();
+    const { row: data } = await offlineWrite(supabase, 'area_notes', { user_id: userId, area_id: 'social', content, created_at: new Date().toISOString() });
     if (data) setEntries(prev => [data, ...prev]);
     setName(''); setNote(''); setType('friend'); setShowAdd(false);
   };
@@ -67,14 +76,14 @@ export default function RelationshipsScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: s.sm }}>
           <Ionicons name="chevron-back" size={20} color={color} />
         </TouchableOpacity>
-        <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>❤️ Relationships</Text>
-        <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 3 }}>Track the people who matter most</Text>
+        <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>{showEmojis ? '❤️ ' : ''}Relationships</Text>
+        {showSubtext && <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 3 }}>Track the people who matter most</Text>}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingTop: s.md, gap: s.sm }}>
           {[{ key: 'all', label: 'All' }, ...TYPES].map(tp => (
             <TouchableOpacity key={tp.key} onPress={() => setFilter(tp.key)}
               style={{ paddingHorizontal: s.md, paddingVertical: 6, borderRadius: r.full, borderWidth: 1, borderColor: filter === tp.key ? color : c.border, backgroundColor: filter === tp.key ? color + '22' : 'transparent' }}>
               <Text style={{ fontSize: t.xs, color: filter === tp.key ? color : c.text3, fontWeight: filter === tp.key ? t.bold : t.regular }}>
-                {tp.emoji ? `${tp.emoji} ` : ''}{tp.label}
+                {showEmojis && tp.emoji ? `${tp.emoji} ` : ''}{tp.label}
               </Text>
             </TouchableOpacity>
           ))}
@@ -96,7 +105,7 @@ export default function RelationshipsScreen() {
               <View key={entry.id} style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, marginBottom: s.md, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: tp.color }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, marginBottom: p.note ? s.sm : 0 }}>
                   <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: tp.color + '22', borderWidth: 1.5, borderColor: tp.color, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 20 }}>{tp.emoji}</Text>
+                    {showEmojis ? <Text style={{ fontSize: 20 }}>{tp.emoji}</Text> : <Ionicons name={tp.icon} size={18} color={tp.color} />}
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>{p.name}</Text>
@@ -114,14 +123,14 @@ export default function RelationshipsScreen() {
           })}
           {filtered.length === 0 && (
             <View style={{ alignItems: 'center', paddingVertical: 60 }}>
-              <Text style={{ fontSize: 48, marginBottom: s.lg }}>❤️</Text>
+              {showEmojis ? <Text style={{ fontSize: 48, marginBottom: s.lg }}>❤️</Text> : <Ionicons name="heart-outline" size={44} color={color} style={{ marginBottom: s.lg }} />}
               <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.sm }}>No relationships logged</Text>
               <Text style={{ fontSize: t.sm, color: c.text3, textAlign: 'center' }}>Add the people who matter most to you.</Text>
             </View>
           )}
 
           <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginTop: s.lg, marginBottom: s.md }}>
-            🔗 Related
+            {showEmojis ? '🔗 ' : ''}Related
           </Text>
           <RelatedLinks areaId="social" color={color} c={c} t={t} s={s} r={r} />
         </ScrollView>
@@ -139,7 +148,7 @@ export default function RelationshipsScreen() {
               {TYPES.map(tp => (
                 <TouchableOpacity key={tp.key} onPress={() => setType(tp.key)}
                   style={{ flex: 1, alignItems: 'center', padding: s.sm, borderRadius: r.md, borderWidth: 1.5, borderColor: type === tp.key ? tp.color : c.border, backgroundColor: type === tp.key ? tp.color + '22' : 'transparent' }}>
-                  <Text style={{ fontSize: 18 }}>{tp.emoji}</Text>
+                  {showEmojis ? <Text style={{ fontSize: 18 }}>{tp.emoji}</Text> : <Ionicons name={tp.icon} size={16} color={type === tp.key ? tp.color : c.text3} />}
                   <Text style={{ fontSize: 10, color: type === tp.key ? tp.color : c.text3, fontWeight: type === tp.key ? t.bold : t.regular, marginTop: 3 }}>{tp.label}</Text>
                 </TouchableOpacity>
               ))}

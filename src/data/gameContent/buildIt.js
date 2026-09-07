@@ -4,6 +4,15 @@
 // any order; the challenge is matching the right piece to the right slot
 // out of a bank that also contains a few decoy pieces that don't belong
 // anywhere.
+//
+// Decoys are same-domain near-misses on purpose: a REAL part/step/term
+// from this project's own subject that just isn't one of ITS slots (e.g.
+// a real plant cell organelle that isn't one of the four this project
+// asks for) — so a kid has to actually know the material, instead of
+// spotting a swimming pool has no place in a house and winning by
+// elimination. A couple of projects (Build a Sentence, U.S. Government,
+// Circuit with Resistor, Career Building Blocks, Personal Finance) already
+// had decoys built this way; the rest were fixed to match.
 
 export const BUILD_BANK = {
   'K-2': [
@@ -15,7 +24,7 @@ export const BUILD_BANK = {
         { key: 'walls', label: 'Walls', correct: { id: 'wood-walls', label: 'Wooden walls' } },
         { key: 'roof', label: 'Roof', correct: { id: 'pointed-roof', label: 'Pointed roof' } },
       ],
-      decoys: [{ id: 'pool', label: 'Swimming pool' }, { id: 'wing', label: 'Airplane wing' }],
+      decoys: [{ id: 'fence', label: 'Garden fence' }, { id: 'porch', label: 'Front porch' }],
     },
     {
       name: 'Growing Tree',
@@ -26,7 +35,7 @@ export const BUILD_BANK = {
         { key: 'branches', label: 'Branches', correct: { id: 'branches', label: 'Branches reaching out' } },
         { key: 'leaves', label: 'Leaves', correct: { id: 'leaves', label: 'Green leaves' } },
       ],
-      decoys: [{ id: 'tire', label: 'Car tire' }, { id: 'wave', label: 'Ocean wave' }],
+      decoys: [{ id: 'petals', label: 'Flower petals' }, { id: 'bark', label: 'Rough tree bark' }],
     },
   ],
 
@@ -41,7 +50,7 @@ export const BUILD_BANK = {
         { key: 'roof', label: 'Roof', correct: { id: 'roof', label: 'A shingled roof' } },
         { key: 'windows', label: 'Windows', correct: { id: 'windows', label: 'Windows that let in light' } },
       ],
-      decoys: [{ id: 'sail', label: 'Boat sail' }, { id: 'engine', label: 'Rocket engine' }],
+      decoys: [{ id: 'door', label: 'Front door' }, { id: 'chimney', label: 'Chimney' }],
     },
     {
       name: 'Plant Structure',
@@ -52,7 +61,10 @@ export const BUILD_BANK = {
         { key: 'leaves', label: 'Leaves', correct: { id: 'p-leaves', label: 'Make food using sunlight' } },
         { key: 'flower', label: 'Flower', correct: { id: 'p-flower', label: 'Attracts pollinators' } },
       ],
-      decoys: [{ id: 'shell', label: 'Turtle shell' }, { id: 'fin', label: 'Fish fin' }],
+      decoys: [
+        { id: 'fruit', label: 'Makes seeds so the plant can reproduce' },
+        { id: 'bark', label: 'Protects the plant from insects and disease' },
+      ],
     },
     {
       name: 'Build a Sentence',
@@ -76,7 +88,7 @@ export const BUILD_BANK = {
         { key: 'switch', label: 'Switch', correct: { id: 'switch', label: 'On/off switch' } },
         { key: 'load', label: 'Load', correct: { id: 'bulb', label: 'Light bulb' } },
       ],
-      decoys: [{ id: 'magnet', label: 'Magnet' }, { id: 'plank', label: 'Wood plank' }],
+      decoys: [{ id: 'resistor', label: 'Resistor' }, { id: 'fuse', label: 'Fuse' }],
     },
     {
       name: 'Plant Cell',
@@ -87,7 +99,10 @@ export const BUILD_BANK = {
         { key: 'chloroplast', label: 'Chloroplast', correct: { id: 'c-chloroplast', label: 'Site of photosynthesis' } },
         { key: 'vacuole', label: 'Vacuole', correct: { id: 'c-vacuole', label: 'Stores water and nutrients' } },
       ],
-      decoys: [{ id: 'bone', label: 'Bone tissue' }, { id: 'muscle', label: 'Muscle fiber' }],
+      decoys: [
+        { id: 'mitochondria', label: 'Mitochondria — makes energy for the cell' },
+        { id: 'membrane', label: 'Cell membrane — controls what enters and exits' },
+      ],
     },
     {
       name: 'U.S. Government',

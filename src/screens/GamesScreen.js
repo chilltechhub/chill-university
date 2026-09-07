@@ -1,6 +1,6 @@
 // src/screens/GamesScreen.js — the Training Center hub: pick a drill, check
 // your progress, and see what's up next in your objectives.
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   ScrollView, Modal, Dimensions,
@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useUserProgress, SUBJECT_CONFIG } from '../../context/UserProgressContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useUIPrefs } from '../../context/UIPrefsContext';
 import { RANK_LABELS, FONTS } from '../theme';
 import LevelRing from '../components/LevelRing';
 import MissionsScreen from './MissionsScreen';
@@ -17,8 +18,9 @@ import { getEnabledGames, MECHANIC_META } from '../services/gameRegistry';
 import { GRADE_BANDS, getAllGradeLevels } from '../logic/useGradeLevel';
 import useCharacterLoadout from '../logic/useCharacterLoadout';
 import useBonusRewards from '../logic/useBonusRewards';
+import useCoinRewards from '../logic/useCoinRewards';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
-import { useFeatureFlag } from '../../context/RemoteConfigContext';
+import { useFeatureFlag, useConfigValue } from '../../context/RemoteConfigContext';
 import TourSpot from '../components/TourSpot';
 import LandscapeBackground from '../components/LandscapeBackground';
 import CharacterWalker from '../components/CharacterWalker';
@@ -26,7 +28,13 @@ import CharacterWalker from '../components/CharacterWalker';
 // Single source of truth: src/services/gameRegistry.js. GamesScreen and
 // GameFeed both read from it now, so a game's id/subject/icon can never
 // drift between the grid and the swipe feed again.
-export const GAMES = getEnabledGames().map(g => ({
+//
+// GAMES_MASTER is every code-enabled game; HomeScreen imports this same
+// master list and applies its own copy of the 'disabled_games' filter
+// below rather than a pre-filtered export, since a module-level constant
+// can't react to that config arriving after this file already evaluated
+// it (see the component body for the actual reactive `GAMES`).
+export const GAMES_MASTER = getEnabledGames().map(g => ({
   key: g.id,
   title: g.name,
   emoji: g.icon,
@@ -35,7 +43,7 @@ export const GAMES = getEnabledGames().map(g => ({
   color: g.color,
   desc: g.desc,
 }));
-const GAME_IDS = GAMES.map(g => g.key);
+const GAME_IDS = GAMES_MASTER.map(g => g.key);
 const { width: SW } = Dimensions.get('window');
 
 const TABS = ['Overview', 'Training', 'Progress'];
@@ -48,18 +56,39 @@ const LEVEL_TINT = {
 };
 const LEVEL_META = Object.fromEntries(GRADE_BANDS.map(l => [l.key, l]));
 
+// Ionicon fallback for SUBJECT_CONFIG's emoji-only `icon` field, used only
+// when the emoji toggle is off — doesn't touch SUBJECT_CONFIG itself since
+// that's shared across many other screens.
+const SUBJECT_ICON = {
+  math: 'calculator-outline', language_arts: 'book-outline', science: 'flask-outline',
+  health: 'fitness-outline', finance: 'cash-outline', home_ec: 'construct-outline',
+  social_studies: 'globe-outline', arts: 'color-palette-outline', technology: 'laptop-outline',
+  foreign_language: 'chatbubbles-outline', mental: 'bulb-outline', social_skills: 'people-outline',
+  career: 'compass-outline', general: 'star-outline',
+};
+
 export default function GamesScreen() {
   const { user, profile, points, rank, level, gameplayStats, progress, streakDays, subjectProgress, refreshDailyMissions } = useUserProgress();
   const { colors: c, typography: t, spacing: s, radius: r, shadows: sh } = useTheme();
+  const { showEmojis, showSubtext } = useUIPrefs();
   const navigation = useNavigation();
   const { outfit, pet, accessory, background } = useCharacterLoadout({ level, points, rank, streakDays });
   const bonusRewards = useBonusRewards(user?.id, refreshDailyMissions);
+  const coinRewards = useCoinRewards(user?.id);
   const [heroTapEnabled] = useSetting(SETTING_KEYS.HERO_TAP_TO_PROFILE, true);
   const heroWalkerRef = useRef(null);
   // Remote feature flag — flip app_config.show_leaderboard off in Supabase
   // to hide this for everyone with no app update. Defaults on if the row
   // doesn't exist yet.
   const showLeaderboard = useFeatureFlag('show_leaderboard', true);
+  // Admin-side kill switch — an array of game ids in app_config's
+  // 'disabled_games' row (Supabase → Table Editor, no build/redeploy
+  // needed) — e.g. hide a game that shipped broken until it's fixed.
+  const disabledGameIds = useConfigValue('disabled_games', []);
+  const GAMES = useMemo(
+    () => GAMES_MASTER.filter(g => !disabledGameIds.includes(g.key)),
+    [disabledGameIds]
+  );
   const [activeTab, setActiveTab] = useState('Overview');
   const [showMissions, setShowMissions] = useState(false);
   const [showTasks, setShowTasks] = useState(false);
@@ -67,7 +96,11 @@ export default function GamesScreen() {
   const [mechanicFilter, setMechanicFilter] = useState('All');
   const [skillLevels, setSkillLevels] = useState({});
   const styles = makeStyles(c, t, s, r, sh);
-  const displayName = profile?.username || profile?.display_name || 'Adventurer';
+  // display_name first, matching Home/Profile/Settings — profile.username
+  // is just the email's local-part set at signup (see LoginScreen.js) and
+  // never updated after that, so leading with it here showed the raw
+  // signup email as this screen's header instead of the chosen name.
+  const displayName = profile?.traveler_name || profile?.display_name || profile?.username || 'Adventurer';
 
   // Refresh saved skill levels whenever this screen regains focus, so a
   // level picked mid-game shows up here as soon as you back out.
@@ -130,18 +163,29 @@ export default function GamesScreen() {
                   rewards={bonusRewards.slots}
                   onClaimReward={bonusRewards.claim}
                   rewardPoints={bonusRewards.points}
+                  onCoinCollected={coinRewards.collect}
+                  coinRewardsRemaining={coinRewards.remaining}
+                  coinRewardPoints={coinRewards.points}
                 />
               </LandscapeBackground>
             </TouchableOpacity>
 
             {/* Quick stat chips */}
+            <TourSpot id="training-stats">
             <View style={styles.chipRow}>
-              <QuickChip icon="✦" value={points?.toLocaleString() || '0'} label="Points" c={c} t={t} s={s} r={r} />
-              <QuickChip icon="🔥" value={streakDays || 0} label="Streak" c={c} t={t} s={s} r={r} />
-              <QuickChip icon={(RANK_LABELS[rank] || RANK_LABELS[20]).emoji} value={`#${rank || 20}`} label="Rank" c={c} t={t} s={s} r={r} />
+              <QuickChip icon="✦" iconName="sparkles-outline" value={points?.toLocaleString() || '0'} label="Points" c={c} t={t} s={s} r={r} />
+              <QuickChip icon="🔥" iconName="flame-outline" value={streakDays || 0} label="Streak" c={c} t={t} s={s} r={r} />
+              {/* This is the character's title tier (RANK_LABELS, 1=best..20=starter),
+                  not a leaderboard placement — a real leaderboard position is shown
+                  elsewhere (LeaderboardScreen). Showing it as "#17" read like the same
+                  kind of ranking and could easily be confused with that competitive
+                  position, so this shows the tier name instead of its number. */}
+              <QuickChip icon={(RANK_LABELS[rank] || RANK_LABELS[20]).emoji} iconName="ribbon-outline" value={(RANK_LABELS[rank] || RANK_LABELS[20]).label} label="Tier" c={c} t={t} s={s} r={r} />
             </View>
+            </TourSpot>
 
             {/* Enter Training */}
+            <TourSpot id="training-enter">
             <TouchableOpacity
               style={styles.playBtn}
               onPress={() => navigation.navigate('Play', { index: 0 })}
@@ -150,6 +194,7 @@ export default function GamesScreen() {
               <Ionicons name="play" size={16} color="#fff" />
               <Text style={styles.playText}>ENTER TRAINING</Text>
             </TouchableOpacity>
+            </TourSpot>
 
             {/* Objectives + Drills */}
             <TourSpot id="training-games">
@@ -158,14 +203,14 @@ export default function GamesScreen() {
                 style={styles.actionBtn}
                 onPress={() => setShowMissions(true)}
               >
-                <Text style={styles.actionEmoji}>⚔️</Text>
+                {showEmojis ? <Text style={styles.actionEmoji}>⚔️</Text> : <Ionicons name="flag-outline" size={18} color={c.gold} />}
                 <Text style={styles.actionText}>Objectives</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionBtn, styles.actionBtnTeal]}
                 onPress={() => setShowTasks(true)}
               >
-                <Text style={styles.actionEmoji}>📋</Text>
+                {showEmojis ? <Text style={styles.actionEmoji}>📋</Text> : <Ionicons name="clipboard-outline" size={18} color={c.teal} />}
                 <Text style={[styles.actionText, { color: c.teal }]}>Daily Drills</Text>
               </TouchableOpacity>
             </View>
@@ -175,11 +220,13 @@ export default function GamesScreen() {
 
         {activeTab === 'Training' && (
           <View style={{ width: '100%' }}>
-            <Text style={styles.sectionIntro}>
-              {trainedCount > 0
-                ? `You've trained in ${trainedCount} of ${GAMES.length} drills. Pick one to continue.`
-                : 'Pick a drill below and choose your grade level to begin.'}
-            </Text>
+            {showSubtext && (
+              <Text style={styles.sectionIntro}>
+                {trainedCount > 0
+                  ? `You've trained in ${trainedCount} of ${GAMES.length} drills. Pick one to continue.`
+                  : 'Pick a drill below and choose your grade level to begin.'}
+              </Text>
+            )}
 
             {/* Subject filter */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false}
@@ -211,7 +258,7 @@ export default function GamesScreen() {
                     onPress={() => setMechanicFilter(m)}
                   >
                     <Text style={[styles.filterText, mechanicFilter === m && styles.filterTextActive]}>
-                      {emoji} {label}
+                      {showEmojis ? `${emoji} ` : ''}{label}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -235,11 +282,11 @@ export default function GamesScreen() {
                     activeOpacity={0.85}
                   >
                     <View style={styles.gameCardTop}>
-                      <Text style={styles.gameEmoji}>{game.emoji}</Text>
+                      {showEmojis ? <Text style={styles.gameEmoji}>{game.emoji}</Text> : <Ionicons name="game-controller-outline" size={26} color={game.color} />}
                       {levelMeta ? (
                         <View style={[styles.levelPill, { borderColor: LEVEL_TINT[savedLevel] }]}>
                           <Text style={[styles.levelPillText, { color: LEVEL_TINT[savedLevel] }]}>
-                            {levelMeta.emoji} {levelMeta.label}
+                            {showEmojis ? `${levelMeta.emoji} ` : ''}{levelMeta.label}
                           </Text>
                         </View>
                       ) : (
@@ -251,10 +298,10 @@ export default function GamesScreen() {
                     <Text style={styles.gameTitle}>{game.title}</Text>
                     {mechMeta && (
                       <View style={styles.mechBadge}>
-                        <Text style={styles.mechBadgeText}>{mechMeta.emoji} {mechMeta.label}</Text>
+                        <Text style={styles.mechBadgeText}>{showEmojis ? `${mechMeta.emoji} ` : ''}{mechMeta.label}</Text>
                       </View>
                     )}
-                    <Text style={styles.gameDesc}>{game.desc}</Text>
+                    {showSubtext && <Text style={styles.gameDesc}>{game.desc}</Text>}
                     <View style={[styles.gamePlayBtn, { backgroundColor: game.color }]}>
                       <Text style={styles.gamePlayText}>{levelMeta ? 'Continue →' : 'Start →'}</Text>
                     </View>
@@ -287,22 +334,22 @@ export default function GamesScreen() {
                 onPress={() => navigation.navigate('Leaderboard')}
                 activeOpacity={0.85}
               >
-                <Text style={styles.leaderboardBtnEmoji}>🏆</Text>
+                {showEmojis ? <Text style={styles.leaderboardBtnEmoji}>🏆</Text> : <Ionicons name="trophy-outline" size={18} color={c.gold} />}
                 <Text style={styles.leaderboardBtnText}>View Leaderboard</Text>
                 <Ionicons name="chevron-forward" size={16} color={c.gold} />
               </TouchableOpacity>
             )}
 
             <View style={styles.statsGrid}>
-              <StatCard label="Points" value={points?.toLocaleString() || '0'} emoji="✦" c={c} t={t} s={s} r={r} />
-              <StatCard label="Accuracy" value={accuracy != null ? `${accuracy}%` : '—'} emoji="🎯" c={c} t={t} s={s} r={r} />
-              <StatCard label="Sessions" value={gameplayStats?.levelsCompleted || 0} emoji="🏁" c={c} t={t} s={s} r={r} />
-              <StatCard label="Day Streak" value={streakDays || 0} emoji="🔥" c={c} t={t} s={s} r={r} />
+              <StatCard label="Points" value={points?.toLocaleString() || '0'} emoji="✦" iconName="sparkles-outline" c={c} t={t} s={s} r={r} />
+              <StatCard label="Accuracy" value={accuracy != null ? `${accuracy}%` : '—'} emoji="🎯" iconName="locate-outline" c={c} t={t} s={s} r={r} />
+              <StatCard label="Sessions" value={gameplayStats?.levelsCompleted || 0} emoji="🏁" iconName="flag-outline" c={c} t={t} s={s} r={r} />
+              <StatCard label="Day Streak" value={streakDays || 0} emoji="🔥" iconName="flame-outline" c={c} t={t} s={s} r={r} />
             </View>
 
             <View style={styles.statsGridSecondary}>
-              <StatCard label="Fastest" value={gameplayStats?.fastestTime ? `${gameplayStats.fastestTime}s` : '—'} emoji="⚡" c={c} t={t} s={s} r={r} small />
-              <StatCard label="Avg Response" value={gameplayStats?.avgTime ? `${gameplayStats.avgTime}s` : '—'} emoji="⏱️" c={c} t={t} s={s} r={r} small />
+              <StatCard label="Fastest" value={gameplayStats?.fastestTime ? `${gameplayStats.fastestTime}s` : '—'} emoji="⚡" iconName="flash-outline" c={c} t={t} s={s} r={r} small />
+              <StatCard label="Avg Response" value={gameplayStats?.avgTime ? `${gameplayStats.avgTime}s` : '—'} emoji="⏱️" iconName="timer-outline" c={c} t={t} s={s} r={r} small />
             </View>
 
             {/* Skill levels per drill */}
@@ -319,11 +366,11 @@ export default function GamesScreen() {
                     onPress={() => navigation.navigate('Play', { gameId: game.key })}
                     activeOpacity={0.85}
                   >
-                    <Text style={styles.skillEmoji}>{game.emoji}</Text>
+                    {showEmojis ? <Text style={styles.skillEmoji}>{game.emoji}</Text> : <Ionicons name="game-controller-outline" size={18} color={c.text3} style={{ marginBottom: 4 }} />}
                     <Text style={styles.skillTitle} numberOfLines={1}>{game.title}</Text>
-                    {mechMeta && <Text style={styles.skillMechText}>{mechMeta.emoji} {mechMeta.label}</Text>}
+                    {mechMeta && <Text style={styles.skillMechText}>{showEmojis ? `${mechMeta.emoji} ` : ''}{mechMeta.label}</Text>}
                     <Text style={[styles.skillLevelText, { color: meta ? LEVEL_TINT[savedLevel] : c.text4 }]}>
-                      {meta ? `${meta.emoji} ${meta.label}` : 'Not started'}
+                      {meta ? `${showEmojis ? `${meta.emoji} ` : ''}${meta.label}` : 'Not started'}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -344,7 +391,7 @@ export default function GamesScreen() {
                   return (
                     <View key={subject} style={styles.subjectCard}>
                       <View style={styles.subjectRow}>
-                        <Text style={styles.subjectIcon}>{cfg.icon}</Text>
+                        {showEmojis ? <Text style={styles.subjectIcon}>{cfg.icon}</Text> : <Ionicons name={SUBJECT_ICON[subject] || 'star-outline'} size={20} color={cfg.color} style={{ marginRight: s.sm }} />}
                         <View style={{ flex: 1 }}>
                           <Text style={styles.subjectName}>{cfg.name}</Text>
                           <Text style={styles.subjectSub}>Level {data.level || 1} · {data.questions_answered || 0} answered</Text>
@@ -377,27 +424,37 @@ export default function GamesScreen() {
   );
 }
 
-function QuickChip({ icon, value, label, c, t, s, r }) {
+function QuickChip({ icon, iconName, value, label, c, t, s, r }) {
+  const { showEmojis } = useUIPrefs();
   return (
     <View style={{
       flex: 1, alignItems: 'center', backgroundColor: c.bg1, borderWidth: 0.5, borderColor: c.border,
       borderRadius: r.lg, paddingVertical: s.sm, marginHorizontal: s.xs,
     }}>
-      <Text style={{ fontSize: 16, marginBottom: 2 }}>{icon}</Text>
+      {showEmojis ? (
+        <Text style={{ fontSize: 16, marginBottom: 2 }}>{icon}</Text>
+      ) : (
+        <Ionicons name={iconName} size={15} color={c.gold} style={{ marginBottom: 2 }} />
+      )}
       <Text style={{ fontSize: t.md, fontFamily: FONTS.mono, fontWeight: t.bold, color: c.text1 }}>{value}</Text>
       <Text style={{ fontSize: 9, color: c.text4, textTransform: 'uppercase', letterSpacing: 0.6 }}>{label}</Text>
     </View>
   );
 }
 
-function StatCard({ label, value, emoji, c, t, s, r, small }) {
+function StatCard({ label, value, emoji, iconName, c, t, s, r, small }) {
+  const { showEmojis } = useUIPrefs();
   return (
     <View style={{
       flex: 1, minWidth: small ? '45%' : '45%',
       backgroundColor: c.bg1, borderWidth: 0.5, borderColor: c.border,
       borderRadius: r.lg, padding: small ? s.md : s.lg, margin: s.xs, alignItems: 'center',
     }}>
-      <Text style={{ fontSize: small ? 18 : 22, marginBottom: 4 }}>{emoji}</Text>
+      {showEmojis ? (
+        <Text style={{ fontSize: small ? 18 : 22, marginBottom: 4 }}>{emoji}</Text>
+      ) : (
+        <Ionicons name={iconName} size={small ? 16 : 20} color={c.gold} style={{ marginBottom: 4 }} />
+      )}
       <Text style={{ fontSize: small ? t.lg : t.xxl, fontFamily: FONTS.mono, fontWeight: t.bold, color: c.gold, marginBottom: 2 }}>{value}</Text>
       <Text style={{ fontSize: t.xs, fontFamily: FONTS.mono, color: c.text3, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</Text>
     </View>
@@ -419,7 +476,7 @@ const makeStyles = (c, t, s, r, sh) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: c.headerBg },
   header: {
     backgroundColor: c.headerBg,
-    paddingTop: s.sm,
+    paddingTop: 0,
     paddingBottom: s.md,
     borderBottomWidth: 1,
     borderBottomColor: c.border,

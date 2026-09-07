@@ -1,4 +1,12 @@
 // src/screens/library/research.js
+//
+// SUPERSEDED — Research Vault is now the matching type filter inside the
+// Knowledge Vault (src/screens/library/knowledge.js), which carries every
+// feature below. Nothing imports this file any more; the route name that
+// used to point here is registered against the Knowledge Vault in
+// LibraryNav.js. Kept on disk only until the merged screen has been
+// exercised in a build — safe to delete after that.
+//
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
@@ -6,12 +14,15 @@ import {
   Modal, KeyboardAvoidingView, Platform, Dimensions
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { supabase } from '../../api/supabaseClient';
+import { cacheRead, cacheWrite, isOnline } from '../../api/offlineCache';
 import { useTheme } from '../../../context/ThemeContext';
+import { useUIPrefs } from '../../../context/UIPrefsContext';
 import useFolders from '../../logic/useFolders';
 import FolderRow from '../../components/FolderRow';
 import FolderAssignSheet from '../../components/FolderAssignSheet';
+import TourSpot from '../../components/TourSpot';
 
 const { width } = Dimensions.get('window');
 
@@ -19,12 +30,12 @@ const { width } = Dimensions.get('window');
 // Well-known research tools & databases grouped by category so a fresh
 // vault never starts empty — browse Discover and one-tap save what's useful.
 const CATEGORIES = [
-  { id: 'encyclopedia', label: 'Encyclopedias & Reference', emoji: '📖', color: '#5c9ce0' },
-  { id: 'papers', label: 'Academic Papers & Journals', emoji: '🔬', color: '#4caf7d' },
-  { id: 'ai', label: 'AI Research Assistants', emoji: '🤖', color: '#9a6fd6' },
-  { id: 'citations', label: 'Citations & Bibliography', emoji: '📑', color: '#c9a84c' },
-  { id: 'books', label: 'Books & Archives', emoji: '📚', color: '#d97a7a' },
-  { id: 'data', label: 'Data & Statistics', emoji: '📊', color: '#3fb8cf' },
+  { id: 'encyclopedia', label: 'Encyclopedias & Reference', emoji: '📖', icon: 'book-outline', color: '#5c9ce0' },
+  { id: 'papers', label: 'Academic Papers & Journals', emoji: '🔬', icon: 'flask-outline', color: '#4caf7d' },
+  { id: 'ai', label: 'AI Research Assistants', emoji: '🤖', icon: 'hardware-chip-outline', color: '#9a6fd6' },
+  { id: 'citations', label: 'Citations & Bibliography', emoji: '📑', icon: 'bookmark-outline', color: '#c9a84c' },
+  { id: 'books', label: 'Books & Archives', emoji: '📚', icon: 'library-outline', color: '#d97a7a' },
+  { id: 'data', label: 'Data & Statistics', emoji: '📊', icon: 'stats-chart-outline', color: '#3fb8cf' },
 ];
 const CATEGORY_MAP = Object.fromEntries(CATEGORIES.map((c) => [c.id, c]));
 
@@ -82,7 +93,7 @@ const withCategoryHeaders = (list) => {
   CATEGORIES.forEach((cat) => {
     const items = buckets[cat.id];
     if (items && items.length) {
-      out.push({ __header: true, key: `h_${cat.id}`, label: cat.label, emoji: cat.emoji, color: cat.color, count: items.length });
+      out.push({ __header: true, key: `h_${cat.id}`, label: cat.label, emoji: cat.emoji, icon: cat.icon, color: cat.color, count: items.length });
       items.forEach((it) => out.push(it));
     }
   });
@@ -90,7 +101,9 @@ const withCategoryHeaders = (list) => {
 };
 
 export default function ResearchScreen() {
+  const navigation = useNavigation();
   const { colors: c } = useTheme();
+  const { showEmojis, showSubtext } = useUIPrefs();
   const styles = makeStyles(c);
 
   const [entries, setEntries] = useState([]);
@@ -138,18 +151,24 @@ export default function ResearchScreen() {
 
   const load = async (uid) => {
     setLoading(true);
-    const { data } = await supabase
-      .from('captures')
-      .select('*')
-      .eq('user_id', uid)
-      .in('type', ['link', 'note'])
-      // 'inbox' = captured here directly or via Discover; 'active' = routed
-      // in from the Capture Inbox's "Add to Research" destination.
-      .in('status', ['inbox', 'active'])
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false });
+    const cacheKey = `research_vault_${uid}`;
+    const cached = await cacheRead(cacheKey);
+    if (cached) setEntries(cached);
 
-    if (data) setEntries(data);
+    if (await isOnline()) {
+      const { data } = await supabase
+        .from('captures')
+        .select('*')
+        .eq('user_id', uid)
+        .in('type', ['link', 'note'])
+        // 'inbox' = captured here directly or via Discover; 'active' = routed
+        // in from the Capture Inbox's "Add to Research" destination.
+        .in('status', ['inbox', 'active'])
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false });
+
+      if (data) { setEntries(data); cacheWrite(cacheKey, data); }
+    }
     setLoading(false);
   };
 
@@ -302,17 +321,27 @@ export default function ResearchScreen() {
   const data = tab === 'vault' ? vaultFiltered : discoverFiltered;
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.headerSubtitle}>KNOWLEDGE & SOURCE INTEL</Text>
-          <Text style={styles.headerTitle}>Research Vault</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <TouchableOpacity
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('LibraryScreen'))}
+            style={{ padding: 2 }}
+          >
+            <Ionicons name="chevron-back" size={22} color={c.teal} />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.headerSubtitle}>KNOWLEDGE & SOURCE INTEL</Text>
+            <Text style={styles.headerTitle}>Research Vault</Text>
+          </View>
         </View>
+        <TourSpot id="research-list">
         <TouchableOpacity style={styles.addBtn} onPress={() => setShowAdd(true)}>
           <Ionicons name="add" size={18} color="#fff" />
           <Text style={styles.addBtnText}>Capture</Text>
         </TouchableOpacity>
+        </TourSpot>
       </View>
 
       {/* Tabs */}
@@ -452,7 +481,7 @@ export default function ResearchScreen() {
                     style={[styles.typeChip, isSelected && { borderColor: cat.color, backgroundColor: cat.color + '22' }]}
                     onPress={() => setCatFilter(isSelected ? null : cat.id)}
                   >
-                    <Text style={{ fontSize: 12 }}>{cat.emoji}</Text>
+                    {showEmojis ? <Text style={{ fontSize: 12 }}>{cat.emoji}</Text> : <Ionicons name={cat.icon} size={12} color={cat.color} />}
                     <Text style={[styles.typeChipText, isSelected && { color: cat.color, fontWeight: 'bold' }]}>{cat.label}</Text>
                   </TouchableOpacity>
                 );
@@ -488,7 +517,7 @@ export default function ResearchScreen() {
             if (item.__header) {
               return (
                 <View style={styles.sectionHeader}>
-                  <Text style={{ fontSize: 13 }}>{item.emoji}</Text>
+                  {showEmojis ? <Text style={{ fontSize: 13 }}>{item.emoji}</Text> : <Ionicons name={item.icon} size={13} color={item.color} />}
                   <Text style={[styles.sectionHeaderText, { color: item.color }]}>{item.label}</Text>
                   <Text style={styles.sectionHeaderCount}>{item.count}</Text>
                 </View>
@@ -502,11 +531,11 @@ export default function ResearchScreen() {
                 <View style={[styles.card, { borderLeftColor: cat.color }]}>
                   <View style={styles.cardHeader}>
                     <View style={[styles.typeIconBox, { backgroundColor: cat.color + '22' }]}>
-                      <Text style={{ fontSize: 17 }}>{item.emoji}</Text>
+                      {showEmojis ? <Text style={{ fontSize: 17 }}>{item.emoji}</Text> : <Ionicons name={cat.icon} size={16} color={cat.color} />}
                     </View>
                     <TouchableOpacity style={styles.cardTitleArea} onPress={() => Linking.openURL(item.url)}>
                       <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-                      <Text style={styles.cardBody} numberOfLines={2}>{item.desc}</Text>
+                      {showSubtext && <Text style={styles.cardBody} numberOfLines={2}>{item.desc}</Text>}
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => Linking.openURL(item.url)} style={styles.trashBtn}>
                       <Ionicons name="open-outline" size={17} color={c.text3} />
@@ -573,7 +602,7 @@ export default function ResearchScreen() {
                   <View style={styles.cardTagRow}>
                     {folder && (
                       <View style={[styles.cardTagPill, { borderColor: folder.color + '55', backgroundColor: folder.color + '18' }]}>
-                        <Text style={[styles.cardTagText, { color: folder.color }]}>📁 {folder.name}</Text>
+                        <Text style={[styles.cardTagText, { color: folder.color }]}>{showEmojis ? '📁 ' : ''}{folder.name}</Text>
                       </View>
                     )}
                     {item.tags?.map((tg) => (
@@ -604,7 +633,7 @@ export default function ResearchScreen() {
         >
           <View style={styles.modalContent}>
             <View style={styles.modalHandle} />
-            <Text style={styles.modalHeaderTitle}>⚡ CAPTURE RESEARCH</Text>
+            <Text style={styles.modalHeaderTitle}>{showEmojis ? '⚡ ' : ''}CAPTURE RESEARCH</Text>
 
             <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <TextInput
@@ -771,7 +800,7 @@ export default function ResearchScreen() {
         onClose={() => setAssigningEntry(null)}
         onCreateFolder={createFolder}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

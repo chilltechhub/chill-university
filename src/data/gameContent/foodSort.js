@@ -32,7 +32,7 @@ export const FOOD_BANK = {
     { food: '🧀 Cheese',    category: 'Moderate', emoji: '🧀', fact: 'Cheese has calcium and protein, but also a lot of saturated fat.' },
     { food: '🍞 White Bread', category: 'Moderate', emoji: '🍞', fact: 'White bread is refined — less fiber than whole grain.' },
     { food: '🌭 Hot Dog',   category: 'Junk',     emoji: '🌭', fact: 'Hot dogs are heavily processed and high in sodium.' },
-    { food: '🍓 Yogurt',    category: 'Healthy',  emoji: '🍓', fact: 'Plain yogurt has protein and probiotics for gut health.' },
+    { food: '🥣 Yogurt',    category: 'Healthy',  emoji: '🥣', fact: 'Plain yogurt has protein and probiotics for gut health.' },
     { food: '🥨 Pretzels',  category: 'Moderate', emoji: '🥨', fact: 'Pretzels are low-fat but high in sodium.' },
     { food: '🍗 Fried Chicken', category: 'Junk', emoji: '🍗', fact: 'Frying adds a lot of extra fat and calories.' },
   ],

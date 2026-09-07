@@ -4,19 +4,22 @@ import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, KeyboardAvo
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../../context/ThemeContext';
+import { useUIPrefs } from '../../../../context/UIPrefsContext';
 import { supabase } from '../../../api/supabaseClient';
+import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../../api/offlineCache';
 import RelatedLinks, { EXCLUDE_LINK_FILTER } from '../RelatedLinks';
 
 const TYPES = [
-  { key: 'colleague', label: 'Colleague', emoji: '💼', color: '#c9a84c' },
-  { key: 'mentor',    label: 'Mentor',    emoji: '🧠', color: '#b07be0' },
-  { key: 'community', label: 'Community', emoji: '🌐', color: '#4caf7d' },
-  { key: 'industry',  label: 'Industry',  emoji: '🏭', color: '#7eb8e0' },
+  { key: 'colleague', label: 'Colleague', emoji: '💼', icon: 'briefcase',  color: '#c9a84c' },
+  { key: 'mentor',    label: 'Mentor',    emoji: '🧠', icon: 'bulb',       color: '#b07be0' },
+  { key: 'community', label: 'Community', emoji: '🌐', icon: 'globe',      color: '#4caf7d' },
+  { key: 'industry',  label: 'Industry',  emoji: '🏭', icon: 'business',   color: '#7eb8e0' },
 ];
 
 export default function NetworkScreen() {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
+  const { showEmojis, showSubtext } = useUIPrefs();
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userId,  setUserId]  = useState(null);
@@ -36,16 +39,22 @@ export default function NetworkScreen() {
 
   const load = async (uid) => {
     setLoading(true);
-    const { data } = await EXCLUDE_LINK_FILTER(supabase.from('area_notes').select('*').eq('user_id', uid).eq('area_id', 'professional'))
-      .order('created_at', { ascending: false }).limit(50);
-    if (data) setEntries(data);
+    const cacheKey = `network_${uid}`;
+    const cached = await cacheRead(cacheKey);
+    if (cached) setEntries(cached);
+
+    if (await isOnline()) {
+      const { data } = await EXCLUDE_LINK_FILTER(supabase.from('area_notes').select('*').eq('user_id', uid).eq('area_id', 'professional'))
+        .order('created_at', { ascending: false }).limit(50);
+      if (data) { setEntries(data); cacheWrite(cacheKey, data); }
+    }
     setLoading(false);
   };
 
   const add = async () => {
     if (!name.trim()) return;
     const content = JSON.stringify({ name: name.trim(), role: role.trim(), note: note.trim(), type });
-    const { data } = await supabase.from('area_notes').insert({ user_id: userId, area_id: 'professional', content, created_at: new Date().toISOString() }).select().single();
+    const { row: data } = await offlineWrite(supabase, 'area_notes', { user_id: userId, area_id: 'professional', content, created_at: new Date().toISOString() });
     if (data) setEntries(prev => [data, ...prev]);
     setName(''); setRole(''); setNote(''); setType('colleague'); setShowAdd(false);
   };
@@ -63,8 +72,8 @@ export default function NetworkScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: s.sm }}>
           <Ionicons name="chevron-back" size={20} color={color} />
         </TouchableOpacity>
-        <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>🤝 Network</Text>
-        <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 3 }}>Your professional connections and community</Text>
+        <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>{showEmojis ? '🤝 ' : ''}Network</Text>
+        {showSubtext && <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 3 }}>Your professional connections and community</Text>}
       </View>
 
       <TouchableOpacity onPress={() => setShowAdd(true)}
@@ -82,7 +91,7 @@ export default function NetworkScreen() {
               <View key={entry.id} style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, marginBottom: s.md, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: tp.color }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md }}>
                   <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: tp.color + '22', borderWidth: 1.5, borderColor: tp.color, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 20 }}>{tp.emoji}</Text>
+                    {showEmojis ? <Text style={{ fontSize: 20 }}>{tp.emoji}</Text> : <Ionicons name={tp.icon} size={18} color={tp.color} />}
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>{p.name}</Text>
@@ -98,14 +107,14 @@ export default function NetworkScreen() {
           })}
           {entries.length === 0 && (
             <View style={{ alignItems: 'center', paddingVertical: 60 }}>
-              <Text style={{ fontSize: 48, marginBottom: s.lg }}>🤝</Text>
+              {showEmojis ? <Text style={{ fontSize: 48, marginBottom: s.lg }}>🤝</Text> : <Ionicons name="people-outline" size={44} color={color} style={{ marginBottom: s.lg }} />}
               <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.sm }}>No connections yet</Text>
               <Text style={{ fontSize: t.sm, color: c.text3, textAlign: 'center' }}>Add colleagues, mentors, and community contacts.</Text>
             </View>
           )}
 
           <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginTop: s.lg, marginBottom: s.md }}>
-            🔗 Related
+            {showEmojis ? '🔗 ' : ''}Related
           </Text>
           <RelatedLinks areaId="professional" color={color} c={c} t={t} s={s} r={r} />
         </ScrollView>
@@ -125,7 +134,7 @@ export default function NetworkScreen() {
               {TYPES.map(tp => (
                 <TouchableOpacity key={tp.key} onPress={() => setType(tp.key)}
                   style={{ flex: 1, alignItems: 'center', padding: s.sm, borderRadius: r.md, borderWidth: 1.5, borderColor: type === tp.key ? tp.color : c.border, backgroundColor: type === tp.key ? tp.color + '22' : 'transparent' }}>
-                  <Text style={{ fontSize: 16 }}>{tp.emoji}</Text>
+                  {showEmojis ? <Text style={{ fontSize: 16 }}>{tp.emoji}</Text> : <Ionicons name={tp.icon} size={14} color={type === tp.key ? tp.color : c.text3} />}
                   <Text style={{ fontSize: 9, color: type === tp.key ? tp.color : c.text3, fontWeight: type === tp.key ? t.bold : t.regular, marginTop: 2 }}>{tp.label}</Text>
                 </TouchableOpacity>
               ))}

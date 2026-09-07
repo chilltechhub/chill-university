@@ -1,15 +1,18 @@
 // src/components/CoinGame.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  TextInput, ScrollView,
+  TextInput, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import GameShell, { useGameTheme } from './GameShell';
+import { useUIPrefs } from '../../context/UIPrefsContext';
 import GameOver from './GameOver';
 import GradeSelectCard from './GradeSelectCard';
+import RoundCompleteScreen from './RoundCompleteScreen';
 import useGame from '../logic/useGame';
 import useGradeLevel from '../logic/useGradeLevel';
+import { roundLength } from '../logic/difficultyAdapter';
 
 const TIER_CONFIG = {
   'K-2': { coins: [10, 5, 1],                          costFn: level => Math.floor(Math.random() * (15 + level * 4)) + 5,    startLevel: 1 },
@@ -82,7 +85,7 @@ const COIN_CONFIG = {
   1:  { label: '1¢',  color: '#CD7F32', bg: '#1a1000' },
 };
 
-function CoinDisplay({ coins }) {
+function CoinDisplay({ coins, s }) {
   return (
     <View style={s.coinSection}>
       <Text style={s.coinTitle}>Your Coins</Text>
@@ -105,18 +108,24 @@ export default function CoinGame({ onGameEnd }) {
   const navigation = useNavigation();
   const G = useGameTheme();
   const s = makeStyles(G);
+  const { showEmojis } = useUIPrefs();
   const { level: skillLevel, setLevel: setSkillLevel } = useGradeLevel('coin');
   const [started, setStarted] = useState(false);
 
   const [level, setLevel]         = useState(1);
   const [levelCorrect, setLC]     = useState(0);
+  // Rounds cleared THIS run — see the matching comment in FactorCraftGame.js
+  // and roundLength() in difficultyAdapter.js.
+  const [roundsCompleted, setRoundsCompleted] = useState(0);
+  const [roundMisses, setRoundMisses] = useState(0);
+  const [roundComplete, setRoundComplete] = useState(null); // { correct, total, roundNumber, nextLevel, isFinal }
   const [question, setQuestion]   = useState(null);
   const [feedback, setFeedback]   = useState(null);
   const [retryMode, setRetryMode] = useState(false);
   const [retryInput, setRetryInput] = useState('');
   const [startTime, setStartTime] = useState(Date.now());
 
-  const game = useGame({ subject: 'math', difficulty: level > 6 ? 3 : level > 3 ? 2 : 1, skillLevel, onGameEnd });
+  const game = useGame({ subject: 'math', difficulty: level > 6 ? 3 : level > 3 ? 2 : 1, skillLevel, onGameEnd, manualScoring: true });
 
   useEffect(() => { if (question) setStartTime(Date.now()); }, [question]);
 
@@ -124,6 +133,9 @@ export default function CoinGame({ onGameEnd }) {
     const cfg = TIER_CONFIG[skillLevel] || TIER_CONFIG['3-5'];
     setLevel(cfg.startLevel);
     setLC(0);
+    setRoundsCompleted(0);
+    setRoundMisses(0);
+    setRoundComplete(null);
     setQuestion(generateQuestion(cfg.startLevel, skillLevel));
     setFeedback(null);
     setRetryMode(false);
@@ -131,13 +143,17 @@ export default function CoinGame({ onGameEnd }) {
     setStarted(true);
   };
 
-  const nextQuestion = (currentLevel, currentLC) => {
+  const nextQuestion = (currentLevel, currentLC, wasCorrect) => {
     const newLC = currentLC + 1;
-    if (newLC >= 10) {
-      if (currentLevel >= 10) { game.endGame(); return; }
-      setLevel(l => l + 1);
-      setLC(0);
-      setTimeout(() => setQuestion(generateQuestion(currentLevel + 1, skillLevel)), 200);
+    const needForLevel = roundLength(roundsCompleted);
+    if (!wasCorrect) setRoundMisses(m => m + 1);
+    if (newLC >= needForLevel) {
+      // Round cleared — pause on a prize pick instead of moving straight to
+      // the next level; no points land until it's claimed.
+      setRoundComplete({
+        correct: needForLevel, total: needForLevel + roundMisses + (wasCorrect ? 0 : 1),
+        roundNumber: roundsCompleted + 1, nextLevel: currentLevel + 1, isFinal: currentLevel >= 10,
+      });
     } else {
       setLC(newLC);
       setTimeout(() => setQuestion(generateQuestion(currentLevel, skillLevel)), 200);
@@ -146,6 +162,20 @@ export default function CoinGame({ onGameEnd }) {
     setRetryInput('');
     setFeedback(null);
   };
+
+  const handleClaimPrize = useCallback(() => {
+    const { nextLevel, isFinal } = roundComplete;
+    setRoundComplete(null);
+    if (isFinal) {
+      game.endGame();
+      return;
+    }
+    setLevel(nextLevel);
+    setLC(0);
+    setRoundMisses(0);
+    setRoundsCompleted(rc => rc + 1);
+    setTimeout(() => setQuestion(generateQuestion(nextLevel, skillLevel)), 200);
+  }, [game, roundComplete, skillLevel]);
 
   const handleAnswer = (userAnswer) => {
     if (feedback || !question) return;
@@ -162,9 +192,12 @@ export default function CoinGame({ onGameEnd }) {
         : 'Actually doesn\'t have enough — try again';
 
     setFeedback({ isCorrect, msg });
+    const outOfLives = game.lives - (isCorrect ? 0 : 1) <= 0;
 
     if (isCorrect) {
-      setTimeout(() => nextQuestion(level, levelCorrect), 1800);
+      setTimeout(() => nextQuestion(level, levelCorrect, true), 1800);
+    } else if (outOfLives) {
+      setTimeout(() => game.endGame(), 1800);
     } else {
       setTimeout(() => { setFeedback(null); setRetryMode(true); }, 1800);
     }
@@ -175,12 +208,17 @@ export default function CoinGame({ onGameEnd }) {
     const isCorrect = counted === question.amount;
     game.answer(isCorrect);
     setFeedback({ isCorrect, msg: isCorrect ? `✓ ${formatCents(question.amount)} — correct!` : `✗ It was ${formatCents(question.amount)}` });
-    setTimeout(() => nextQuestion(level, levelCorrect), 1800);
+    const outOfLives = game.lives - (isCorrect ? 0 : 1) <= 0;
+    if (!isCorrect && outOfLives) {
+      setTimeout(() => game.endGame(), 1800);
+    } else {
+      setTimeout(() => nextQuestion(level, levelCorrect, isCorrect), 1800);
+    }
   };
 
   if (!started) {
     return (
-      <GradeSelectCard
+      <GradeSelectCard gameId="coin"
         title="Coin Game" emoji="🪙" subjectLabel="Math · Money"
         blurbs={BLURBS} level={skillLevel} onSelectLevel={setSkillLevel} onStart={beginRun}
       />
@@ -188,7 +226,7 @@ export default function CoinGame({ onGameEnd }) {
   }
 
   if (game.done) return (
-    <GameOver
+    <GameOver gameId="coin"
       score={game.score} correct={game.correct} total={game.attempted}
       streak={game.bestStreak} title="Coin Master!"
       onPlayAgain={() => { game.reset(); setStarted(false); }}
@@ -196,21 +234,41 @@ export default function CoinGame({ onGameEnd }) {
     />
   );
 
+  if (roundComplete) {
+    return (
+      <GameShell gameId="coin" disableFactToast
+        title="Coin Game" emoji="🪙" subject={`Math · Money · ${skillLevel}`}
+        score={game.score} lives={game.lives} streak={game.streak}
+      >
+        <RoundCompleteScreen
+          roundNumber={roundComplete.roundNumber}
+          correct={roundComplete.correct}
+          total={roundComplete.total}
+          streak={game.streak}
+          difficulty={level > 6 ? 3 : level > 3 ? 2 : 1}
+          onAward={game.addPoints}
+          onAdvance={handleClaimPrize}
+        />
+      </GameShell>
+    );
+  }
+
   if (!question) return null;
 
   return (
-    <GameShell
+    <GameShell gameId="coin"
       title="Coin Game" emoji="🪙" subject={`Math · Money · ${skillLevel}`}
       score={game.score} lives={game.lives} streak={game.streak}
-      progress={levelCorrect / 10}
+      progress={levelCorrect / roundLength(roundsCompleted)}
     >
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={s.scroll}>
         <View style={s.levelBadge}>
-          <Text style={s.levelText}>Level {level} · {levelCorrect}/10</Text>
+          <Text style={s.levelText}>Level {level} · {levelCorrect}/{roundLength(roundsCompleted)}</Text>
         </View>
 
         <View style={s.questionCard}>
-          <Text style={s.tipText}>💡 Count the coins first, then decide!</Text>
+          <Text style={s.tipText}>{showEmojis ? '💡 ' : ''}Count the coins first, then decide!</Text>
           <Text style={s.question}>
             <Text style={s.name}>{question.name}</Text> wants to buy a {question.item} for{' '}
             <Text style={s.highlight}>{formatCents(question.cost)}</Text>.
@@ -218,7 +276,7 @@ export default function CoinGame({ onGameEnd }) {
           </Text>
         </View>
 
-        <CoinDisplay coins={question.coins} />
+        <CoinDisplay coins={question.coins} s={s} />
 
         {!retryMode && !feedback && (
           <View style={s.yesNo}>
@@ -261,6 +319,7 @@ export default function CoinGame({ onGameEnd }) {
           </View>
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
     </GameShell>
   );
 }

@@ -1,4 +1,12 @@
 // src/screens/library/resourcetools.js
+//
+// SUPERSEDED — Resources & Instruments is now the matching type filter inside the
+// Knowledge Vault (src/screens/library/knowledge.js), which carries every
+// feature below. Nothing imports this file any more; the route name that
+// used to point here is registered against the Knowledge Vault in
+// LibraryNav.js. Kept on disk only until the merged screen has been
+// exercised in a build — safe to delete after that.
+//
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
@@ -6,14 +14,17 @@ import {
   Modal, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { supabase } from '../../api/supabaseClient';
+import { cacheRead, cacheWrite, isOnline } from '../../api/offlineCache';
 import { fetchContentPool } from '../../api/remoteConfigService';
 import { useTheme } from '../../../context/ThemeContext';
+import { useUIPrefs } from '../../../context/UIPrefsContext';
 import { LIFE_AREAS } from './LifeAreaScreen';
 import useFolders from '../../logic/useFolders';
 import FolderRow from '../../components/FolderRow';
 import FolderAssignSheet from '../../components/FolderAssignSheet';
+import TourSpot from '../../components/TourSpot';
 
 // ─── Auto-populated discovery catalog ──────────────────────────────────────
 // Curated, well-known sites grouped by life area so a fresh account never
@@ -23,7 +34,7 @@ import FolderAssignSheet from '../../components/FolderAssignSheet';
 // see remoteConfigService.fetchContentPool) so it can be edited/expanded any
 // time with no app update. FALLBACK_CATALOG below is what renders before
 // that fetch resolves, and what's used if it ever fails or comes back empty.
-const GENERAL_META = { id: 'general', label: 'General', emoji: '🌐', color: '#5c9ce0' };
+const GENERAL_META = { id: 'general', label: 'General', emoji: '🌐', icon: 'globe-outline', color: '#5c9ce0' };
 const AREA_MAP = Object.fromEntries([...LIFE_AREAS, GENERAL_META].map((a) => [a.id, a]));
 const FILTER_AREAS = [...LIFE_AREAS, GENERAL_META];
 
@@ -133,7 +144,7 @@ const withAreaHeaders = (list, getAreaId) => {
   FILTER_AREAS.forEach((area) => {
     const items = buckets[area.id];
     if (items && items.length) {
-      out.push({ __header: true, key: `h_${area.id}`, label: area.label, emoji: area.emoji, color: area.color, count: items.length });
+      out.push({ __header: true, key: `h_${area.id}`, label: area.label, emoji: area.emoji, icon: area.icon, color: area.color, count: items.length });
       items.forEach((it) => out.push(it));
     }
   });
@@ -147,7 +158,9 @@ const normalizeUrl = (raw) => {
 };
 
 export default function ResourcesToolsScreen() {
+  const navigation = useNavigation();
   const { colors: c } = useTheme();
+  const { showEmojis, showSubtext } = useUIPrefs();
   const styles = makeStyles(c);
 
   const [userId, setUserId] = useState(null);
@@ -200,15 +213,21 @@ export default function ResourcesToolsScreen() {
 
   const load = async (uid) => {
     setLoading(true);
-    const { data } = await supabase
-      .from('captures')
-      .select('*')
-      .eq('user_id', uid)
-      .eq('type', 'resource')
-      .eq('status', 'active')
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false });
-    if (data) setEntries(data);
+    const cacheKey = `resource_tools_${uid}`;
+    const cached = await cacheRead(cacheKey);
+    if (cached) setEntries(cached);
+
+    if (await isOnline()) {
+      const { data } = await supabase
+        .from('captures')
+        .select('*')
+        .eq('user_id', uid)
+        .eq('type', 'resource')
+        .eq('status', 'active')
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false });
+      if (data) { setEntries(data); cacheWrite(cacheKey, data); }
+    }
     setLoading(false);
   };
 
@@ -343,17 +362,27 @@ export default function ResourcesToolsScreen() {
   const data = tab === 'mine' ? mineFiltered : discoverFiltered;
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.headerSubtitle}>KNOWLEDGE & TOOLS</Text>
-          <Text style={styles.headerTitle}>Resources</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <TouchableOpacity
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('LibraryScreen'))}
+            style={{ padding: 2 }}
+          >
+            <Ionicons name="chevron-back" size={22} color={c.teal} />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.headerSubtitle}>KNOWLEDGE & TOOLS</Text>
+            <Text style={styles.headerTitle}>Resources</Text>
+          </View>
         </View>
+        <TourSpot id="resources-list">
         <TouchableOpacity style={styles.addBtn} onPress={() => setShowAdd(true)}>
           <Ionicons name="add" size={18} color="#fff" />
           <Text style={styles.addBtnText}>Add</Text>
         </TouchableOpacity>
+        </TourSpot>
       </View>
 
       {/* Tabs */}
@@ -451,7 +480,7 @@ export default function ResourcesToolsScreen() {
                 ]}
                 onPress={() => setAreaFilter(isSelected ? null : area.id)}
               >
-                <Text style={{ fontSize: 12 }}>{area.emoji}</Text>
+                {showEmojis ? <Text style={{ fontSize: 12 }}>{area.emoji}</Text> : <Ionicons name={area.icon} size={12} color={area.color} />}
                 <Text style={[styles.areaChipText, isSelected && { color: area.color, fontWeight: 'bold' }]}>
                   {area.label}{count ? ` (${count})` : ''}
                 </Text>
@@ -487,7 +516,7 @@ export default function ResourcesToolsScreen() {
             if (item.__header) {
               return (
                 <View style={styles.sectionHeader}>
-                  <Text style={{ fontSize: 13 }}>{item.emoji}</Text>
+                  {showEmojis ? <Text style={{ fontSize: 13 }}>{item.emoji}</Text> : <Ionicons name={item.icon} size={13} color={item.color} />}
                   <Text style={[styles.sectionHeaderText, { color: item.color }]}>{item.label}</Text>
                   <Text style={styles.sectionHeaderCount}>{item.count}</Text>
                 </View>
@@ -501,11 +530,11 @@ export default function ResourcesToolsScreen() {
                 <View style={[styles.card, { borderLeftColor: area.color }]}>
                   <View style={styles.cardHeader}>
                     <View style={[styles.typeIconBox, { backgroundColor: area.color + '22' }]}>
-                      <Text style={{ fontSize: 17 }}>{item.emoji}</Text>
+                      {showEmojis ? <Text style={{ fontSize: 17 }}>{item.emoji}</Text> : <Ionicons name={area.icon} size={16} color={area.color} />}
                     </View>
                     <TouchableOpacity style={styles.cardTitleArea} onPress={() => Linking.openURL(item.url)}>
                       <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-                      <Text style={styles.cardBody} numberOfLines={2}>{item.desc}</Text>
+                      {showSubtext && <Text style={styles.cardBody} numberOfLines={2}>{item.desc}</Text>}
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => Linking.openURL(item.url)} style={styles.iconBtn}>
                       <Ionicons name="open-outline" size={17} color={c.text3} />
@@ -527,7 +556,7 @@ export default function ResourcesToolsScreen() {
               <View style={[styles.card, { borderLeftColor: area.color }]}>
                 <View style={styles.cardHeader}>
                   <View style={[styles.typeIconBox, { backgroundColor: area.color + '22' }]}>
-                    <Text style={{ fontSize: 17 }}>{item.url_meta?.emoji || area.emoji}</Text>
+                    {showEmojis ? <Text style={{ fontSize: 17 }}>{item.url_meta?.emoji || area.emoji}</Text> : <Ionicons name={area.icon} size={16} color={area.color} />}
                   </View>
                   <TouchableOpacity style={styles.cardTitleArea} onPress={() => openLink(item)}>
                     <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
@@ -540,11 +569,11 @@ export default function ResourcesToolsScreen() {
                 <View style={styles.cardFooter}>
                   <View style={styles.cardTagRow}>
                     <View style={[styles.areaPill, { borderColor: area.color + '55', backgroundColor: area.color + '18' }]}>
-                      <Text style={[styles.areaPillText, { color: area.color }]}>{area.emoji} {area.label}</Text>
+                      <Text style={[styles.areaPillText, { color: area.color }]}>{showEmojis ? `${area.emoji} ` : ''}{area.label}</Text>
                     </View>
                     {folder && (
                       <View style={[styles.areaPill, { borderColor: folder.color + '55', backgroundColor: folder.color + '18' }]}>
-                        <Text style={[styles.areaPillText, { color: folder.color }]}>📁 {folder.name}</Text>
+                        <Text style={[styles.areaPillText, { color: folder.color }]}>{showEmojis ? '📁 ' : ''}{folder.name}</Text>
                       </View>
                     )}
                     {visits > 0 && (
@@ -584,7 +613,7 @@ export default function ResourcesToolsScreen() {
         >
           <View style={styles.modalContent}>
             <View style={styles.modalHandle} />
-            <Text style={styles.modalHeaderTitle}>🔗 ADD RESOURCE</Text>
+            <Text style={styles.modalHeaderTitle}>{showEmojis ? '🔗 ' : ''}ADD RESOURCE</Text>
 
             <ScrollView
               keyboardShouldPersistTaps="handled"
@@ -640,7 +669,7 @@ export default function ResourcesToolsScreen() {
                     style={[styles.areaChip, isSelected && { borderColor: area.color, backgroundColor: area.color + '22' }]}
                     onPress={() => setFormArea(isSelected ? null : area.id)}
                   >
-                    <Text style={{ fontSize: 12 }}>{area.emoji}</Text>
+                    {showEmojis ? <Text style={{ fontSize: 12 }}>{area.emoji}</Text> : <Ionicons name={area.icon} size={12} color={area.color} />}
                     <Text style={[styles.areaChipText, isSelected && { color: area.color, fontWeight: 'bold' }]}>{area.label}</Text>
                   </TouchableOpacity>
                 );
@@ -672,7 +701,7 @@ export default function ResourcesToolsScreen() {
         onClose={() => setAssigningEntry(null)}
         onCreateFolder={createFolder}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

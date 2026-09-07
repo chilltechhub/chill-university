@@ -3,7 +3,8 @@
 // Projects, Tasks, and Save for Later
 
 import { supabase } from './supabaseClient';
-import { cacheWrite, cacheRead, queueWrite, isOnline, smartFetch } from './offlineCache';
+import { cacheWrite, cacheRead, isOnline, smartFetch, offlineWrite } from './offlineCache';
+import { todayStr, dateStr } from '../logic/dateUtils';
 
 // ─── CAPTURES ─────────────────────────────────────────────────────────────────
 
@@ -75,26 +76,12 @@ export async function addCapture(userId, capture) {
     source: capture.source || 'manual',
   };
 
-  const online = await isOnline();
-  if (online) {
-    const { data, error } = await supabase
-      .from('captures')
-      .insert(item)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
-  } else {
-    // Offline — create local item with temp id
-    const localItem = {
-      ...item,
-      id: 'local_' + Date.now(),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    await queueWrite({ type: 'INSERT', table: 'captures', data: item });
-    return localItem;
-  }
+  // offlineWrite pre-assigns the same id whether this lands live now or
+  // gets queued for later — was 'local_'+Date.now() shown on screen while
+  // the queued row itself had no id, so the eventual synced row (a random
+  // Postgres-generated uuid) never matched what the UI already had.
+  const { row } = await offlineWrite(supabase, 'captures', item);
+  return row;
 }
 
 export async function updateCapture(captureId, updates) {
@@ -185,17 +172,9 @@ export async function getProjects(userId, status = null) {
 }
 
 export async function upsertProject(userId, project) {
-  const { data, error } = await supabase
-    .from('projects')
-    .upsert({
-      user_id: userId,
-      ...project,
-      updated_at: new Date().toISOString(),
-    })
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
+  const item = { user_id: userId, ...project, updated_at: new Date().toISOString() };
+  const { row } = await offlineWrite(supabase, 'projects', item, { type: 'UPSERT' });
+  return row;
 }
 
 // Soft delete — moves the project to Recently Deleted (Capture Inbox) for 7
@@ -221,7 +200,7 @@ export async function getProjectCaptures(projectId) {
 // ─── TASKS ────────────────────────────────────────────────────────────────────
 
 export async function getTasks(userId, { date = null, completed = null, category = null } = {}) {
-  const d = date || new Date().toISOString().split('T')[0];
+  const d = date || todayStr();
   const cacheKey = `tasks_${userId}_${d}`;
 
   const fetchFn = async () => {
@@ -255,7 +234,7 @@ export async function upsertTask(userId, task) {
     project_id: task.project_id || null,
     life_area_id: task.life_area_id || null,
     schedule_block: task.schedule_block || 'anytime',
-    due_date: task.due_date || new Date().toISOString().split('T')[0],
+    due_date: task.due_date || todayStr(),
     repeat: task.repeat || 'none',
     priority: task.priority || 2,
     estimated_minutes: task.estimated_minutes || null,
@@ -263,24 +242,14 @@ export async function upsertTask(userId, task) {
     ...(task.id ? { id: task.id } : {}),
   };
 
-  const online = await isOnline();
-  if (online) {
-    const { data, error } = await supabase
-      .from('tasks')
-      .upsert(item)
-      .select('*, projects(title, color, emoji)')
-      .single();
-    if (error) throw error;
-    return data;
-  } else {
-    const localItem = {
-      ...item,
-      id: item.id || 'local_' + Date.now(),
-      created_at: new Date().toISOString(),
-    };
-    await queueWrite({ type: 'UPSERT', table: 'tasks', data: item });
-    return localItem;
-  }
+  // Same id whether this lands live now or gets queued — see offlineWrite's
+  // own comment for why that matters (was the same local-id/queued-row
+  // mismatch bug as addCapture, above).
+  const { row } = await offlineWrite(supabase, 'tasks', item, {
+    type: 'UPSERT',
+    selectQuery: '*, projects(title, color, emoji)',
+  });
+  return row;
 }
 
 export async function completeTask(taskId, completed = true) {
@@ -320,6 +289,6 @@ export async function handleRepeat(task) {
     id: undefined,
     completed: false,
     completed_at: null,
-    due_date: next.toISOString().split('T')[0],
+    due_date: dateStr(next),
   });
 }

@@ -8,10 +8,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { cacheRead, cacheWrite } from '../api/offlineCache';
 
 export const GRADE_BANDS = [
-  { key: 'K-2',  label: 'Grades K–2',  emoji: '🎒', tier: 1 },
-  { key: '3-5',  label: 'Grades 3–5',  emoji: '✏️', tier: 2 },
-  { key: '6-8',  label: 'Grades 6–8',  emoji: '📐', tier: 3 },
-  { key: '9-12', label: 'Grades 9–12', emoji: '🎓', tier: 4 },
+  { key: 'K-2',  label: 'Grades K–2',  emoji: '🎒', icon: 'happy-outline',  tier: 1 },
+  { key: '3-5',  label: 'Grades 3–5',  emoji: '✏️', icon: 'pencil-outline', tier: 2 },
+  { key: '6-8',  label: 'Grades 6–8',  emoji: '📐', icon: 'book-outline',   tier: 3 },
+  { key: '9-12', label: 'Grades 9–12', emoji: '🎓', icon: 'school-outline',tier: 4 },
 ];
 
 export function tierForLevel(bandKey) {

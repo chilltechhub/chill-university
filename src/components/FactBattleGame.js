@@ -4,17 +4,18 @@
 // see who wins that stat. Every deck's stat values are all distinct
 // (verified in factBattle.js), so there's never an ambiguous tie.
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import GameShell, { useGameTheme } from './GameShell';
 import GameOver from './GameOver';
 import GradeSelectCard from './GradeSelectCard';
+import RoundCompleteScreen from './RoundCompleteScreen';
 import useGame from '../logic/useGame';
-import useGradeLevel from '../logic/useGradeLevel';
+import useGradeLevel, { tierForLevel } from '../logic/useGradeLevel';
+import { STAGE_COUNT } from '../logic/difficultyAdapter';
 import { CARD_DECKS, STAT_LABELS } from '../data/gameContent/factBattle';
 
-const SESSION_LENGTH = 8;
 const STATS = ['Speed', 'Size', 'Lifespan'];
 
 const BLURBS = {
@@ -24,12 +25,19 @@ const BLURBS = {
   '9-12': 'Extreme records — you need real knowledge.',
 };
 
-function drawRound(deck) {
-  const player = deck[Math.floor(Math.random() * deck.length)];
-  let rival = deck[Math.floor(Math.random() * deck.length)];
-  while (rival.name === player.name) {
-    rival = deck[Math.floor(Math.random() * deck.length)];
-  }
+// `avoid` accumulates every player card drawn this run — an 8-card deck
+// against up to 10 rounds means without this, the same matchup (or even
+// the exact same two cards) could repeat multiple times in one session.
+// Falls back to the full deck once every card's been seen, same pattern
+// as every other game's pickNext().
+function drawRound(deck, avoid = []) {
+  const freshChoices = deck.filter(c => !avoid.includes(c.name));
+  const playerPool = freshChoices.length ? freshChoices : deck;
+  const player = playerPool[Math.floor(Math.random() * playerPool.length)];
+
+  const rivalChoices = deck.filter(c => c.name !== player.name && !avoid.includes(c.name));
+  const rivalPool = rivalChoices.length ? rivalChoices : deck.filter(c => c.name !== player.name);
+  const rival = rivalPool[Math.floor(Math.random() * rivalPool.length)];
   return { player, rival };
 }
 
@@ -44,11 +52,15 @@ export default function FactBattleGame({ onGameEnd }) {
   const [asked, setAsked] = useState(0);
   const [pickedStat, setPickedStat] = useState(null);
   const [feedback, setFeedback] = useState(null);
+  const [roundComplete, setRoundComplete] = useState(null);
+  const recentRef = useRef([]);
 
-  const game = useGame({ subject: 'science', difficulty: 2, skillLevel: level, onGameEnd });
+  const game = useGame({ subject: 'science', difficulty: 2, skillLevel: level, onGameEnd, manualScoring: true });
 
   const beginRun = () => {
-    setRound(drawRound(CARD_DECKS[level]));
+    const first = drawRound(CARD_DECKS[level], []);
+    recentRef.current = [first.player.name];
+    setRound(first);
     setAsked(0);
     setPickedStat(null);
     setFeedback(null);
@@ -67,19 +79,38 @@ export default function FactBattleGame({ onGameEnd }) {
     setTimeout(() => {
       setFeedback(null);
       setPickedStat(null);
-      const willEnd = game.lives - (isCorrect ? 0 : 1) <= 0 || asked + 1 >= SESSION_LENGTH;
-      if (willEnd) {
+      const outOfLives = game.lives - (isCorrect ? 0 : 1) <= 0;
+      const newAsked = asked + 1;
+
+      if (outOfLives) {
         game.endGame();
+      } else if (isCorrect) {
+        setAsked(newAsked);
+        setRoundComplete({ correct: 1, total: 1, roundNumber: newAsked, isLastStage: newAsked >= STAGE_COUNT });
       } else {
-        setRound(drawRound(CARD_DECKS[level]));
-        setAsked(a => a + 1);
+        const next = drawRound(CARD_DECKS[level], recentRef.current);
+        recentRef.current = [...recentRef.current, next.player.name];
+        setRound(next);
+        setAsked(newAsked);
       }
     }, 2200);
   }, [feedback, round, game, asked, level]);
 
+  const handleClaimPrize = useCallback(() => {
+    if (roundComplete?.isLastStage) {
+      setRoundComplete(null);
+      game.endGame();
+      return;
+    }
+    const next = drawRound(CARD_DECKS[level], recentRef.current);
+    recentRef.current = [...recentRef.current, next.player.name];
+    setRound(next);
+    setRoundComplete(null);
+  }, [game, roundComplete, level]);
+
   if (!started) {
     return (
-      <GradeSelectCard
+      <GradeSelectCard gameId="factbattle"
         title="Fact Battle" emoji="🃏" subjectLabel="Science · Card Battle"
         blurbs={BLURBS} level={level} onSelectLevel={setLevel} onStart={beginRun}
       />
@@ -87,7 +118,7 @@ export default function FactBattleGame({ onGameEnd }) {
   }
 
   if (game.done) return (
-    <GameOver
+    <GameOver gameId="factbattle"
       score={game.score} correct={game.correct} total={game.attempted}
       streak={game.bestStreak} title="Battle Champion!"
       onPlayAgain={() => { game.reset(); setStarted(false); }}
@@ -95,16 +126,35 @@ export default function FactBattleGame({ onGameEnd }) {
     />
   );
 
+  if (roundComplete) {
+    return (
+      <GameShell gameId="factbattle" disableFactToast
+        title="Fact Battle" emoji="🃏" subject={`Science · ${level}`}
+        score={game.score} lives={game.lives} streak={game.streak}
+      >
+        <RoundCompleteScreen
+          roundNumber={roundComplete.roundNumber}
+          correct={roundComplete.correct}
+          total={roundComplete.total}
+          streak={game.streak}
+          difficulty={tierForLevel(level)}
+          onAward={game.addPoints}
+          onAdvance={handleClaimPrize}
+        />
+      </GameShell>
+    );
+  }
+
   if (!round) return null;
 
   return (
-    <GameShell
+    <GameShell gameId="factbattle"
       title="Fact Battle" emoji="🃏" subject={`Science · ${level}`}
       score={game.score} lives={game.lives} streak={game.streak}
-      progress={asked / SESSION_LENGTH}
+      progress={asked / STAGE_COUNT}
     >
       <ScrollView contentContainerStyle={s.scroll}>
-        <Text style={s.progress}>Round {asked + 1} of {SESSION_LENGTH}</Text>
+        <Text style={s.progress}>Round {asked + 1} of {STAGE_COUNT}</Text>
         <Text style={s.instruction}>Pick a stat where your card wins — your rival's card is hidden!</Text>
 
         <View style={s.cardsRow}>

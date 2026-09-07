@@ -10,8 +10,9 @@ import { useNavigation } from '@react-navigation/native';
 import GameShell, { useGameTheme } from './GameShell';
 import GameOver from './GameOver';
 import GradeSelectCard from './GradeSelectCard';
+import RoundCompleteScreen from './RoundCompleteScreen';
 import useGame from '../logic/useGame';
-import useGradeLevel from '../logic/useGradeLevel';
+import useGradeLevel, { tierForLevel } from '../logic/useGradeLevel';
 import { BUILD_BANK } from '../data/gameContent/buildIt';
 
 const BLURBS = {
@@ -37,8 +38,10 @@ export default function BuildItGame({ onGameEnd }) {
   const [filledSlots, setFilledSlots] = useState({});
   const [selectedPieceId, setSelectedPieceId] = useState(null);
   const [feedback, setFeedback] = useState(null);
+  const [roundMisses, setRoundMisses] = useState(0);
+  const [roundComplete, setRoundComplete] = useState(null);
 
-  const game = useGame({ subject: 'technology', difficulty: 2, skillLevel: level, onGameEnd });
+  const game = useGame({ subject: 'technology', difficulty: 2, skillLevel: level, onGameEnd, manualScoring: true });
 
   const loadProject = (proj) => {
     setProject(proj);
@@ -46,6 +49,7 @@ export default function BuildItGame({ onGameEnd }) {
     setFilledSlots({});
     setSelectedPieceId(null);
     setFeedback(null);
+    setRoundMisses(0);
   };
 
   const beginRun = () => {
@@ -80,24 +84,36 @@ export default function BuildItGame({ onGameEnd }) {
         setTimeout(() => {
           setFeedback(null);
           const nextIdx = projectIndex + 1;
-          if (nextIdx >= queue.length || game.lives <= 0) {
-            game.endGame();
-          } else {
-            setProjectIndex(nextIdx);
-            loadProject(queue[nextIdx]);
-          }
+          setRoundComplete({
+            correct: project.slots.length,
+            total: project.slots.length + roundMisses,
+            roundNumber: projectIndex + 1,
+            isLastStage: nextIdx >= queue.length || game.lives <= 0,
+          });
         }, 1800);
       }
     } else {
       setFeedback({ isCorrect: false, msg: `✗ That doesn't belong in ${slot.label}` });
       setSelectedPieceId(null);
+      setRoundMisses(m => m + 1);
       setTimeout(() => setFeedback(null), 1100);
     }
-  }, [feedback, filledSlots, selectedPieceId, bank, project, game, projectIndex, queue]);
+  }, [feedback, filledSlots, selectedPieceId, bank, project, game, projectIndex, queue, roundMisses]);
+
+  const handleClaimPrize = useCallback(() => {
+    setRoundComplete(null);
+    if (roundComplete?.isLastStage) {
+      game.endGame();
+      return;
+    }
+    const nextIdx = projectIndex + 1;
+    setProjectIndex(nextIdx);
+    loadProject(queue[nextIdx]);
+  }, [game, roundComplete, projectIndex, queue]);
 
   if (!started) {
     return (
-      <GradeSelectCard
+      <GradeSelectCard gameId="build"
         title="Build It!" emoji="🏗️" subjectLabel="Construction & Design"
         blurbs={BLURBS} level={level} onSelectLevel={setLevel} onStart={beginRun}
       />
@@ -105,7 +121,7 @@ export default function BuildItGame({ onGameEnd }) {
   }
 
   if (game.done) return (
-    <GameOver
+    <GameOver gameId="build"
       score={game.score} correct={game.correct} total={game.attempted}
       streak={game.bestStreak} title="Master Builder!"
       onPlayAgain={() => { game.reset(); setStarted(false); }}
@@ -113,10 +129,29 @@ export default function BuildItGame({ onGameEnd }) {
     />
   );
 
+  if (roundComplete) {
+    return (
+      <GameShell gameId="build" disableFactToast
+        title="Build It!" emoji="🏗️" subject={`Construction & Design · ${level}`}
+        score={game.score} lives={game.lives} streak={game.streak}
+      >
+        <RoundCompleteScreen
+          roundNumber={roundComplete.roundNumber}
+          correct={roundComplete.correct}
+          total={roundComplete.total}
+          streak={game.streak}
+          difficulty={tierForLevel(level)}
+          onAward={game.addPoints}
+          onAdvance={handleClaimPrize}
+        />
+      </GameShell>
+    );
+  }
+
   if (!project) return null;
 
   return (
-    <GameShell
+    <GameShell gameId="build"
       title="Build It!" emoji="🏗️" subject={`Construction & Design · ${level}`}
       score={game.score} lives={game.lives} streak={game.streak}
       progress={projectIndex / queue.length}

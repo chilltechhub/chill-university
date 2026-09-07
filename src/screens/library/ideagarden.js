@@ -11,6 +11,7 @@ import {
 import { WebView } from 'react-native-webview';
 import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '../../../context/ThemeContext';
+import { useUIPrefs } from '../../../context/UIPrefsContext';
 import { ideasToMarkdown, ideasToCSV } from '../../logic/exportUtils';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -24,6 +25,7 @@ import {
 } from '../../api/gardenService';
 import LinkedText from '../../components/LinkedText';
 import LinkSuggest from '../../components/LinkSuggest';
+import TourSpot from '../../components/TourSpot';
 
 // SW/SH/CANVAS_H are now dynamic via useWindowDimensions inside the component
 
@@ -610,6 +612,7 @@ function NotePanel({ item, editing, cores, plantTypes, petalTypes, onClose, onSa
 
 export default function IdeaGardenScreen() {
   const { colors: gardenThemeColors } = useTheme();
+  const { showEmojis } = useUIPrefs();
   const gc = buildGardenColors(gardenThemeColors);
   const styles = makeStyles(gc);
   const navigation = useNavigation();
@@ -633,11 +636,16 @@ export default function IdeaGardenScreen() {
   const [openItem, setOpenItem] = useState(null);
   const [connectMode, setConnectMode] = useState(false);
   const [connectFrom, setConnectFrom] = useState(null);
-  const [view, setView] = useState('map');
+  // react-native-webview has no web implementation — the map view's canvas
+  // is a WebView, which throws "does not support this platform" on web
+  // instead of rendering anything. Default to List there so the screen
+  // isn't broken on first load; native keeps the map default.
+  const [view, setView] = useState(Platform.OS === 'web' ? 'list' : 'map');
 
   const [coreModal, setCoreModal] = useState(false);
   const [editingCore, setEditingCore] = useState(null);
   const [coreDraft, setCoreDraft] = useState({ title: '', description: '', plant_type: 'plant', is_project: false, project_status: 'idea', color: '#2e7d32', color_light: '#a5d6a7' });
+  const [savingCore, setSavingCore] = useState(false);
 
   const [petalModal, setPetalModal] = useState(false);
   const [petalParent, setPetalParent] = useState(null);
@@ -818,6 +826,8 @@ export default function IdeaGardenScreen() {
 
   const saveCore = async () => {
     if (!coreDraft.title.trim()) return Alert.alert('Add a title');
+    if (savingCore) return; // already in flight — a fast double-tap on "Plant it" was creating duplicate ideas
+    setSavingCore(true);
     const pt = PLANT_TYPES.find(p => p.id === coreDraft.plant_type);
     try {
       const { _linkedCores: _lc, garden_petals: _gp, garden_updates: _gu, ...cleanDraft } = coreDraft;
@@ -835,6 +845,7 @@ export default function IdeaGardenScreen() {
       );
       setCoreModal(false);
     } catch { Alert.alert('Error saving'); }
+    setSavingCore(false);
   };
 
   const confirmDeleteCore = (core) => {
@@ -916,9 +927,17 @@ export default function IdeaGardenScreen() {
 
       {/* Top bar */}
       <View style={styles.topbar}>
-        <View>
-          <Text style={styles.topbarSub}>idea garden</Text>
-          <Text style={styles.topbarTitle}>🌿 Your Ecosystem</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <TouchableOpacity
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('LibraryScreen'))}
+            style={styles.backBtn}
+          >
+            <Ionicons name="chevron-back" size={20} color={gc.text2} />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.topbarSub}>idea garden</Text>
+            <Text style={styles.topbarTitle}>{showEmojis ? '🌿 ' : ''}Your Ecosystem</Text>
+          </View>
         </View>
         <View style={styles.topbarRight}>
           <TouchableOpacity style={[styles.connectBtn, connectMode && styles.connectBtnActive]} onPress={toggleConnectMode}>
@@ -935,14 +954,29 @@ export default function IdeaGardenScreen() {
           <TouchableOpacity style={styles.exportBtn} onPress={exportGarden}>
             <Ionicons name="share-outline" size={18} color={gc.text2} />
           </TouchableOpacity>
+          <TourSpot id="ideas-list">
           <TouchableOpacity style={styles.addBtn} onPress={openNewCore}>
             <Ionicons name="add" size={18} color={gc.white} />
           </TouchableOpacity>
+          </TourSpot>
         </View>
       </View>
 
-      {/* Map view — WebView canvas */}
-      {view === 'map' && (
+      {/* Map view — WebView canvas (native only, see the `view` default above) */}
+      {view === 'map' && Platform.OS === 'web' && (
+        <View style={styles.canvasWrap}>
+          <View style={styles.emptyGarden}>
+            <Ionicons name="leaf-outline" size={28} color={gc.text3} style={{ marginBottom: 8 }} />
+            <Text style={styles.emptyGardenText}>The growing map isn't available on web yet</Text>
+            <Text style={styles.emptyGardenSub}>It needs a native canvas — switch to List below to see and manage every idea.</Text>
+            <TouchableOpacity style={[styles.viewBtn, styles.viewBtnActive, { marginTop: 14, paddingHorizontal: 16, width: 'auto', flexDirection: 'row', gap: 6 }]} onPress={() => setView('list')}>
+              <Ionicons name="list" size={14} color={gc.bg0} />
+              <Text style={{ color: gc.bg0, fontWeight: '700', fontSize: 13 }}>Switch to List</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+      {view === 'map' && Platform.OS !== 'web' && (
         <View style={styles.canvasWrap}>
           <ScrollView
             style={{ flex: 1 }}
@@ -1115,7 +1149,7 @@ export default function IdeaGardenScreen() {
             <Ionicons name="close" size={18} color={gc.text4} />
           </TouchableOpacity>
           <View style={styles.vinePanelHeader}>
-            <Text style={styles.vinePanelEmoji}>🌿</Text>
+            {showEmojis ? <Text style={styles.vinePanelEmoji}>🌿</Text> : <Ionicons name="leaf-outline" size={18} color={gc.text2} />}
             <View style={{ flex: 1 }}>
               <Text style={styles.vinePanelTitle}>
                 {vines.find(v => v.id === openVine.id)?.label || 'Vine connection'}
@@ -1181,7 +1215,18 @@ export default function IdeaGardenScreen() {
       <Modal visible={coreModal} transparent animationType="slide">
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>{editingCore ? 'Edit Plant' : 'Plant New Idea'}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={styles.modalTitle}>{editingCore ? 'Edit Plant' : 'Plant New Idea'}</Text>
+              {editingCore && (
+                <TouchableOpacity
+                  onPress={() => { setCoreModal(false); confirmDeleteCore(editingCore); }}
+                  style={{ padding: 6 }}
+                  accessibilityLabel="Delete this idea"
+                >
+                  <Ionicons name="trash-outline" size={20} color={gc.error || '#c0392b'} />
+                </TouchableOpacity>
+              )}
+            </View>
             <TextInput style={styles.modalInput} value={coreDraft.title} onChangeText={v => setCoreDraft(p => ({ ...p, title: v }))} placeholder="Title" placeholderTextColor={gc.text4} autoFocus />
             <LinkSuggest
               cores={cores.filter(c => c.id !== editingCore?.id)}
@@ -1221,7 +1266,11 @@ export default function IdeaGardenScreen() {
             )}
             <View style={styles.modalBtns}>
               <TouchableOpacity onPress={() => setCoreModal(false)} style={styles.modalCancel}><Text style={styles.modalCancelText}>Cancel</Text></TouchableOpacity>
-              <TouchableOpacity onPress={saveCore} style={styles.modalSave}><Text style={styles.modalSaveText}>{editingCore ? 'Update' : 'Plant it'}</Text></TouchableOpacity>
+              <TouchableOpacity onPress={saveCore} disabled={savingCore} style={[styles.modalSave, savingCore && { opacity: 0.6 }]}>
+                {savingCore
+                  ? <ActivityIndicator size="small" color={gc.white} />
+                  : <Text style={styles.modalSaveText}>{editingCore ? 'Update' : 'Plant it'}</Text>}
+              </TouchableOpacity>
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -1328,6 +1377,7 @@ const makeStyles = (gc) => StyleSheet.create({
   container: { flex: 1, backgroundColor: gc.bg0 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: gc.bg0 },
   topbar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, paddingTop: 16, backgroundColor: gc.bg1, borderBottomWidth: 0.5, borderBottomColor: gc.border },
+  backBtn: { padding: 2 },
   topbarSub: { fontSize: 10, color: gc.text4, letterSpacing: 1, textTransform: 'uppercase' },
   topbarTitle: { fontSize: 17, fontWeight: '600', color: gc.text2 },
   topbarRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },

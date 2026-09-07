@@ -11,13 +11,14 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import GameShell, { useGameTheme } from './GameShell';
+import { useUIPrefs } from '../../context/UIPrefsContext';
 import GameOver from './GameOver';
 import GradeSelectCard from './GradeSelectCard';
+import RoundCompleteScreen from './RoundCompleteScreen';
 import useGame from '../logic/useGame';
-import useGradeLevel from '../logic/useGradeLevel';
+import useGradeLevel, { tierForLevel } from '../logic/useGradeLevel';
+import { STAGE_COUNT } from '../logic/difficultyAdapter';
 import { SYMBOL_POOL, TIER_CONFIG, scoreGuess, generateSecret } from '../logic/mastermind';
-
-const SESSION_PUZZLES = 5;
 
 const BLURBS = {
   'K-2': '3 symbols, 4 colors, repeats allowed.',
@@ -30,6 +31,7 @@ export default function CodeBreakerGame({ onGameEnd }) {
   const navigation = useNavigation();
   const G = useGameTheme();
   const s = makeStyles(G);
+  const { showEmojis } = useUIPrefs();
   const { level, setLevel } = useGradeLevel('codebreaker');
   const [started, setStarted] = useState(false);
 
@@ -38,8 +40,9 @@ export default function CodeBreakerGame({ onGameEnd }) {
   const [guesses, setGuesses] = useState([]);
   const [currentGuess, setCurrentGuess] = useState([]);
   const [resolution, setResolution] = useState(null); // { solved: bool, msg }
+  const [roundComplete, setRoundComplete] = useState(null);
 
-  const game = useGame({ subject: 'math', difficulty: 2, skillLevel: level, onGameEnd });
+  const game = useGame({ subject: 'math', difficulty: 2, skillLevel: level, onGameEnd, manualScoring: true });
   const cfg = TIER_CONFIG[level] || TIER_CONFIG['3-5'];
   const symbols = SYMBOL_POOL.slice(0, cfg.symbolCount);
 
@@ -84,10 +87,18 @@ export default function CodeBreakerGame({ onGameEnd }) {
           : `✗ Out of guesses — the code was ${secret.join(' ')}`,
       });
 
-      const willEnd = game.lives - (isSolved ? 0 : 1) <= 0 || puzzleIndex + 1 >= SESSION_PUZZLES;
+      const outOfLives = game.lives - (isSolved ? 0 : 1) <= 0;
       setTimeout(() => {
-        if (willEnd) {
+        if (outOfLives) {
           game.endGame();
+        } else if (isSolved) {
+          // A cracked code is a round win — a failed one just moves on to
+          // the next puzzle with no prize pick, same as a missed question
+          // elsewhere doesn't trigger one.
+          setRoundComplete({
+            correct: 1, total: 1,
+            roundNumber: puzzleIndex + 1, isLastStage: puzzleIndex + 1 >= STAGE_COUNT,
+          });
         } else {
           setPuzzleIndex(i => i + 1);
           startPuzzle();
@@ -98,9 +109,20 @@ export default function CodeBreakerGame({ onGameEnd }) {
     }
   }, [resolution, currentGuess, secret, guesses, cfg, game, puzzleIndex]);
 
+  const handleClaimPrize = useCallback(() => {
+    if (roundComplete?.isLastStage) {
+      setRoundComplete(null);
+      game.endGame();
+      return;
+    }
+    setPuzzleIndex(i => i + 1);
+    setRoundComplete(null);
+    startPuzzle();
+  }, [game, roundComplete]);
+
   if (!started) {
     return (
-      <GradeSelectCard
+      <GradeSelectCard gameId="codebreaker"
         title="Code Breaker" emoji="🕵️" subjectLabel="Logic & Deduction"
         blurbs={BLURBS} level={level} onSelectLevel={setLevel} onStart={beginRun}
       />
@@ -108,7 +130,7 @@ export default function CodeBreakerGame({ onGameEnd }) {
   }
 
   if (game.done) return (
-    <GameOver
+    <GameOver gameId="codebreaker"
       score={game.score} correct={game.correct} total={game.attempted}
       streak={game.bestStreak} title="Master Codebreaker!"
       onPlayAgain={() => { game.reset(); setStarted(false); }}
@@ -116,14 +138,33 @@ export default function CodeBreakerGame({ onGameEnd }) {
     />
   );
 
+  if (roundComplete) {
+    return (
+      <GameShell gameId="codebreaker" disableFactToast
+        title="Code Breaker" emoji="🕵️" subject={`Logic & Deduction · ${level}`}
+        score={game.score} lives={game.lives} streak={game.streak}
+      >
+        <RoundCompleteScreen
+          roundNumber={roundComplete.roundNumber}
+          correct={roundComplete.correct}
+          total={roundComplete.total}
+          streak={game.streak}
+          difficulty={tierForLevel(level)}
+          onAward={game.addPoints}
+          onAdvance={handleClaimPrize}
+        />
+      </GameShell>
+    );
+  }
+
   return (
-    <GameShell
+    <GameShell gameId="codebreaker"
       title="Code Breaker" emoji="🕵️" subject={`Logic & Deduction · ${level}`}
       score={game.score} lives={game.lives} streak={game.streak}
-      progress={puzzleIndex / SESSION_PUZZLES}
+      progress={guesses.length / cfg.maxGuesses}
     >
       <ScrollView contentContainerStyle={s.scroll}>
-        <Text style={s.progress}>Puzzle {puzzleIndex + 1} of {SESSION_PUZZLES} · Guess {guesses.length + 1} of {cfg.maxGuesses}</Text>
+        <Text style={s.progress}>Puzzle {puzzleIndex + 1} of {STAGE_COUNT} · Guess {guesses.length + 1} of {cfg.maxGuesses}</Text>
 
         <Text style={s.instruction}>Crack the {cfg.length}-symbol code {cfg.allowRepeats ? '(repeats allowed)' : '(no repeats)'}</Text>
 
@@ -171,7 +212,7 @@ export default function CodeBreakerGame({ onGameEnd }) {
             {[...guesses].reverse().map((g, i) => (
               <View key={guesses.length - i} style={s.historyRow}>
                 <Text style={s.historyGuess}>{g.guess.join(' ')}</Text>
-                <Text style={s.historyFeedback}>🎯 {g.exact} exact · ◐ {g.partial} partial</Text>
+                <Text style={s.historyFeedback}>{showEmojis ? '🎯 ' : ''}{g.exact} exact · ◐ {g.partial} partial</Text>
               </View>
             ))}
           </View>

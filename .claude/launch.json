@@ -9,9 +9,33 @@
         "start",
         "--",
         "--port",
-        "8082"
+        "8098"
       ],
-      "port": 8082
+      "port": 8098
+    },
+    {
+      "name": "chilltechhub-site",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8533",
+        "--directory",
+        "C:\\Users\\tawhi\\chilltechhub-site"
+      ],
+      "port": 8533
+    },
+    {
+      "name": "start-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "web",
+        "--",
+        "--port",
+        "8099"
+      ],
+      "port": 8099
     }
   ]
 }

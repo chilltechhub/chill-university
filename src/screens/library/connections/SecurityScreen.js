@@ -1,10 +1,12 @@
 // src/screens/library/connections/SecurityScreen.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Linking, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Linking, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../../context/ThemeContext';
+import { useUIPrefs } from '../../../../context/UIPrefsContext';
 import { supabase } from '../../../api/supabaseClient';
+import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../../api/offlineCache';
 import RelatedLinks from '../RelatedLinks';
 
 const TIPS = [
@@ -22,6 +24,7 @@ const SCREEN_TAG = '[Security]';
 export default function SecurityScreen() {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
+  const { showEmojis, showSubtext } = useUIPrefs();
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userId,  setUserId]  = useState(null);
@@ -38,9 +41,15 @@ export default function SecurityScreen() {
 
   const load = async (uid) => {
     setLoading(true);
-    const { data } = await supabase.from('area_notes').select('*').eq('user_id', uid).eq('area_id', 'digital')
-      .ilike('content', `%${SCREEN_TAG}%`).order('created_at', { ascending: false }).limit(30);
-    if (data) setEntries(data);
+    const cacheKey = `security_${uid}`;
+    const cached = await cacheRead(cacheKey);
+    if (cached) setEntries(cached);
+
+    if (await isOnline()) {
+      const { data } = await supabase.from('area_notes').select('*').eq('user_id', uid).eq('area_id', 'digital')
+        .ilike('content', `%${SCREEN_TAG}%`).order('created_at', { ascending: false }).limit(30);
+      if (data) { setEntries(data); cacheWrite(cacheKey, data); }
+    }
     setLoading(false);
   };
 
@@ -48,7 +57,7 @@ export default function SecurityScreen() {
     const value = text.trim();
     if (!value || !userId) return;
     const entry = { user_id: userId, area_id: 'digital', content: `${SCREEN_TAG} ${value}`, created_at: new Date().toISOString() };
-    const { data } = await supabase.from('area_notes').insert(entry).select().single();
+    const { row: data } = await offlineWrite(supabase, 'area_notes', entry);
     if (data) setEntries(prev => [data, ...prev]);
     setInput(''); setShowAdd(false);
   };
@@ -59,13 +68,13 @@ export default function SecurityScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: c.bg0 }}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg0 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={{ backgroundColor: c.bg1, padding: s.lg, paddingTop: s.xxl, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: s.sm }}>
           <Ionicons name="chevron-back" size={20} color={color} />
         </TouchableOpacity>
-        <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>🛡️ Digital Security</Text>
-        <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 3 }}>Keep your accounts and data safe</Text>
+        <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>{showEmojis ? '🛡️ ' : ''}Digital Security</Text>
+        {showSubtext && <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 3 }}>Keep your accounts and data safe</Text>}
       </View>
 
       <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }}>
@@ -97,7 +106,7 @@ export default function SecurityScreen() {
         ))}
 
         {/* ── Log ── */}
-        <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginTop: s.lg, marginBottom: s.sm }}>📝 Log</Text>
+        <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginTop: s.lg, marginBottom: s.sm }}>{showEmojis ? '📝 ' : ''}Log</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm, marginBottom: s.md }}>
           {PRESETS.map((p, i) => (
             <TouchableOpacity key={i} onPress={() => addLog(p)}
@@ -147,10 +156,10 @@ export default function SecurityScreen() {
 
         {/* ── Related ── */}
         <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginTop: s.lg, marginBottom: s.md }}>
-          🔗 Related
+          {showEmojis ? '🔗 ' : ''}Related
         </Text>
         <RelatedLinks areaId="digital" color={color} c={c} t={t} s={s} r={r} />
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }

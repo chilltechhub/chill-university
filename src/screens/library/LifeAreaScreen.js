@@ -10,8 +10,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../../context/ThemeContext';
+import { useUIPrefs } from '../../../context/UIPrefsContext';
 import { supabase } from '../../api/supabaseClient';
+import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../api/offlineCache';
 import RelatedLinks, { EXCLUDE_LINK_FILTER } from './RelatedLinks';
+import TourSpot from '../../components/TourSpot';
+import { todayStr } from '../../logic/dateUtils';
 
 // ─── Life area config ─────────────────────────────────────────────────────────
 export const LIFE_AREAS = [
@@ -202,6 +206,7 @@ export default function LifeAreaScreen() {
   const navigation = useNavigation();
   const route      = useRoute();
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
+  const { showEmojis, showSubtext } = useUIPrefs();
 
   const { areaId } = route.params || {};
   const area = LIFE_AREAS.find(a => a.id === areaId);
@@ -232,13 +237,20 @@ export default function LifeAreaScreen() {
 
   const loadData = async (uid) => {
     setLoading(true);
+    const cacheKey = `life_area_${uid}_${area.id}`;
     try {
+      const cached = await cacheRead(cacheKey);
+      if (cached) { setNotes(cached.notes || []); if (cached.rating) setRating(cached.rating); }
+
+      if (!(await isOnline())) { setLoading(false); return; }
+
       const [notesRes, areaRes] = await Promise.all([
         EXCLUDE_LINK_FILTER(supabase.from('area_notes').select('*').eq('user_id', uid).eq('area_id', area.id)).order('created_at', { ascending: false }).limit(20),
         supabase.from('life_areas').select('progress').eq('user_id', uid).eq('label', area.label).maybeSingle(),
       ]);
       if (notesRes.data) setNotes(notesRes.data);
       if (areaRes.data?.progress) setRating(areaRes.data.progress);
+      await cacheWrite(cacheKey, { notes: notesRes.data || [], rating: areaRes.data?.progress || null });
     } catch (e) { console.warn('LifeAreaScreen', e); }
     setLoading(false);
   };
@@ -247,7 +259,7 @@ export default function LifeAreaScreen() {
     if (!content.trim()) return;
     const entry = { user_id: userId, area_id: area.id, content: content.trim(), created_at: new Date().toISOString() };
     if (userId) {
-      const { data } = await supabase.from('area_notes').insert(entry).select().single();
+      const { row: data } = await offlineWrite(supabase, 'area_notes', entry);
       if (data) setNotes(prev => [data, ...prev]);
     } else {
       setNotes(prev => [{ ...entry, id: Date.now().toString() }, ...prev]);
@@ -265,7 +277,15 @@ export default function LifeAreaScreen() {
     const prev = rating;
     setRating(val);
     if (!userId || val === prev) return;
-    await supabase.from('life_areas').upsert({ user_id: userId, label: area.label, progress: val, last_check_date: new Date().toISOString().split('T')[0] }, { onConflict: 'user_id,label' });
+    try {
+      // Not offlineWrite here — this upserts on the (user_id, label) unique
+      // pair, not on id, so offlineWrite's id-based conflict target would
+      // create a duplicate row instead of updating this one. The rating
+      // note below (which IS a plain insert, no such constraint) is what
+      // actually shows in the feed either way, so a failed/offline upsert
+      // here just means the summary card is a beat behind, not lost data.
+      await supabase.from('life_areas').upsert({ user_id: userId, label: area.label, progress: val, last_check_date: todayStr() }, { onConflict: 'user_id,label' });
+    } catch (e) { console.warn('LifeAreaScreen saveRating', e); }
     // Log the change itself so rating history is visible in the feed below,
     // not just the current value.
     const stars = '★'.repeat(val) + '☆'.repeat(5 - val);
@@ -274,7 +294,7 @@ export default function LifeAreaScreen() {
       content: `[Rating] ${stars} — rated ${val}/5${prev ? ` (was ${prev}/5)` : ''}`,
       created_at: new Date().toISOString(),
     };
-    const { data } = await supabase.from('area_notes').insert(entry).select().single();
+    const { row: data } = await offlineWrite(supabase, 'area_notes', entry);
     if (data) setNotes(p => [data, ...p]);
   };
 
@@ -302,16 +322,17 @@ export default function LifeAreaScreen() {
           </TouchableOpacity>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: s.lg }}>
             <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: color + '33', borderWidth: 2, borderColor: color, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontSize: 32 }}>{area.emoji}</Text>
+              {showEmojis ? <Text style={{ fontSize: 32 }}>{area.emoji}</Text> : <Ionicons name={area.icon} size={30} color={color} />}
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>{area.label}</Text>
-              <Text style={{ fontSize: t.xs, color, marginTop: 2, fontWeight: '600' }}>{area.subtitle}</Text>
-              <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 6, lineHeight: 18 }}>{area.description}</Text>
+              {showSubtext && <Text style={{ fontSize: t.xs, color, marginTop: 2, fontWeight: '600' }}>{area.subtitle}</Text>}
+              {showSubtext && <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 6, lineHeight: 18 }}>{area.description}</Text>}
             </View>
           </View>
 
           {/* Rating */}
+          <TourSpot id="lifearea-rating">
           <View style={{ marginTop: s.lg }}>
             <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>How's this area right now?</Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -323,34 +344,40 @@ export default function LifeAreaScreen() {
               ))}
             </View>
           </View>
+          </TourSpot>
         </View>
 
         <View style={{ padding: s.lg }}>
           {/* ── Quick log ── */}
           <Text style={{ fontSize: t.xs, color: color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.sm }}>
-            ⚡ Quick Log
+            {showEmojis ? '⚡ ' : ''}Quick Log
           </Text>
+          <TourSpot id="lifearea-quicklog">
           <QuickLogChips options={area.quickLog} onLog={(opt) => addNote(opt)} color={color} c={c} t={t} s={s} />
+          </TourSpot>
 
           {/* ── Sections ── */}
           <Text style={{ fontSize: t.xs, color: color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.sm, marginTop: s.md }}>
-            📋 Sub-Sections
+            {showEmojis ? '📋 ' : ''}Sub-Sections
           </Text>
+          <TourSpot id="lifearea-sections">
           {area.sections.map((sec, i) => (
             <SectionCard key={i} section={sec} color={color}
               onPress={() => navigateTo(sec.screen)}
               c={c} t={t} s={s} r={r} />
           ))}
+          </TourSpot>
 
           {/* ── Related ── */}
           <Text style={{ fontSize: t.xs, color: color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.sm, marginTop: s.md }}>
-            🔗 Related
+            {showEmojis ? '🔗 ' : ''}Related
           </Text>
           <View style={{ marginBottom: s.lg }}>
             <RelatedLinks areaId={area.id} color={color} c={c} t={t} s={s} r={r} />
           </View>
 
           {/* ── Weekly reflection ── */}
+          <TourSpot id="lifearea-reflection">
           <TouchableOpacity onPress={() => setWeekModal(true)}
             style={{ backgroundColor: color + '18', borderRadius: r.lg, padding: s.lg, borderWidth: 1, borderColor: color + '44', marginBottom: s.lg }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm }}>
@@ -360,6 +387,7 @@ export default function LifeAreaScreen() {
             <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 6, lineHeight: 18 }}>{area.weeklyPrompt}</Text>
             <Text style={{ fontSize: t.xs, color, marginTop: 8, fontWeight: '600' }}>Tap to reflect →</Text>
           </TouchableOpacity>
+          </TourSpot>
 
           {/* ── Add note button ── */}
           <TouchableOpacity onPress={() => setNoteModal(true)}
@@ -373,7 +401,7 @@ export default function LifeAreaScreen() {
             <>
               {notes.length > 0 && (
                 <Text style={{ fontSize: t.xs, color: color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.sm }}>
-                  📝 Notes & Logs ({notes.length})
+                  {showEmojis ? '📝 ' : ''}Notes & Logs ({notes.length})
                 </Text>
               )}
               {notes.map(note => (
@@ -383,7 +411,7 @@ export default function LifeAreaScreen() {
               ))}
               {notes.length === 0 && (
                 <View style={{ alignItems: 'center', paddingVertical: s.xl }}>
-                  <Text style={{ fontSize: 36, marginBottom: s.sm }}>{area.emoji}</Text>
+                  {showEmojis ? <Text style={{ fontSize: 36, marginBottom: s.sm }}>{area.emoji}</Text> : <Ionicons name={area.icon} size={32} color={color} style={{ marginBottom: s.sm }} />}
                   <Text style={{ fontSize: t.sm, color: c.text3 }}>No notes yet — quick log or add one above</Text>
                 </View>
               )}
@@ -398,7 +426,7 @@ export default function LifeAreaScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 48, borderTopWidth: 1, borderTopColor: color + '44' }}>
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
-            <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.md }}>{area.emoji} Add Note</Text>
+            <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.md }}>{showEmojis ? `${area.emoji} ` : ''}Add Note</Text>
             <TextInput
               style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: color + '44', minHeight: 80, textAlignVertical: 'top', marginBottom: s.md }}
               value={newNote} onChangeText={setNewNote}
@@ -424,7 +452,7 @@ export default function LifeAreaScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 48, borderTopWidth: 1, borderTopColor: color + '44' }}>
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
-            <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.xs }}>📓 Weekly Reflection</Text>
+            <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.xs }}>{showEmojis ? '📓 ' : ''}Weekly Reflection</Text>
             <Text style={{ fontSize: t.sm, color: c.text3, lineHeight: 20, marginBottom: s.lg }}>{area.weeklyPrompt}</Text>
             <TextInput
               style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: color + '44', minHeight: 100, textAlignVertical: 'top', marginBottom: s.md }}

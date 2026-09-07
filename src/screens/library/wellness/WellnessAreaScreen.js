@@ -10,15 +10,18 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../../context/ThemeContext';
+import { useUIPrefs } from '../../../../context/UIPrefsContext';
 import { supabase } from '../../../api/supabaseClient';
+import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../../api/offlineCache';
 import RelatedLinks, { EXCLUDE_LINK_FILTER } from '../RelatedLinks';
 
 export default function WellnessAreaScreen({
-  title, emoji, areaId, categories, accentColor,
-  description, entryPlaceholder, presets,
+  title, emoji, icon = 'ellipse-outline', areaId, categories, accentColor,
+  description, entryPlaceholder, presets, screenTag,
 }) {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
+  const { showEmojis, showSubtext } = useUIPrefs();
 
   const [entries,  setEntries]  = useState([]);
   const [input,    setInput]    = useState('');
@@ -37,10 +40,22 @@ export default function WellnessAreaScreen({
 
   const load = async (uid) => {
     setLoading(true);
-    const { data } = await EXCLUDE_LINK_FILTER(supabase.from('area_notes').select('*')
-      .eq('user_id', uid).eq('area_id', areaId))
-      .order('created_at', { ascending: false }).limit(40);
-    if (data) setEntries(data);
+    const cacheKey = `wellness_area_${uid}_${screenTag}`;
+    const cached = await cacheRead(cacheKey);
+    if (cached) setEntries(cached);
+
+    if (await isOnline()) {
+      // Scoped to this screen, not just the life area. `area_id` alone is far
+      // too coarse: Exercise and Nutrition are both area_id 'physical', and
+      // AreaSectionScreen writes into the same table with the same area_ids —
+      // so this used to render a sleep log inside Exercise, a workout inside
+      // Nutrition, and every Stress & Anxiety entry inside Well-being. Same
+      // `[ScreenTag]` convention AreaSectionScreen already filters on.
+      const { data } = await EXCLUDE_LINK_FILTER(supabase.from('area_notes').select('*')
+        .eq('user_id', uid).eq('area_id', areaId).ilike('content', `%[${screenTag}]%`))
+        .order('created_at', { ascending: false }).limit(40);
+      if (data) { setEntries(data); cacheWrite(cacheKey, data); }
+    }
     setLoading(false);
   };
 
@@ -49,11 +64,11 @@ export default function WellnessAreaScreen({
     if (!value) return;
     const entry = {
       user_id: userId, area_id: areaId,
-      content: `[${category}] ${value}`,
+      content: `[${screenTag}][${category}] ${value}`,
       created_at: new Date().toISOString(),
     };
     if (userId) {
-      const { data } = await supabase.from('area_notes').insert(entry).select().single();
+      const { row: data } = await offlineWrite(supabase, 'area_notes', entry);
       if (data) setEntries(prev => [data, ...prev]);
     } else {
       setEntries(prev => [{ ...entry, id: Date.now().toString() }, ...prev]);
@@ -64,6 +79,15 @@ export default function WellnessAreaScreen({
   const del = async (id) => {
     setEntries(prev => prev.filter(e => e.id !== id));
     if (userId) await supabase.from('area_notes').delete().eq('id', id);
+  };
+
+  // Entries are stored tagged ("[ExerciseScreen][Cardio] 5km run") so they can
+  // be filtered back out per screen. Strip the tags for display and show the
+  // category as its own chip instead of leaving brackets in the user's text.
+  const parseEntry  = (content) => (content || '').replace(/\[[^\]]+\]/g, '').trim();
+  const getCategory = (content) => {
+    const m = (content || '').match(/\[[^\]]+\]\[([^\]]+)\]/);
+    return m ? m[1] : '';
   };
 
   // Group entries by date
@@ -83,11 +107,11 @@ export default function WellnessAreaScreen({
         </TouchableOpacity>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md }}>
           <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: accentColor + '22', borderWidth: 1.5, borderColor: accentColor, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontSize: 24 }}>{emoji}</Text>
+            {showEmojis ? <Text style={{ fontSize: 24 }}>{emoji}</Text> : <Ionicons name={icon} size={22} color={accentColor} />}
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: t.xl, fontWeight: t.bold, color: c.text1 }}>{title}</Text>
-            {description && <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>{description}</Text>}
+            {description && showSubtext && <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>{description}</Text>}
           </View>
         </View>
 
@@ -107,7 +131,7 @@ export default function WellnessAreaScreen({
           {['log', 'related'].map(v => (
             <TouchableOpacity key={v} onPress={() => setView(v)}
               style={{ flex: 1, paddingVertical: 7, borderRadius: r.md, alignItems: 'center', backgroundColor: view === v ? accentColor : c.bg2 }}>
-              <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: view === v ? '#fff' : c.text3 }}>{v === 'log' ? '📝 Log' : '🔗 Related'}</Text>
+              <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: view === v ? '#fff' : c.text3 }}>{!showEmojis ? '' : v === 'log' ? '📝 ' : '🔗 '}{v === 'log' ? 'Log' : 'Related'}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -166,7 +190,7 @@ export default function WellnessAreaScreen({
             <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
               {Object.keys(grouped).length === 0 ? (
                 <View style={{ alignItems: 'center', paddingVertical: 60 }}>
-                  <Text style={{ fontSize: 48, marginBottom: s.lg }}>{emoji}</Text>
+                  {showEmojis ? <Text style={{ fontSize: 48, marginBottom: s.lg }}>{emoji}</Text> : <Ionicons name={icon} size={44} color={accentColor} style={{ marginBottom: s.lg }} />}
                   <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.sm }}>Nothing logged yet</Text>
                   <Text style={{ fontSize: t.sm, color: c.text3, textAlign: 'center' }}>Tap the button above to start tracking your {title.toLowerCase()}.</Text>
                 </View>
@@ -177,7 +201,12 @@ export default function WellnessAreaScreen({
                     {dayEntries.map(entry => (
                       <View key={entry.id} style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: accentColor, flexDirection: 'row', alignItems: 'flex-start', gap: s.sm }}>
                         <View style={{ flex: 1 }}>
-                          <Text style={{ fontSize: t.sm, color: c.text1, lineHeight: 20 }}>{entry.content}</Text>
+                          <Text style={{ fontSize: t.sm, color: c.text1, lineHeight: 20 }}>{parseEntry(entry.content)}</Text>
+                          {!!getCategory(entry.content) && (
+                            <View style={{ alignSelf: 'flex-start', backgroundColor: accentColor + '1f', borderRadius: r.full, paddingHorizontal: 8, paddingVertical: 2, marginTop: 6 }}>
+                              <Text style={{ fontSize: 10, color: accentColor, fontWeight: '700' }}>{getCategory(entry.content)}</Text>
+                            </View>
+                          )}
                           <Text style={{ fontSize: 10, color: c.text4, marginTop: 4 }}>
                             {new Date(entry.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                           </Text>

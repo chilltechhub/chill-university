@@ -1,16 +1,15 @@
 // src/components/BudgetBalanceGame.js
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import GameShell, { useGameTheme } from './GameShell';
 import GameOver from './GameOver';
 import GradeSelectCard from './GradeSelectCard';
+import RoundCompleteScreen from './RoundCompleteScreen';
 import useGame from '../logic/useGame';
 import useGradeLevel, { levelForTier } from '../logic/useGradeLevel';
-import { createAdaptiveTier, nextAdaptiveTier } from '../logic/difficultyAdapter';
+import { createAdaptiveTier, nextAdaptiveTier, STAGE_COUNT } from '../logic/difficultyAdapter';
 import { BUDGET_BANK } from '../data/gameContent/budgetBalance';
-
-const SESSION_LENGTH = 4;
 
 const BLURBS = {
   'K-2': 'Small budgets, obvious needs vs wants.',
@@ -19,8 +18,10 @@ const BLURBS = {
   '9-12': 'Real-world budgets — rent, loans, paychecks.',
 };
 
-function pickNext(pool, avoidTitle) {
-  const choices = pool.filter(sc => sc.title !== avoidTitle);
+// `avoid` accumulates every scenario title served this run — see the same
+// note on RecipeBuilderGame's pickRecipe.
+function pickNext(pool, avoid = []) {
+  const choices = pool.filter(sc => !avoid.includes(sc.title));
   const list = choices.length ? choices : pool;
   return list[Math.floor(Math.random() * list.length)];
 }
@@ -38,13 +39,16 @@ export default function BudgetBalanceGame({ onGameEnd }) {
   const [cuts, setCuts] = useState([]);
   const [feedback, setFeedback] = useState(null);
   const [startTime, setStartTime] = useState(Date.now());
+  const [roundComplete, setRoundComplete] = useState(null);
+  const recentRef = useRef([]);
 
-  const game = useGame({ subject: 'finance', difficulty: adaptive.tier, skillLevel: level, onGameEnd });
+  const game = useGame({ subject: 'finance', difficulty: adaptive.tier, skillLevel: level, onGameEnd, manualScoring: true });
 
   const beginRun = () => {
     const initial = createAdaptiveTier(savedTier);
     setAdaptive(initial);
-    const first = pickNext(BUDGET_BANK[levelForTier(initial.tier)], null);
+    const first = pickNext(BUDGET_BANK[levelForTier(initial.tier)], []);
+    recentRef.current = [first.title];
     setSc(first);
     setAsked(0);
     setCuts([]);
@@ -88,21 +92,45 @@ export default function BudgetBalanceGame({ onGameEnd }) {
       setFeedback(null);
       setCuts([]);
       setStartTime(Date.now());
-      const willEnd = game.lives - (isCorrect ? 0 : 1) <= 0 || asked + 1 >= SESSION_LENGTH;
-      if (willEnd) {
+      const outOfLives = game.lives - (isCorrect ? 0 : 1) <= 0;
+      const newAsked = asked + 1;
+
+      if (outOfLives) {
         game.endGame();
+      } else if (isCorrect) {
+        // A balanced budget is a round win — a miss just moves to the next
+        // scenario with no prize pick, same as elsewhere.
+        setAsked(newAsked);
+        setRoundComplete({
+          correct: 1, total: 1,
+          roundNumber: newAsked, isLastStage: newAsked >= STAGE_COUNT, nextTier: nextAdaptiveState.tier,
+        });
       } else {
         const pool = BUDGET_BANK[levelForTier(nextAdaptiveState.tier)];
-        const next = pickNext(pool, sc.title);
+        const next = pickNext(pool, recentRef.current);
+        recentRef.current = [...recentRef.current, next.title];
         setSc(next);
-        setAsked(a => a + 1);
+        setAsked(newAsked);
       }
     }, 2200);
   }, [cuts, sc, totalAfterCuts, feedback, game, asked, startTime, adaptive]);
 
+  const handleClaimPrize = useCallback(() => {
+    if (roundComplete?.isLastStage) {
+      setRoundComplete(null);
+      game.endGame();
+      return;
+    }
+    const pool = BUDGET_BANK[levelForTier(roundComplete.nextTier)];
+    const next = pickNext(pool, recentRef.current);
+    recentRef.current = [...recentRef.current, next.title];
+    setSc(next);
+    setRoundComplete(null);
+  }, [game, roundComplete]);
+
   if (!started) {
     return (
-      <GradeSelectCard
+      <GradeSelectCard gameId="budget"
         title="Budget Balance" emoji="💰" subjectLabel="Financial Literacy"
         blurbs={BLURBS} level={level} onSelectLevel={setLevel} onStart={beginRun}
       />
@@ -110,7 +138,7 @@ export default function BudgetBalanceGame({ onGameEnd }) {
   }
 
   if (game.done) return (
-    <GameOver
+    <GameOver gameId="budget"
       score={game.score} correct={game.correct} total={game.attempted}
       streak={game.bestStreak} title="Budget Master!"
       onPlayAgain={() => { game.reset(); setStarted(false); }}
@@ -118,16 +146,35 @@ export default function BudgetBalanceGame({ onGameEnd }) {
     />
   );
 
+  if (roundComplete) {
+    return (
+      <GameShell gameId="budget" disableFactToast
+        title="Budget Balance" emoji="💰" subject={`Financial Literacy · ${levelForTier(adaptive.tier)}`}
+        score={game.score} lives={game.lives} streak={game.streak}
+      >
+        <RoundCompleteScreen
+          roundNumber={roundComplete.roundNumber}
+          correct={roundComplete.correct}
+          total={roundComplete.total}
+          streak={game.streak}
+          difficulty={adaptive.tier}
+          onAward={game.addPoints}
+          onAdvance={handleClaimPrize}
+        />
+      </GameShell>
+    );
+  }
+
   if (!sc) return null;
 
   return (
-    <GameShell
+    <GameShell gameId="budget"
       title="Budget Balance" emoji="💰" subject={`Financial Literacy · ${levelForTier(adaptive.tier)}`}
       score={game.score} lives={game.lives} streak={game.streak}
-      progress={asked / SESSION_LENGTH}
+      progress={asked / STAGE_COUNT}
     >
       <ScrollView contentContainerStyle={s.scroll}>
-        <Text style={s.progress}>Scenario {asked + 1} of {SESSION_LENGTH}</Text>
+        <Text style={s.progress}>Scenario {asked + 1} of {STAGE_COUNT}</Text>
 
         <View style={s.card}>
           <Text style={s.scenarioTitle}>{sc.title}</Text>
@@ -164,6 +211,29 @@ export default function BudgetBalanceGame({ onGameEnd }) {
           <Text style={[s.totalAmount, { color: totalAfterCuts <= sc.budget ? G.success : G.error }]}>
             ${totalAfterCuts} / ${sc.budget}
           </Text>
+        </View>
+
+        {/* Fill meter — reads at a glance instead of only a colored number.
+            The track's scale is whichever is bigger, spend or budget, so
+            the budget line sits AT 100% width when you're under it, and
+            slides back to show how far past it you've gone when you're
+            over — the number still says the amount, the bar says the shape. */}
+        <View style={s.meterBg}>
+          <View
+            style={[
+              s.meterFill,
+              {
+                width: `${(totalAfterCuts / Math.max(totalAfterCuts, sc.budget, 1)) * 100}%`,
+                backgroundColor: totalAfterCuts <= sc.budget ? G.success : G.error,
+              },
+            ]}
+          />
+          <View
+            style={[
+              s.meterBudgetLine,
+              { left: `${(sc.budget / Math.max(totalAfterCuts, sc.budget, 1)) * 100}%` },
+            ]}
+          />
         </View>
 
         <TouchableOpacity
@@ -209,6 +279,9 @@ const makeStyles = (G) => StyleSheet.create({
   totalRow:       { flexDirection: 'row', justifyContent: 'space-between', borderWidth: 1, borderRadius: 10, padding: 12, marginVertical: 12 },
   totalLabel:     { fontSize: 13, color: G.muted },
   totalAmount:    { fontSize: 16, fontWeight: '700' },
+  meterBg:        { height: 14, borderRadius: 7, backgroundColor: G.border, overflow: 'hidden', marginBottom: 16, position: 'relative' },
+  meterFill:      { height: '100%', borderRadius: 7 },
+  meterBudgetLine:{ position: 'absolute', top: -2, bottom: -2, width: 2, backgroundColor: G.cream, marginLeft: -1 },
   checkBtn:       { backgroundColor: G.gold, borderRadius: 12, padding: 15, alignItems: 'center', marginBottom: 12 },
   checkBtnText:   { fontSize: 15, fontWeight: '700', color: G.bg },
   feedback:       { backgroundColor: G.card, borderWidth: 1, borderRadius: 12, padding: 16 },

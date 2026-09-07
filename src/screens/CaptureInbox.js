@@ -12,7 +12,23 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../api/supabaseClient';
+import { cacheRead, cacheWrite, isOnline } from '../api/offlineCache';
 import { RETENTION_DAYS, getRecentlyDeleted, restoreItem, permanentlyDelete, purgeExpired } from '../api/trashService';
+import TourSpot from '../components/TourSpot';
+import { todayStr } from '../logic/dateUtils';
+
+// supabase-js resolves { data, error } instead of throwing on a failed
+// insert/update — awaiting a call directly silently ignores a rejected
+// write (a bad constraint, a blocked RLS policy, whatever). Every write in
+// this screen routes through here so a rejection actually surfaces as a
+// caught error instead of being treated as a success: the inbox item stays
+// put for a retry rather than getting marked "done" over a write that
+// never happened.
+async function mustSucceed(query) {
+  const { data, error } = await query;
+  if (error) throw error;
+  return data;
+}
 
 // ─── Recently Deleted — what a soft-deleted item looks like across kinds ───
 const TRASH_KIND = {
@@ -161,6 +177,19 @@ function timeAgo(d) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+// The body a capture keeps when it's filed as a note. A note renders from
+// `body` alone (the Knowledge Vault shows the url column for links, not for
+// notes), so a captured URL is folded into the text — where LinkifiedText
+// makes it tappable again — rather than being left in a column nothing on
+// that screen reads.
+function noteBody(capture) {
+  const body = (capture.body || '').trim();
+  const url = (capture.url || '').trim();
+  if (!url) return body || capture.title || null;
+  if (body.includes(url)) return body;
+  return [body, url].filter(Boolean).join('\n\n');
+}
+
 // ─── Process Modal — where do you want to send this? ─────────────────────────
 function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated, onDeleted, c, t, s, r }) {
   const navigation = useNavigation();
@@ -249,20 +278,20 @@ function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated,
         // questions belong in the project journal; links/resources are research;
         // tasks become actionable project tasks.
         if (current.type === 'task') {
-          await supabase.from('project_tasks').insert({
+          await mustSucceed(supabase.from('project_tasks').insert({
             ...projectItem, title, priority: 3, sort_order: 0,
-          });
+          }));
         } else if (current.type === 'note' || current.type === 'idea') {
-          await supabase.from('project_journal').insert({
+          await mustSucceed(supabase.from('project_journal').insert({
             ...projectItem, title, body: current.body || current.url || title,
             type: current.type === 'idea' ? 'idea' : 'note',
-          });
+          }));
         } else {
-          await supabase.from('project_research').insert({
+          await mustSucceed(supabase.from('project_research').insert({
             ...projectItem, title,
             type: current.type === 'video' ? 'video' : current.type === 'link' ? 'link' : 'resource',
             url: current.url || null, notes: current.body || null,
-          });
+          }));
         }
         await markDoneAndClose(item.id, onProcessed);
         navigation.navigate('ProjectDetail', { project: selectedProj });
@@ -274,56 +303,66 @@ function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated,
         Alert.alert('Create a new mission', `Use this as your starting point:\n\n"${current.title || current.body?.slice(0, 100)}"`);
 
       } else if (destination.key === 'idea_garden') {
-        await supabase.from('garden_cores').insert({
+        // plant_type must be one of the garden's own tree/flower/plant/sprout
+        // set (see ideagarden.js's PLANT_TYPES) — 'sprout' matches its own
+        // description, "early stage / raw seed", for a freshly captured idea.
+        await mustSucceed(supabase.from('garden_cores').insert({
           user_id:    userId,
           title:      current.title || current.body?.slice(0, 80) || 'New idea',
-          plant_type: 'seed',
-          color:      '#4caf7d',
-          color_light:'#e1f5ee',
+          description: current.body || null,
+          plant_type: 'sprout',
+          color:      '#558b2f',
+          color_light:'#dcedc8',
           created_at: now,
-        });
+        }));
         await markDoneAndClose(item.id, onProcessed);
         navigation.navigate('IdeaGardenScreen');
 
       } else if (destination.key === 'notes') {
-        await supabase.from('area_notes').insert({
-          user_id:  userId,
-          area_id:  'general',
-          content:  `${current.title ? current.title + '\n' : ''}${current.body || ''}${current.url ? '\n' + current.url : ''}`,
-          created_at: now,
-        });
-        await markDoneAndClose(item.id, onProcessed);
+        // This used to insert into `area_notes` (the general life area's log)
+        // and mark the capture 'done'. The notes library reads `captures`
+        // rows of type 'note' - not area_notes - so the item left the inbox
+        // and never turned up where this button said it was sending it.
+        // Converting the row in place is what the 'research' and
+        // 'resource_tool' branches below already do, and it keeps the
+        // capture's own title, tags, and links instead of flattening them
+        // into one text blob. status 'active', not markDoneAndClose's
+        // 'done', for the same reason those two use it.
+        await mustSucceed(supabase.from('captures')
+          .update({ type: 'note', status: 'active', body: noteBody(current) })
+          .eq('id', item.id));
+        onProcessed(item.id, 'active');
         navigation.navigate('NotesScreen');
 
       } else if (destination.key === 'research') {
         // status: 'active' (not markDoneAndClose's 'done') — the Research
         // Vault reads status: 'inbox'/'active' items, so overwriting it to
         // 'done' here would make the item vanish from both screens.
-        await supabase.from('captures').update({ type: 'link', status: 'active' }).eq('id', item.id);
+        await mustSucceed(supabase.from('captures').update({ type: 'link', status: 'active' }).eq('id', item.id));
         onProcessed(item.id, 'active');
         navigation.navigate('ResearchScreen');
 
       } else if (destination.key === 'planner') {
-        await supabase.from('agenda_instances').insert({
+        await mustSucceed(supabase.from('agenda_instances').insert({
           user_id:    userId,
           title:      current.title || current.body?.slice(0, 80) || 'Captured item',
           area:       'professional',
           cadence:    'once',
-          date:       new Date().toISOString().split('T')[0],
+          date:       todayStr(),
           completed:  false,
           skipped:    false,
           created_at: now,
-        });
+        }));
         await markDoneAndClose(item.id, onProcessed);
         navigation.navigate('PlannerScreen');
 
       } else if (destination.key === 'life_area' && selectedArea) {
-        await supabase.from('area_notes').insert({
+        await mustSucceed(supabase.from('area_notes').insert({
           user_id:  userId,
           area_id:  selectedArea.key,
           content:  `${current.title ? current.title + '\n' : ''}${current.body || ''}${current.url ? '\n' + current.url : ''}`,
           created_at: now,
-        });
+        }));
         await markDoneAndClose(item.id, onProcessed);
         navigation.navigate('LifeAreaScreen', { areaId: selectedArea.key });
 
@@ -331,12 +370,12 @@ function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated,
         // status: 'active' (not markDoneAndClose's 'done') — Resources &
         // Tools reads status: 'active' items, so overwriting it to 'done'
         // here would make the item vanish before it ever showed up there.
-        await supabase.from('captures').update({ type: 'resource', status: 'active' }).eq('id', item.id);
+        await mustSucceed(supabase.from('captures').update({ type: 'resource', status: 'active' }).eq('id', item.id));
         onProcessed(item.id, 'active');
         navigation.navigate('ResourcesToolsScreen');
 
       } else if (destination.key === 'task') {
-        await supabase.from('tasks').insert({
+        await mustSucceed(supabase.from('tasks').insert({
           user_id:   userId,
           title:     taskTitle || current.title || current.body?.slice(0, 80),
           category:  'personal',
@@ -344,25 +383,28 @@ function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated,
           completed: false,
           due_date:  taskDueDate || null,
           created_at: now,
-        });
+        }));
         await markDoneAndClose(item.id, onProcessed);
 
       } else if (destination.key === 'later') {
         const laterType = current.type === 'video' ? 'watch' : 'read';
-        await supabase.from('captures').update({ save_for_later: laterType }).eq('id', item.id);
+        await mustSucceed(supabase.from('captures').update({ save_for_later: laterType }).eq('id', item.id));
         onProcessed(item.id, 'later');
       }
 
       onClose();
     } catch (e) {
-      Alert.alert('Error', 'Could not process. Try again.');
       console.warn('process', e);
+      Alert.alert(
+        "Couldn't save that",
+        (e?.message ? `${e.message}\n\n` : '') + 'Nothing was lost — it\'s still sitting in your inbox to try again.'
+      );
     }
     setProcessing(false);
   };
 
   const markDoneAndClose = async (id, callback) => {
-    await supabase.from('captures').update({ status: 'done' }).eq('id', id);
+    await mustSucceed(supabase.from('captures').update({ status: 'done' }).eq('id', id));
     callback(id, 'done');
   };
 
@@ -622,70 +664,72 @@ function BulkProcessModal({ items, projects, userId, onClose, onProcessed, c, t,
         if (destination.key === 'project' && selectedProj) {
           const projectItem = { user_id: userId, project_id: selectedProj.id };
           if (it.type === 'task') {
-            await supabase.from('project_tasks').insert({ ...projectItem, title, priority: 3, sort_order: 0 });
+            await mustSucceed(supabase.from('project_tasks').insert({ ...projectItem, title, priority: 3, sort_order: 0 }));
           } else if (it.type === 'note' || it.type === 'idea') {
-            await supabase.from('project_journal').insert({
+            await mustSucceed(supabase.from('project_journal').insert({
               ...projectItem, title, body: it.body || it.url || title,
               type: it.type === 'idea' ? 'idea' : 'note',
-            });
+            }));
           } else {
-            await supabase.from('project_research').insert({
+            await mustSucceed(supabase.from('project_research').insert({
               ...projectItem, title,
               type: it.type === 'video' ? 'video' : it.type === 'link' ? 'link' : 'resource',
               url: it.url || null, notes: it.body || null,
-            });
+            }));
           }
-          await supabase.from('captures').update({ status: 'done' }).eq('id', it.id);
+          await mustSucceed(supabase.from('captures').update({ status: 'done' }).eq('id', it.id));
 
         } else if (destination.key === 'idea_garden') {
-          await supabase.from('garden_cores').insert({
-            user_id: userId, title, plant_type: 'seed',
-            color: '#4caf7d', color_light: '#e1f5ee', created_at: now,
-          });
-          await supabase.from('captures').update({ status: 'done' }).eq('id', it.id);
+          // plant_type must be one of tree/flower/plant/sprout (ideagarden.js's
+          // PLANT_TYPES) — 'sprout' fits a freshly captured, undeveloped idea.
+          await mustSucceed(supabase.from('garden_cores').insert({
+            user_id: userId, title, description: it.body || null, plant_type: 'sprout',
+            color: '#558b2f', color_light: '#dcedc8', created_at: now,
+          }));
+          await mustSucceed(supabase.from('captures').update({ status: 'done' }).eq('id', it.id));
 
         } else if (destination.key === 'notes') {
-          await supabase.from('area_notes').insert({
-            user_id: userId, area_id: 'general',
-            content: `${it.title ? it.title + '\n' : ''}${it.body || ''}${it.url ? '\n' + it.url : ''}`,
-            created_at: now,
-          });
-          await supabase.from('captures').update({ status: 'done' }).eq('id', it.id);
+          // Same fix as the single-item flow above: convert the capture into
+          // a note the notes library actually reads, at a status that keeps
+          // it visible there.
+          await mustSucceed(supabase.from('captures')
+            .update({ type: 'note', status: 'active', body: noteBody(it) })
+            .eq('id', it.id));
 
         } else if (destination.key === 'research') {
           // status: 'active', not 'done' — Research Vault reads this row directly.
-          await supabase.from('captures').update({ type: 'link', status: 'active' }).eq('id', it.id);
+          await mustSucceed(supabase.from('captures').update({ type: 'link', status: 'active' }).eq('id', it.id));
 
         } else if (destination.key === 'planner') {
-          await supabase.from('agenda_instances').insert({
+          await mustSucceed(supabase.from('agenda_instances').insert({
             user_id: userId, title, area: 'professional', cadence: 'once',
-            date: new Date().toISOString().split('T')[0],
+            date: todayStr(),
             completed: false, skipped: false, created_at: now,
-          });
-          await supabase.from('captures').update({ status: 'done' }).eq('id', it.id);
+          }));
+          await mustSucceed(supabase.from('captures').update({ status: 'done' }).eq('id', it.id));
 
         } else if (destination.key === 'life_area' && selectedArea) {
-          await supabase.from('area_notes').insert({
+          await mustSucceed(supabase.from('area_notes').insert({
             user_id: userId, area_id: selectedArea.key,
             content: `${it.title ? it.title + '\n' : ''}${it.body || ''}${it.url ? '\n' + it.url : ''}`,
             created_at: now,
-          });
-          await supabase.from('captures').update({ status: 'done' }).eq('id', it.id);
+          }));
+          await mustSucceed(supabase.from('captures').update({ status: 'done' }).eq('id', it.id));
 
         } else if (destination.key === 'resource_tool') {
           // status: 'active', not 'done' — Resources & Tools reads this row directly.
-          await supabase.from('captures').update({ type: 'resource', status: 'active' }).eq('id', it.id);
+          await mustSucceed(supabase.from('captures').update({ type: 'resource', status: 'active' }).eq('id', it.id));
 
         } else if (destination.key === 'task') {
-          await supabase.from('tasks').insert({
+          await mustSucceed(supabase.from('tasks').insert({
             user_id: userId, title, category: 'personal', priority: 2,
             completed: false, due_date: taskDueDate || null, created_at: now,
-          });
-          await supabase.from('captures').update({ status: 'done' }).eq('id', it.id);
+          }));
+          await mustSucceed(supabase.from('captures').update({ status: 'done' }).eq('id', it.id));
 
         } else if (destination.key === 'later') {
           const laterType = it.type === 'video' ? 'watch' : 'read';
-          await supabase.from('captures').update({ save_for_later: laterType }).eq('id', it.id);
+          await mustSucceed(supabase.from('captures').update({ save_for_later: laterType }).eq('id', it.id));
         }
         saved++;
       } catch (e) {
@@ -1074,19 +1118,26 @@ export default function CaptureInbox() {
         await purgeExpired(uid).catch(e => console.warn('purge error', e));
         setDeletedItems(await getRecentlyDeleted(uid));
       } else {
-        let query = supabase.from('captures').select('*').eq('user_id', uid).is('deleted_at', null)
-          .order('created_at', { ascending: false }).limit(80);
+        const cacheKey = `capture_inbox_${uid}_${view}`;
+        const cached = await cacheRead(cacheKey);
+        if (cached) { setCaptures(cached.captures || []); setProjects(cached.projects || []); }
 
-        if (view === 'inbox') query = query.eq('status', 'inbox').is('save_for_later', null);
-        else if (view === 'later') query = query.eq('status', 'inbox').not('save_for_later', 'is', null);
-        else query = query.eq('status', 'done').limit(30);
+        if (await isOnline()) {
+          let query = supabase.from('captures').select('*').eq('user_id', uid).is('deleted_at', null)
+            .order('created_at', { ascending: false }).limit(80);
 
-        const [capRes, projRes] = await Promise.all([
-          query,
-          supabase.from('projects').select('id,title,emoji,color,objective').eq('user_id', uid).eq('status', 'active').is('deleted_at', null).limit(10),
-        ]);
-        if (capRes.data)  setCaptures(capRes.data);
-        if (projRes.data) setProjects(projRes.data);
+          if (view === 'inbox') query = query.eq('status', 'inbox').is('save_for_later', null);
+          else if (view === 'later') query = query.eq('status', 'inbox').not('save_for_later', 'is', null);
+          else query = query.eq('status', 'done').limit(30);
+
+          const [capRes, projRes] = await Promise.all([
+            query,
+            supabase.from('projects').select('id,title,emoji,color,objective').eq('user_id', uid).eq('status', 'active').is('deleted_at', null).limit(10),
+          ]);
+          if (capRes.data)  setCaptures(capRes.data);
+          if (projRes.data) setProjects(projRes.data);
+          await cacheWrite(cacheKey, { captures: capRes.data || [], projects: projRes.data || [] });
+        }
       }
     } catch (e) { console.warn('CaptureInbox', e); }
     setLoading(false);
@@ -1191,10 +1242,12 @@ export default function CaptureInbox() {
               style={{ backgroundColor: c.bg0, borderWidth: 1, borderColor: c.border, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}>
               <Ionicons name="download-outline" size={20} color={c.gold} />
             </TouchableOpacity>
+            <TourSpot id="inbox-capture">
             <TouchableOpacity onPress={() => setShowAdd(true)}
               style={{ backgroundColor: c.teal, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}>
               <Ionicons name="add" size={24} color="#fff" />
             </TouchableOpacity>
+            </TourSpot>
           </View>
         </View>
 
@@ -1295,12 +1348,14 @@ export default function CaptureInbox() {
                 </TouchableOpacity>
               </View>
             ) : view === 'inbox' && (
+              <TourSpot id="inbox-list">
               <View style={{ backgroundColor: c.teal + '12', borderRadius: r.md, padding: s.md, marginBottom: s.md, flexDirection: 'row', alignItems: 'center', gap: s.sm }}>
                 <Ionicons name="information-circle-outline" size={16} color={c.teal} />
                 <Text style={{ fontSize: t.xs, color: c.teal, flex: 1, lineHeight: 17 }}>
                   Tap a card to process it — send it to a project, note, idea garden, planner, life area, task list, or save for later. Long-press to select several at once.
                 </Text>
               </View>
+              </TourSpot>
             )}
             {filtered.map(item => (
               <CaptureCard key={item.id} item={item}

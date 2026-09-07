@@ -11,10 +11,10 @@ import { useNavigation } from '@react-navigation/native';
 import GameShell, { useGameTheme } from './GameShell';
 import GameOver from './GameOver';
 import GradeSelectCard from './GradeSelectCard';
+import RoundCompleteScreen from './RoundCompleteScreen';
 import useGame from '../logic/useGame';
-import useGradeLevel from '../logic/useGradeLevel';
-
-const ROUNDS = 6;
+import useGradeLevel, { tierForLevel } from '../logic/useGradeLevel';
+import { STAGE_COUNT } from '../logic/difficultyAdapter';
 
 const TIER_CONFIG = {
   'K-2':  { minDelay: 1500, maxDelay: 3500, goodMs: 900 },
@@ -41,12 +41,13 @@ export default function ReflexRushGame({ onGameEnd }) {
   const [phase, setPhase] = useState('idle'); // idle | waiting | go | resolved
   const [feedback, setFeedback] = useState(null);
   const [times, setTimes] = useState([]);
+  const [roundComplete, setRoundComplete] = useState(null);
   const signalTimeRef = useRef(0);
   const goTimeoutRef = useRef(null);
   const advanceTimeoutRef = useRef(null);
   const focusedRef = useRef(true);
 
-  const game = useGame({ subject: 'technology', difficulty: 2, skillLevel: level, onGameEnd });
+  const game = useGame({ subject: 'technology', difficulty: 2, skillLevel: level, onGameEnd, manualScoring: true });
   const cfg = TIER_CONFIG[level] || TIER_CONFIG['3-5'];
 
   const clearPending = () => {
@@ -85,18 +86,32 @@ export default function ReflexRushGame({ onGameEnd }) {
   }, [navigation]);
 
   const advance = useCallback((isCorrect) => {
-    const willEnd = game.lives - (isCorrect ? 0 : 1) <= 0 || round + 1 >= ROUNDS;
+    const outOfLives = game.lives - (isCorrect ? 0 : 1) <= 0;
+    const isLastRound = round + 1 >= STAGE_COUNT;
     advanceTimeoutRef.current = setTimeout(() => {
       if (!focusedRef.current) return;
       setFeedback(null);
-      if (willEnd) {
+      if (outOfLives || (isLastRound && !isCorrect)) {
         game.endGame();
+      } else if (isCorrect) {
+        // A real reaction (not a false start) is a round win.
+        setRoundComplete({ correct: 1, total: 1, roundNumber: round + 1, isLastStage: isLastRound });
       } else {
         setRound(r => r + 1);
         startRound();
       }
     }, 1600);
   }, [game, round]);
+
+  const handleClaimPrize = useCallback(() => {
+    setRoundComplete(null);
+    if (roundComplete?.isLastStage) {
+      game.endGame();
+      return;
+    }
+    setRound(r => r + 1);
+    startRound();
+  }, [game, roundComplete]);
 
   const handleTap = useCallback(() => {
     if (phase === 'idle' || phase === 'resolved') return;
@@ -125,7 +140,7 @@ export default function ReflexRushGame({ onGameEnd }) {
 
   if (!started) {
     return (
-      <GradeSelectCard
+      <GradeSelectCard gameId="reflexrush"
         title="Reflex Rush" emoji="⚡" subjectLabel="Technology · Just for Fun"
         blurbs={BLURBS} level={level} onSelectLevel={setLevel} onStart={beginRun}
       />
@@ -135,7 +150,7 @@ export default function ReflexRushGame({ onGameEnd }) {
   if (game.done) {
     const avg = times.length ? Math.round(times.reduce((a, b) => a + b, 0) / times.length) : null;
     return (
-      <GameOver
+      <GameOver gameId="reflexrush"
         score={game.score} correct={game.correct} total={game.attempted}
         streak={game.bestStreak}
         title={avg ? `Avg Reaction: ${avg}ms!` : 'Reflex Test Complete!'}
@@ -145,14 +160,34 @@ export default function ReflexRushGame({ onGameEnd }) {
     );
   }
 
+  if (roundComplete) {
+    return (
+      <GameShell gameId="reflexrush" disableFactToast
+        title="Reflex Rush" emoji="⚡" subject={`Technology · ${level}`}
+        score={game.score} lives={game.lives} streak={game.streak}
+      >
+        <RoundCompleteScreen
+          roundNumber={roundComplete.roundNumber}
+          correct={roundComplete.correct}
+          total={roundComplete.total}
+          streak={game.streak}
+          difficulty={tierForLevel(level)}
+          funGame
+          onAward={game.addPoints}
+          onAdvance={handleClaimPrize}
+        />
+      </GameShell>
+    );
+  }
+
   return (
-    <GameShell
+    <GameShell gameId="reflexrush"
       title="Reflex Rush" emoji="⚡" subject={`Technology · ${level}`}
       score={game.score} lives={game.lives} streak={game.streak}
-      progress={round / ROUNDS}
+      progress={round / STAGE_COUNT}
     >
       <ScrollView contentContainerStyle={s.scroll}>
-        <Text style={s.progress}>Round {round + 1} of {ROUNDS}</Text>
+        <Text style={s.progress}>Round {round + 1} of {STAGE_COUNT}</Text>
 
         <TouchableOpacity
           style={[s.zone, phase === 'go' && s.zoneGo, phase === 'waiting' && s.zoneWaiting]}

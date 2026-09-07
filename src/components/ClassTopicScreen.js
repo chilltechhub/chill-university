@@ -2,27 +2,13 @@
 // Shared, themed presentation for every Academy Classes subject page.
 // Each subject file (src/screens/classes/**) just supplies a title + a
 // `topics` array — this renders it consistently, in both light and dark.
-//
-// "Mark complete" writes to `class_topic_progress` (see the Academy plan's
-// Phase 1 SQL) and feeds the same points/xp everything else in the app
-// reads, via the same `increment_user_progress` RPC gamificationService.js
-// already calls from game events — so a finished lesson moves the same
-// numbers shown in TopBar and the Games Stats tab. No parallel stats system.
 import React, { useEffect, useState } from 'react';
-import { ScrollView, View, Text, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ScrollView, View, Text, TouchableOpacity, Linking } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
-import { supabase } from '../api/supabaseClient';
 import { fetchContentPool } from '../api/remoteConfigService';
-import { advanceTopicMission } from '../logic/gamificationService';
-
-const LESSON_XP = 15;
-const LESSON_POINTS = 8;
-
-// Deterministic, filesystem-free subject key — matches title text, slugified.
-function slugify(title) {
-  return title.replace(/[^A-Za-z0-9]+/g, '');
-}
+import TopicLessonPanel from './TopicLessonPanel';
+import { gamesForTopic, openGame } from '../data/skillLinks';
 
 // `classKey` (the registered navigation screen name, e.g. 'AlgebraAndFunctions')
 // scopes the Supabase fetch — see ClassesStack.js for the full list. Edit,
@@ -32,84 +18,42 @@ function slugify(title) {
 // regresses if Supabase is unreachable.
 export default function ClassTopicScreen({ title, classKey, fallbackTopics }) {
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
+  const navigation = useNavigation();
   const [openSections, setOpenSections] = useState({});
-  const [completed, setCompleted] = useState({});   // topicKey -> true
-  const [saving, setSaving] = useState({});         // topicKey -> true while writing
-  const [userId, setUserId] = useState(null);
   const [topics, setTopics] = useState(fallbackTopics);
   const toggleHelp = (key) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
 
-  const subjectKey = slugify(title);
-
   // Remote topics — falls back to fallbackTopics until this resolves, or
-  // forever if it fails/is empty. `meta.topic_key` (preserved from the
-  // original hardcoded data) is what markComplete() below keys progress on,
-  // so migrating a class to Supabase didn't reset anyone's completed
-  // topics; a brand-new topic added straight in Supabase just falls back
-  // to its row id instead.
+  // forever if it fails/is empty.
   useEffect(() => {
     if (!classKey) return;
     fetchContentPool('class_topic', classKey).then((rows) => {
       if (rows.length) {
-        setTopics(rows.map((row) => ({
-          key: row.meta?.topic_key || row.id,
-          title: row.title,
-          grade: row.meta?.grade,
-          color: row.meta?.color,
-          description: row.body,
-          help: row.meta?.help || {},
-        })));
+        // Defensive dedupe by topic_key — app_content has no unique
+        // constraint across (type, key, title), so a migration re-run (or
+        // any other accidental double-insert in Supabase) produces real
+        // duplicate rows. Same row shape wins either way; last one in sort
+        // order takes it, keeping edits made after a duplicate visible.
+        const seen = new Map();
+        rows.forEach((row) => {
+          const key = row.meta?.topic_key || row.id;
+          seen.set(key, {
+            key,
+            title: row.title,
+            grade: row.meta?.grade,
+            color: row.meta?.color,
+            description: row.body,
+            help: row.meta?.help || {},
+            // The optional "go deeper" layer — see TopicLessonPanel.js.
+            learn: row.meta?.learn || [],
+            practice: row.meta?.practice || [],
+            apply: row.meta?.apply || null,
+          });
+        });
+        setTopics(Array.from(seen.values()));
       }
     });
   }, [classKey]);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      const uid = data?.user?.id;
-      if (!uid) return;
-      setUserId(uid);
-      supabase
-        .from('class_topic_progress')
-        .select('topic_key')
-        .eq('user_id', uid)
-        .eq('subject_key', subjectKey)
-        .then(({ data: rows, error }) => {
-          if (error) { console.warn('ClassTopicScreen load progress', error.message); return; }
-          const map = {};
-          (rows || []).forEach(row => { map[row.topic_key] = true; });
-          setCompleted(map);
-        });
-    });
-  }, [subjectKey]);
-
-  const markComplete = async (topicKey) => {
-    if (!userId || completed[topicKey] || saving[topicKey]) return;
-    setSaving(prev => ({ ...prev, [topicKey]: true }));
-    try {
-      const { error } = await supabase.from('class_topic_progress').upsert(
-        { user_id: userId, subject_key: subjectKey, topic_key: topicKey, status: 'completed', completed_at: new Date().toISOString() },
-        { onConflict: 'user_id,subject_key,topic_key' }
-      );
-      if (error) throw error;
-
-      setCompleted(prev => ({ ...prev, [topicKey]: true }));
-
-      // Same reward pipeline as game events — one shared stats system.
-      await supabase.rpc('increment_user_progress', { p_user_id: userId, p_xp: LESSON_XP, p_points: LESSON_POINTS });
-      await supabase.from('activity_log').insert({
-        user_id: userId,
-        activity_type: 'TOPIC_COMPLETED',
-        subject: subjectKey,
-        xp_earned: LESSON_XP,
-        points_earned: LESSON_POINTS,
-        metadata: { topicKey, subjectTitle: title },
-      });
-      await advanceTopicMission(userId, subjectKey);
-    } catch (e) {
-      console.warn('ClassTopicScreen markComplete', e.message || e);
-    }
-    setSaving(prev => ({ ...prev, [topicKey]: false }));
-  };
 
   return (
     <ScrollView
@@ -139,45 +83,19 @@ export default function ClassTopicScreen({ title, classKey, fallbackTopics }) {
                 </Text>
               )}
             </View>
-            {completed[topic.key] && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Ionicons name="checkmark-circle" size={16} color={topic.color} />
-                <Text style={{ fontSize: 11, fontWeight: '700', color: topic.color }}>Done</Text>
-              </View>
-            )}
           </View>
 
           <View style={{ paddingHorizontal: s.lg, paddingVertical: s.md }}>
             <Text style={{ fontSize: t.sm, fontWeight: t.semibold, marginBottom: 4, color: c.text2 }}>What is it?</Text>
             <Text style={{ fontSize: t.sm, lineHeight: 20, marginBottom: s.md, color: c.text2 }}>{topic.description}</Text>
 
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            {topic.help?.videos?.length > 0 && (
               <TouchableOpacity onPress={() => toggleHelp(topic.key)} activeOpacity={0.7}>
                 <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.teal }}>
                   Need help? {openSections[topic.key] ? '▲' : '▼'}
                 </Text>
               </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => markComplete(topic.key)}
-                disabled={completed[topic.key] || saving[topic.key]}
-                activeOpacity={0.8}
-                style={{
-                  flexDirection: 'row', alignItems: 'center', gap: 6,
-                  paddingHorizontal: 12, paddingVertical: 7, borderRadius: r.full,
-                  backgroundColor: completed[topic.key] ? topic.color + '22' : topic.color,
-                  borderWidth: completed[topic.key] ? 1 : 0, borderColor: topic.color,
-                }}
-              >
-                {saving[topic.key]
-                  ? <ActivityIndicator size="small" color={completed[topic.key] ? topic.color : '#fff'} />
-                  : <Ionicons name={completed[topic.key] ? 'checkmark-circle' : 'checkmark-circle-outline'} size={14} color={completed[topic.key] ? topic.color : '#fff'} />
-                }
-                <Text style={{ fontSize: 12, fontWeight: '800', color: completed[topic.key] ? topic.color : '#fff' }}>
-                  {completed[topic.key] ? 'Completed' : 'Mark complete'}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            )}
 
             {openSections[topic.key] && (
               <View style={{ marginTop: s.sm, padding: s.md, borderRadius: r.md, backgroundColor: c.bg2 }}>
@@ -197,9 +115,57 @@ export default function ClassTopicScreen({ title, classKey, fallbackTopics }) {
                 )}
               </View>
             )}
+
+            <TopicLessonPanel topic={topic} color={topic.color} c={c} t={t} s={s} r={r} />
+
+            {/* The lessons -> games half of the Training/Academy link:
+                every Training Center game that practises THIS topic (see
+                src/data/skillLinks.js), so a topic isn't a dead end that
+                only reads. Renders nothing for topics no game covers. */}
+            <TopicGames
+              screen={classKey}
+              topicKey={topic.key}
+              color={topic.color}
+              navigation={navigation}
+              c={c} t={t} s={s} r={r}
+            />
           </View>
         </View>
       ))}
     </ScrollView>
+  );
+}
+
+// One row of "practise this for real" game chips under a topic. Kept as its
+// own component so the lookup only runs for topics that render, and so a
+// topic with no linked game costs nothing but an early return.
+function TopicGames({ screen, topicKey, color, navigation, c, t, s, r }) {
+  const games = gamesForTopic(screen, topicKey);
+  if (!games.length) return null;
+
+  return (
+    <View style={{ marginTop: s.md, paddingTop: s.md, borderTopWidth: 0.5, borderTopColor: c.border }}>
+      <Text style={{ fontSize: 10, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', color: c.text3, marginBottom: s.sm }}>
+        Practise this
+      </Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm }}>
+        {games.map((game) => (
+          <TouchableOpacity
+            key={game.id}
+            onPress={() => openGame(navigation, game.id)}
+            activeOpacity={0.8}
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: 6,
+              borderWidth: 1, borderColor: color + '66', backgroundColor: color + '14',
+              borderRadius: r.md, paddingHorizontal: s.md, paddingVertical: s.sm,
+            }}
+          >
+            <Text style={{ fontSize: 14 }}>{game.icon}</Text>
+            <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1 }}>{game.name}</Text>
+            <Text style={{ fontSize: t.sm, color, fontWeight: t.bold }}>▸</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
   );
 }

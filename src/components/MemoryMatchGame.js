@@ -10,8 +10,9 @@ import { useNavigation } from '@react-navigation/native';
 import GameShell, { useGameTheme } from './GameShell';
 import GameOver from './GameOver';
 import GradeSelectCard from './GradeSelectCard';
+import RoundCompleteScreen from './RoundCompleteScreen';
 import useGame from '../logic/useGame';
-import useGradeLevel from '../logic/useGradeLevel';
+import useGradeLevel, { tierForLevel } from '../logic/useGradeLevel';
 import { MEMORY_BANK } from '../data/gameContent/memoryMatch';
 
 const PAIR_COUNT = { 'K-2': 6, '3-5': 8, '6-8': 8, '9-12': 10 };
@@ -48,10 +49,11 @@ export default function MemoryMatchGame({ onGameEnd }) {
   const [matchedPairIds, setMatchedPairIds] = useState(() => new Set());
   const [flippedIndices, setFlippedIndices] = useState([]);
   const [locked, setLocked] = useState(false);
+  const [roundComplete, setRoundComplete] = useState(null);
   const flipStartRef = useRef(Date.now());
   const matchedCountRef = useRef(0);
 
-  const game = useGame({ subject: 'general', difficulty: 2, skillLevel: level, onGameEnd });
+  const game = useGame({ subject: 'general', difficulty: 2, skillLevel: level, onGameEnd, manualScoring: true });
 
   const beginRun = () => {
     const board = buildBoard(level);
@@ -91,7 +93,7 @@ export default function MemoryMatchGame({ onGameEnd }) {
           });
           setFlippedIndices([]);
           if (matchedCountRef.current >= totalPairs) {
-            setTimeout(() => game.endGame(), 300);
+            setTimeout(() => setRoundComplete({ correct: totalPairs, total: totalPairs, roundNumber: 1, isLastStage: true }), 300);
           }
         }, 500);
       } else {
@@ -105,9 +107,14 @@ export default function MemoryMatchGame({ onGameEnd }) {
     }
   }, [locked, flippedIndices, matchedPairIds, cards, game, totalPairs]);
 
+  const handleClaimPrize = useCallback(() => {
+    setRoundComplete(null);
+    game.endGame();
+  }, [game]);
+
   if (!started) {
     return (
-      <GradeSelectCard
+      <GradeSelectCard gameId="memory"
         title="Memory Match" emoji="🧩" subjectLabel="Mixed Knowledge"
         blurbs={BLURBS} level={level} onSelectLevel={setLevel} onStart={beginRun}
       />
@@ -115,7 +122,7 @@ export default function MemoryMatchGame({ onGameEnd }) {
   }
 
   if (game.done) return (
-    <GameOver
+    <GameOver gameId="memory"
       score={game.score} correct={game.correct} total={game.attempted}
       streak={game.bestStreak} title="Memory Master!"
       onPlayAgain={() => { game.reset(); setStarted(false); }}
@@ -123,8 +130,27 @@ export default function MemoryMatchGame({ onGameEnd }) {
     />
   );
 
+  if (roundComplete) {
+    return (
+      <GameShell gameId="memory" disableFactToast
+        title="Memory Match" emoji="🧩" subject={`Mixed Knowledge · ${level}`}
+        score={game.score} lives={game.lives} streak={game.streak}
+      >
+        <RoundCompleteScreen
+          roundNumber={roundComplete.roundNumber}
+          correct={roundComplete.correct}
+          total={roundComplete.total}
+          streak={game.streak}
+          difficulty={tierForLevel(level)}
+          onAward={game.addPoints}
+          onAdvance={handleClaimPrize}
+        />
+      </GameShell>
+    );
+  }
+
   return (
-    <GameShell
+    <GameShell gameId="memory"
       title="Memory Match" emoji="🧩" subject={`Mixed Knowledge · ${level}`}
       score={game.score} lives={game.lives} streak={game.streak}
       progress={totalPairs ? matchedPairIds.size / totalPairs : 0}

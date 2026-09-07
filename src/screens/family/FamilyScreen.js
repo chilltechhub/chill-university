@@ -9,7 +9,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, TextInput,
-  ActivityIndicator, Alert,
+  ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -19,6 +19,7 @@ import {
   generateFamilyCode, redeemFamilyCode, getMyChildren, unlinkChild, unlinkMyParent,
 } from '../../api/familyService';
 import { getRank, getRankLabel } from '../../logic/rankUtils';
+import TourSpot from '../../components/TourSpot';
 
 function SectionLabel({ label, c, t, s }) {
   return <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.sm, marginTop: s.lg, paddingHorizontal: 2 }}>{label}</Text>;
@@ -105,7 +106,7 @@ export default function FamilyScreen() {
   const minutesLeft = expiresAt ? Math.max(0, Math.round((new Date(expiresAt) - Date.now()) / 60000)) : 0;
 
   return (
-    <View style={{ flex: 1, backgroundColor: c.bg0 }}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg0 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={{ backgroundColor: c.bg1, padding: s.lg, paddingTop: s.xxl, borderBottomWidth: 0.5, borderBottomColor: c.border, flexDirection: 'row', alignItems: 'center', gap: s.md }}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4 }}>
           <Ionicons name="chevron-back" size={22} color={c.teal} />
@@ -152,6 +153,7 @@ export default function FamilyScreen() {
 
         {/* ── Link a child (enter their code) ── */}
         <SectionLabel label="Link a Child" c={c} t={t} s={s} />
+        <TourSpot id="family-link">
         <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.lg, borderWidth: 0.5, borderColor: c.border }}>
           <Text style={{ fontSize: t.sm, color: c.text3, marginBottom: s.md }}>
             Ask your child to open Family on their account and generate a code, then enter it here.
@@ -176,9 +178,11 @@ export default function FamilyScreen() {
             </TouchableOpacity>
           </View>
         </View>
+        </TourSpot>
 
         {/* ── My invite code (child side) ── */}
         <SectionLabel label="My Invite Code" c={c} t={t} s={s} />
+        <TourSpot id="family-invite">
         <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.lg, borderWidth: 0.5, borderColor: c.border, alignItems: 'center' }}>
           <Text style={{ fontSize: t.sm, color: c.text3, marginBottom: s.md, textAlign: 'center' }}>
             Give this to a parent so they can follow your progress — read-only, they can't change anything on your account.
@@ -210,6 +214,7 @@ export default function FamilyScreen() {
             </TouchableOpacity>
           )}
         </View>
+        </TourSpot>
 
         <TouchableOpacity
           onPress={() => Alert.alert('Unlink your parent?', 'They will stop seeing your progress.', [
@@ -221,6 +226,6 @@ export default function FamilyScreen() {
           <Text style={{ fontSize: 12, color: c.text4 }}>Unlink my parent</Text>
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }

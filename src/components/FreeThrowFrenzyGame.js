@@ -3,16 +3,17 @@
 // back and forth; tap SHOOT when it's in the target zone. Classic
 // "power meter" sports-game mechanic, no physics engine needed.
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import GameShell, { useGameTheme } from './GameShell';
+import { useUIPrefs } from '../../context/UIPrefsContext';
 import GameOver from './GameOver';
 import GradeSelectCard from './GradeSelectCard';
+import RoundCompleteScreen from './RoundCompleteScreen';
 import useGame from '../logic/useGame';
-import useGradeLevel from '../logic/useGradeLevel';
-
-const SESSION_SHOTS = 8;
+import useGradeLevel, { tierForLevel } from '../logic/useGradeLevel';
+import { STAGE_COUNT } from '../logic/difficultyAdapter';
 
 const TIER_CONFIG = {
   'K-2':  { targetWidth: 36, sweepSpeed: 3, tickMs: 30 },
@@ -38,6 +39,7 @@ export default function FreeThrowFrenzyGame({ onGameEnd }) {
   const isFocused = useIsFocused();
   const G = useGameTheme();
   const s = makeStyles(G);
+  const { showEmojis } = useUIPrefs();
   const { level, setLevel } = useGradeLevel('freethrow');
   const [started, setStarted] = useState(false);
 
@@ -46,9 +48,10 @@ export default function FreeThrowFrenzyGame({ onGameEnd }) {
   const [targetCenter, setTargetCenter] = useState(50);
   const [feedback, setFeedback] = useState(null);
   const [made, setMade] = useState(0);
+  const [roundComplete, setRoundComplete] = useState(null);
   const directionRef = useRef(1);
 
-  const game = useGame({ subject: 'health', difficulty: 2, skillLevel: level, onGameEnd });
+  const game = useGame({ subject: 'health', difficulty: 2, skillLevel: level, onGameEnd, manualScoring: true });
   const cfg = TIER_CONFIG[level] || TIER_CONFIG['3-5'];
 
   const beginRun = () => {
@@ -95,9 +98,14 @@ export default function FreeThrowFrenzyGame({ onGameEnd }) {
 
     setTimeout(() => {
       setFeedback(null);
-      const willEnd = game.lives - (isMake ? 0 : 1) <= 0 || shotIndex + 1 >= SESSION_SHOTS;
-      if (willEnd) {
+      const outOfLives = game.lives - (isMake ? 0 : 1) <= 0;
+      const isLastShot = shotIndex + 1 >= STAGE_COUNT;
+
+      if (outOfLives || (isLastShot && !isMake)) {
         game.endGame();
+      } else if (isMake) {
+        setShotIndex(i => i + 1);
+        setRoundComplete({ correct: 1, total: 1, roundNumber: shotIndex + 1, isLastStage: isLastShot });
       } else {
         setShotIndex(i => i + 1);
         setMarkerPos(0);
@@ -107,9 +115,20 @@ export default function FreeThrowFrenzyGame({ onGameEnd }) {
     }, 1400);
   };
 
+  const handleClaimPrize = useCallback(() => {
+    setRoundComplete(null);
+    if (roundComplete?.isLastStage) {
+      game.endGame();
+      return;
+    }
+    setMarkerPos(0);
+    directionRef.current = 1;
+    setTargetCenter(randomTargetCenter(cfg.targetWidth));
+  }, [game, roundComplete, cfg.targetWidth]);
+
   if (!started) {
     return (
-      <GradeSelectCard
+      <GradeSelectCard gameId="freethrow"
         title="Free Throw Frenzy" emoji="🏀" subjectLabel="Health · Sports"
         blurbs={BLURBS} level={level} onSelectLevel={setLevel} onStart={beginRun}
       />
@@ -117,24 +136,43 @@ export default function FreeThrowFrenzyGame({ onGameEnd }) {
   }
 
   if (game.done) return (
-    <GameOver
+    <GameOver gameId="freethrow"
       score={game.score} correct={game.correct} total={game.attempted}
-      streak={game.bestStreak} title={`${made}/${SESSION_SHOTS} Shots Made!`}
+      streak={game.bestStreak} title={`${made}/${game.attempted} Shots Made!`}
       onPlayAgain={() => { game.reset(); setStarted(false); }}
       onQuit={() => navigation.goBack()}
     />
   );
 
+  if (roundComplete) {
+    return (
+      <GameShell gameId="freethrow" disableFactToast
+        title="Free Throw Frenzy" emoji="🏀" subject={`Health · ${level}`}
+        score={game.score} lives={game.lives} streak={game.streak}
+      >
+        <RoundCompleteScreen
+          roundNumber={roundComplete.roundNumber}
+          correct={roundComplete.correct}
+          total={roundComplete.total}
+          streak={game.streak}
+          difficulty={tierForLevel(level)}
+          onAward={game.addPoints}
+          onAdvance={handleClaimPrize}
+        />
+      </GameShell>
+    );
+  }
+
   const targetLeft = targetCenter - cfg.targetWidth / 2;
 
   return (
-    <GameShell
+    <GameShell gameId="freethrow"
       title="Free Throw Frenzy" emoji="🏀" subject={`Health · ${level}`}
       score={game.score} lives={game.lives} streak={game.streak}
-      progress={shotIndex / SESSION_SHOTS}
+      progress={shotIndex / STAGE_COUNT}
     >
       <ScrollView contentContainerStyle={s.scroll}>
-        <Text style={s.progress}>Shot {shotIndex + 1} of {SESSION_SHOTS} · Made: {made}</Text>
+        <Text style={s.progress}>Shot {shotIndex + 1} of {STAGE_COUNT} · Made: {made}</Text>
         <Text style={s.hint}>Tap SHOOT when the marker is in the target zone!</Text>
 
         <View style={s.meter}>
@@ -143,7 +181,7 @@ export default function FreeThrowFrenzyGame({ onGameEnd }) {
         </View>
 
         <TouchableOpacity style={[s.shootBtn, !!feedback && s.shootBtnDisabled]} onPress={handleShoot} disabled={!!feedback}>
-          <Text style={s.shootBtnText}>🏀 SHOOT</Text>
+          <Text style={s.shootBtnText}>{showEmojis ? '🏀 ' : ''}SHOOT</Text>
         </TouchableOpacity>
 
         {feedback && !feedback.paused && (

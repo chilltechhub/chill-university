@@ -1,4 +1,12 @@
 // src/screens/library/notes.js
+//
+// SUPERSEDED — Notes Desk is now the matching type filter inside the
+// Knowledge Vault (src/screens/library/knowledge.js), which carries every
+// feature below. Nothing imports this file any more; the route name that
+// used to point here is registered against the Knowledge Vault in
+// LibraryNav.js. Kept on disk only until the merged screen has been
+// exercised in a build — safe to delete after that.
+//
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity,
@@ -7,8 +15,9 @@ import {
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../context/ThemeContext';
+import { useUIPrefs } from '../../../context/UIPrefsContext';
 import { supabase } from '../../api/supabaseClient';
 import { addCapture, deleteCapture, updateCapture } from '../../api/captureService';
 import { notesToMarkdown, notesToCSV } from '../../logic/exportUtils';
@@ -17,12 +26,13 @@ import useFolders from '../../logic/useFolders';
 import FolderRow from '../../components/FolderRow';
 import FolderAssignSheet from '../../components/FolderAssignSheet';
 import ItemLinks from '../../components/ItemLinks';
+import TourSpot from '../../components/TourSpot';
 
 const FEATURES = [
-  { emoji: '✏️', title: 'Quick capture',     desc: 'Write a note in seconds and find it later' },
-  { emoji: '🏷️', title: 'Tag and organize', desc: 'Add tags to find related notes fast' },
-  { emoji: '📁', title: 'Sort into folders', desc: 'Keep related notes together' },
-  { emoji: '🔗', title: 'Link everywhere',  desc: 'Attach a note to a project, resource, or research item' },
+  { emoji: '✏️', icon: 'create-outline',   title: 'Quick capture',     desc: 'Write a note in seconds and find it later' },
+  { emoji: '🏷️', icon: 'pricetag-outline', title: 'Tag and organize', desc: 'Add tags to find related notes fast' },
+  { emoji: '📁', icon: 'folder-outline',   title: 'Sort into folders', desc: 'Keep related notes together' },
+  { emoji: '🔗', icon: 'link-outline',     title: 'Link everywhere',  desc: 'Attach a note to a project, resource, or research item' },
 ];
 
 const SORT_OPTIONS = [
@@ -33,6 +43,7 @@ const SORT_OPTIONS = [
 
 // ─── Detail / edit modal ──────────────────────────────────────────────────────
 function NoteDetailModal({ note, folders, onClose, onSave, onDelete, onAssignFolder, onLinksChange, c, t, s, r }) {
+  const { showEmojis } = useUIPrefs();
   const [body,    setBody]    = useState('');
   const [tagsTxt, setTagsTxt] = useState('');
   const [editing, setEditing] = useState(false);
@@ -65,7 +76,7 @@ function NoteDetailModal({ note, folders, onClose, onSave, onDelete, onAssignFol
           <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
 
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: s.md }}>
-            <Text style={{ flex: 1, fontSize: t.lg, fontWeight: t.bold, color: c.text1 }}>📝 Note</Text>
+            <Text style={{ flex: 1, fontSize: t.lg, fontWeight: t.bold, color: c.text1 }}>{showEmojis ? '📝 ' : ''}Note</Text>
             {folder && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: folder.color + '18', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3, marginRight: 8 }}>
                 <Ionicons name="folder" size={11} color={folder.color} />
@@ -131,7 +142,7 @@ function NoteDetailModal({ note, folders, onClose, onSave, onDelete, onAssignFol
             )}
 
             <Text style={{ fontSize: t.xs, color: c.gold, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: '800', marginTop: 22, marginBottom: 10 }}>
-              🔗 Linked
+              {showEmojis ? '🔗 ' : ''}Linked
             </Text>
             <ItemLinks
               links={note.url_meta?.links || []}
@@ -147,7 +158,9 @@ function NoteDetailModal({ note, folders, onClose, onSave, onDelete, onAssignFol
 }
 
 export default function NotesScreen() {
+  const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
+  const { showEmojis, showSubtext } = useUIPrefs();
   const [userId, setUserId] = useState(null);
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -259,12 +272,20 @@ export default function NotesScreen() {
   const activeSort = SORT_OPTIONS.find(o => o.key === sortBy);
 
   return (
-    <View style={{ flex: 1, backgroundColor: c.bg0 }}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg0 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {/* Header */}
       <View style={{ backgroundColor: c.headerBg, padding: s.lg, borderBottomWidth: 0.5, borderBottomColor: c.border, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>📝 Notes</Text>
-          <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 4 }}>Quick notes and thoughts, saved to your account</Text>
+        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+          <TouchableOpacity
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('LibraryScreen'))}
+            style={{ padding: 2, marginTop: 2 }}
+          >
+            <Ionicons name="chevron-back" size={22} color={c.teal} />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>{showEmojis ? '📝 ' : ''}Notes</Text>
+            {showSubtext && <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 4 }}>Quick notes and thoughts, saved to your account</Text>}
+          </View>
         </View>
         {notes.length > 0 && (
           <View style={{ flexDirection: 'row', gap: s.sm }}>
@@ -279,6 +300,7 @@ export default function NotesScreen() {
       </View>
 
       {/* Input */}
+      <TourSpot id="notes-input">
       <View style={{ padding: s.lg, backgroundColor: c.bg1, borderBottomWidth: 0.5, borderBottomColor: c.border, gap: s.sm }}>
         <View style={{ flexDirection: 'row', gap: s.sm }}>
           <TextInput
@@ -301,6 +323,7 @@ export default function NotesScreen() {
           onSubmitEditing={add}
         />
       </View>
+      </TourSpot>
 
       {/* Search + sort */}
       <View style={{ flexDirection: 'row', paddingHorizontal: s.lg, paddingTop: s.md, gap: s.sm }}>
@@ -359,7 +382,7 @@ export default function NotesScreen() {
           contentContainerStyle={{ padding: s.lg, paddingTop: 0, gap: s.sm }}
           ListEmptyComponent={
             <View style={{ alignItems: 'center', paddingTop: 60 }}>
-              <Text style={{ fontSize: 44, marginBottom: s.lg }}>📝</Text>
+              {showEmojis ? <Text style={{ fontSize: 44, marginBottom: s.lg }}>📝</Text> : <Ionicons name="document-text-outline" size={40} color={c.teal} style={{ marginBottom: s.lg }} />}
               <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.sm }}>
                 {notes.length === 0 ? 'Notes' : 'No matches'}
               </Text>
@@ -368,7 +391,7 @@ export default function NotesScreen() {
               </Text>
               {notes.length === 0 && FEATURES.map((f, i) => (
                 <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, width: '100%', backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border }}>
-                  <Text style={{ fontSize: 20 }}>{f.emoji}</Text>
+                  {showEmojis ? <Text style={{ fontSize: 20 }}>{f.emoji}</Text> : <Ionicons name={f.icon} size={18} color={c.teal} />}
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1 }}>{f.title}</Text>
                     <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>{f.desc}</Text>
@@ -442,6 +465,6 @@ export default function NotesScreen() {
         onClose={() => setAssigningNote(null)}
         onCreateFolder={createFolder}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }

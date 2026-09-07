@@ -42,11 +42,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { useFabPosition } from '../../context/FabPositionContext';
+import { useTour } from '../../context/TourContext';
+import { useCommandPalette } from '../../context/CommandPaletteContext';
 import { supabase } from '../api/supabaseClient';
+import { offlineWrite, isOnline } from '../api/offlineCache';
 import { addCapture } from '../api/captureService';
 import CalendarModal from './CalendarModal';
 import { QuickCaptureModal } from '../screens/CaptureInbox';
 import LoginScreen from '../screens/LoginScreen';
+import { todayStr } from '../logic/dateUtils';
 
 // Root-stack screens that replace MainTabs entirely (no bottom tab bar showing).
 const NO_TABBAR_ROUTES = new Set(['Profile', 'Settings', 'Play', 'PlayGame', 'Leaderboard']);
@@ -56,7 +60,11 @@ const NO_TABBAR_ROUTES = new Set(['Profile', 'Settings', 'Play', 'PlayGame', 'Le
 const ACTIONS = [
   { key: 'profile',  label: 'Profile',        icon: 'person-circle-outline',    colorKey: 'gold' },
   { key: 'help',     label: 'Help',           icon: 'help-circle-outline',      colorKey: 'purple' },
+  { key: 'tutorial', label: 'Screen Tutorial', icon: 'school-outline',          colorKey: 'teal' },
   { key: 'settings', label: 'Settings',       icon: 'settings-outline',         colorKey: 'text3' },
+  // The phone-side entry to the command palette — Cmd/Ctrl+K only exists
+  // where there's a keyboard, so search needs a visible control too.
+  { key: 'search',   label: 'Search',         icon: 'search-outline',           color: '#3fb8cf' },
   { key: 'project',  label: 'New Project',    icon: 'hammer-outline',           colorKey: 'gold' },
   { key: 'calendar', label: 'Calendar',       icon: 'calendar-outline',         colorKey: 'teal' },
   { key: 'reminder', label: 'New Reminder',   icon: 'notifications-outline',    color: '#c9a84c' },
@@ -72,7 +80,7 @@ const POSITION_OPTIONS = [
   { key: 'bottom-right', glyph: '↘', label: 'Bottom Right' },
 ];
 
-const FAB_SIZE     = 56;
+const FAB_SIZE     = 30;
 const MOVE_BTN_SIZE = 32;
 const TAB_BAR_H = Platform.OS === 'ios' ? 66 : 52;
 // Rough visible height of TopBar.js — it isn't a fixed constant there
@@ -162,7 +170,9 @@ function QuickProjectModal({ visible, userId, onCreated, onClose, c, t, s, r }) 
     if (!title.trim() || !userId) return;
     setSaving(true);
     try {
-      const { data, error } = await supabase.from('projects').insert({
+      // Same id whether this lands live now or gets queued for when
+      // connectivity returns — see offlineCache.js's offlineWrite.
+      const { row: data, queued } = await offlineWrite(supabase, 'projects', {
         user_id:     userId,
         title:       title.trim(),
         objective:   objective.trim() || null,
@@ -173,14 +183,17 @@ function QuickProjectModal({ visible, userId, onCreated, onClose, c, t, s, r }) 
         category:    'general',
         status:      'active',
         sort_order:  0,
-      }).select().single();
-      if (error) throw error;
-
-      await supabase.from('project_milestones').insert({
-        user_id: userId, project_id: data.id,
-        title: '🏗️ Build started', type: 'project_created',
-        date: new Date().toISOString().split('T')[0],
       });
+
+      // The milestone log is a nice-to-have, not the thing the user is
+      // actually waiting on — best-effort, only when actually online.
+      if (!queued && (await isOnline())) {
+        await supabase.from('project_milestones').insert({
+          user_id: userId, project_id: data.id,
+          title: '🏗️ Build started', type: 'project_created',
+          date: todayStr(),
+        });
+      }
 
       onCreated(data);
       reset();
@@ -250,6 +263,8 @@ export default function FloatingActionButton({ currentScreen }) {
   // Shared live context — also settable from Settings → Appearance, but
   // living here means the Move circle below can relocate the FAB instantly.
   const { fabPosition, setFabPosition } = useFabPosition();
+  const { startScreenTour } = useTour();
+  const { openPalette } = useCommandPalette();
   const [vSide, hSide] = fabPosition.split('-'); // 'top'|'bottom', 'left'|'right'
 
   const hasTabBar = !NO_TABBAR_ROUTES.has(currentScreen);
@@ -317,8 +332,14 @@ export default function FloatingActionButton({ currentScreen }) {
       case 'settings':
         navigation.navigate('Settings');
         break;
+      case 'search':
+        openPalette();
+        break;
       case 'help':
         navigation.navigate('Help', { fromScreen: currentScreen });
+        break;
+      case 'tutorial':
+        startScreenTour(currentScreen);
         break;
     }
   };

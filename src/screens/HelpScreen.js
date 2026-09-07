@@ -9,92 +9,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useTour } from '../../context/TourContext';
+import { SCREEN_HELP } from '../data/screenHelp';
 
 // ─── Per-screen "what is this?" copy ──────────────────────────────────────────
 // Keyed by the route name as React Navigation reports it (getCurrentRoute().name).
 // Screens not listed here just skip the "About this screen" card.
-const SCREEN_HELP = {
-  Home: {
-    title: 'Home',
-    body: 'Your dashboard — daily missions, streak, and a snapshot of what needs attention today.',
-  },
-  Training: {
-    title: 'Training',
-    body: 'Skill games that build real-world abilities while you play. Progress here feeds your rank and points.',
-  },
-  LibraryScreen: {
-    title: 'Library',
-    body: 'The hub for everything you build and collect: Projects, Notes, Research, Life Areas, Discover, and more.',
-  },
-  PlannerScreen: {
-    title: 'Planner',
-    body: 'Your agenda. Switch between Daily, Weekly, and Monthly views, filter by life area, and tap Add (or the grid icon) to schedule something. Reminders you create here can send a notification before the scheduled time.',
-  },
-  CaptureInbox: {
-    title: 'Capture Inbox',
-    body: 'A landing zone for anything you jot down before deciding where it belongs. Tap an item to route it — to a project, your notes, the planner, a life area, and more.',
-  },
-  ImportScreen: {
-    title: 'Import Hub',
-    body: 'Bulk-import text, links, or files. Items land in your Capture Inbox so you can process them the same way as anything else.',
-  },
-  ProjectsScreen: {
-    title: 'The Workshop',
-    body: 'Every project you’re building, from a rough blueprint to something you’re showing off. Tap + to start a new one.',
-  },
-  ProjectDetail: {
-    title: 'Build',
-    body: 'A single project’s workspace — tasks, research, and journal entries all live here.',
-  },
-  ResearchScreen: {
-    title: 'Research Vault',
-    body: 'Links and resources you’ve saved for later reading or reference, outside of any one project.',
-  },
-  ResourcesToolsScreen: {
-    title: 'Resources & Tools',
-    body: 'A library of tools and references you’ve saved for reuse.',
-  },
-  IdeaGardenScreen: {
-    title: 'Idea Garden',
-    body: 'Where loose ideas get planted as seeds and grow over time as you add to them.',
-  },
-  DiscoverScreen: {
-    title: 'Discover',
-    body: 'Find mentors, fellow scholars, and interesting people and breakthroughs worth knowing about.',
-  },
-  LifeAreaScreen: {
-    title: 'Life Area',
-    body: 'A focused view into one part of your life — log notes and track how it’s going over time.',
-  },
-  NotesScreen: {
-    title: 'Notes',
-    body: 'Quick notes and thoughts. Type in the box at the top and tap the arrow to save.',
-  },
-  Profile: {
-    title: 'Profile',
-    body: 'Your rank, points, streak, and account details live here.',
-  },
-  Settings: {
-    title: 'Settings',
-    body: 'Theme (light/dark), notifications, and account preferences.',
-  },
-  Play: {
-    title: 'Play',
-    body: 'A single training game in progress.',
-  },
-  PlayGame: {
-    title: 'Play',
-    body: 'A single training game in progress.',
-  },
-  Leaderboard: {
-    title: 'Leaderboard',
-    body: 'See how your rank and points stack up.',
-  },
-  Family: {
-    title: 'Family',
-    body: "Link a parent or child's account. Read-only — a linked parent sees level, XP, points, and streak, and nothing else.",
-  },
-};
 
 // ─── General FAQ ───────────────────────────────────────────────────────────────
 const FAQ = [
@@ -251,3 +170,5 @@ export default function HelpScreen() {
     </View>
   );
 }
+
+export { SCREEN_HELP };

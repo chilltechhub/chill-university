@@ -18,9 +18,14 @@
 //
 // The pet is fully autonomous: it wanders the stage on its own (no
 // controls) and coins spawn on the ground at random spots every so often;
-// when the pet's wandering brings it near one, it eats it. This part is
-// purely cosmetic/ambient — it doesn't touch the real points economy the
-// jump-collectibles use, just a bit of idle-pet life.
+// when the pet's wandering brings it near one, it eats it. Each coin
+// eaten is real — pass `onCoinCollected` (see useCoinRewards.js) and it
+// goes through the same points pipeline as everything else, just a much
+// smaller, per-cycle-capped amount, since the pet does this with zero
+// player input. Pass `coinRewardsRemaining` (that hook's `remaining`) so
+// this only shows a "+N" popup for coins that actually earned something —
+// once the cap's hit for the cycle, the pet keeps eating for the ambience
+// but stops implying it's still earning.
 //
 // Meant to sit as a LandscapeBackground's child: it fills the stage
 // (absoluteFill) and lets taps outside the arrows pass through to
@@ -57,6 +62,7 @@ const MAX_COINS = 3;             // keep the ground from getting cluttered
 const CharacterWalker = forwardRef(function CharacterWalker({
   outfit, accessory, pet, characterSize = 100, petSize = 42,
   rewards, onClaimReward, rewardPoints = 15,
+  onCoinCollected, coinRewardsRemaining, coinRewardPoints = 1,
 }, ref) {
   const [stageWidth, setStageWidth] = useState(0);
   const [x, setX] = useState(null); // null until the first layout centers it
@@ -69,6 +75,7 @@ const CharacterWalker = forwardRef(function CharacterWalker({
   const [petTargetX, setPetTargetX] = useState(null);
   const [coins, setCoins] = useState([]); // [{ id, xFraction }]
   const [poppingCoinId, setPoppingCoinId] = useState(null);
+  const [coinPopup, setCoinPopup] = useState(null); // { text, x } while a "+N" floats up from an eaten coin
   const movingRef = useRef(null);
   const jumpingRef = useRef(false);
   const coinIdRef = useRef(0);
@@ -79,6 +86,7 @@ const CharacterWalker = forwardRef(function CharacterWalker({
   const popupAnim = useRef(new Animated.Value(0)).current;
   const coinSpin = useRef(new Animated.Value(0)).current;
   const coinPopScale = useRef(new Animated.Value(1)).current;
+  const coinPopupAnim = useRef(new Animated.Value(0)).current;
   const isStatic = !outfit.rig; // no walk-cycle art — use the hop instead
 
   const hasUnclaimed = !!rewards?.some(r => !r.claimed);
@@ -180,7 +188,8 @@ const CharacterWalker = forwardRef(function CharacterWalker({
     return () => { cancelled = true; clearTimeout(timeoutId); };
   }, [stageWidth]);
 
-  // When the pet's wandering brings it close enough to a coin, eat it.
+  // When the pet's wandering brings it close enough to a coin, eat it —
+  // and, if there's still allowance left this cycle, credit it for real.
   useEffect(() => {
     if (petX == null || !coins.length || stageWidth <= 0) return;
     const petCenterX = petX + petSize / 2;
@@ -193,7 +202,21 @@ const CharacterWalker = forwardRef(function CharacterWalker({
       Animated.timing(coinPopScale, { toValue: 1.6, duration: 120, useNativeDriver: true }),
       Animated.timing(coinPopScale, { toValue: 0, duration: 160, useNativeDriver: true }),
     ]).start(() => setPoppingCoinId(null));
-  }, [petX, coins, stageWidth, petSize, coinPopScale]);
+
+    // Only claim (and only promise a "+N") when the caller says there's
+    // still cap left — coinRewardsRemaining undefined (no cap wired up)
+    // is treated as "go ahead," same as omitting `rewards` upstream.
+    if (onCoinCollected && coinRewardsRemaining !== 0) {
+      const eatenAtX = petCenterX;
+      onCoinCollected().then((awarded) => {
+        if (!awarded) return;
+        setCoinPopup({ text: `+${awarded}`, x: eatenAtX });
+        coinPopupAnim.setValue(0);
+        Animated.timing(coinPopupAnim, { toValue: 1, duration: 800, easing: Easing.out(Easing.quad), useNativeDriver: true })
+          .start(() => setCoinPopup(null));
+      }).catch(() => {});
+    }
+  }, [petX, coins, stageWidth, petSize, coinPopScale, onCoinCollected, coinRewardsRemaining, coinPopupAnim]);
 
   const startBob = useCallback(() => {
     if (!isStatic) return;
@@ -345,7 +368,12 @@ const CharacterWalker = forwardRef(function CharacterWalker({
       {stageWidth > 0 && rewards?.map(item => {
         if (item.claimed && poppingIndex !== item.index) return null;
         // A small stagger so a full batch doesn't float at one flat height.
-        const restHeight = characterSize + (item.index % 2 === 0 ? 30 : 46);
+        // Kept low enough to clear REWARD_SIZE (34) inside the shortest
+        // scene this renders in (GamesScreen's 150px-tall hero, characterSize
+        // 100) — the old +30/+46 offsets only fit ProfileScreen's taller
+        // 200px scene and pushed these badges up past the top edge (clipped)
+        // everywhere else.
+        const restHeight = characterSize + (item.index % 2 === 0 ? 4 : 12);
         return (
           <Animated.View
             key={item.index}
@@ -381,6 +409,21 @@ const CharacterWalker = forwardRef(function CharacterWalker({
           }}
         >
           <Text style={styles.popupText}>{popup.text}</Text>
+        </Animated.View>
+      )}
+
+      {coinPopup && (
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: coinPopup.x - 14,
+            bottom: 30,
+            opacity: coinPopupAnim.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 1, 0] }),
+            transform: [{ translateY: coinPopupAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -26] }) }],
+          }}
+        >
+          <Text style={styles.coinPopupText}>{coinPopup.text}</Text>
         </Animated.View>
       )}
 
@@ -439,6 +482,10 @@ const styles = StyleSheet.create({
   coinText: { fontSize: 8, fontWeight: '900', color: '#fff2e0' },
   popupText: {
     color: '#fff', fontSize: 16, fontWeight: '800',
+    textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
+  },
+  coinPopupText: {
+    color: '#e0b060', fontSize: 12, fontWeight: '800',
     textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
   },
 });
