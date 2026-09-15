@@ -14,6 +14,15 @@ export const TOUR_STEPS = [
     body: "A tour of where everything lives — a couple of minutes, and you can replay it any time from Settings.",
   },
   {
+    // Second step, right after the welcome, because it's the answer to the
+    // question the rest of the tour raises — "that's a lot of app, where do
+    // I start?" See src/components/WayfinderCard.js.
+    id: 'home-wayfinder',
+    tab: 'Home',
+    title: '🧭 Wayfinder',
+    body: "Pick one reason you're here and one objective to finish, and the app leads with that instead of everything at once. Finishing an objective is also how parts of the app open up — or you can test out of them if you already know the ground.",
+  },
+  {
     id: 'home-focus',
     tab: 'Home',
     title: 'Home',
@@ -47,7 +56,7 @@ export const TOUR_STEPS = [
     id: 'hub-PortfolioScreen',
     tab: 'Library',
     title: 'Portfolio',
-    body: "Your real track record — XP, skills, and shipped projects, auto-built as you use the app. This is what you'd actually show someone.",
+    body: "Your real track record — XP, skills, and shipped projects, auto-built as you use the app. This is what you'd actually show someone. It opens once you've shipped your first build, or if you pass its readiness check.",
   },
   {
     id: 'hub-KnowledgeScreen',

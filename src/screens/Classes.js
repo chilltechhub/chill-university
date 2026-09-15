@@ -10,6 +10,7 @@ import { supabase } from '../api/supabaseClient';
 import { fetchContentPool } from '../api/remoteConfigService';
 import { listLessonPlans } from '../api/lessonBuilderService';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
+import { useAccess } from '../../context/AccessContext';
 import { pickRecommendedTopics, pickRecommendedGames } from '../logic/classRecommendations';
 import TourSpot from '../components/TourSpot';
 import { CLASS_SUBJECTS, CLASS_SCREEN_MAP } from '../data/classCatalog';
@@ -36,6 +37,14 @@ export default function Classes() {
   // Day Lesson Plan Builder is an authoring tool, so its entry points only
   // appear for whoever has said they're teaching.
   const [educatorMode, setEducatorMode, educatorReady] = useSetting(SETTING_KEYS.EDUCATOR_MODE, null);
+  // The Wayfinder's 'lesson-builder' feature is a SECOND way in, never a
+  // second lock: someone who found the builder through Settings' Educator
+  // Mode keeps it exactly as they had it, and someone who never went looking
+  // in Settings can instead finish "Teach It Once" (or pass its check) and
+  // have the authoring entry points appear. Either satisfies this; neither
+  // takes anything away.
+  const { isOpen } = useAccess();
+  const showAuthoring = educatorMode === true || isOpen('lesson-builder');
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   const { showEmojis, showSubtext } = useUIPrefs();
@@ -149,7 +158,7 @@ export default function Classes() {
         <Text style={styles.headerTitle}>Academy Classes</Text>
         {showSubtext && <Text style={styles.headerSubtitle}>Pick a subject to build up that wing of your base</Text>}
 
-        {educatorMode === true && (
+        {showAuthoring && (
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
           <TouchableOpacity
             onPress={() => navigation.navigate('LessonBuilder')}
@@ -301,7 +310,7 @@ export default function Classes() {
 
             {item.children && open[item.title] && (
               <View style={styles.sublist}>
-                {educatorMode === true && (
+                {showAuthoring && (
                   band === 'All' ? (
                     <Text style={styles.noneForBand}>Pick a grade above, then tap "Build a Classroom Lesson" to put together a {item.title} lesson plan.</Text>
                   ) : (

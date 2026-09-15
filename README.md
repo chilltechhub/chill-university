@@ -27,7 +27,7 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=...
 | `src/components/` | Shared UI and the training mini-games |
 | `src/api/` | Supabase access, one module per domain |
 | `src/logic/` | Pure logic and hooks — gamification, scheduling, dates, parsers |
-| `src/data/` | Static content and catalogs |
+| `src/data/` | Static content and catalogs — including the Wayfinder's `featureCatalog.js`, `objectives.js` and `competencyTests.js` |
 | `supabase/` | SQL migrations and edge functions |
 
 ## Things worth knowing
@@ -44,3 +44,14 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=...
   build. Every one falls back to a local default.
 - **Offline.** Reads are cache-first via `src/api/offlineCache.js`; writes made
   offline are queued and flushed on next launch from `App.js`.
+- **Wayfinder.** The app is large enough that showing all of it at once is the
+  same as showing none of it. So each account picks one *purpose*
+  (`profiles.purpose_key`) and runs one *objective* at a time
+  (`public.user_objectives`, single-focus enforced by a partial unique index).
+  Every gateable surface is listed once in `src/data/featureCatalog.js` with a
+  gate: `open`, `locked` (finish an objective — or pass its one-attempt
+  competence check), `experimental` (opt-in, genuinely unfinished) or `paid`.
+  `src/logic/featureAccess.js` is the pure gate logic and mirrors the SQL;
+  `context/AccessContext.js` holds the state; `src/components/FeatureGate.js`
+  applies it to a tile (`useFeatureGate`) or a whole route (`gatedScreen`).
+  Adding a gate is one catalog entry — do not scatter `if (unlocked)` checks.
