@@ -19,6 +19,7 @@ import { getMyOpenAssignments, updateAssignmentStatus } from '../api/organizatio
 import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../api/offlineCache';
 import { syncReminders, computeReminderState } from '../logic/notificationScheduler';
 import TourSpot from '../components/TourSpot';
+import WayfinderCard from '../components/WayfinderCard';
 import CalendarModal from '../components/CalendarModal';
 import LevelRing from '../components/LevelRing';
 import PlayerMatchBackground from '../components/PlayerMatchBackground';
@@ -1015,6 +1016,18 @@ export default function HomeScreen() {
             </View>
           )}
         </View>
+
+        {/* ── Wayfinder ──
+            First card on the dashboard, above even the HQ card, because it
+            is the one that answers "what am I meant to do here?". Everything
+            below it is a place you could go; this is the single next step in
+            the one objective you're actually on. See
+            src/components/WayfinderCard.js — it renders nothing at all until
+            the access state has settled, so it never flickers a "pick a
+            purpose" prompt at somebody who already has one. */}
+        <TourSpot id="home-wayfinder">
+          <WayfinderCard />
+        </TourSpot>
 
         {/* ── HQ card ── */}
         <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, marginHorizontal: s.lg, marginBottom: s.md, borderWidth: 0.5, borderColor: c.border, borderTopWidth: 2, borderTopColor: c.gold }}>

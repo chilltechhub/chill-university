@@ -14,6 +14,7 @@ import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { UIPrefsProvider } from './context/UIPrefsContext';
 import { FabPositionProvider } from './context/FabPositionContext';
 import { RemoteConfigProvider, useFeatureFlag, useConfigValue } from './context/RemoteConfigContext';
+import { AccessProvider } from './context/AccessContext';
 import { TourProvider, useTour } from './context/TourContext';
 import { CommandPaletteProvider } from './context/CommandPaletteContext';
 import { loadRemotePets } from './src/data/petOptions';
@@ -41,8 +42,12 @@ import MissionPopup      from './src/components/MissionPopup';
 import FloatingActionButton from './src/components/FloatingActionButton';
 import CommandPalette from './src/components/CommandPalette';
 import HelpScreen       from './src/screens/HelpScreen';
+import WayfinderScreen  from './src/screens/WayfinderScreen';
+import StatsScreen      from './src/screens/StatsScreen';
+import { gatedScreen } from './src/components/FeatureGate';
 import AnnouncementBanner from './src/components/AnnouncementBanner';
 import LevelUpNotification from './src/components/LevelUpNotification';
+import UnlockNotification from './src/components/UnlockNotification';
 import MaintenanceScreen from './src/components/MaintenanceScreen';
 import FamilyScreen from './src/screens/family/FamilyScreen';
 import ChildProgressScreen from './src/screens/family/ChildProgressScreen';
@@ -50,6 +55,14 @@ import OrganizationScreen from './src/screens/organization/OrganizationScreen';
 import CohortRosterScreen from './src/screens/organization/CohortRosterScreen';
 import { useUserProgress } from './context/UserProgressContext';
 import { supabase } from './src/api/supabaseClient';
+
+// Wayfinder-gated root routes. Built at module scope so the navigator gets a
+// stable component reference (an inline wrapper would remount the screen on
+// every render). StatsScreen has been complete but unreachable since the
+// rebuild — nothing anywhere linked to it, the same state Discover was in —
+// so this is both its first route and its gate.
+const GatedStats        = gatedScreen('insights', StatsScreen);
+const GatedOrganization = gatedScreen('organization', OrganizationScreen);
 
 
 // NOTE: OnboardingScreen.js (life-areas / commandCenterService) and ProfileQuickSetup.js
@@ -302,12 +315,19 @@ function AppInner() {
           <Stack.Screen name="Leaderboard"         component={LeaderboardScreen} />
           <Stack.Screen name="Family"              component={FamilyScreen} />
           <Stack.Screen name="ChildProgress"       component={ChildProgressScreen} />
-          <Stack.Screen name="Organization"        component={OrganizationScreen} />
+          <Stack.Screen name="Organization"        component={GatedOrganization} />
           <Stack.Screen name="CohortRoster"        component={CohortRosterScreen} />
           <Stack.Screen name="Help"                component={HelpScreen} />
+          {/* The Wayfinder — purpose, the one active objective, and the
+              locked / experimental / Plus rosters. Reachable from Home's
+              card, Settings, the Library header and every unlock sheet,
+              so it lives on the root stack rather than inside a tab. */}
+          <Stack.Screen name="Wayfinder"           component={WayfinderScreen} />
+          <Stack.Screen name="Stats"               component={GatedStats} />
         </Stack.Navigator>
         <MissionsOverlay />
         <LevelUpNotification />
+        <UnlockNotification />
         {showTopBar && <FloatingActionButton currentScreen={currentRouteName} />}
         {/* Global search (Cmd/Ctrl+K, or the FAB's Search action). Sits
             beside the FAB for the same reason: it has to be reachable from
@@ -332,13 +352,18 @@ export default function App() {
         <UIPrefsProvider>
           <RemoteConfigProvider>
             <UserProgressProvider>
-              <FabPositionProvider>
-                <CommandPaletteProvider>
-                <TourProvider>
-                  <AppInner />
-                </TourProvider>
-                </CommandPaletteProvider>
-              </FabPositionProvider>
+              {/* Inside UserProgressProvider on purpose: the gate logic reads
+                  the profile, streak, level and points from it to decide what
+                  is unlocked and which objective steps have ticked themselves. */}
+              <AccessProvider>
+                <FabPositionProvider>
+                  <CommandPaletteProvider>
+                  <TourProvider>
+                    <AppInner />
+                  </TourProvider>
+                  </CommandPaletteProvider>
+                </FabPositionProvider>
+              </AccessProvider>
             </UserProgressProvider>
           </RemoteConfigProvider>
         </UIPrefsProvider>

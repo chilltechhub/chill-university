@@ -33,6 +33,13 @@ export function navigateTo(navigation, route) {
 }
 
 // ─── Screens with no list of their own ─────────────────────────────────────
+// Wayfinder-gated screens (Work Mode, Weekly Review, Import Hub, Labs,
+// Mentors, Organization, Deep Insights...) stay listed here on purpose.
+// Searching for something and being told it doesn't exist is worse than
+// searching for it and being told what opens it — the routes themselves are
+// gated at the navigator (see src/components/FeatureGate.js's gatedScreen),
+// so landing on one shows its lock and the way through rather than its
+// contents.
 const STANDALONE = [
   { title: 'Home',            subtitle: 'Today, focus & quick actions',      icon: 'home-outline',            route: tab('Home') },
   { title: 'Training',        subtitle: 'Games & daily drills',              icon: 'barbell-outline',         route: tab('Training') },
@@ -48,6 +55,8 @@ const STANDALONE = [
   { title: 'Mentors & Experts', subtitle: 'More experienced people',         icon: 'school-outline',          route: library('MentorsScreen') },
   { title: 'Community Projects', subtitle: 'Builds from the community',      icon: 'git-network-outline',     route: library('CommunityProjectsScreen') },
   { title: 'Profile',         subtitle: 'Rank, points, streak & account',    icon: 'person-circle-outline',   route: root('Profile') },
+  { title: 'Wayfinder',       subtitle: 'Your purpose, objective & unlocks',  icon: 'navigate-outline',        route: root('Wayfinder') },
+  { title: 'Deep Insights',   subtitle: 'Long-range stats across subjects',   icon: 'analytics-outline',       route: root('Stats') },
   { title: 'Settings',        subtitle: 'Theme, sections, notifications',    icon: 'settings-outline',        route: root('Settings') },
   { title: 'Help',            subtitle: 'What this screen is for',           icon: 'help-circle-outline',     route: root('Help') },
   { title: 'Leaderboard',     subtitle: 'Where you stand',                   icon: 'trophy-outline',          route: root('Leaderboard') },

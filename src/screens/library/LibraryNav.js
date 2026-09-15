@@ -52,6 +52,28 @@ import NetworkScreen       from './connections/NetworkScreen';
 import PrivacyScreen       from './connections/PrivacyScreen';
 import SecurityScreen      from './connections/SecurityScreen';
 
+// Wayfinder gating. Applied here, at the navigator, and not only on the
+// tiles that link to these screens: the command palette
+// (src/logic/searchIndex.js) jumps to routes directly, and so do deep links
+// and a back stack left over from before an opt-out. A gated screen renders
+// its lock and the way through instead of its contents — see
+// src/components/FeatureGate.js.
+import { gatedScreen } from '../../components/FeatureGate';
+
+const GatedWorkMode      = gatedScreen('work-mode',         WorkModeScreen);
+const GatedWeeklyReview  = gatedScreen('weekly-review',     WeeklyReviewScreen);
+const GatedImport        = gatedScreen('import-hub',        ImportScreen);
+const GatedPortfolio     = gatedScreen('portfolio',         PortfolioScreen);
+const GatedCareer        = gatedScreen('career-map',        CareerExplorationScreen);
+const GatedDiscover      = gatedScreen('discover',          DiscoverScreen);
+const GatedLabs          = gatedScreen('labs',              LabsScreen);
+const GatedCommunityFeed = gatedScreen('community-feed',    CommunityFeedScreen);
+const GatedScholars      = gatedScreen('fellow-scholars',   FellowScholarsScreen);
+const GatedMentors       = gatedScreen('mentors',           MentorsScreen);
+const GatedSavings       = gatedScreen('savings-investing', AreaSectionScreen);
+const GatedDebt          = gatedScreen('debt-credit',       AreaSectionScreen);
+
+
 const Stack = createStackNavigator();
 
 export default function LibraryNavigator() {
@@ -100,23 +122,23 @@ export default function LibraryNavigator() {
       <Stack.Screen name="PlannerScreen" component={PlannerScreen} options={{ headerShown: false }} />
       {/* Inbox */}
       <Stack.Screen name="CaptureInbox" component={CaptureInbox} options={{ title: 'Capture Inbox' }} />
-      <Stack.Screen name="WorkModeScreen" component={WorkModeScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="WeeklyReviewScreen" component={WeeklyReviewScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="ImportScreen" component={ImportScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="WorkModeScreen" component={GatedWorkMode} options={{ headerShown: false }} />
+      <Stack.Screen name="WeeklyReviewScreen" component={GatedWeeklyReview} options={{ headerShown: false }} />
+      <Stack.Screen name="ImportScreen" component={GatedImport} options={{ headerShown: false }} />
 
       {/* Academic & Career */}
       <Stack.Screen name="ProjectsScreen"          component={ProjectsScreen}          options={{ title: 'The Workshop' }} />
       <Stack.Screen name="ProjectDetail" component={ProjectDetailScreen} options={{ title: 'Build' }} />
-      <Stack.Screen name="LabsScreen"              component={LabsScreen}              options={{ title: 'Labs' }} /> 
-      <Stack.Screen name="PortfolioScreen"         component={PortfolioScreen}         options={{ title: 'Portfolio' }} />
-      <Stack.Screen name="CareerExplorationScreen" component={CareerExplorationScreen} options={{ title: 'Career Explorer' }} />
+      <Stack.Screen name="LabsScreen"              component={GatedLabs}               options={{ title: 'Labs' }} /> 
+      <Stack.Screen name="PortfolioScreen"         component={GatedPortfolio}          options={{ title: 'Portfolio' }} />
+      <Stack.Screen name="CareerExplorationScreen" component={GatedCareer}             options={{ title: 'Career Explorer' }} />
 
       {/* Discover */}
-      <Stack.Screen name="DiscoverScreen"      component={DiscoverScreen}      options={{ title: 'Discover' }} />
-      <Stack.Screen name="CommunityFeedScreen" component={CommunityFeedScreen} options={{ title: 'Community' }} />
+      <Stack.Screen name="DiscoverScreen"      component={GatedDiscover}       options={{ title: 'Discover' }} />
+      <Stack.Screen name="CommunityFeedScreen" component={GatedCommunityFeed}  options={{ title: 'Community' }} />
       <Stack.Screen name="ModerationQueueScreen" component={ModerationQueueScreen} options={{ title: 'Moderation' }} />
-      <Stack.Screen name="FellowScholarsScreen"component={FellowScholarsScreen}options={{ title: 'Fellow Scholars' }} />
-      <Stack.Screen name="MentorsScreen"       component={MentorsScreen}       options={{ title: 'Mentors & Experts' }} />
+      <Stack.Screen name="FellowScholarsScreen"component={GatedScholars}       options={{ title: 'Fellow Scholars' }} />
+      <Stack.Screen name="MentorsScreen"       component={GatedMentors}        options={{ title: 'Mentors & Experts' }} />
 
       {/* Knowledge Hub */}
       <Stack.Screen name="IdeaGardenScreen"    component={IdeaGardenScreen}    options={{ title: 'Idea Garden' }} />
@@ -142,8 +164,8 @@ export default function LibraryNavigator() {
 <Stack.Screen name="SocialHealthScreen"      component={AreaSectionScreen} options={{ title: 'Social Health' }} />
 <Stack.Screen name="IncomeEarningsScreen"    component={AreaSectionScreen} options={{ title: 'Income & Earnings' }} />
 <Stack.Screen name="BudgetSpendingScreen"    component={AreaSectionScreen} options={{ title: 'Budget & Spending' }} />
-<Stack.Screen name="SavingsInvestingScreen"  component={AreaSectionScreen} options={{ title: 'Savings & Investing' }} />
-<Stack.Screen name="DebtCreditScreen"        component={AreaSectionScreen} options={{ title: 'Debt & Credit' }} />
+<Stack.Screen name="SavingsInvestingScreen"  component={GatedSavings} options={{ title: 'Savings & Investing' }} />
+<Stack.Screen name="DebtCreditScreen"        component={GatedDebt} options={{ title: 'Debt & Credit' }} />
 <Stack.Screen name="ArtMusicScreen"          component={AreaSectionScreen} options={{ title: 'Art & Music' }} />
 <Stack.Screen name="ContentMediaScreen"      component={AreaSectionScreen} options={{ title: 'Content & Media' }} />
 <Stack.Screen name="LearningCuriosityScreen" component={AreaSectionScreen} options={{ title: 'Learning & Curiosity' }} />

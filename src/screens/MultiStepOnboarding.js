@@ -46,6 +46,8 @@ import { LIFE_AREAS } from './library/LifeAreaScreen';
 import { LIBRARY_HUBS } from './library/LibraryScreen';
 import { AREAS as PLANNER_AREAS, getPresetComponents, subscribeToComponent, generateInstances } from '../api/plannerService';
 import { CREST_COLORS, ROLE_BADGES } from '../data/crestOptions';
+import { PURPOSES, suggestPurpose, getPurpose } from '../data/objectives';
+import { useAccess } from '../../context/AccessContext';
 import useCharacterLoadout from '../logic/useCharacterLoadout';
 import LandscapeBackground from '../components/LandscapeBackground';
 import CharacterWalker from '../components/CharacterWalker';
@@ -556,6 +558,11 @@ function Step6({ data, set, theme }) {
   const { c } = theme;
   const st = stepStyles(theme);
   const [remindersEnabled, setRemindersEnabled] = useSetting(SETTING_KEYS.DAILY_REMINDERS_ENABLED, false);
+  // Same scorer the Wayfinder uses later, run against the answers collected
+  // so far. `purpose_key` only gets set by an actual tap — the suggestion
+  // stays a suggestion until someone confirms it.
+  const suggestedPurpose = suggestPurpose(data);
+  const effectivePurpose = data.purpose_key || suggestedPurpose;
   const toggleUsage = (key) => {
     const cur = data.usage_patterns || [];
     set('usage_patterns', cur.includes(key) ? cur.filter(k => k !== key) : [...cur, key]);
@@ -591,6 +598,35 @@ function Step6({ data, set, theme }) {
         {PRIMARY_GOALS.map(g => (
           <Chip key={g} label={g} selected={data.primary_goal === g} color={c.error} onPress={() => set('primary_goal', g)} theme={theme} />
         ))}
+      </View>
+
+      {/* The one thing the whole app orients around after this — see
+          src/data/objectives.js. It's derived from the answers above rather
+          than asked cold, because a purpose picked out of context is just
+          another question; a purpose the app has already worked out and is
+          asking you to confirm is a conversation. Finishing this step starts
+          the matching objective, so there's a first step waiting on Home
+          instead of an empty dashboard. */}
+      <View style={{ marginTop: 16 }}>
+        <SectionLabel label="Your one focus" theme={theme} />
+        <Text style={{ fontSize: 12, color: c.text4, marginTop: -6, marginBottom: 10 }}>
+          {suggestedPurpose && !data.purpose_key
+            ? `Going by your answers, "${getPurpose(suggestedPurpose)?.label}". Tap to confirm, or pick another.`
+            : 'The app leads with this. You can change it any time from the Wayfinder.'}
+        </Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+          {PURPOSES.map(pp => (
+            <Chip
+              key={pp.key}
+              emoji={pp.emoji}
+              label={pp.label}
+              selected={effectivePurpose === pp.key}
+              color={c.gold}
+              onPress={() => set('purpose_key', pp.key)}
+              theme={theme}
+            />
+          ))}
+        </View>
       </View>
 
       <View style={{ marginTop: 16 }}>
@@ -764,6 +800,7 @@ function Step7({ data, set, theme, onThemeChange }) {
           { label: 'Planner items', value: (data.planner_picks || []).length + ' scheduled' },
           { label: 'Daily commitment', value: data.daily_minutes ? data.daily_minutes + ' min' : '—' },
           { label: 'Goal', value: data.primary_goal || '—' },
+          { label: 'Focus', value: getPurpose(data.purpose_key || suggestPurpose(data))?.label || 'Choose later' },
         ].map(row => (
           <View key={row.label} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
             <Text style={{ color: c.text4, fontSize: 13 }}>{row.label}</Text>
@@ -796,6 +833,9 @@ export default function MultiStepOnboarding() {
   const theme = { c, t, s, r, sh, isDark };
   const { setPersonalization, startTour } = useTour();
   const { refreshProfile } = useUserProgress();
+  // Starts the objective matching the purpose picked in Step 6, so Home has
+  // a first step on it the moment onboarding ends.
+  const { startObjective } = useAccess();
   const [, setHiddenSections] = useSetting(SETTING_KEYS.HIDDEN_LIBRARY_SECTIONS, []);
 
   const [step,    setStep]    = useState(0);
@@ -834,6 +874,7 @@ export default function MultiStepOnboarding() {
     formats:            [],
     tech_level:        'beginner',
     primary_goal:      '',
+    purpose_key:       null,
     daily_minutes:     15,
     life_stage:        '',
     wants_reflection:  false,
@@ -1003,6 +1044,8 @@ export default function MultiStepOnboarding() {
     try {
       if (!userId) throw new Error('No user');
 
+      const purposeKey = data.purpose_key || suggestPurpose(data);
+
       // Build hidden areas (all areas NOT in active)
       const hidden = LIFE_AREAS
         .map(a => a.id)
@@ -1022,6 +1065,16 @@ export default function MultiStepOnboarding() {
         formats:              data.formats,
         tech_level:           data.tech_level,
         primary_goal:         data.primary_goal || null,
+        // Step 6 has always asked how someone means to use the app and then
+        // dropped the answer — it never made it into this payload, so
+        // nothing could read it back. It's the strongest signal there is for
+        // suggesting a purpose later, so it's saved now (column added in the
+        // 20260915 Wayfinder migration).
+        usage_patterns:       data.usage_patterns || [],
+        // Confirmed in Step 6, or inferred from the answers if it was
+        // skipped. Null only when nothing matched at all, which the
+        // Wayfinder reads as "ask outright" rather than guessing.
+        purpose_key:          purposeKey,
         daily_minutes:        data.daily_minutes,
         life_stage:           data.life_stage || null,
         wants_reflection:     data.wants_reflection,
@@ -1053,6 +1106,17 @@ export default function MultiStepOnboarding() {
       // Library section visibility — device-local, same setting Settings'
       // own "Library Sections" editor reads/writes.
       await setHiddenSections(data.hidden_sections || []);
+
+      // Start the objective that matches the chosen purpose. This is the
+      // whole point of asking: finishing onboarding should hand someone one
+      // concrete next step, not a dashboard of twelve equally-loud options.
+      // Fails soft — if the Wayfinder migration isn't applied yet, the Home
+      // card just falls back to asking which objective to start.
+      const starter = getPurpose(purposeKey)?.starterObjective;
+      if (starter) {
+        try { await startObjective(starter); }
+        catch (e) { console.warn('onboarding start objective', starter, e); }
+      }
 
       // Personalize the guided tour with what was just picked.
       const areaLabels = LIFE_AREAS

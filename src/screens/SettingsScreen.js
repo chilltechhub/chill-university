@@ -26,6 +26,8 @@ import TourSpot from '../components/TourSpot';
 import { LIFE_AREAS } from './library/LifeAreaScreen';
 import { LIBRARY_HUBS } from './library/LibraryScreen';
 import { CREST_COLORS, ROLE_BADGES } from '../data/crestOptions';
+import { useAccess } from '../../context/AccessContext';
+import { FEATURES } from '../data/featureCatalog';
 
 // `alwaysShowSubtitle` is for the Show Emojis / Show Subtitles rows
 // themselves — hiding the explanation of what "show subtitles" does the
@@ -46,6 +48,34 @@ function SettingRow({ icon, iconColor, label, subtitle, right, onPress, c, t, s,
     </View>
   );
   return onPress ? <TouchableOpacity onPress={onPress} activeOpacity={0.8}>{content}</TouchableOpacity> : content;
+}
+
+// A one-line tally of what's open and what isn't. Deliberately a count
+// rather than a list: the list is the Wayfinder's job, and reproducing it
+// here would rebuild the wall of options in the one screen people already
+// open when they feel lost.
+function UnlockSummary({ accessFor, c, t, s, r, onPress }) {
+  const gated = FEATURES.filter(f => f.gate !== 'open');
+  const open = gated.filter(f => accessFor(f.id).available).length;
+
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, backgroundColor: c.bg1, borderRadius: r.md, padding: s.lg, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border }}>
+        <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: c.teal + '22', alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="lock-open-outline" size={18} color={c.teal} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1 }}>{open} of {gated.length} unlocked</Text>
+          <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>
+            {open === gated.length
+              ? 'Everything is open.'
+              : 'The Wayfinder lists what each one needs — an objective, a check, or a plan.'}
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={16} color={c.text4} />
+      </View>
+    </TouchableOpacity>
+  );
 }
 
 function SectionLabel({ label, c, t, s }) {
@@ -450,6 +480,12 @@ export default function SettingsScreen() {
   const [libraryBgMode, setLibraryBgMode] = useSetting(SETTING_KEYS.LIBRARY_BACKGROUND, 'plain');
   const [remindersEnabled, setRemindersEnabled] = useSetting(SETTING_KEYS.DAILY_REMINDERS_ENABLED, false);
   const [hiddenSections, setHiddenSections] = useSetting(SETTING_KEYS.HIDDEN_LIBRARY_SECTIONS, []);
+  // Wayfinder — purpose, the active objective, the experimental opt-in and
+  // plan state. Settings is where people come looking for "why can't I see
+  // X", so the same switches the Wayfinder offers live here too.
+  const {
+    purpose, activeObjective, accessFor, experimentalOn, setExperimental, isPlus,
+  } = useAccess();
   // null = never decided (see SETTING_KEYS.EDUCATOR_MODE); the Switch below
   // treats that as off, and flipping it writes an explicit true/false.
   const [educatorMode, setEducatorMode] = useSetting(SETTING_KEYS.EDUCATOR_MODE, null);
@@ -722,6 +758,52 @@ export default function SettingsScreen() {
           c={c} t={t} s={s} r={r}
         />
         <FabPositionPicker value={fabPosition} onChange={setFabPosition} c={c} t={t} s={s} r={r} />
+
+        {/* Wayfinder — the purpose/objective/gating layer. First under
+            Personalization because it's the setting that changes most of
+            what the rest of the app shows you. */}
+        <SectionLabel label="Wayfinder" c={c} t={t} s={s} />
+        <SettingRow
+          icon="navigate-outline"
+          iconColor={c.gold}
+          label={purpose ? purpose.label : 'Set your purpose'}
+          subtitle={activeObjective?.active
+            ? `On "${activeObjective.objective.label}" — ${activeObjective.done} of ${activeObjective.total} steps done`
+            : 'One purpose, one objective at a time. Finishing one opens more of the app.'}
+          alwaysShowSubtitle
+          right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
+          onPress={() => navigation.navigate('Wayfinder')}
+          c={c} t={t} s={s} r={r}
+        />
+        <SettingRow
+          icon="flask-outline"
+          iconColor={c.purple}
+          label="Experimental Features"
+          subtitle="Shows work that isn't finished — rough layouts, thin empty states, things that may be rebuilt. Off by default so you never land in one by accident."
+          alwaysShowSubtitle
+          right={
+            <Switch
+              value={experimentalOn}
+              onValueChange={setExperimental}
+              trackColor={{ false: c.bg2, true: c.purple + '88' }}
+              thumbColor={experimentalOn ? c.purple : c.text4}
+            />
+          }
+          c={c} t={t} s={s} r={r}
+        />
+        <SettingRow
+          icon={isPlus ? 'star' : 'star-outline'}
+          iconColor={c.gold}
+          label={isPlus ? 'Plus' : 'Free plan'}
+          subtitle={isPlus
+            ? 'Organizations, Deep Insights, AI Import and custom objectives are included.'
+            : 'Everything except Organizations, Deep Insights, AI Import and custom objectives works the same on the free plan.'}
+          alwaysShowSubtitle
+          right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
+          onPress={() => navigation.navigate('Wayfinder')}
+          c={c} t={t} s={s} r={r}
+        />
+        <UnlockSummary accessFor={accessFor} c={c} t={t} s={s} r={r} onPress={() => navigation.navigate('Wayfinder')} />
 
         {/* Personalization — same fields onboarding's Sectors / Look &
             Layout / Character steps set, editable here without re-running
