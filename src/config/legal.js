@@ -1,15 +1,13 @@
 // src/config/legal.js
 // The legal URLs the app links out to.
 //
-// ⚠️ SHIP BLOCKER — PRIVACY_POLICY_URL still points at a third party.
+// Onboarding shows this link inside the parent/guardian consent step,
+// directly under the paragraph describing what this app stores. It pointed
+// at Kids Web Services' own corporate policy for a while — the vendor used
+// for parent verification — which says nothing about this app's data
+// practices.
 //
-// Both onboarding flows show this link inside the parent/guardian consent
-// step, directly under the paragraph describing what *this* app stores. It
-// currently resolves to Kids Web Services' own corporate privacy policy —
-// the vendor used for parent verification — which says nothing about this
-// app's data practices.
-//
-// That is a problem on three fronts:
+// Why it has to be this app's own policy and not a vendor's:
 //   • App Store Review (5.1.1) and Google Play's Data Safety section both
 //     require a policy that actually covers the app being submitted.
 //   • Play's Families policy requires the privacy policy link to be the
@@ -19,9 +17,11 @@
 //     satisfy that, and the consent checkbox right below this link is what
 //     the app treats as consent having been given.
 //
-// There is already a privacy-policy.html in the chilltechhub-site repo —
-// this just needs to point at wherever that is published.
-export const PRIVACY_POLICY_URL = 'https://www.kidswebservices.com/privacy-policy';
+// Resolved 2026-09-12: the marketing site is live and its policy page is
+// published, so this now points at the developer's own policy as all three
+// of the above require. (Canonical URL drops the .html — /privacy-policy.html
+// 307s to /privacy-policy.) Verified reachable.
+export const PRIVACY_POLICY_URL = 'https://chilltechhub.com/privacy-policy';
 
 // Set alongside the privacy policy when the marketing site has a terms page.
 // Null hides the link rather than rendering a dead one.

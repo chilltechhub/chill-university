@@ -1,4 +1,4 @@
-// src/components/WayfinderCard.js
+// src/components/CompassCard.js
 // Home's answer to "what am I meant to do here?" — the single highest card
 // on the dashboard, because it is the one thing that should survive a person
 // having thirty seconds and no patience.
@@ -11,8 +11,8 @@
 //   objective live  → the NEXT STEP. Not the list of steps, not the progress
 //                     ring with the list underneath. One step, one tick box.
 //
-// Everything else the Wayfinder knows (the full path, what it unlocks, the
-// locked/experimental/paid rosters) lives on WayfinderScreen. Home gets the
+// Everything else the Compass knows (the full path, what it unlocks, the
+// locked/experimental/paid rosters) lives on CompassScreen. Home gets the
 // one line; the screen gets the detail. Putting the roster here would
 // recreate the exact wall of options this feature exists to remove.
 
@@ -28,7 +28,7 @@ import { featuresUnlockedBy } from '../data/featureCatalog';
 import { goToScreen } from '../logic/appRoutes';
 import { FONTS } from '../theme';
 
-export default function WayfinderCard() {
+export default function CompassCard() {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: sp, radius: r } = useTheme();
   const { showEmojis, showSubtext } = useUIPrefs();
@@ -43,14 +43,14 @@ export default function WayfinderCard() {
   // flickers into a live objective is worse than a beat of nothing.
   if (loading) return null;
 
-  const goWayfinder = () => navigation.navigate('Wayfinder');
+  const goCompass = () => navigation.navigate('Compass');
 
   /* ── No purpose on file ── */
   if (!purposeKey) {
     const suggestion = getPurpose(suggestedPurposeKey);
     return (
-      <TouchableOpacity style={[s.card, { borderLeftColor: c.gold }]} onPress={goWayfinder} activeOpacity={0.85}>
-        <Text style={s.kicker}>{showEmojis ? '🧭 ' : ''}Wayfinder</Text>
+      <TouchableOpacity style={[s.card, { borderLeftColor: c.gold }]} onPress={goCompass} activeOpacity={0.85}>
+        <Text style={s.kicker}>{showEmojis ? '🧭 ' : ''}Compass</Text>
         <Text style={s.headline}>What are you here for?</Text>
         {showSubtext && (
           <Text style={s.sub}>
@@ -72,7 +72,7 @@ export default function WayfinderCard() {
   /* ── Purpose, but nothing in flight ── */
   if (!activeObjective || !activeObjective.active) {
     return (
-      <TouchableOpacity style={[s.card, { borderLeftColor: accent }]} onPress={goWayfinder} activeOpacity={0.85}>
+      <TouchableOpacity style={[s.card, { borderLeftColor: accent }]} onPress={goCompass} activeOpacity={0.85}>
         <Text style={[s.kicker, { color: accent }]}>
           {showEmojis ? `${purpose?.emoji} ` : ''}{purpose?.label}
         </Text>
@@ -92,7 +92,7 @@ export default function WayfinderCard() {
 
   return (
     <View style={[s.card, { borderLeftColor: accent }]}>
-      <TouchableOpacity onPress={goWayfinder} activeOpacity={0.8}>
+      <TouchableOpacity onPress={goCompass} activeOpacity={0.8}>
         <View style={s.topRow}>
           <Text style={[s.kicker, { color: accent }]} numberOfLines={1}>
             {showEmojis ? `${purpose?.emoji} ` : ''}{objective.label}

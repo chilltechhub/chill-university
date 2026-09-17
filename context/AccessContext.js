@@ -1,10 +1,10 @@
 // context/AccessContext.js
-// The Wayfinder's state — one purpose, one active objective, and what the
+// The Compass's state — one purpose, one active objective, and what the
 // account has unlocked — held once at the top of the tree so every screen
 // reads the same answer.
 //
 // Why a context rather than a hook per screen: a lock has to look identical
-// in the Library grid, the unlock sheet, Settings and the Wayfinder itself,
+// in the Library grid, the unlock sheet, Settings and the Compass itself,
 // and any one of those can change it (opt into experimental features on
 // Settings and the Library grid should grow four entries immediately). Three
 // screens each fetching their own copy is how those drift apart.
@@ -94,7 +94,7 @@ export function AccessProvider({ children }) {
     setState(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
       if (userId) {
-        cacheWrite(`wayfinder_access_${userId}`, {
+        cacheWrite(`compass_access_${userId}`, {
           unlocks: next.unlocks, attempts: next.attempts, objectives: next.objectives,
         });
       }
@@ -183,7 +183,7 @@ export function AccessProvider({ children }) {
   );
 
   // Features ordered for this person's purpose — what the Library and the
-  // Wayfinder lead with. Hidden entries (experimental, not opted in) are
+  // Compass lead with. Hidden entries (experimental, not opted in) are
   // dropped here rather than at each call site.
   const rankedFeatures = useMemo(
     () => rankForPurpose(FEATURES, purposeKey, gateCtx).filter(entry => !entry.access.hidden),

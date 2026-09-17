@@ -18,10 +18,10 @@ import {
   TextInput, FlatList, Linking, Modal, Dimensions
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../../context/ThemeContext';
 import { useUIPrefs } from '../../../context/UIPrefsContext';
-import { supabase } from '../../api/supabaseClient';
+import { supabase } from '../../api/profileScopedClient';
 import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../api/offlineCache';
 
 const { width } = Dimensions.get('window');
@@ -74,7 +74,10 @@ const INTERESTS = [
 // build sheet. `roadmapUrl` only points at roadmap.sh pages that actually
 // exist for that role; roles without a real match just skip the link
 // rather than pointing somewhere that 404s.
-const CAREERS = [
+// Exported so LibraryScreen.js's Career Expeditions card can resolve a
+// targeted career id (see CAREER_AREA_ID/CAREER_TAG below) to a display
+// name, the same reuse pattern CaptureInbox.js's CAPTURE_TYPES already is.
+export const CAREERS = [
   {
     id: '1', title: 'AI / ML Systems Architect', field: 'Technology', icon: 'hardware-chip-outline',
     salary: '$120k - $250k', salaryMax: 250, demand: 'Very High', trajectory: '+32% Growth',
@@ -847,6 +850,16 @@ export default function CareerExplorationScreen() {
   const [quizPicks, setQuizPicks] = useState([]);       // in-progress selection inside the quiz
   const [activeInterests, setActiveInterests] = useState([]); // applied to the list
 
+  // Wayfinder's path sheets link straight to a career's write-up.
+  const route = useRoute();
+  useEffect(() => {
+    const id = route.params?.careerId;
+    if (!id) return;
+    const career = CAREERS.find(x => x.id === id);
+    if (career) setSelectedCareer(career);
+    navigation.setParams({ careerId: undefined });
+  }, [route.params?.careerId]);
+
   const toggleQuizPick = (id) => {
     setQuizPicks(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
@@ -967,6 +980,19 @@ export default function CareerExplorationScreen() {
           {showSubtext && <Text style={styles.discoverDesc}>Discover careers by what you're drawn to, not a job title you already know.</Text>}
         </View>
         <Ionicons name="chevron-forward" size={18} color={c.gold} />
+      </TouchableOpacity>
+
+      {/* Everything on this screen starts from job titles. Someone who
+          doesn't know what they want yet needs the step before that. */}
+      <TouchableOpacity
+        onPress={() => navigation.navigate('WayfinderScreen')}
+        style={{ marginHorizontal: 20, marginTop: -4, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+        accessibilityRole="button"
+      >
+        <Ionicons name="navigate-circle-outline" size={15} color={c.teal} />
+        <Text style={{ fontSize: 12.5, color: c.text3 }}>
+          Don’t know what you want at all? <Text style={{ color: c.teal, fontWeight: '700' }}>Start with Wayfinder →</Text>
+        </Text>
       </TouchableOpacity>
 
       {activeInterests.length > 0 && (
@@ -1473,7 +1499,7 @@ const makeStyles = (c) => StyleSheet.create({
   modalSkillsList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
   modalSkillTag: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.bg2, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: c.border },
   modalSkillText: { color: c.text1, fontSize: 12 },
-  disclaimerText: { color: c.text4, fontSize: 10, fontStyle: 'italic', lineHeight: 14, marginTop: -12, marginBottom: 20 },
+  disclaimerText: { color: c.text3, fontSize: 11, fontStyle: 'italic', lineHeight: 15, marginTop: -12, marginBottom: 20 },
   roadmapList: { marginBottom: 8 },
   roadmapStageRow: { flexDirection: 'row' },
   roadmapRail: { width: 28, alignItems: 'center' },

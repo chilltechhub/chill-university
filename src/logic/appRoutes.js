@@ -6,8 +6,8 @@
 // A `navigation.navigate('ProjectsScreen')` from the root stack only works
 // if the Library tab happens to be mounted already, which is exactly the
 // footgun FloatingActionButton.js and searchIndex.js each have their own
-// note about. The Wayfinder navigates from all three levels — Home's card,
-// the Wayfinder screen on the root stack, and unlock sheets rendered inside
+// note about. The Compass navigates from all three levels — Home's card,
+// the Compass screen on the root stack, and unlock sheets rendered inside
 // Library screens — so it needs one resolver rather than a guess per site.
 //
 // Deliberately free of imports beyond one pure data catalog, for the same
@@ -24,7 +24,7 @@ const TAB_SCREENS = new Set(['Home', 'Training', 'Library']);
 const ROOT_SCREENS = new Set([
   'Login', 'ResetPassword', 'MultiStepOnboarding', 'MainTabs', 'Onboarding',
   'Profile', 'Settings', 'Play', 'PlayGame', 'Leaderboard', 'Family',
-  'ChildProgress', 'Organization', 'CohortRoster', 'Help', 'Wayfinder', 'Stats',
+  'ChildProgress', 'Organization', 'CohortRoster', 'Help', 'Compass', 'Stats',
 ]);
 
 // The Classes stack, two levels down (Library -> ClassesStack -> screen).

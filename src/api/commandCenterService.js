@@ -1,7 +1,7 @@
 // src/api/commandCenterService.js
 // All Supabase calls for the Library Command Center
 
-import { supabase } from './supabaseClient';
+import { supabase } from './profileScopedClient';
 import { todayStr, dateStr } from '../logic/dateUtils';
 
 const today = todayStr; // local calendar — see logic/dateUtils

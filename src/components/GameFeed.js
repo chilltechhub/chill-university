@@ -85,6 +85,8 @@ import FactBattleGame from './FactBattleGame';
 import FreeThrowFrenzyGame from './FreeThrowFrenzyGame';
 import TriviaCatchGame from './TriviaCatchGame';
 import SurviveMonthGame from './SurviveMonthGame';
+import RegisterReadyGame from './RegisterReadyGame';
+import ShiftManagerGame from './ShiftManagerGame';
 import { getEnabledGames } from '../services/gameRegistry';
 import { useConfigValue } from '../../context/RemoteConfigContext';
 
@@ -120,6 +122,8 @@ const COMPONENT_MAP = {
   FreeThrowFrenzyGame,
   TriviaCatchGame,
   SurviveMonthGame,
+  RegisterReadyGame,
+  ShiftManagerGame,
 };
 
 function shuffle(arr) {

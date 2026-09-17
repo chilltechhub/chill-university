@@ -11,9 +11,18 @@
 // `navigation.navigate('ClassesStack', { screen })` — should read
 // CLASS_SCREEN_MAP here rather than keeping its own copy.
 
+// `personas` — which profile types see this subject. Omit it and the subject
+// shows everywhere; that's the default so a newly added subject is never
+// invisible by accident.
+//
+// The split: school subjects belong to PERSONAL and STUDENT profiles, not to
+// someone's night job or their startup. The business-ownership track is the
+// mirror image. Technology & Engineering sits in both, being as useful to a
+// founder as to a learner.
 export const CLASS_SUBJECTS = [
   {
     title: 'Math',
+    personas: ['PERSONAL', 'STUDENT'],
     icon: 'calculator',
     color: '#4A90E2',
     description: 'Numbers, algebra, geometry & more',
@@ -28,6 +37,7 @@ export const CLASS_SUBJECTS = [
   },
   {
     title: 'Language Arts',
+    personas: ['PERSONAL', 'STUDENT'],
     icon: 'book',
     color: '#E05858',
     description: 'Reading, writing & communication',
@@ -41,6 +51,7 @@ export const CLASS_SUBJECTS = [
   },
   {
     title: 'Science',
+    personas: ['PERSONAL', 'STUDENT'],
     icon: 'flask',
     color: '#3AC860',
     description: 'Explore the natural world',
@@ -55,6 +66,7 @@ export const CLASS_SUBJECTS = [
   },
   {
     title: 'Social Sciences',
+    personas: ['PERSONAL', 'STUDENT'],
     icon: 'people',
     color: '#E0A830',
     description: 'History, geography & society',
@@ -67,6 +79,7 @@ export const CLASS_SUBJECTS = [
   },
   {
     title: 'Art & Music',
+    personas: ['PERSONAL', 'STUDENT'],
     icon: 'color-palette',
     color: '#8B4FC4',
     description: 'Express your creativity',
@@ -77,6 +90,7 @@ export const CLASS_SUBJECTS = [
   },
   {
     title: 'Home Economics & Workshop',
+    personas: ['PERSONAL', 'STUDENT'],
     icon: 'home',
     color: '#E07A30',
     description: 'Practical life skills',
@@ -94,27 +108,91 @@ export const CLASS_SUBJECTS = [
   },
   {
     title: 'Technology & Engineering',
+    personas: ['PERSONAL', 'STUDENT', 'BUSINESS', 'ENTREPRENEUR'],
     icon: 'laptop',
     color: '#5A9AE0',
     description: 'Build the future',
   },
   {
     title: 'Foreign Language',
+    personas: ['PERSONAL', 'STUDENT'],
     icon: 'language',
     color: '#3498DB',
     description: 'Connect with the world',
   },
   {
     title: 'Health & Fitness',
+    personas: ['PERSONAL', 'STUDENT'],
     icon: 'fitness',
     color: '#E05858',
     description: 'Mind and body wellness',
   },
   {
     title: 'Business & Finance',
+    personas: ['PERSONAL', 'STUDENT'],
     icon: 'briefcase',
     color: '#3AC860',
     description: 'Economics & entrepreneurship',
+  },
+  // ENTREPRENEUR / BUSINESS profiles only. Two separate tracks because buying
+  // an operating business and building a startup are genuinely different
+  // journeys after the shared foundation of Levels 1 and 2 — see TRACKS in
+  // src/data/ownershipCurriculum.js.
+  {
+    title: 'Business Foundations',
+    icon: 'library',
+    color: '#3AC860',
+    description: 'Shared groundwork for both paths',
+    personas: ['BUSINESS', 'ENTREPRENEUR'],
+    children: [
+      { label: 'Level 0: How Money Systems Work' },
+      { label: 'Level 1: Personal Sovereignty' },
+      { label: 'Level 2: Business Architecture' },
+    ],
+  },
+  {
+    title: 'Acquisition & Ownership',
+    icon: 'business',
+    color: '#E0A830',
+    description: 'Buy or grow a cash-flow business, and the property under it',
+    personas: ['BUSINESS', 'ENTREPRENEUR'],
+    children: [
+      { label: 'Level 3A: Capital & Funding' },
+      { label: 'Level 3B: Real Estate & Assets' },
+      { label: 'Level 4: Taxes & Wealth Protection' },
+    ],
+  },
+  {
+    title: 'Startup & Venture',
+    icon: 'rocket',
+    color: '#8B4FC4',
+    description: 'Validate, build, grow, and raise',
+    personas: ['BUSINESS', 'ENTREPRENEUR'],
+    children: [
+      { label: 'Level S1: Idea Validation' },
+      { label: 'Level S2: Product & MVP' },
+      { label: 'Level S3: Go-To-Market & Growth' },
+      { label: 'Level S4: Venture Scale & Exit' },
+    ],
+  },
+  // The employer-side layer: what it takes to actually run a business with
+  // people in it, rather than own or build one — front-line operations
+  // training plus the compliance/risk/culture policies a real handbook
+  // needs. This is the content a business would hand its own team, which
+  // is what makes this track pitchable as a B2B product on its own: an
+  // owner in this persona can already assign any of these lessons to a
+  // Team via the Organization layer (Organization -> Team -> Assign) and
+  // see completion per employee.
+  {
+    title: 'Operations & Compliance',
+    icon: 'shield-checkmark',
+    color: '#C0392B',
+    description: 'Run the business, train the team, stay compliant',
+    personas: ['BUSINESS', 'ENTREPRENEUR'],
+    children: [
+      { label: 'Level R1: Retail Operations Training' },
+      { label: 'Level W1: Workplace Compliance & Culture' },
+    ],
   },
 ];
 
@@ -170,4 +248,16 @@ export const CLASS_SCREEN_MAP = {
   'Foreign Language': 'ForeignLanguage',
   'Health & Fitness': 'HealthAndFitness',
   'Business & Finance': 'BusinessAndFinance',
+  'Level 2: Business Architecture': 'BusinessArchitecture',
+  'Level R1: Retail Operations Training': 'RetailOperations',
+  'Level W1: Workplace Compliance & Culture': 'WorkplaceCompliance',
+  'Level 0: How Money Systems Work': 'MoneySystems',
+  'Level 1: Personal Sovereignty': 'PersonalSovereignty',
+  'Level 3A: Capital & Funding': 'CapitalFunding',
+  'Level 3B: Real Estate & Assets': 'RealEstateAssets',
+  'Level 4: Taxes & Wealth Protection': 'WealthProtection',
+  'Level S1: Idea Validation': 'IdeaValidation',
+  'Level S2: Product & MVP': 'ProductEngineering',
+  'Level S3: Go-To-Market & Growth': 'GoToMarket',
+  'Level S4: Venture Scale & Exit': 'VentureScale',
 };

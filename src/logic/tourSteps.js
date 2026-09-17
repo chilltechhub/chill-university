@@ -16,10 +16,10 @@ export const TOUR_STEPS = [
   {
     // Second step, right after the welcome, because it's the answer to the
     // question the rest of the tour raises — "that's a lot of app, where do
-    // I start?" See src/components/WayfinderCard.js.
-    id: 'home-wayfinder',
+    // I start?" See src/components/CompassCard.js, registered as a board widget.
+    id: 'home-compass',
     tab: 'Home',
-    title: '🧭 Wayfinder',
+    title: '🧭 Compass',
     body: "Pick one reason you're here and one objective to finish, and the app leads with that instead of everything at once. Finishing an objective is also how parts of the app open up — or you can test out of them if you already know the ground.",
   },
   {
@@ -37,36 +37,42 @@ export const TOUR_STEPS = [
   {
     id: 'library-life-areas',
     tab: 'Library',
+    librarySubTab: 'domains',
     title: 'Life Areas',
     body: 'Physical, Mental, Social, Financial, Creative, Professional, Spiritual, Digital — check in on each and get tips tailored to it.',
   },
   {
     id: 'hub-ClassesStack',
     tab: 'Library',
+    librarySubTab: 'knowledge',
     title: 'Academy Classes',
     body: "Structured coursework by grade level, across every subject — Math, Science, Language Arts, and more. Pick a subject, pick a topic, and mark it complete to earn XP toward your rank.",
   },
   {
     id: 'hub-ProjectsScreen',
     tab: 'Library',
+    librarySubTab: 'build',
     title: 'The Workshop',
     body: "Every build lives here, from a rough blueprint to something you're shipping. Start a project, add tasks and research as you go — finished ones land in your Portfolio automatically.",
   },
   {
     id: 'hub-PortfolioScreen',
     tab: 'Library',
+    librarySubTab: 'build',
     title: 'Portfolio',
     body: "Your real track record — XP, skills, and shipped projects, auto-built as you use the app. This is what you'd actually show someone. It opens once you've shipped your first build, or if you pass its readiness check.",
   },
   {
     id: 'hub-KnowledgeScreen',
     tab: 'Library',
+    librarySubTab: 'knowledge',
     title: 'Knowledge Vault',
     body: "Notes, bookmarks, research papers, and tools in one place. Jot something down, save a link worth coming back to, or browse Discover for curated research tools and sites.",
   },
   {
     id: 'hub-PlannerScreen',
     tab: 'Library',
+    librarySubTab: 'knowledge',
     title: 'Planner',
     body: "Your full agenda — daily, weekly, monthly. Schedule a one-off event or a recurring habit, with a reminder before it's due.",
   },

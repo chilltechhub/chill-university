@@ -175,7 +175,7 @@ export default function CompetencyTest({ visible, featureId, feature, onClose, o
                 <Text style={s.verdictBody}>
                   {result.passed
                     ? 'You skipped the objective and went straight through. It stays unlocked.'
-                    : `The check is spent. ${feature?.label || 'This'} opens by finishing its objective now — the steps are in the Wayfinder.`}
+                    : `The check is spent. ${feature?.label || 'This'} opens by finishing its objective now — the steps are in the Compass.`}
                 </Text>
               </View>
 

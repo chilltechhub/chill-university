@@ -32,7 +32,7 @@ import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
-import { supabase } from '../api/supabaseClient';
+import { supabase } from '../api/profileScopedClient';
 import { addCapture } from '../api/captureService';
 import { analyzeWithAI, hasUserApiKey } from '../api/importAI';
 import { detectFormat, parseDeterministic, normalizeUrlForDedupe } from '../logic/importParsers';

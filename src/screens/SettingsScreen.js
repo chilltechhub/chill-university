@@ -18,6 +18,7 @@ import LevelRing from '../components/LevelRing';
 import { getRank, getRankProgress } from '../logic/rankUtils';
 import { getUserApiKey, setUserApiKey, clearUserApiKey, maskKey } from '../api/aiKey';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
+import { resetSeenScreens } from '../logic/useFirstVisitTutorial';
 import { useFabPosition } from '../../context/FabPositionContext';
 import { syncReminders, cancelAllReminders, computeReminderState } from '../logic/notificationScheduler';
 import { useUserProgress } from '../../context/UserProgressContext';
@@ -51,7 +52,7 @@ function SettingRow({ icon, iconColor, label, subtitle, right, onPress, c, t, s,
 }
 
 // A one-line tally of what's open and what isn't. Deliberately a count
-// rather than a list: the list is the Wayfinder's job, and reproducing it
+// rather than a list: the list is the Compass's job, and reproducing it
 // here would rebuild the wall of options in the one screen people already
 // open when they feel lost.
 function UnlockSummary({ accessFor, c, t, s, r, onPress }) {
@@ -69,7 +70,7 @@ function UnlockSummary({ accessFor, c, t, s, r, onPress }) {
           <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>
             {open === gated.length
               ? 'Everything is open.'
-              : 'The Wayfinder lists what each one needs — an objective, a check, or a plan.'}
+              : 'The Compass lists what each one needs — an objective, a check, or a plan.'}
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={16} color={c.text4} />
@@ -479,10 +480,11 @@ export default function SettingsScreen() {
   const [homeBgMode, setHomeBgMode] = useSetting(SETTING_KEYS.HOME_BACKGROUND, 'plain');
   const [libraryBgMode, setLibraryBgMode] = useSetting(SETTING_KEYS.LIBRARY_BACKGROUND, 'plain');
   const [remindersEnabled, setRemindersEnabled] = useSetting(SETTING_KEYS.DAILY_REMINDERS_ENABLED, false);
+  const [screenTutorials, setScreenTutorials] = useSetting(SETTING_KEYS.SCREEN_TUTORIALS_ENABLED, true);
   const [hiddenSections, setHiddenSections] = useSetting(SETTING_KEYS.HIDDEN_LIBRARY_SECTIONS, []);
-  // Wayfinder — purpose, the active objective, the experimental opt-in and
+  // Compass — purpose, the active objective, the experimental opt-in and
   // plan state. Settings is where people come looking for "why can't I see
-  // X", so the same switches the Wayfinder offers live here too.
+  // X", so the same switches the Compass offers live here too.
   const {
     purpose, activeObjective, accessFor, experimentalOn, setExperimental, isPlus,
   } = useAccess();
@@ -759,10 +761,10 @@ export default function SettingsScreen() {
         />
         <FabPositionPicker value={fabPosition} onChange={setFabPosition} c={c} t={t} s={s} r={r} />
 
-        {/* Wayfinder — the purpose/objective/gating layer. First under
+        {/* Compass — the purpose/objective/gating layer. First under
             Personalization because it's the setting that changes most of
             what the rest of the app shows you. */}
-        <SectionLabel label="Wayfinder" c={c} t={t} s={s} />
+        <SectionLabel label="Compass" c={c} t={t} s={s} />
         <SettingRow
           icon="navigate-outline"
           iconColor={c.gold}
@@ -772,7 +774,7 @@ export default function SettingsScreen() {
             : 'One purpose, one objective at a time. Finishing one opens more of the app.'}
           alwaysShowSubtitle
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
-          onPress={() => navigation.navigate('Wayfinder')}
+          onPress={() => navigation.navigate('Compass')}
           c={c} t={t} s={s} r={r}
         />
         <SettingRow
@@ -800,10 +802,10 @@ export default function SettingsScreen() {
             : 'Everything except Organizations, Deep Insights, AI Import and custom objectives works the same on the free plan.'}
           alwaysShowSubtitle
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
-          onPress={() => navigation.navigate('Wayfinder')}
+          onPress={() => navigation.navigate('Compass')}
           c={c} t={t} s={s} r={r}
         />
-        <UnlockSummary accessFor={accessFor} c={c} t={t} s={s} r={r} onPress={() => navigation.navigate('Wayfinder')} />
+        <UnlockSummary accessFor={accessFor} c={c} t={t} s={s} r={r} onPress={() => navigation.navigate('Compass')} />
 
         {/* Personalization — same fields onboarding's Sectors / Look &
             Layout / Character steps set, editable here without re-running
@@ -904,6 +906,40 @@ export default function SettingsScreen() {
         <SettingRow icon="school-outline" iconColor="#b07be0" label="Replay Tutorial" subtitle="Take the guided tour of the app's features again"
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
           onPress={() => { navigation.navigate('MainTabs'); setTimeout(startTour, 300); }}
+          c={c} t={t} s={s} r={r} />
+        {/* Per-screen tutorials — see src/logic/useFirstVisitTutorial.js. The
+            main teaching in the app now, which is why it defaults on. */}
+        <SettingRow icon="chatbubbles-outline" iconColor="#b07be0" label="Screen Tutorials"
+          subtitle="A short walkthrough the first time you open each screen"
+          alwaysShowSubtitle
+          right={
+            <Switch
+              value={screenTutorials !== false}
+              onValueChange={setScreenTutorials}
+              trackColor={{ false: c.bg2, true: c.teal + '88' }}
+              thumbColor={screenTutorials !== false ? c.teal : c.text4}
+            />
+          }
+          c={c} t={t} s={s} r={r} />
+        <SettingRow icon="refresh-outline" iconColor="#b07be0" label="Show All Tutorials Again"
+          subtitle="Forget which screens you've already seen a walkthrough for"
+          right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
+          onPress={() => {
+            Alert.alert(
+              'Show all tutorials again?',
+              "Every screen will walk you through itself once more, the next time you open it.",
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Show again',
+                  onPress: async () => {
+                    await resetSeenScreens();
+                    Alert.alert('Done', "Screen tutorials will show again as you move around the app.");
+                  },
+                },
+              ],
+            );
+          }}
           c={c} t={t} s={s} r={r} />
         <SettingRow icon="information-circle-outline" iconColor={c.teal} label="App Version" subtitle="CT App · ChillTech Hub LLC"
           right={<Text style={{ fontSize: t.xs, color: c.text4 }}>v1.0.0</Text>}

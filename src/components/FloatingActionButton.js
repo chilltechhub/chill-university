@@ -1,8 +1,8 @@
 // src/components/FloatingActionButton.js
-// Global floating action button — one tap away from the most common actions,
-// from anywhere in the app.
+// Global floating action button — one tap away from the most common
+// creation actions, from anywhere in the app.
 //
-// Everything that *creates* something (note, reminder, project, capture) is
+// Everything here *creates* something (note, reminder, project, capture) —
 // a self-contained popup, not a navigation. This component is rendered as a
 // sibling of the root navigator, two levels above the Library tab's own
 // nested stack — calling navigation.navigate('NotesScreen') (etc.) from out
@@ -11,15 +11,16 @@
 // otherwise. Popups sidestep that entirely, and they're quicker to use too
 // — no leaving the screen you're on just to jot something down.
 //
-// Profile / Settings / Help are real navigations because they're root-level
-// screens (direct siblings of MainTabs in the root stack), so they resolve
-// correctly no matter what tab or nested screen is currently active.
+// Profile / Help / Screen Tutorial / Settings / Search used to live in this
+// same list — moved to TopBar's crest menu instead (see TopBar.js), since
+// that's a root-level control just like this one, and splitting "create
+// something" from "go somewhere" makes each list mean one thing, not two.
 //
 // Design decisions (why icon-only vs icon+text):
 //   - The FAB itself is icon-only (+/×). It's the single anchor control the
 //     whole screen already trains the eye on — a label would be redundant.
 //   - Every speed-dial action is icon + text and shares the same row
-//     treatment. There are 9 destinations and several share a similar
+//     treatment. There are 5 destinations and several share a similar
 //     silhouette (calendar vs reminder-bell vs note), so a label removes
 //     any guessing.
 //
@@ -37,17 +38,15 @@ import {
   TextInput, KeyboardAvoidingView, ActivityIndicator, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { useFabPosition } from '../../context/FabPositionContext';
-import { useTour } from '../../context/TourContext';
-import { useCommandPalette } from '../../context/CommandPaletteContext';
 import { supabase } from '../api/supabaseClient';
 import { offlineWrite, isOnline } from '../api/offlineCache';
 import { addCapture } from '../api/captureService';
 import CalendarModal from './CalendarModal';
+import FloatingCard from './FloatingCard';
 import { QuickCaptureModal } from '../screens/CaptureInbox';
 import LoginScreen from '../screens/LoginScreen';
 import { todayStr } from '../logic/dateUtils';
@@ -58,13 +57,6 @@ const NO_TABBAR_ROUTES = new Set(['Profile', 'Settings', 'Play', 'PlayGame', 'Le
 // Ordered top-to-bottom in the speed dial; the LAST entry ends up closest to
 // the FAB (bottom), so the most-reached-for actions go last.
 const ACTIONS = [
-  { key: 'profile',  label: 'Profile',        icon: 'person-circle-outline',    colorKey: 'gold' },
-  { key: 'help',     label: 'Help',           icon: 'help-circle-outline',      colorKey: 'purple' },
-  { key: 'tutorial', label: 'Screen Tutorial', icon: 'school-outline',          colorKey: 'teal' },
-  { key: 'settings', label: 'Settings',       icon: 'settings-outline',         colorKey: 'text3' },
-  // The phone-side entry to the command palette — Cmd/Ctrl+K only exists
-  // where there's a keyboard, so search needs a visible control too.
-  { key: 'search',   label: 'Search',         icon: 'search-outline',           color: '#3fb8cf' },
   { key: 'project',  label: 'New Project',    icon: 'hammer-outline',           colorKey: 'gold' },
   { key: 'calendar', label: 'Calendar',       icon: 'calendar-outline',         colorKey: 'teal' },
   { key: 'reminder', label: 'New Reminder',   icon: 'notifications-outline',    color: '#c9a84c' },
@@ -118,40 +110,36 @@ function QuickNoteModal({ visible, userId, onSaved, onClose, c, t, s, r }) {
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
-      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 48, borderTopWidth: 0.5, borderColor: c.border }}>
-          <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: s.lg }}>
-            <Text style={{ fontSize: t.xl, fontWeight: t.bold, color: c.text1 }}>📝 New Note</Text>
-            <TouchableOpacity onPress={close}>
-              <Ionicons name="close" size={22} color={c.text3} />
-            </TouchableOpacity>
-          </View>
-          <TextInput
-            style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: '#2bb5a066', minHeight: 90, textAlignVertical: 'top', marginBottom: s.sm }}
-            value={body} onChangeText={setBody}
-            placeholder="Write a note..." placeholderTextColor={c.text4}
-            multiline autoFocus
-          />
-          <TextInput
-            style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: c.border, marginBottom: s.lg }}
-            value={tags} onChangeText={setTags}
-            placeholder="Tags: money, ideas, health..." placeholderTextColor={c.text4} autoCapitalize="none"
-          />
-          <View style={{ flexDirection: 'row', gap: s.sm }}>
-            <TouchableOpacity onPress={close} style={{ flex: 1, padding: s.md, alignItems: 'center', backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border }}>
-              <Text style={{ color: c.text3 }}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={save} disabled={!body.trim() || saving}
-              style={{ flex: 2, backgroundColor: '#2bb5a0', borderRadius: r.md, padding: s.md, alignItems: 'center', opacity: (!body.trim() || saving) ? 0.5 : 1 }}>
-              {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontWeight: t.bold }}>Save Note</Text>}
-            </TouchableOpacity>
-          </View>
+    <FloatingCard visible={visible} onClose={close} c={c}>
+      <View style={{ padding: s.xl, paddingTop: s.sm }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: s.lg }}>
+          <Text style={{ fontSize: t.xl, fontWeight: t.bold, color: c.text1 }}>📝 New Note</Text>
+          <TouchableOpacity onPress={close}>
+            <Ionicons name="close" size={22} color={c.text3} />
+          </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+        <TextInput
+          style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: '#2bb5a066', minHeight: 90, textAlignVertical: 'top', marginBottom: s.sm }}
+          value={body} onChangeText={setBody}
+          placeholder="Write a note..." placeholderTextColor={c.text4}
+          multiline autoFocus
+        />
+        <TextInput
+          style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: c.border, marginBottom: s.lg }}
+          value={tags} onChangeText={setTags}
+          placeholder="Tags: money, ideas, health..." placeholderTextColor={c.text4} autoCapitalize="none"
+        />
+        <View style={{ flexDirection: 'row', gap: s.sm }}>
+          <TouchableOpacity onPress={close} style={{ flex: 1, padding: s.md, alignItems: 'center', backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border }}>
+            <Text style={{ color: c.text3 }}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={save} disabled={!body.trim() || saving}
+            style={{ flex: 2, backgroundColor: '#2bb5a0', borderRadius: r.md, padding: s.md, alignItems: 'center', opacity: (!body.trim() || saving) ? 0.5 : 1 }}>
+            {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontWeight: t.bold }}>Save Note</Text>}
+          </TouchableOpacity>
+        </View>
+      </View>
+    </FloatingCard>
   );
 }
 
@@ -204,47 +192,42 @@ function QuickProjectModal({ visible, userId, onCreated, onClose, c, t, s, r }) 
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
-      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 48, borderTopWidth: 0.5, borderColor: c.border }}>
-          <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: s.lg }}>
-            <Text style={{ fontSize: t.xl, fontWeight: t.bold, color: c.text1 }}>🏗️ New Project</Text>
-            <TouchableOpacity onPress={close}>
-              <Ionicons name="close" size={22} color={c.text3} />
-            </TouchableOpacity>
-          </View>
-          <TextInput
-            style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.md, color: c.text1, borderWidth: 1, borderColor: c.gold + '66', marginBottom: s.sm }}
-            value={title} onChangeText={setTitle}
-            placeholder="Project name..." placeholderTextColor={c.text4} autoFocus
-          />
-          <TextInput
-            style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: c.border, minHeight: 60, textAlignVertical: 'top', marginBottom: s.md }}
-            value={objective} onChangeText={setObjective}
-            placeholder="What are you building? (optional)" placeholderTextColor={c.text4} multiline
-          />
-          <Text style={{ fontSize: t.xs, color: c.text4, marginBottom: s.lg }}>
-            You can set an icon, color, and type from the Workshop once it's created.
-          </Text>
-          <View style={{ flexDirection: 'row', gap: s.sm }}>
-            <TouchableOpacity onPress={close} style={{ flex: 1, padding: s.md, alignItems: 'center', backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border }}>
-              <Text style={{ color: c.text3 }}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={start} disabled={!title.trim() || saving}
-              style={{ flex: 2, backgroundColor: c.gold, borderRadius: r.md, padding: s.md, alignItems: 'center', opacity: (!title.trim() || saving) ? 0.5 : 1 }}>
-              {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontWeight: t.bold }}>Start Building</Text>}
-            </TouchableOpacity>
-          </View>
+    <FloatingCard visible={visible} onClose={close} c={c}>
+      <View style={{ padding: s.xl, paddingTop: s.sm }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: s.lg }}>
+          <Text style={{ fontSize: t.xl, fontWeight: t.bold, color: c.text1 }}>🏗️ New Project</Text>
+          <TouchableOpacity onPress={close}>
+            <Ionicons name="close" size={22} color={c.text3} />
+          </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+        <TextInput
+          style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.md, color: c.text1, borderWidth: 1, borderColor: c.gold + '66', marginBottom: s.sm }}
+          value={title} onChangeText={setTitle}
+          placeholder="Project name..." placeholderTextColor={c.text4} autoFocus
+        />
+        <TextInput
+          style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: c.border, minHeight: 60, textAlignVertical: 'top', marginBottom: s.md }}
+          value={objective} onChangeText={setObjective}
+          placeholder="What are you building? (optional)" placeholderTextColor={c.text4} multiline
+        />
+        <Text style={{ fontSize: t.xs, color: c.text4, marginBottom: s.lg }}>
+          You can set an icon, color, and type from the Workshop once it's created.
+        </Text>
+        <View style={{ flexDirection: 'row', gap: s.sm }}>
+          <TouchableOpacity onPress={close} style={{ flex: 1, padding: s.md, alignItems: 'center', backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border }}>
+            <Text style={{ color: c.text3 }}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={start} disabled={!title.trim() || saving}
+            style={{ flex: 2, backgroundColor: c.gold, borderRadius: r.md, padding: s.md, alignItems: 'center', opacity: (!title.trim() || saving) ? 0.5 : 1 }}>
+            {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontWeight: t.bold }}>Start Building</Text>}
+          </TouchableOpacity>
+        </View>
+      </View>
+    </FloatingCard>
   );
 }
 
 export default function FloatingActionButton({ currentScreen }) {
-  const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s, radius: r, shadows: sh } = useTheme();
   const { user } = useUserProgress();
   const insets = useSafeAreaInsets();
@@ -263,8 +246,6 @@ export default function FloatingActionButton({ currentScreen }) {
   // Shared live context — also settable from Settings → Appearance, but
   // living here means the Move circle below can relocate the FAB instantly.
   const { fabPosition, setFabPosition } = useFabPosition();
-  const { startScreenTour } = useTour();
-  const { openPalette } = useCommandPalette();
   const [vSide, hSide] = fabPosition.split('-'); // 'top'|'bottom', 'left'|'right'
 
   const hasTabBar = !NO_TABBAR_ROUTES.has(currentScreen);
@@ -311,9 +292,6 @@ export default function FloatingActionButton({ currentScreen }) {
   const run = (action) => {
     close();
     switch (action.key) {
-      case 'profile':
-        user ? navigation.navigate('Profile') : setShowLogin(true);
-        break;
       case 'inbox':
         if (!needsSignIn()) setCaptureOpen(true);
         break;
@@ -328,18 +306,6 @@ export default function FloatingActionButton({ currentScreen }) {
         break;
       case 'project':
         if (!needsSignIn()) setProjectOpen(true);
-        break;
-      case 'settings':
-        navigation.navigate('Settings');
-        break;
-      case 'search':
-        openPalette();
-        break;
-      case 'help':
-        navigation.navigate('Help', { fromScreen: currentScreen });
-        break;
-      case 'tutorial':
-        startScreenTour(currentScreen);
         break;
     }
   };

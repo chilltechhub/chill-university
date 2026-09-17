@@ -545,6 +545,43 @@ export const GAME_REGISTRY = {
     enabled: true,
   },
 
+  // ── Retail operations training — modeled on real employee onboarding ────
+  registerready: {
+    id: 'registerready',
+    name: 'Register Ready',
+    component: 'RegisterReadyGame',
+
+    subject: 'career',
+    subjectLabel: 'Career & Life Skills',
+    category: 'retail-ops',
+    grade: '6-8',
+    mechanic: 'quiz',
+
+    icon: '🛒',
+    color: '#F2994A',
+    desc: 'Cash handling, returns, and loss prevention calls',
+
+    enabled: true,
+  },
+
+  shiftmanager: {
+    id: 'shiftmanager',
+    name: 'Shift Manager',
+    component: 'ShiftManagerGame',
+
+    subject: 'career',
+    subjectLabel: 'Career & Life Skills',
+    category: 'retail-ops',
+    grade: '9-12',
+    mechanic: 'strategy',
+
+    icon: '🏪',
+    color: '#C9663B',
+    desc: 'Run a retail shift — balance the till against real risk',
+
+    enabled: true,
+  },
+
   freethrow: {
     id: 'freethrow',
     name: 'Free Throw Frenzy',

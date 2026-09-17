@@ -1,12 +1,12 @@
 // src/api/accessService.js
-// Supabase access for the Wayfinder — unlocks, objectives, test attempts and
+// Supabase access for the Compass — unlocks, objectives, test attempts and
 // the three profile fields that drive them (plan, experimental opt-in,
-// purpose). Schema: supabase/migrations/20260915120000_wayfinder_feature_gating.sql
+// purpose). Schema: supabase/migrations/20260915120000_compass_feature_gating.sql
 //
 // Two rules this module lives by:
 //
 //  1. It fails soft. The migration may not be applied yet on a given
-//     project, and the Wayfinder is an orientation layer, not a paywall —
+//     project, and the Compass is an orientation layer, not a paywall —
 //     a missing table should mean "nothing is unlocked yet", not a broken
 //     app. Same posture as HomeScreen's getMyOpenAssignments() call, which
 //     already degrades one rail rather than blanking the desk.
@@ -22,7 +22,7 @@
 import { supabase } from './supabaseClient';
 import { cacheRead, cacheWrite, isOnline } from './offlineCache';
 
-const cacheKeyFor = (userId) => `wayfinder_access_${userId}`;
+const cacheKeyFor = (userId) => `compass_access_${userId}`;
 
 // Postgres/PostgREST codes for "that table or function isn't there" — the
 // exact case the migration-not-applied fallback exists for. Anything else

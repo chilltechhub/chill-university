@@ -20,6 +20,7 @@ import PlannerScreen from '../PlannerScreen';
 
 // Academic & Career
 import CareerExplorationScreen from './careerexplore';
+import WayfinderScreen         from './wayfinder/WayfinderScreen';
 import PortfolioScreen         from './portfolio';
 import ProjectsScreen          from './projects';
 import ProjectDetailScreen     from './ProjectDetail';
@@ -132,6 +133,10 @@ export default function LibraryNavigator() {
       <Stack.Screen name="LabsScreen"              component={GatedLabs}               options={{ title: 'Labs' }} /> 
       <Stack.Screen name="PortfolioScreen"         component={GatedPortfolio}          options={{ title: 'Portfolio' }} />
       <Stack.Screen name="CareerExplorationScreen" component={GatedCareer}             options={{ title: 'Career Explorer' }} />
+      {/* Deliberately ungated. Wayfinder is the "I don't know what I want"
+          entry point, so locking it behind the thing it exists to help you
+          figure out would be backwards. */}
+      <Stack.Screen name="WayfinderScreen"         component={WayfinderScreen}         options={{ title: 'Wayfinder' }} />
 
       {/* Discover */}
       <Stack.Screen name="DiscoverScreen"      component={GatedDiscover}       options={{ title: 'Discover' }} />

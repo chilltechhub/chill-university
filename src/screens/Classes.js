@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../context/ThemeContext';
 import { useUIPrefs } from '../../context/UIPrefsContext';
+import { useProfiles } from '../../context/ProfileAccountsContext';
 import { supabase } from '../api/supabaseClient';
 import { fetchContentPool } from '../api/remoteConfigService';
 import { listLessonPlans } from '../api/lessonBuilderService';
@@ -37,7 +38,7 @@ export default function Classes() {
   // Day Lesson Plan Builder is an authoring tool, so its entry points only
   // appear for whoever has said they're teaching.
   const [educatorMode, setEducatorMode, educatorReady] = useSetting(SETTING_KEYS.EDUCATOR_MODE, null);
-  // The Wayfinder's 'lesson-builder' feature is a SECOND way in, never a
+  // The Compass's 'lesson-builder' feature is a SECOND way in, never a
   // second lock: someone who found the builder through Settings' Educator
   // Mode keeps it exactly as they had it, and someone who never went looking
   // in Settings can instead finish "Teach It Once" (or pass its check) and
@@ -48,6 +49,7 @@ export default function Classes() {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   const { showEmojis, showSubtext } = useUIPrefs();
+  const { activeType } = useProfiles();
   const styles = makeStyles(c, t, s, r);
 
   // Lessons drawn from how the player is ACTUALLY doing in the Training
@@ -127,7 +129,18 @@ export default function Classes() {
   // Catalog lives in src/data/classCatalog.js — shared with the Planner's
   // "Link to a class" picker (PlannerScreen.js) so both read one list
   // instead of keeping their own copies that can drift out of sync.
-  const subjects = CLASS_SUBJECTS;
+  // A subject carrying `personaOnly` only appears in those persona modes. The
+  // adult business-ownership track uses it: its content (business credit, SBA
+  // packaging, entity formation) has no business rendering on a child's
+  // account, and BUSINESS/ENTREPRENEUR profiles are already gated to adults
+  // both in the UI (src/data/personas.js) and by the enforce_profile_limits()
+  // trigger on persona_profiles. This filter is the third layer — a minor
+  // cannot create such a profile, and even a mis-typed one cannot surface the
+  // subject.
+  const subjects = useMemo(
+    () => CLASS_SUBJECTS.filter(s => !s.personas || s.personas.includes(activeType)),
+    [activeType],
+  );
   const screenMap = CLASS_SCREEN_MAP;
 
   const goToChild = (label) => {
@@ -141,7 +154,7 @@ export default function Classes() {
   const mergedSubjects = useMemo(() => subjects.map((subj) => {
     const remote = remoteSubjects[subj.title];
     return remote ? { ...subj, ...remote } : subj;
-  }), [remoteSubjects]);
+  }), [remoteSubjects, subjects]);
 
   const recTopics = useMemo(() => pickRecommendedTopics(mergedSubjects, band, 3), [band, mergedSubjects]);
   const recGames  = useMemo(() => pickRecommendedGames(band, 2), [band]);

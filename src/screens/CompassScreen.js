@@ -1,5 +1,5 @@
-// src/screens/WayfinderScreen.js
-// The Wayfinder — the app explaining itself in terms of what you came for.
+// src/screens/CompassScreen.js
+// The Compass — the app explaining itself in terms of what you came for.
 //
 // Five sections, in this order on purpose:
 //   1. Purpose        the one thing you said you're here for (changeable)
@@ -32,7 +32,7 @@ import LockBadge from '../components/LockBadge';
 import UnlockSheet from '../components/UnlockSheet';
 import { FONTS } from '../theme';
 
-export default function WayfinderScreen() {
+export default function CompassScreen() {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: sp, radius: r } = useTheme();
   const { showEmojis, showSubtext } = useUIPrefs();
@@ -133,7 +133,7 @@ export default function WayfinderScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
 
         <View style={s.header}>
-          <Text style={s.headerTitle}>Wayfinder</Text>
+          <Text style={s.headerTitle}>Compass</Text>
           {showSubtext && <Text style={s.headerSub}>One purpose, one objective, and what each one opens.</Text>}
         </View>
 

@@ -1,175 +1,335 @@
 // src/components/TourOverlay.js
-// Renders the guided tour's dimmed backdrop + spotlight "hole" around the
-// current step's target (from context/TourContext.js + TourSpot.js
-// registrations) and the tooltip card with Back/Next/Skip. A single
-// instance lives at the top of App.js so it can float above any screen.
+// The guide, the speech bubble, and the spotlight.
 //
-// The "hole" is four opaque bands covering everything except the target
-// rect (plus a little padding), rather than an SVG mask — simpler and
-// robust at any target size/position with no extra math beyond clamping
-// to the screen edges.
+// ── What this used to be, and why it changed ────────────────────────────────
+// A bordered tooltip card with a step counter, a title, a scrolling body and
+// a button row — a text box that happened to have a small avatar bolted into
+// its header. It read as a dialog, not as someone showing you around. The
+// card chrome is gone: what's left is the character standing on the screen
+// with a speech bubble coming off them.
 //
-// Every band, plus a transparent absorber over the hole itself, captures
-// touches (default pointerEvents, i.e. NOT 'none') — the highlighted
-// element is only ever shown, never actually reachable, so the real
-// screen underneath can't be tapped out from under an active tour. Only
-// the tooltip's own Back/Next/Skip are live.
+// The spotlight was four opaque bands leaving a rectangular gap, plus a hard
+// rectangular border. Everything got boxed the same way regardless of its
+// real shape, so a pill-shaped chip or a circular button read as "there is a
+// rectangle near this thing". It's now an SVG mask punched with the target's
+// OWN corner radius (registered by TourSpot), stroked and glowed on the same
+// geometry — a chip lights up as a pill, the FAB as a circle, a card as a
+// rounded card.
 //
-// The tooltip card's placement is clamped to the screen on every axis: it
-// picks below/above the target (or a safe centered band with no target),
-// then caps itself with `maxHeight` and lets only the body text scroll
-// internally — the step label, title, and Back/Next/Skip footer are never
-// inside that scroll area, so they can never end up pushed off-screen no
-// matter how long a step's body copy runs (this is what was happening on
-// the Training step: a tall target left too little room below it, and the
-// uncapped card ran its Next button past the bottom edge, stranding
-// whoever hit it).
+// ── How the layers stack ────────────────────────────────────────────────────
+// This is NOT a <Modal>, and that matters. A Modal renders in its own layer
+// above the app, so the spotlight hole is only ever a picture of a hole —
+// touches inside it are swallowed by the modal and never reach the button
+// underneath. `passthrough` was dead on arrival while this was a Modal.
+//
+// So: a plain absolutely-positioned overlay with pointerEvents="box-none" at
+// the root, letting explicit children decide what blocks. The SVG is purely
+// visual (pointerEvents="none"). Four transparent Views absorb touches
+// around the hole, plus one over the hole itself so a normal step's
+// highlighted element is shown but not reachable. A `passthrough: true` step
+// omits that last one, and the tap falls through to the real control.
+//
+// TourOverlay is mounted outside the SafeAreaView but inside
+// NavigationContainer (App.js), so it still paints over every screen and
+// still covers the status-bar area. What a Modal did give us for free was
+// the Android hardware-back handler — re-added below.
+//
+// The guide block's placement is constraint-solved rather than fixed: it
+// sits opposite the target (bottom of the screen for a target up top, top of
+// the screen for one down low) so it can never cover the thing it's pointing
+// at, and the bubble body scrolls internally while the controls never do — a
+// tall target on Training used to push Next off the bottom edge.
 
-import React from 'react';
-import { View, Text, TouchableOpacity, Modal, Dimensions, ScrollView, StyleSheet, Platform } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, TouchableOpacity, BackHandler, Dimensions, ScrollView, StyleSheet, Platform } from 'react-native';
+import Svg, { Defs, Mask, Rect, Path } from 'react-native-svg';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { useTour } from '../../context/TourContext';
+import { useProfiles } from '../../context/ProfileAccountsContext';
+import { getGuide } from '../data/guides';
+import PlayerCharacter from './PlayerCharacter';
 
-const PAD = 8;
+const PAD = 10;
 const SCRIM = 'rgba(0,0,0,0.72)';
-const MARGIN_V = 24;
-const MIN_CARD = 150;
+const MARGIN_V = 20;
+const GUIDE_SIZE = 92;
+const BUBBLE_MIN = 132;      // smallest the bubble is allowed to get
+const TAIL_W = 18;
+const TAIL_H = 12;
 const TAB_BAR_H = Platform.OS === 'ios' ? 66 : 52;
-// Every non-tab screen sits below the persistent global TopBar (App.js) —
-// its own back chevron lands a bit further down still, in whatever header
-// that screen renders. Not pixel-exact (headers pad this differently
-// screen to screen) but close enough for a visual "it's up here" cue.
-const TOPBAR_H = 60;
 
 export default function TourOverlay() {
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
-  const { active, currentStep, stepIndex, steps, isLastStep, targets, nextStep, backStep, skipTour } = useTour();
+  const {
+    active, currentStep, stepIndex, steps, isLastStep, targets,
+    nextStep, backStep, skipTour, quizAnswer, answerQuiz,
+  } = useTour();
+  const { activeType } = useProfiles();
   const insets = useSafeAreaInsets();
+  const guide = getGuide(activeType);
+
+  // Was Modal's onRequestClose. Hardware back should close the tour, not
+  // navigate the screen out from under it.
+  useEffect(() => {
+    if (!active || Platform.OS !== 'android') return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => { skipTour(); return true; });
+    return () => sub.remove();
+  }, [active, skipTour]);
 
   if (!active || !currentStep) return null;
 
   const { width: SW, height: SH } = Dimensions.get('window');
 
-  // A real registered TourSpot, or — for the screen-tutorial's synthetic
-  // "Navigation" step — a made-up rect over the tab bar / back button, so
-  // it can still be spotlighted without either one needing to be a real
-  // TourSpot itself.
+  // A real registered TourSpot, or — for the Home walkthrough's synthetic
+  // tab-bar step — a made-up rect over the tab bar, so it can be spotlighted
+  // without the bar itself needing to be a TourSpot.
+  //
+  // The 'back' navHint that used to live here is gone. It was appended to
+  // every non-tab screen's tutorial and drew a guessed rectangle in the
+  // top-left whether or not that screen had a back button there — the
+  // "highlights the back button for no reason" problem. Navigation is taught
+  // once, on Home, against the real tab bar.
   let target = currentStep.id ? targets[currentStep.id] : null;
   if (!target && currentStep.navHint === 'tabbar') {
-    target = { x: 0, y: SH - TAB_BAR_H, width: SW, height: TAB_BAR_H };
-  } else if (!target && currentStep.navHint === 'back') {
-    target = { x: 4, y: insets.top + TOPBAR_H + 6, width: 70, height: 52 };
+    target = { x: 0, y: SH - TAB_BAR_H, width: SW, height: TAB_BAR_H, radius: 0 };
   }
 
-  // Bands covering everything except the (padded) target rect. Null when
-  // there's no target yet — e.g. the welcome/closing cards, or a step
-  // whose screen hasn't finished registering its TourSpot.
-  // A registered target can legitimately sit outside the current viewport —
-  // TourSpot now scrolls its own target into view on web before this reads
-  // it, but native has no such hook, and there's a real gap between "just
-  // navigated to this screen" and that scroll landing. Treat anything left
-  // off-screen (rather than let w/h go negative and silently draw nothing)
-  // the same as "no target yet": full dim, no broken hole.
-  let bands = null;
-  let holeBox = null;
-  if (target && target.x < SW && target.y < SH && target.x + target.width > 0 && target.y + target.height > 0) {
+  // A registered target can legitimately sit outside the viewport (TourSpot
+  // scrolls it into view on web, but there's a gap before that lands, and
+  // native has no such hook). Treat an off-screen rect as "no target yet":
+  // full dim, no broken hole — rather than letting w/h go negative and
+  // silently drawing nothing.
+  let hole = null;
+  if (target && target.x < SW && target.y < SH
+      && target.x + target.width > 0 && target.y + target.height > 0) {
     const x = Math.max(0, target.x - PAD);
     const y = Math.max(0, target.y - PAD);
     const w = Math.min(SW - x, target.width + PAD * 2);
     const h = Math.min(SH - y, target.height + PAD * 2);
-    holeBox = { x, y, w, h };
-    bands = [
-      { left: 0, top: 0, right: 0, height: y },                          // above
-      { left: 0, top: y + h, right: 0, bottom: 0 },                      // below
-      { left: 0, top: y, width: x, height: h },                          // left
-      { left: x + w, top: y, right: 0, height: h },                      // right
-    ];
+    // The target's own corner radius, grown by the padding so the outline
+    // stays concentric with the real element instead of hugging tighter at
+    // the corners. Clamped to half the short side, which is what turns a
+    // pill or a circular button into a real pill or circle.
+    const rawR = (target.radius ?? r.md) + PAD;
+    const radius = Math.max(0, Math.min(rawR, Math.min(w, h) / 2));
+    hole = { x, y, w, h, radius };
   }
 
-  // Tooltip goes below the target if there's room, above it if not, and
-  // falls back to a safe top/bottom-margined band (scrollable if needed)
-  // when neither side has enough — never a bare `top` with no ceiling on
-  // how tall the card is allowed to grow.
-  const cardStyle = { position: 'absolute', left: s.lg, right: s.lg };
-  if (holeBox) {
-    const spaceBelow = SH - MARGIN_V - (holeBox.y + holeBox.h + 16);
-    const spaceAbove = holeBox.y - 16 - MARGIN_V;
-    if (spaceBelow >= MIN_CARD) {
-      cardStyle.top = holeBox.y + holeBox.h + 16;
-      cardStyle.maxHeight = spaceBelow;
-    } else if (spaceAbove >= MIN_CARD) {
-      cardStyle.top = Math.max(MARGIN_V, holeBox.y - 16 - spaceAbove);
-      cardStyle.maxHeight = spaceAbove;
-    } else {
-      cardStyle.top = MARGIN_V;
-      cardStyle.maxHeight = SH - MARGIN_V * 2;
-    }
-  } else {
-    const preferredTop = SH / 2 - 100;
-    cardStyle.top = Math.max(MARGIN_V, Math.min(preferredTop, SH - MARGIN_V - MIN_CARD));
-    cardStyle.maxHeight = SH - cardStyle.top - MARGIN_V;
-  }
+  // ── Where the guide stands ──────────────────────────────────────────────
+  // Opposite the target, so they never stand in front of what they're
+  // pointing at. No target (opening/closing steps) puts them at the bottom.
+  const atTop = hole ? (hole.y + hole.h / 2) > SH / 2 : false;
+
+  // Standing room at the bottom stops short of the tab bar. Without this the
+  // character's feet overlap a dimmed tab bar, which reads as a layering
+  // mistake rather than as someone standing on the screen.
+  const bottomInset = insets.bottom + TAB_BAR_H + MARGIN_V;
+
+  const available = atTop
+    ? (hole.y - 16) - (insets.top + MARGIN_V)
+    : (SH - bottomInset) - (hole ? hole.y + hole.h + 16 : SH * 0.42);
+
+  const blockStyle = {
+    position: 'absolute',
+    left: s.lg,
+    right: s.lg,
+    // Cap the whole block (bubble + character) so the controls can't be
+    // pushed off-screen by long copy; the bubble body scrolls instead.
+    maxHeight: Math.max(BUBBLE_MIN + GUIDE_SIZE + TAIL_H, available),
+    ...(atTop
+      ? { top: insets.top + MARGIN_V }
+      : { bottom: bottomInset }),
+  };
+
+  // Touch absorbers: everything except the hole. A passthrough step leaves
+  // the hole itself live so the highlighted control can actually be pressed.
+  const absorbers = hole
+    ? [
+        { left: 0, top: 0, right: 0, height: hole.y },
+        { left: 0, top: hole.y + hole.h, right: 0, bottom: 0 },
+        { left: 0, top: hole.y, width: hole.x, height: hole.h },
+        { left: hole.x + hole.w, top: hole.y, right: 0, height: hole.h },
+      ]
+    : [{ left: 0, top: 0, right: 0, bottom: 0 }];
+
+  // Bubble tail — a small triangle on the underside of the bubble, sitting
+  // above the character's head so the speech reads as coming from them.
+  const tailLeft = GUIDE_SIZE / 2 - TAIL_W / 2;
+  const tailPath = 'M0,0 L' + TAIL_W + ',0 L' + (TAIL_W / 2) + ',' + TAIL_H + ' Z';
 
   return (
-    <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={skipTour}>
-      <View style={StyleSheet.absoluteFill}>
-        {bands
-          ? bands.map((b, i) => <View key={i} style={[styles.band, b]} />)
-          : <View style={[styles.band, { top: 0, left: 0, right: 0, bottom: 0 }]} />}
+    // box-none: this container never eats a touch itself — only the absorber
+    // children below do, which is what leaves the hole live for passthrough.
+    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+      <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+        {/* ── Visual layer: dim + shaped hole + glow. No touch handling. ── */}
+        <Svg width={SW} height={SH} style={StyleSheet.absoluteFill} pointerEvents="none">
+          <Defs>
+            <Mask id="tour-hole">
+              <Rect x="0" y="0" width={SW} height={SH} fill="#fff" />
+              {hole && (
+                <Rect
+                  x={hole.x} y={hole.y} width={hole.w} height={hole.h}
+                  rx={hole.radius} ry={hole.radius} fill="#000"
+                />
+              )}
+            </Mask>
+          </Defs>
 
-        {holeBox && (
-          <>
-            {/* Transparent — same job as a dim band, but see-through so the
-                highlighted element still reads as "this one" without
-                actually being reachable. */}
-            <View style={{ position: 'absolute', left: holeBox.x, top: holeBox.y, width: holeBox.w, height: holeBox.h }} />
-            <View
-              pointerEvents="none"
-              style={{
-                position: 'absolute', left: holeBox.x, top: holeBox.y, width: holeBox.w, height: holeBox.h,
-                borderRadius: r.md, borderWidth: 2, borderColor: c.gold,
-              }}
-            />
-          </>
+          <Rect x="0" y="0" width={SW} height={SH} fill={SCRIM} mask="url(#tour-hole)" />
+
+          {hole && (
+            <>
+              {/* Soft outer glow, then the crisp edge — same geometry, so the
+                  emphasis traces the feature rather than boxing it. */}
+              <Rect
+                x={hole.x - 3} y={hole.y - 3} width={hole.w + 6} height={hole.h + 6}
+                rx={hole.radius + 3} ry={hole.radius + 3}
+                fill="none" stroke={c.gold} strokeWidth={6} opacity={0.18}
+              />
+              <Rect
+                x={hole.x} y={hole.y} width={hole.w} height={hole.h}
+                rx={hole.radius} ry={hole.radius}
+                fill="none" stroke={c.gold} strokeWidth={2} opacity={0.95}
+              />
+            </>
+          )}
+        </Svg>
+
+        {/* ── Touch layer ── */}
+        {absorbers.map((a, i) => <View key={i} style={[styles.absorb, a]} />)}
+        {hole && !currentStep.passthrough && (
+          <View style={{ position: 'absolute', left: hole.x, top: hole.y, width: hole.w, height: hole.h }} />
         )}
 
-        <View style={[cardStyle, { backgroundColor: c.bg1, borderRadius: r.lg, borderWidth: 0.5, borderColor: c.border, overflow: 'hidden' }]}>
-          <View style={{ paddingHorizontal: s.lg, paddingTop: s.lg, flexShrink: 0 }}>
-            <Text style={{ fontSize: 11, color: c.text4, fontWeight: '800', letterSpacing: 1, marginBottom: 6 }}>
-              STEP {stepIndex + 1} OF {steps.length}
+        {/* ── The guide ── */}
+        <View style={blockStyle} pointerEvents="box-none">
+          <View style={{
+            backgroundColor: c.bg1, borderRadius: 20, borderWidth: 1, borderColor: c.teal + '55',
+            paddingHorizontal: s.lg, paddingTop: s.md, paddingBottom: s.sm, flexShrink: 1,
+          }}>
+            <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.teal, marginBottom: 2 }}>
+              {guide.name}
             </Text>
-            <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1 }}>{currentStep.title}</Text>
+            {!!currentStep.title && (
+              <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1, marginBottom: 4 }}>
+                {currentStep.title}
+              </Text>
+            )}
+            <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ paddingBottom: 2 }}>
+              {!!currentStep.body && (
+                <Text style={{ fontSize: t.sm, color: c.text2, lineHeight: 20 }}>{currentStep.body}</Text>
+              )}
+
+              {/* ── Mini quiz ────────────────────────────────────────────
+                  A step can check understanding instead of just asserting
+                  it. First tap stands (see answerQuiz), then the right
+                  answer and the reason are revealed — being told WHY the
+                  wrong option is wrong is the part that teaches. */}
+              {currentStep.quiz && (
+                <View style={{ marginTop: currentStep.body ? s.md : 0 }}>
+                  <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1, marginBottom: s.sm }}>
+                    {currentStep.quiz.question}
+                  </Text>
+                  {currentStep.quiz.options.map((opt, i) => {
+                    const answered = quizAnswer !== null;
+                    const isRight = i === currentStep.quiz.answerIndex;
+                    const isPicked = quizAnswer === i;
+                    const border = !answered ? c.border : isRight ? c.success : isPicked ? c.error : c.border;
+                    const tint = !answered ? 'transparent' : isRight ? c.success + '18' : isPicked ? c.error + '18' : 'transparent';
+                    return (
+                      <TouchableOpacity
+                        key={i}
+                        onPress={() => answerQuiz(i)}
+                        disabled={answered}
+                        accessibilityRole="button"
+                        style={{
+                          flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+                          borderWidth: 1, borderColor: border, backgroundColor: tint,
+                          borderRadius: r.md, paddingVertical: 9, paddingHorizontal: 11, marginBottom: 6,
+                        }}>
+                        {answered && (isRight || isPicked) && (
+                          <Ionicons
+                            name={isRight ? 'checkmark-circle' : 'close-circle'}
+                            size={15}
+                            color={isRight ? c.success : c.error}
+                            style={{ marginTop: 1 }}
+                          />
+                        )}
+                        <Text style={{ flex: 1, fontSize: t.sm, color: answered && !isRight && !isPicked ? c.text4 : c.text2, lineHeight: 19 }}>
+                          {opt}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                  {quizAnswer !== null && !!currentStep.quiz.explain && (
+                    <Text style={{ fontSize: t.sm, color: c.text3, lineHeight: 19, marginTop: 4 }}>
+                      {currentStep.quiz.explain}
+                    </Text>
+                  )}
+                </View>
+              )}
+            </ScrollView>
+
+            {/* Controls — outside the ScrollView, so they can never be
+                scrolled out of reach no matter how long the copy runs. */}
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+              marginTop: s.sm, paddingTop: s.sm, borderTopWidth: 0.5, borderTopColor: c.border,
+            }}>
+              <TouchableOpacity onPress={skipTour} accessibilityRole="button" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Text style={{ fontSize: 12, color: c.text4, fontWeight: t.bold }}>Skip</Text>
+              </TouchableOpacity>
+
+              {/* Step dots — position without the arithmetic of "3 OF 5". */}
+              <View style={{ flexDirection: 'row', gap: 5 }}>
+                {steps.map((_, i) => (
+                  <View key={i} style={{
+                    width: i === stepIndex ? 14 : 5, height: 5, borderRadius: 3,
+                    backgroundColor: i === stepIndex ? c.teal : i < stepIndex ? (c.tealDim || c.teal + '66') : c.bg2,
+                  }} />
+                ))}
+              </View>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md }}>
+                {stepIndex > 0 && (
+                  <TouchableOpacity onPress={backStep} accessibilityRole="button" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <Text style={{ fontSize: 12, color: c.text4, fontWeight: t.bold }}>Back</Text>
+                  </TouchableOpacity>
+                )}
+                {/* A passthrough step is completed by doing the thing, not by
+                    pressing Next — so it doesn't offer one. */}
+                {/* An unanswered quiz withholds Next — otherwise the
+                    obvious move is to skip past the question, which defeats
+                    the point of asking it. */}
+                {!currentStep.passthrough && !(currentStep.quiz && quizAnswer === null) && (
+                  <TouchableOpacity onPress={nextStep} accessibilityRole="button" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <Text style={{ fontSize: 13, color: c.teal, fontWeight: '800' }}>
+                      {isLastStep ? 'Done' : 'Next ›'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
           </View>
 
-          <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ paddingHorizontal: s.lg, paddingTop: 6, paddingBottom: s.md }}>
-            <Text style={{ fontSize: t.sm, color: c.text2, lineHeight: 20 }}>{currentStep.body}</Text>
-          </ScrollView>
-
-          <View style={{
-            flexShrink: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-            paddingHorizontal: s.lg, paddingBottom: s.lg, paddingTop: s.sm,
-          }}>
-            <TouchableOpacity onPress={skipTour} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={{ fontSize: 12, color: c.text4, fontWeight: '700' }}>Skip</Text>
-            </TouchableOpacity>
-            <View style={{ flexDirection: 'row', gap: s.sm }}>
-              {stepIndex > 0 && (
-                <TouchableOpacity onPress={backStep} style={{ paddingHorizontal: s.lg, paddingVertical: s.sm, borderRadius: r.full, borderWidth: 1, borderColor: c.border }}>
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: c.text3 }}>Back</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity onPress={nextStep} style={{ paddingHorizontal: s.lg, paddingVertical: s.sm, borderRadius: r.full, backgroundColor: c.teal }}>
-                <Text style={{ fontSize: 13, fontWeight: '800', color: '#fff' }}>{isLastStep ? 'Done' : 'Next'}</Text>
-              </TouchableOpacity>
-            </View>
+          {/* Tail + character, tucked under the bubble */}
+          <View style={{ height: TAIL_H, marginLeft: tailLeft }} pointerEvents="none">
+            <Svg width={TAIL_W} height={TAIL_H}>
+              <Path d={tailPath} fill={c.bg1} stroke={c.teal + '55'} strokeWidth={1} />
+            </Svg>
+          </View>
+          <View style={{ height: GUIDE_SIZE, justifyContent: 'flex-end' }} pointerEvents="none">
+            <PlayerCharacter outfit={guide.outfit} size={GUIDE_SIZE} style={{ alignSelf: 'flex-start' }} />
           </View>
         </View>
       </View>
-    </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  band: { position: 'absolute', backgroundColor: SCRIM },
+  absorb: { position: 'absolute' },
 });

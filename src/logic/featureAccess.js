@@ -3,7 +3,7 @@
 // what the app knows about an account and it answers one question: can this
 // be used right now, and if not, what are the ways in?
 //
-// Client-side mirror of the 20260915 Wayfinder migration, in the same spirit
+// Client-side mirror of the 20260915 wayfinder_feature_gating migration, in the same spirit
 // as src/logic/accountAccess.js: the database is the real gate
 // (unlock_feature() and record_test_attempt() re-check everything and
 // raise), and this exists so the UI can say WHY something is shut and offer
@@ -12,7 +12,7 @@
 // fail-closed default.
 //
 // Everything here is deterministic on its inputs, which is what makes the
-// unlock sheet, the Library badges, the Wayfinder rosters and the tests all
+// unlock sheet, the Library badges, the Compass rosters and the tests all
 // agree without passing state between them.
 
 import { getObjective, getPurpose } from '../data/objectives';
@@ -172,7 +172,7 @@ export function evaluateAccess(feature, ctx = {}) {
       headline: on ? 'Experimental' : 'Experimental',
       reason: feature.why || 'Unfinished work — switch on experimental features to try it.',
       // Kept out of ambient lists until asked for. It stays listed in the
-      // Wayfinder, which is where someone goes looking on purpose.
+      // Compass, which is where someone goes looking on purpose.
       hidden: !on,
       routes: { objectives: [], test: null, plan: false, optIn: !on },
     };
@@ -281,7 +281,7 @@ export function rankForPurpose(features, purposeKey, ctx = {}) {
 /* ─── Copy helpers ────────────────────────────────────────────────────────── */
 
 // One place for the badge text and tone, so a lock looks the same on the
-// Library grid, the Wayfinder roster and the unlock sheet.
+// Library grid, the Compass roster and the unlock sheet.
 export const GATE_META = {
   locked:       { label: 'Locked',       icon: 'lock-closed-outline', colorKey: 'text3' },
   experimental: { label: 'Experimental', icon: 'flask-outline',       colorKey: 'purple' },

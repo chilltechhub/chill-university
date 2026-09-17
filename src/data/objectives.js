@@ -1,12 +1,12 @@
 // src/data/objectives.js
 // Purposes and objectives — the "why am I here" and "what is the one thing
-// I'm doing about it" behind the Wayfinder.
+// I'm doing about it" behind the Compass.
 //
 // The app can do a great many things, which is precisely the problem this
 // solves: opening it should feel like being handed one next step, not a
 // directory. So:
 //
-//   A PURPOSE is picked once (onboarding, or Wayfinder later) and written to
+//   A PURPOSE is picked once (onboarding, or Compass later) and written to
 //   profiles.purpose_key. Everything the app chooses to lead with is ranked
 //   against it — see rankForPurpose() in src/logic/featureAccess.js.
 //
@@ -326,7 +326,7 @@ export function objectivesForPurpose(purposeKey) {
 
 // Scores every purpose against the answers already on the profile and
 // returns the best key, or null when nothing matched at all (in which case
-// the Wayfinder asks outright rather than guessing).
+// the Compass asks outright rather than guessing).
 export function suggestPurpose(profile) {
   if (!profile) return null;
 

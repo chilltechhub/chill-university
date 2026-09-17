@@ -30,7 +30,8 @@ import { useUIPrefs } from '../../context/UIPrefsContext';
 import { useCommandPalette } from '../../context/CommandPaletteContext';
 import { supabase } from '../api/supabaseClient';
 import { cacheRead, cacheWrite } from '../api/offlineCache';
-import { searchDestinations, defaultDestinations, navigateTo } from '../logic/searchIndex';
+import { searchDestinations, defaultDestinations, navigateTo, isDestinationAllowed } from '../logic/searchIndex';
+import { useProfiles } from '../../context/ProfileAccountsContext';
 import { searchContent } from '../logic/globalSearch';
 import { KINDS, rowKind } from '../screens/library/knowledge';
 
@@ -76,6 +77,9 @@ export default function CommandPalette() {
   const [searching, setSearching] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [recents, setRecents] = useState([]);
+  // Same profile-type rule the Academy screen applies — see
+  // isDestinationAllowed in searchIndex.js for why search needs it too.
+  const { activeType } = useProfiles();
   const inputRef = useRef(null);
   const requestId = useRef(0);
   const handled = useRef(false);
@@ -114,7 +118,7 @@ export default function CommandPalette() {
     return () => clearTimeout(timer);
   }, [query, userId, open]);
 
-  const destinations = useMemo(() => (query.trim() ? searchDestinations(query) : []), [query]);
+  const destinations = useMemo(() => (query.trim() ? searchDestinations(query, 8, activeType) : []), [query, activeType]);
 
   // Flattened, in the order they're rendered — this is what the arrow keys
   // walk and what Enter opens.
@@ -122,8 +126,9 @@ export default function CommandPalette() {
     const q = query.trim();
     if (!q) {
       const out = [];
-      if (recents.length) out.push({ title: 'Recent', rows: recents });
-      out.push({ title: 'Jump to', rows: defaultDestinations() });
+      const allowedRecents = recents.filter((row) => isDestinationAllowed(row, activeType));
+      if (allowedRecents.length) out.push({ title: 'Recent', rows: allowedRecents });
+      out.push({ title: 'Jump to', rows: defaultDestinations(activeType) });
       return out;
     }
     const out = [];
@@ -161,7 +166,7 @@ export default function CommandPalette() {
       });
     }
     return out;
-  }, [query, destinations, content, recents, c]);
+  }, [query, destinations, content, recents, c, activeType]);
 
   const flat = useMemo(() => sections.flatMap((section) => section.rows), [sections]);
 
@@ -178,7 +183,7 @@ export default function CommandPalette() {
     navigateTo(navigation, row.route);
     // Remember it for the next empty-query open. Content rows are stored the
     // same way as screens — they're already flat {title, icon, route}.
-    const entry = { id: row.id, title: row.title, subtitle: row.subtitle, icon: row.icon, color: row.color, emoji: row.emoji, route: row.route };
+    const entry = { id: row.id, title: row.title, subtitle: row.subtitle, icon: row.icon, color: row.color, emoji: row.emoji, route: row.route, personas: row.personas };
     const next = [entry, ...recents.filter((x) => x.id !== row.id)].slice(0, MAX_RECENTS);
     setRecents(next);
     cacheWrite(RECENTS_KEY, next);

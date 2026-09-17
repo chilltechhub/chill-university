@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../../context/ThemeContext';
 import { useUIPrefs } from '../../../context/UIPrefsContext';
-import { supabase } from '../../api/supabaseClient';
+import { supabase } from '../../api/profileScopedClient';
 import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../api/offlineCache';
 import RelatedLinks, { EXCLUDE_LINK_FILTER } from './RelatedLinks';
 import TourSpot from '../../components/TourSpot';
@@ -154,7 +154,7 @@ function QuickLogChips({ options, onLog, color, c, t, s }) {
 
 // ─── Section card ─────────────────────────────────────────────────────────────
 // `access` is the evaluateAccess() result when this sub-section is one the
-// Wayfinder gates (Savings & Investing, Debt & Credit — both sit on top of
+// Compass gates (Savings & Investing, Debt & Credit — both sit on top of
 // knowing your own numbers first), and null for the great majority that
 // aren't gated at all. A gated card still navigates; it just lands on the
 // unlock sheet rather than the screen.
@@ -228,7 +228,7 @@ export default function LifeAreaScreen() {
   const { areaId } = route.params || {};
   const area = LIFE_AREAS.find(a => a.id === areaId);
 
-  // Two of the forty-odd sub-sections are Wayfinder-gated (the Financial
+  // Two of the forty-odd sub-sections are Compass-gated (the Financial
   // area's Savings & Investing and Debt & Credit, both of which only make
   // sense once you've looked at your own numbers). Everything else comes
   // back as null from featureForScreen and behaves exactly as before.

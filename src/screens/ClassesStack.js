@@ -66,6 +66,24 @@ import HealthAndFitness from './classes/healthFitnessClass/foundations';
 // Business & Finance
 import BusinessAndFinance from './classes/businessFinanceClass/foundations';
 
+// Entrepreneur track (adult business-ownership curriculum)
+import BusinessArchitecture from './classes/entrepreneurClass/businessArchitecture';
+import RetailOperations from './classes/entrepreneurClass/retailOperations';
+// The other eight levels are generated from src/data/ownershipCurriculum.js
+// rather than hand-written — see LevelScreen.js for why.
+import { makeLevelScreen } from './classes/entrepreneurClass/LevelScreen';
+import CurriculumModule from './classes/entrepreneurClass/ModuleScreen';
+const MoneySystems = makeLevelScreen('L0');
+const PersonalSovereignty = makeLevelScreen('L1');
+const CapitalFunding = makeLevelScreen('L3A');
+const RealEstateAssets = makeLevelScreen('L3B');
+const WealthProtection = makeLevelScreen('L4');
+const IdeaValidation = makeLevelScreen('S1');
+const ProductEngineering = makeLevelScreen('S2');
+const GoToMarket = makeLevelScreen('S3');
+const VentureScale = makeLevelScreen('S4');
+const WorkplaceCompliance = makeLevelScreen('W1');
+
 const Stack = createStackNavigator();
 
 export default function ClassesStack() {
@@ -135,6 +153,21 @@ export default function ClassesStack() {
       <Stack.Screen name="ForeignLanguage" component={ForeignLanguage} />
       <Stack.Screen name="HealthAndFitness" component={HealthAndFitness} />
       <Stack.Screen name="BusinessAndFinance" component={BusinessAndFinance} />
+      <Stack.Screen name="BusinessArchitecture" component={BusinessArchitecture} />
+      {/* One screen serving every module of every level, addressed by
+          route params rather than registered 45 times. */}
+      <Stack.Screen name="CurriculumModule" component={CurriculumModule} />
+      <Stack.Screen name="MoneySystems" component={MoneySystems} />
+      <Stack.Screen name="RetailOperations" component={RetailOperations} />
+      <Stack.Screen name="PersonalSovereignty" component={PersonalSovereignty} />
+      <Stack.Screen name="CapitalFunding" component={CapitalFunding} />
+      <Stack.Screen name="RealEstateAssets" component={RealEstateAssets} />
+      <Stack.Screen name="WealthProtection" component={WealthProtection} />
+      <Stack.Screen name="IdeaValidation" component={IdeaValidation} />
+      <Stack.Screen name="ProductEngineering" component={ProductEngineering} />
+      <Stack.Screen name="GoToMarket" component={GoToMarket} />
+      <Stack.Screen name="VentureScale" component={VentureScale} />
+      <Stack.Screen name="WorkplaceCompliance" component={WorkplaceCompliance} />
     </Stack.Navigator>
   );
 }

@@ -110,20 +110,33 @@ export function UserProgressProvider({ children }) {
   }, []);
 
   // ── Auth listener ────────────────────────────────────────────────────────
+  // supabase-js fires onAuthStateChange with an 'INITIAL_SESSION' event right
+  // after subscribing — it already reports whatever session getSession() would
+  // — so the separate getSession().then(...) call below used to run
+  // loadUserData(userId) a SECOND time in parallel on every mount (i.e. every
+  // page load/reload while logged in, since this provider mounts once for the
+  // app's lifetime). That doubled every read AND write loadUserData makes —
+  // expireOldMissions's PATCH, getUserProfile's nested-embed GET, touchStreak's
+  // UPDATE, and ensureMissionsExist's mission INSERTs — so two near-simultaneous
+  // generateDailyMissions/generateWeeklyMissions calls could both decide no
+  // active missions existed yet and both insert, racing on whatever uniqueness
+  // constraint user_missions has (seen as 409 Conflict). It also meant
+  // setLoading(false) here could fire before the listener's own loadUserData
+  // call had finished, flashing the UI out of its loading state early. One
+  // source of truth removes all three.
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (_, session) => {
         const u = session?.user || null;
         setUser(u);
-        if (u) await loadUserData(u.id);
-        else     resetState();
+        if (u) {
+          await loadUserData(u.id);
+        } else {
+          resetState();
+          setLoading(false);
+        }
       }
     );
-
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session?.user) loadUserData(data.session.user.id);
-      setLoading(false);
-    });
 
     return () => listener.subscription.unsubscribe();
   }, []);

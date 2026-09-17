@@ -1,15 +1,15 @@
 // src/data/featureCatalog.js
-// The ONE list of every surface the Wayfinder can gate, rank or recommend.
+// The ONE list of every surface the Compass can gate, rank or recommend.
 //
 // Same reasoning as src/services/gameRegistry.js: three screens keeping
 // their own idea of what exists is how entries drift into pointing at
 // routes that were renamed two builds ago. LibraryScreen, GamesScreen,
-// SettingsScreen, WayfinderScreen and the unlock sheet all read this.
+// SettingsScreen, CompassScreen and the unlock sheet all read this.
 //
 // ─── gate ───────────────────────────────────────────────────────────────────
 //
 //   'open'          Always available. Most of the app. Listed here anyway so
-//                   the Wayfinder can rank it for a purpose.
+//                   the Compass can rank it for a purpose.
 //   'locked'        Opens by finishing one of `unlockedBy`, or — when
 //                   `testable` — by passing its competence test first time.
 //   'experimental'  Real, reachable, and visibly unfinished. Off until the
@@ -30,7 +30,7 @@
 //   parent      the feature whose screen hosts it, for capabilities.
 //   purposes    which of PURPOSES (src/data/objectives.js) this actually
 //               serves. Drives ranking, and nothing else.
-//   depth       'first-step' | 'core' | 'deep'. What the Wayfinder leads
+//   depth       'first-step' | 'core' | 'deep'. What the Compass leads
 //               with for someone brand new versus what it holds back.
 //   unlockedBy  objective ids; finishing ANY of them opens it.
 //   testable    offer the test-out route (src/data/competencyTests.js).
@@ -129,9 +129,9 @@ export const FEATURES = [
     blurb: 'Structured lessons across every subject the app teaches.',
   },
   {
-    id: 'wayfinder',
-    label: 'Wayfinder',
-    screen: 'Wayfinder',
+    id: 'compass',
+    label: 'Compass',
+    screen: 'Compass',
     icon: 'navigate-outline',
     gate: 'open',
     depth: 'first-step',
@@ -343,7 +343,7 @@ export const FEATURES = [
     id: 'custom-paths',
     label: 'Custom Objectives',
     screen: null,
-    parent: 'wayfinder',
+    parent: 'compass',
     icon: 'git-branch-outline',
     gate: 'paid',
     depth: 'deep',

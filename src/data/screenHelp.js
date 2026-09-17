@@ -12,10 +12,10 @@
 export const SCREEN_HELP = {
   Home: {
     title: 'Home',
-    body: 'Your dashboard — daily missions, streak, and a snapshot of what needs attention today. The card at the top is the Wayfinder: one purpose, one objective, and the single next step in it.',
+    body: 'Your dashboard — daily missions, streak, and a snapshot of what needs attention today. One of the widgets is the Compass: one purpose, one objective, and the single next step in it.',
   },
-  Wayfinder: {
-    title: 'Wayfinder',
+  Compass: {
+    title: 'Compass',
     body: 'Pick the one thing you are here for, and one objective to finish. Everything the app shows you is ordered around that, and finishing an objective is how the deeper screens open. Where a feature has a competence check you can skip the objective by passing it — but only one attempt each, and falling short means doing the objective instead. Experimental features (unfinished work) and Plus features are both listed here too, with what each one actually is.',
   },
   Stats: {
@@ -72,6 +72,10 @@ export const SCREEN_HELP = {
   DiscoverScreen: {
     title: 'Discover',
     body: 'Find mentors, fellow scholars, and interesting people and breakthroughs worth knowing about.',
+  },
+  WayfinderScreen: {
+    title: 'Wayfinder',
+    body: 'For when you don’t know yet what you want to do or who you want to be. Answer three short steps to get a map of what pulls you and what you can already do, then test a few real paths with small experiments and say how each one felt. Something going on right now? Pick it and get a plan with free help. You can also go deeper: your personality, how you learn, and life beyond work.',
   },
   LifeAreaScreen: {
     title: 'Life Area',

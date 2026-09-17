@@ -21,7 +21,13 @@ import React, { useRef, useCallback, useEffect } from 'react';
 import { View } from 'react-native';
 import { useTour } from '../../context/TourContext';
 
-export default function TourSpot({ id, style, children }) {
+// `radius` is the target's own corner radius, passed through to the overlay
+// so the spotlight traces the element's real shape instead of boxing
+// everything identically. Pass the same value the wrapped element uses:
+// r.full (or any large number) for a pill or circle, r.lg for a card, 0 for
+// a plain row. Left unset it falls back to r.md in TourOverlay, which is
+// right for most cards and wrong for nothing badly.
+export default function TourSpot({ id, style, radius, children }) {
   const ref = useRef(null);
   const { registerTarget, unregisterTarget, active, currentStep } = useTour();
 
@@ -30,10 +36,10 @@ export default function TourSpot({ id, style, children }) {
     // synchronously inside onLayout can occasionally return a stale rect.
     requestAnimationFrame(() => {
       ref.current?.measureInWindow?.((x, y, width, height) => {
-        if (width > 0 && height > 0) registerTarget(id, { x, y, width, height });
+        if (width > 0 && height > 0) registerTarget(id, { x, y, width, height, radius });
       });
     });
-  }, [id, registerTarget]);
+  }, [id, registerTarget, radius]);
 
   useEffect(() => () => unregisterTarget(id), [id, unregisterTarget]);
 

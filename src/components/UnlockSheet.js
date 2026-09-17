@@ -45,14 +45,14 @@ export default function UnlockSheet({ visible, featureId, onClose, onUnlocked })
   const feature = access.feature;
   if (!feature) return null;
 
-  const goToWayfinder = () => {
+  const goToCompass = () => {
     onClose?.();
-    navigation.navigate('Wayfinder');
+    navigation.navigate('Compass');
   };
 
   const beginObjective = async (objectiveId) => {
     await startObjective(objectiveId);
-    goToWayfinder();
+    goToCompass();
   };
 
   const openFeature = () => {
@@ -112,7 +112,7 @@ export default function UnlockSheet({ visible, featureId, onClose, onUnlocked })
                         )}
                       </View>
                       {o.active ? (
-                        <TouchableOpacity style={s.smallBtn} onPress={goToWayfinder} activeOpacity={0.8}>
+                        <TouchableOpacity style={s.smallBtn} onPress={goToCompass} activeOpacity={0.8}>
                           <Text style={s.smallBtnText}>Continue</Text>
                         </TouchableOpacity>
                       ) : (
@@ -210,9 +210,9 @@ export default function UnlockSheet({ visible, featureId, onClose, onUnlocked })
                 </View>
               )}
 
-              <TouchableOpacity style={s.ghostBtn} onPress={goToWayfinder} activeOpacity={0.7}>
+              <TouchableOpacity style={s.ghostBtn} onPress={goToCompass} activeOpacity={0.7}>
                 <Ionicons name="navigate-outline" size={14} color={c.text3} />
-                <Text style={s.ghostBtnText}>See everything in the Wayfinder</Text>
+                <Text style={s.ghostBtnText}>See everything in the Compass</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>

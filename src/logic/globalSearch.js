@@ -8,7 +8,7 @@
 // queries cover Captures, Notes and Projects. Adding another source later
 // (garden_cores for ideas, say) is one more entry in the Promise.all below.
 
-import { supabase } from '../api/supabaseClient';
+import { supabase } from '../api/profileScopedClient';
 
 // PostgREST's `or=` filter is a comma-separated list wrapped in parens, so a
 // comma, paren, or wildcard typed into the search box would otherwise be

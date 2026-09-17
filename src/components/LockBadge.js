@@ -1,6 +1,6 @@
 // src/components/LockBadge.js
 // The small pill that marks a gated entry wherever features are listed —
-// the Library grid, the Wayfinder rosters, Settings.
+// the Library grid, the Compass rosters, Settings.
 //
 // One component rather than each screen drawing its own, because the whole
 // value of a lock is that it reads the same everywhere: 🔒 always means

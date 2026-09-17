@@ -12,12 +12,13 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
-import { supabase } from '../../api/supabaseClient';
+import { supabase } from '../../api/profileScopedClient';
 import { cacheRead, cacheWrite, isOnline } from '../../api/offlineCache';
 import { FONTS } from '../../theme';
 import { useUIPrefs } from '../../../context/UIPrefsContext';
 import { useBlueprint, CornerTicks, Stamp, RulerBar } from './blueprint';
 import TourSpot from '../../components/TourSpot';
+import { useTour } from '../../../context/TourContext';
 import { todayStr } from '../../logic/dateUtils';
 
 // ─── Graph-paper backdrop ───────────────────────────────────────────────────
@@ -116,7 +117,11 @@ function stageFor(project) {
 }
 
 // ─── New Build Modal ───────────────────────────────────────────────────────
-function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, initialType }) {
+// `prefill` arrives from a tutorial step (see `prefill` in
+// context/TourContext.js). It seeds the fields with a worked example the
+// user can edit or clear — the build is only ever created by them pressing
+// Start, exactly as if they'd typed it.
+function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, initialType, prefill }) {
   const s = makeModalStyles(bp);
   const { showEmojis } = useUIPrefs();
   const [title,     setTitle]     = useState('');
@@ -131,6 +136,14 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
   useEffect(() => {
     if (visible && initialType) setType(initialType);
   }, [visible, initialType]);
+
+  // Seed from the tutorial's example, but only into fields the user hasn't
+  // already filled — reopening the sheet mid-typing must not wipe their work.
+  useEffect(() => {
+    if (!visible || !prefill) return;
+    setTitle(prev => prev || prefill.title || '');
+    setObjective(prev => prev || prefill.objective || '');
+  }, [visible, prefill]);
 
   const reset = () => {
     setTitle(''); setObjective(''); setEmoji('🏗️');
@@ -357,6 +370,15 @@ export default function ProjectsScreen() {
   const [filter,     setFilter]     = useState('all');
   const [showNew,    setShowNew]    = useState(false);
   const [search,     setSearch]     = useState('');
+  // A tutorial step can hand this screen a worked example to open the New
+  // Build sheet with, and wants to know when the user actually taps the
+  // button rather than a Next arrow. See src/logic/screenTutorials.js.
+  const { prefill: tourPrefill, completeAction } = useTour();
+  // Snapshotted at tap time, NOT read live when the sheet renders. Tapping
+  // the button also completes the passthrough step, which ends the tour in
+  // the same tick — so by the time the sheet is visible, useTour().prefill
+  // is already null. Capturing the value here keeps the example.
+  const [pendingPrefill, setPendingPrefill] = useState(null);
 
   const STAGES = [
     { id: 'all',       label: 'All Builds',   icon: 'apps-outline',              color: bp.accent },
@@ -485,8 +507,10 @@ export default function ProjectsScreen() {
               <Text style={s.headerTitle}>The Workshop</Text>
             </View>
           </View>
-          <TourSpot id="projects-add">
-          <TouchableOpacity style={s.newBtn} onPress={() => setShowNew(true)}>
+          {/* radius matches s.newBtn's own borderRadius (4) so the spotlight
+              traces the button instead of boxing it */}
+          <TourSpot id="projects-add" radius={4}>
+          <TouchableOpacity style={s.newBtn} onPress={() => { setPendingPrefill(tourPrefill); setShowNew(true); completeAction(); }}>
             <Ionicons name="add" size={15} color={bp.onStamp} />
             <Text style={s.newBtnText}>NEW BUILD</Text>
           </TouchableOpacity>
@@ -629,12 +653,13 @@ export default function ProjectsScreen() {
       <NewBuildModal
         visible={showNew} userId={userId} bp={bp} buildColors={buildColors}
         initialType={route.params?.presetType}
+        prefill={pendingPrefill}
         onCreated={(proj) => {
           setProjects(prev => [{ ...proj, tasks: null }, ...prev]);
           setShowNew(false);
           navigation.navigate('ProjectDetail', { project: proj });
         }}
-        onClose={() => setShowNew(false)}
+        onClose={() => { setShowNew(false); setPendingPrefill(null); }}
       />
     </View>
   );

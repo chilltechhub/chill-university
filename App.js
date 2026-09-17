@@ -5,6 +5,7 @@ import { createStackNavigator, TransitionPresets } from '@react-navigation/stack
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Platform } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { useFonts, Rajdhani_600SemiBold, Rajdhani_700Bold } from '@expo-google-fonts/rajdhani';
 import { JetBrainsMono_500Medium, JetBrainsMono_600SemiBold } from '@expo-google-fonts/jetbrains-mono';
@@ -12,6 +13,7 @@ import { JetBrainsMono_500Medium, JetBrainsMono_600SemiBold } from '@expo-google
 import { UserProgressProvider } from './context/UserProgressContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { UIPrefsProvider } from './context/UIPrefsContext';
+import { ProfileAccountsProvider } from './context/ProfileAccountsContext';
 import { FabPositionProvider } from './context/FabPositionContext';
 import { RemoteConfigProvider, useFeatureFlag, useConfigValue } from './context/RemoteConfigContext';
 import { AccessProvider } from './context/AccessContext';
@@ -37,12 +39,13 @@ import ProfileScreen   from './src/screens/ProfileScreen';
 import SettingsScreen  from './src/screens/SettingsScreen';
 import PlayScreen      from './src/screens/PlayScreen';
 import LeaderboardScreen from './src/screens/LeaderboardScreen';
+import AllProfilesScreen from './src/screens/AllProfilesScreen';
 import TopBar           from './src/components/TopBar';
 import MissionPopup      from './src/components/MissionPopup';
 import FloatingActionButton from './src/components/FloatingActionButton';
 import CommandPalette from './src/components/CommandPalette';
 import HelpScreen       from './src/screens/HelpScreen';
-import WayfinderScreen  from './src/screens/WayfinderScreen';
+import CompassScreen  from './src/screens/CompassScreen';
 import StatsScreen      from './src/screens/StatsScreen';
 import { gatedScreen } from './src/components/FeatureGate';
 import AnnouncementBanner from './src/components/AnnouncementBanner';
@@ -55,8 +58,9 @@ import OrganizationScreen from './src/screens/organization/OrganizationScreen';
 import CohortRosterScreen from './src/screens/organization/CohortRosterScreen';
 import { useUserProgress } from './context/UserProgressContext';
 import { supabase } from './src/api/supabaseClient';
+import useFirstVisitTutorial from './src/logic/useFirstVisitTutorial';
 
-// Wayfinder-gated root routes. Built at module scope so the navigator gets a
+// Compass-gated root routes. Built at module scope so the navigator gets a
 // stable component reference (an inline wrapper would remount the screen on
 // every render). StatsScreen has been complete but unreachable since the
 // rebuild — nothing anywhere linked to it, the same state Discover was in —
@@ -150,7 +154,21 @@ function AppInner() {
   // logged-out users.
   const maintenanceOn  = useFeatureFlag('maintenance_mode', false);
   const maintenanceCfg = useConfigValue('maintenance_mode', {});
-  const { registerNavigator, startIfFirstTime } = useTour();
+  // No startIfFirstTime here any more. Landing on Home used to auto-fire
+  // the whole fourteen-step tour off a device-level "seen it?" flag — from
+  // BOTH onReady and onStateChange — which meant it ambushed people straight
+  // out of onboarding and never ran again for a second account on the same
+  // device. The full tour is now offered from the Getting Started card on
+  // Home and from Settings → Replay Tutorial.
+  //
+  // In its place: a short tutorial the first time you open each screen,
+  // taught where it's relevant rather than all at once up front. See
+  // src/logic/useFirstVisitTutorial.js.
+  // The enabled flag is read inside the hook rather than with useSetting
+  // here: useSetting is built on useFocusEffect, and AppInner sits ABOVE
+  // NavigationContainer, where there is no navigation context to focus.
+  const { registerNavigator, startScreenTour, active: tourActive } = useTour();
+  const maybeTeachScreen = useFirstVisitTutorial({ tourActive, startScreenTour });
 
   // Pulls in any admin-added pets/backgrounds from Supabase Storage (see
   // supabase/migrations/20260828_remote_art_storage.sql) once per app
@@ -276,17 +294,17 @@ function AppInner() {
         setShowTopBar(!NO_TOPBAR_ROUTES.has(name));
         setCurrentRouteName(name);
         registerNavigator((routeName, params) => navigationRef.current?.navigate(routeName, params));
-        if (name === 'Home') startIfFirstTime();
+        maybeTeachScreen(name);
       }}
       onStateChange={() => {
         const name = navigationRef.current?.getCurrentRoute()?.name;
         setShowTopBar(!NO_TOPBAR_ROUTES.has(name));
         setCurrentRouteName(name);
-        if (name === 'Home') startIfFirstTime();
+        maybeTeachScreen(name);
       }}
     >
       <SafeAreaView style={{ flex: 1, backgroundColor: c.headerBg }} edges={['top']}>
-        {showTopBar && <TopBar />}
+        {showTopBar && <TopBar currentScreen={currentRouteName} />}
         {showTopBar && <AnnouncementBanner />}
         <Stack.Navigator
           initialRouteName={initialRoute}
@@ -313,16 +331,17 @@ function AppInner() {
           <Stack.Screen name="Play"                component={PlayScreen} />
           <Stack.Screen name="PlayGame"            component={PlayScreen} />
           <Stack.Screen name="Leaderboard"         component={LeaderboardScreen} />
+          <Stack.Screen name="AllProfiles"         component={AllProfilesScreen} />
           <Stack.Screen name="Family"              component={FamilyScreen} />
           <Stack.Screen name="ChildProgress"       component={ChildProgressScreen} />
           <Stack.Screen name="Organization"        component={GatedOrganization} />
           <Stack.Screen name="CohortRoster"        component={CohortRosterScreen} />
           <Stack.Screen name="Help"                component={HelpScreen} />
-          {/* The Wayfinder — purpose, the one active objective, and the
+          {/* The Compass — purpose, the one active objective, and the
               locked / experimental / Plus rosters. Reachable from Home's
               card, Settings, the Library header and every unlock sheet,
               so it lives on the root stack rather than inside a tab. */}
-          <Stack.Screen name="Wayfinder"           component={WayfinderScreen} />
+          <Stack.Screen name="Compass"           component={CompassScreen} />
           <Stack.Screen name="Stats"               component={GatedStats} />
         </Stack.Navigator>
         <MissionsOverlay />
@@ -347,15 +366,23 @@ export default function App() {
   if (!fontsLoaded) return null; // splash while the HUD fonts load
 
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
       <ThemeProvider>
         <UIPrefsProvider>
           <RemoteConfigProvider>
             <UserProgressProvider>
-              {/* Inside UserProgressProvider on purpose: the gate logic reads
-                  the profile, streak, level and points from it to decide what
-                  is unlocked and which objective steps have ticked themselves. */}
-              <AccessProvider>
+              {/* Inside UserProgressProvider on purpose — it reads `user`
+                  and `profile` from there for is_minor (the age gate on the
+                  adult profile types) and active_profile_id. */}
+              <ProfileAccountsProvider>
+                {/* Inside both on purpose: the gate logic reads the profile,
+                    streak, level and points from UserProgressProvider to decide
+                    what is unlocked and which objective steps have ticked
+                    themselves, and sits inside ProfileAccountsProvider so
+                    access can follow the active profile rather than the
+                    account. */}
+                <AccessProvider>
                 <FabPositionProvider>
                   <CommandPaletteProvider>
                   <TourProvider>
@@ -363,11 +390,13 @@ export default function App() {
                   </TourProvider>
                   </CommandPaletteProvider>
                 </FabPositionProvider>
-              </AccessProvider>
+                </AccessProvider>
+              </ProfileAccountsProvider>
             </UserProgressProvider>
           </RemoteConfigProvider>
         </UIPrefsProvider>
       </ThemeProvider>
     </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
