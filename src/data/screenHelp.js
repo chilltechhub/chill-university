@@ -12,7 +12,15 @@
 export const SCREEN_HELP = {
   Home: {
     title: 'Home',
-    body: 'Your dashboard — daily missions, streak, and a snapshot of what needs attention today.',
+    body: 'Your dashboard — daily missions, streak, and a snapshot of what needs attention today. One of the widgets is the Compass: one purpose, one objective, and the single next step in it.',
+  },
+  Compass: {
+    title: 'Compass',
+    body: 'Pick the one thing you are here for, and one objective to finish. Everything the app shows you is ordered around that, and finishing an objective is how the deeper screens open. Where a feature has a competence check you can skip the objective by passing it — but only one attempt each, and falling short means doing the objective instead. Experimental features (unfinished work) and Plus features are both listed here too, with what each one actually is.',
+  },
+  Stats: {
+    title: 'Deep Insights',
+    body: 'Long-range stats: accuracy, fastest and average times, levels cleared and per-subject progress across your whole history. Part of Plus.',
   },
   Training: {
     title: 'Training',

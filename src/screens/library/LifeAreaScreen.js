@@ -15,6 +15,10 @@ import { supabase } from '../../api/profileScopedClient';
 import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../api/offlineCache';
 import RelatedLinks, { EXCLUDE_LINK_FILTER } from './RelatedLinks';
 import TourSpot from '../../components/TourSpot';
+import LockBadge from '../../components/LockBadge';
+import { useFeatureGate } from '../../components/FeatureGate';
+import { featureForScreen } from '../../data/featureCatalog';
+import { unlockHint } from '../../logic/featureAccess';
 import { todayStr } from '../../logic/dateUtils';
 
 // ─── Life area config ─────────────────────────────────────────────────────────
@@ -149,8 +153,15 @@ function QuickLogChips({ options, onLog, color, c, t, s }) {
 }
 
 // ─── Section card ─────────────────────────────────────────────────────────────
-function SectionCard({ section, color, onPress, c, t, s, r }) {
+// `access` is the evaluateAccess() result when this sub-section is one the
+// Compass gates (Savings & Investing, Debt & Credit — both sit on top of
+// knowing your own numbers first), and null for the great majority that
+// aren't gated at all. A gated card still navigates; it just lands on the
+// unlock sheet rather than the screen.
+function SectionCard({ section, color, access, onPress, c, t, s, r }) {
   const isNavigable = !!section.screen;
+  const open = access ? access.available : true;
+  const accent = open ? color : c.text4;
   return (
     <TouchableOpacity
       onPress={isNavigable ? onPress : undefined}
@@ -158,19 +169,25 @@ function SectionCard({ section, color, onPress, c, t, s, r }) {
       style={{
         backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg,
         marginBottom: s.md, borderWidth: 0.5,
-        borderColor: isNavigable ? color + '44' : c.border,
+        borderColor: isNavigable ? accent + '44' : c.border,
         borderLeftWidth: isNavigable ? 3 : 0.5,
-        borderLeftColor: isNavigable ? color : c.border,
+        borderLeftColor: isNavigable ? accent : c.border,
       }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: s.sm }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm }}>
-          <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: color + '22', alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name={section.icon} size={16} color={color} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, flex: 1 }}>
+          <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: accent + '22', alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name={section.icon} size={16} color={accent} />
           </View>
-          <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.text1 }}>{section.title}</Text>
+          <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: open ? c.text1 : c.text3 }}>{section.title}</Text>
+          {access && !open && <LockBadge access={access} size="xs" showLabel={false} />}
         </View>
-        {isNavigable && <Ionicons name="chevron-forward" size={16} color={color} />}
+        {isNavigable && <Ionicons name={open ? 'chevron-forward' : 'information-circle-outline'} size={16} color={accent} />}
       </View>
+      {access && !open && (
+        <Text style={{ fontSize: t.xs, color: c.text4, fontStyle: 'italic', marginBottom: s.sm }}>
+          {unlockHint(access)}
+        </Text>
+      )}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
         {section.items.map((item, i) => (
           <View key={i} style={{ backgroundColor: c.bg2, borderRadius: r.full, paddingHorizontal: 8, paddingVertical: 3 }}>
@@ -210,6 +227,12 @@ export default function LifeAreaScreen() {
 
   const { areaId } = route.params || {};
   const area = LIFE_AREAS.find(a => a.id === areaId);
+
+  // Two of the forty-odd sub-sections are Compass-gated (the Financial
+  // area's Savings & Investing and Debt & Credit, both of which only make
+  // sense once you've looked at your own numbers). Everything else comes
+  // back as null from featureForScreen and behaves exactly as before.
+  const { accessFor, gatedNavigate, sheet: unlockSheet } = useFeatureGate();
 
   const [notes,       setNotes]       = useState([]);
   const [loading,     setLoading]     = useState(true);
@@ -361,11 +384,17 @@ export default function LifeAreaScreen() {
             {showEmojis ? '📋 ' : ''}Sub-Sections
           </Text>
           <TourSpot id="lifearea-sections">
-          {area.sections.map((sec, i) => (
-            <SectionCard key={i} section={sec} color={color}
-              onPress={() => navigateTo(sec.screen)}
-              c={c} t={t} s={s} r={r} />
-          ))}
+          {area.sections.map((sec, i) => {
+            const feature = sec.screen ? featureForScreen(sec.screen) : null;
+            return (
+              <SectionCard key={i} section={sec} color={color}
+                access={feature ? accessFor(feature.id) : null}
+                onPress={() => (feature
+                  ? gatedNavigate(feature.id, () => navigateTo(sec.screen))
+                  : navigateTo(sec.screen))}
+                c={c} t={t} s={s} r={r} />
+            );
+          })}
           </TourSpot>
 
           {/* ── Related ── */}
@@ -472,6 +501,8 @@ export default function LifeAreaScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {unlockSheet}
     </View>
   );
 }

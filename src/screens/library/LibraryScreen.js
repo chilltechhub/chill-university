@@ -28,6 +28,11 @@ import useCharacterLoadout from '../../logic/useCharacterLoadout';
 import useSetting, { SETTING_KEYS } from '../../logic/useSetting';
 import { FONTS } from '../../theme';
 import TourSpot from '../../components/TourSpot';
+import LockBadge from '../../components/LockBadge';
+import { useFeatureGate } from '../../components/FeatureGate';
+import { useAccess } from '../../../context/AccessContext';
+import { featureForScreen } from '../../data/featureCatalog';
+import { unlockHint } from '../../logic/featureAccess';
 import { todayStr } from '../../logic/dateUtils';
 
 // Same icon/color-by-type map CaptureInbox and ImportScreen already share,
@@ -298,6 +303,11 @@ export default function LibraryScreen() {
   const [bgMode] = useSetting(SETTING_KEYS.LIBRARY_BACKGROUND, 'plain');
   // Set from Settings → Library Sections, or onboarding's Look & Layout step.
   const [hiddenSections] = useSetting(SETTING_KEYS.HIDDEN_LIBRARY_SECTIONS, []);
+  // Wayfinder gating. `gatedNavigate` opens the entry if it's available and
+  // the unlock sheet if it isn't — a locked tile still does something when
+  // tapped, which is the difference between a gate and a dead button.
+  const { accessFor, gatedNavigate, sheet: unlockSheet } = useFeatureGate();
+  const { purpose } = useAccess();
 
   const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -569,7 +579,25 @@ export default function LibraryScreen() {
 
   const renderHub = (hub) => {
     const accent = c[hub.accentKey] || c.teal;
-    const visibleItems = hub.items.filter(item => !hiddenSections.includes(item.screen));
+    // Each entry is looked up in the feature catalog and ordered so anything
+    // still shut sinks below what's open. Locked entries are not removed: a
+    // Library that quietly shrinks is more disorienting than one that says
+    // "not yet, and here's how". The exception is experimental work
+    // (access.hidden), which stays out until it's asked for in the Compass
+    // or Settings.
+    const visibleItems = hub.items
+      .filter(item => !hiddenSections.includes(item.screen))
+      .map(item => {
+        const feature = featureForScreen(item.screen);
+        return { item, feature, access: feature ? accessFor(feature.id) : null };
+      })
+      .filter(entry => !entry.access?.hidden)
+      .sort((a, b) => {
+        const openA = a.access ? a.access.available : true;
+        const openB = b.access ? b.access.available : true;
+        if (openA !== openB) return openA ? -1 : 1;
+        return 0;
+      });
     if (visibleItems.length === 0) return null;
     // The screen title already names the view, so a hub whose title says
     // the same thing just repeats itself — keep only its tagline then.
@@ -587,7 +615,15 @@ export default function LibraryScreen() {
 
         {/* Asymmetric grid — featured item takes full width */}
         <View style={styles.gridContainer}>
-          {visibleItems.map((item, idx) => {
+          {visibleItems.map(({ item, feature, access }, idx) => {
+            const open = access ? access.available : true;
+            // Everything not in the catalog behaves exactly as it did before —
+            // open, and navigating straight through.
+            const go = () => (feature
+              ? gatedNavigate(feature.id, () => navigation.navigate(item.screen))
+              : navigation.navigate(item.screen));
+            const hint = access && !open ? unlockHint(access) : '';
+
             // Dynamic, real-data subtext for the three cards the redesign
             // spec calls for — falls back to the static desc when there's
             // nothing live yet. Never a fabricated number (e.g. Career has
@@ -609,16 +645,19 @@ export default function LibraryScreen() {
               return (
                 <TourSpot key={idx} id={`hub-${item.screen}`} style={{ width: '100%' }}>
                   <TouchableOpacity
-                    style={[styles.featuredCard, { borderLeftColor: accent }]}
-                    onPress={() => navigation.navigate(item.screen)}
+                    style={[styles.featuredCard, { borderLeftColor: open ? accent : c.border }]}
+                    onPress={go}
                     activeOpacity={0.8}
                   >
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.featuredLabel}>{item.label}</Text>
-                      {showSubtext && <Text style={styles.featuredDesc} numberOfLines={2}>{desc}</Text>}
+                      <View style={styles.labelRow}>
+                        <Text style={[styles.featuredLabel, !open && styles.dimLabel]}>{item.label}</Text>
+                        {access && <LockBadge access={access} size="xs" />}
+                      </View>
+                      {showSubtext && <Text style={styles.featuredDesc} numberOfLines={2}>{hint || desc}</Text>}
                     </View>
-                    <View style={[styles.featuredIconBg, { backgroundColor: accent + '18' }]}>
-                      <Ionicons name={item.icon} size={24} color={accent} />
+                    <View style={[styles.featuredIconBg, { backgroundColor: (open ? accent : c.text4) + '18' }]}>
+                      <Ionicons name={item.icon} size={24} color={open ? accent : c.text4} />
                     </View>
                   </TouchableOpacity>
                 </TourSpot>
@@ -629,17 +668,19 @@ export default function LibraryScreen() {
               <TourSpot key={idx} id={`hub-${item.screen}`} style={styles.standardGridSpot}>
                 <TouchableOpacity
                   style={styles.standardGridCard}
-                  onPress={() => navigation.navigate(item.screen)}
+                  onPress={go}
                   activeOpacity={0.75}
                 >
                   <View style={styles.cardTopRow}>
-                    <Ionicons name={item.icon} size={18} color={c.text1} />
-                    <Ionicons name="arrow-forward" size={12} color={accent} />
+                    <Ionicons name={item.icon} size={18} color={open ? c.text1 : c.text4} />
+                    {open
+                      ? <Ionicons name="arrow-forward" size={12} color={accent} />
+                      : (access && <LockBadge access={access} size="xs" showLabel={false} />)}
                   </View>
-                  <Text style={styles.cardLabel}>{item.label}</Text>
+                  <Text style={[styles.cardLabel, !open && styles.dimLabel]}>{item.label}</Text>
                   {showSubtext && (
                     <Text style={styles.cardDesc} numberOfLines={2}>
-                      {desc}
+                      {hint || desc}
                     </Text>
                   )}
                 </TouchableOpacity>
@@ -663,19 +704,31 @@ export default function LibraryScreen() {
       >
         {/* ── Header — the title is the view switcher ── */}
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.titleBtn}
-            onPress={() => setTabMenuOpen(o => !o)}
-            activeOpacity={0.75}
-          >
-            <Text style={styles.headerTitle}>{TABS.find(tb => tb.key === activeTab)?.label || 'Library'}</Text>
-            <Ionicons
-              name={tabMenuOpen ? 'chevron-up' : 'chevron-down'}
-              size={19}
-              color={c.text3}
-              style={{ marginTop: 5 }}
-            />
-          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <TouchableOpacity
+              style={styles.titleBtn}
+              onPress={() => setTabMenuOpen(o => !o)}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.headerTitle}>{TABS.find(tb => tb.key === activeTab)?.label || 'Library'}</Text>
+              <Ionicons
+                name={tabMenuOpen ? 'chevron-up' : 'chevron-down'}
+                size={19}
+                color={c.text3}
+                style={{ marginTop: 5 }}
+              />
+            </TouchableOpacity>
+            {/* The purpose, restated where the choosing happens. Tapping it
+                goes to the Compass, which is the only place that can change
+                what this screen leads with. */}
+            {purpose && showSubtext && (
+              <TouchableOpacity onPress={() => navigation.navigate('Compass')} activeOpacity={0.7}>
+                <Text style={styles.purposeLine} numberOfLines={1}>
+                  {showEmojis ? `${purpose.emoji} ` : ''}{purpose.label} · change
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
           <TourSpot id="library-capture">
           <TouchableOpacity
             style={styles.captureBtn}
@@ -950,6 +1003,8 @@ export default function LibraryScreen() {
         />
       )}
 
+      {unlockSheet}
+
       <AddAreaModal
         visible={showAddArea}
         hidden={hiddenAreas}
@@ -1007,6 +1062,19 @@ const makeStyles = (c, t, s, r) =>
     },
     dropdownItemText: { fontSize: t.md, fontWeight: '600', color: c.text1 },
     dropdownHint: { fontSize: 10, color: c.text4, paddingHorizontal: 12, paddingVertical: 8, textAlign: 'center' },
+    purposeLine: {
+      fontSize: t.xs,
+      color: c.text3,
+      marginTop: 2,
+    },
+    labelRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    dimLabel: {
+      color: c.text3,
+    },
     captureBtn: {
       flexDirection: 'row',
       alignItems: 'center',

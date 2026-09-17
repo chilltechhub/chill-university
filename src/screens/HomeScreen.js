@@ -33,6 +33,7 @@ import { StudyBlocksWidget, ClassProgressWidget } from '../components/widgets/St
 import { OrgSnapshotWidget, SystemsCheckWidget, RecurringOpsWidget } from '../components/widgets/BusinessWidgets';
 import { VaultStatusWidget, FounderQuestWidget, TargetsReadinessWidget } from '../components/widgets/EntrepreneurWidgets';
 import { WayfinderWidget } from '../components/widgets/WayfinderWidget';
+import CompassCard from '../components/CompassCard';
 import { getWayfinderIntent } from '../api/wayfinderService';
 import useCharacterLoadout from '../logic/useCharacterLoadout';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
@@ -131,6 +132,10 @@ const WIDGET_DEFS = [
   // Not tied to one persona — see personas.defaultWidgets and the
   // `exploring` option on layoutForPersona.
   { key: 'wayfinder',   title: 'Wayfinder' },
+  // The purpose/objective layer. A widget rather than a pinned card so the
+  // board stays the one system that owns the dashboard — it defaults to
+  // directly under the HQ card, and stays reorderable from there.
+  { key: 'compass',     title: 'Compass' },
   // Persona widgets — src/components/widgets/
   { key: 'habitRings',       title: 'Habits' },
   { key: 'lifeAreas',        title: 'Life Areas' },
@@ -1873,6 +1878,14 @@ export default function HomeScreen() {
                   userId={userId}
                   onOpen={(params) => goToLibraryScreen('WayfinderScreen', params)}
                 />
+              ),
+            },
+            {
+              key: 'compass', title: 'Compass',
+              render: () => (
+                <TourSpot id="home-compass">
+                  <CompassCard />
+                </TourSpot>
               ),
             },
           ]}
