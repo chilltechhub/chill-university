@@ -5,9 +5,12 @@
 // + video links (those stay exactly as they were — this is purely additive).
 // A topic with no `learn`/`practice`/`apply` in its meta renders nothing,
 // so older/not-yet-enriched topics look exactly like before.
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '../api/supabaseClient';
+import { useProfiles } from '../../context/ProfileAccountsContext';
+import { saveVaultDocument, listVaultDocuments } from '../api/personaService';
 
 function LearnCards({ learn, color, c, t, s, r }) {
   return (
@@ -88,20 +91,124 @@ function PracticeQuiz({ practice, color, c, t, s, r }) {
   );
 }
 
-function ApplyChallenge({ apply, color, c, t, s, r }) {
-  const [checked, setChecked] = useState({});
+// A topic can opt into the Vault by adding `apply.deliverable`:
+//   deliverable: { track: 'L2', title: 'Entity Selection Decision Matrix' }
+//
+// When it's present, the checklist is no longer throwaway local state — it
+// persists to vault_documents, survives app restarts, and counts toward that
+// level's gate review (getTrackProgress in personaService.js). When it's
+// absent — every pre-existing topic in the app — behaviour is exactly as
+// before: local-only checkboxes, zero network calls, no signed-in requirement.
+function ApplyChallenge({ apply, color, topicKey, c, t, s, r }) {
   const items = apply.checklist || [];
-  const toggle = (i) => setChecked(prev => ({ ...prev, [i]: !prev[i] }));
+  const deliverable = apply.deliverable;
+  const tracked = !!deliverable && !!topicKey;
+  // Which profile this worksheet belongs to. Someone running two startups
+  // fills this lesson in separately for each — same lesson, different vault
+  // document.
+  const { active: activeProfile } = useProfiles();
+
+  const [checked, setChecked] = useState({});
+  const [userId, setUserId] = useState(null);
+  const [hydrated, setHydrated] = useState(!tracked);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState(null);
+
+  // Load any previously saved state for this lesson.
+  useEffect(() => {
+    if (!tracked) return;
+    let alive = true;
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      const uid = data?.user?.id;
+      if (!alive) return;
+      if (!uid) { setHydrated(true); return; } // signed out — falls back to local-only
+      setUserId(uid);
+      const docs = await listVaultDocuments(uid, { track: deliverable.track, profileId: activeProfile?.id });
+      if (!alive) return;
+      const mine = docs.find(d => d.lesson_key === topicKey);
+      if (mine?.payload?.checked) setChecked(mine.payload.checked);
+      if (mine?.updated_at) setSavedAt(mine.updated_at);
+      setHydrated(true);
+    })();
+    return () => { alive = false; };
+  }, [tracked, topicKey, deliverable?.track, activeProfile?.id]);
+
+  const toggle = async (i) => {
+    const next = { ...checked, [i]: !checked[i] };
+    setChecked(next);
+    if (!tracked || !userId) return;
+
+    // A lesson's deliverable is 'complete' only when every box is ticked —
+    // that's what the level's gate review counts, so partial work stays a
+    // draft rather than inflating progress.
+    const allDone = items.length > 0 && items.every((_, idx) => next[idx]);
+    setSaving(true);
+    try {
+      const row = await saveVaultDocument(userId, {
+        profileId: activeProfile?.id,
+        track: deliverable.track,
+        lessonKey: topicKey,
+        title: deliverable.title,
+        payload: { checked: next },
+        status: allDone ? 'complete' : 'draft',
+      });
+      if (row?.updated_at) setSavedAt(row.updated_at);
+    } catch (e) {
+      // Don't fight the user mid-tap with an alert — the box stays ticked
+      // locally and the next toggle retries the write.
+      console.warn('[vault] save failed', e?.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const doneCount = items.reduce((n, _, i) => (checked[i] ? n + 1 : n), 0);
+  const allDone = items.length > 0 && doneCount === items.length;
 
   return (
     <View style={{ marginTop: 8, padding: 10, borderRadius: r.md, backgroundColor: c.bg1 }}>
       <Text style={{ fontSize: t.sm, lineHeight: 19, color: c.text2, marginBottom: items.length ? 8 : 0 }}>{apply.prompt}</Text>
-      {items.map((label, i) => (
+
+      {tracked && !hydrated && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6 }}>
+          <ActivityIndicator size="small" color={color} />
+          <Text style={{ fontSize: 11, color: c.text4 }}>Loading your saved work…</Text>
+        </View>
+      )}
+
+      {(!tracked || hydrated) && items.map((label, i) => (
         <TouchableOpacity key={i} onPress={() => toggle(i)} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 }}>
           <Ionicons name={checked[i] ? 'checkbox' : 'square-outline'} size={17} color={checked[i] ? color : c.text4} />
           <Text style={{ fontSize: t.sm, color: c.text2, flex: 1, textDecorationLine: checked[i] ? 'line-through' : 'none' }}>{label}</Text>
         </TouchableOpacity>
       ))}
+
+      {tracked && hydrated && (
+        <View style={{ marginTop: 10, paddingTop: 8, borderTopWidth: 0.5, borderTopColor: c.border }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons
+              name={allDone ? 'shield-checkmark' : 'folder-open-outline'}
+              size={14}
+              color={allDone ? color : c.text4}
+            />
+            <Text style={{ fontSize: 11, fontWeight: '700', color: allDone ? color : c.text3, flex: 1 }}>
+              {allDone
+                ? `Vault: ${deliverable.title} — complete`
+                : `Vault: ${deliverable.title} — ${doneCount}/${items.length}`}
+            </Text>
+            {saving && <ActivityIndicator size="small" color={c.text4} />}
+          </View>
+          {!userId && (
+            <Text style={{ fontSize: 10, color: c.text4, marginTop: 4, lineHeight: 14 }}>
+              Sign in to save this to your Vault — right now it only lives on this device.
+            </Text>
+          )}
+          {userId && savedAt && (
+            <Text style={{ fontSize: 10, color: c.text4, marginTop: 4 }}>Saved to your Vault</Text>
+          )}
+        </View>
+      )}
     </View>
   );
 }
@@ -159,7 +266,7 @@ export default function TopicLessonPanel({ topic, color, c, t, s, r }) {
 
           {tab === 'learn' && hasLearn && <LearnCards learn={topic.learn} color={color} c={c} t={t} s={s} r={r} />}
           {tab === 'practice' && hasPractice && <PracticeQuiz practice={topic.practice} color={color} c={c} t={t} s={s} r={r} />}
-          {tab === 'apply' && hasApply && <ApplyChallenge apply={topic.apply} color={color} c={c} t={t} s={s} r={r} />}
+          {tab === 'apply' && hasApply && <ApplyChallenge apply={topic.apply} topicKey={topic.key} color={color} c={c} t={t} s={s} r={r} />}
         </View>
       )}
     </View>

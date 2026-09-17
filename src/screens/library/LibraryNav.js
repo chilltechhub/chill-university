@@ -20,6 +20,7 @@ import PlannerScreen from '../PlannerScreen';
 
 // Academic & Career
 import CareerExplorationScreen from './careerexplore';
+import WayfinderScreen         from './wayfinder/WayfinderScreen';
 import PortfolioScreen         from './portfolio';
 import ProjectsScreen          from './projects';
 import ProjectDetailScreen     from './ProjectDetail';
@@ -110,6 +111,7 @@ export default function LibraryNavigator() {
       <Stack.Screen name="LabsScreen"              component={LabsScreen}              options={{ title: 'Labs' }} /> 
       <Stack.Screen name="PortfolioScreen"         component={PortfolioScreen}         options={{ title: 'Portfolio' }} />
       <Stack.Screen name="CareerExplorationScreen" component={CareerExplorationScreen} options={{ title: 'Career Explorer' }} />
+      <Stack.Screen name="WayfinderScreen"         component={WayfinderScreen}         options={{ title: 'Wayfinder' }} />
 
       {/* Discover */}
       <Stack.Screen name="DiscoverScreen"      component={DiscoverScreen}      options={{ title: 'Discover' }} />

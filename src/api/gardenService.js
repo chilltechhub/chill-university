@@ -1,6 +1,6 @@
 // src/api/gardenService.js
 
-import { supabase } from './supabaseClient';
+import { supabase } from './profileScopedClient';
 import { cacheRead, cacheWrite, isOnline, offlineWrite } from './offlineCache';
 import { todayStr } from '../logic/dateUtils';
 

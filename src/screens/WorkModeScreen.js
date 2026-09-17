@@ -18,7 +18,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
-import { supabase } from '../api/supabaseClient';
+import { supabase } from '../api/profileScopedClient';
 import { offlineWrite } from '../api/offlineCache';
 import { saveTimerSession } from '../api/commandCenterService';
 import { AREAS } from '../api/plannerService';

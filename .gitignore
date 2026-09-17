@@ -40,3 +40,6 @@ __MACOSX/
 
 # Supabase CLI local state
 supabase/.temp/
+
+# local secrets (contains live API keys)
+.env.test

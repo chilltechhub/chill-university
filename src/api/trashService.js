@@ -7,7 +7,7 @@
 // than that — call it whenever the Deleted tab is opened, since there's no
 // server-side cron doing it for us.
 
-import { supabase } from './supabaseClient';
+import { supabase } from './profileScopedClient';
 
 export const RETENTION_DAYS = 7;
 

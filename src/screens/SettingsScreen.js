@@ -18,6 +18,7 @@ import LevelRing from '../components/LevelRing';
 import { getRank, getRankProgress } from '../logic/rankUtils';
 import { getUserApiKey, setUserApiKey, clearUserApiKey, maskKey } from '../api/aiKey';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
+import { resetSeenScreens } from '../logic/useFirstVisitTutorial';
 import { useFabPosition } from '../../context/FabPositionContext';
 import { syncReminders, cancelAllReminders, computeReminderState } from '../logic/notificationScheduler';
 import { useUserProgress } from '../../context/UserProgressContext';
@@ -449,6 +450,7 @@ export default function SettingsScreen() {
   const [homeBgMode, setHomeBgMode] = useSetting(SETTING_KEYS.HOME_BACKGROUND, 'plain');
   const [libraryBgMode, setLibraryBgMode] = useSetting(SETTING_KEYS.LIBRARY_BACKGROUND, 'plain');
   const [remindersEnabled, setRemindersEnabled] = useSetting(SETTING_KEYS.DAILY_REMINDERS_ENABLED, false);
+  const [screenTutorials, setScreenTutorials] = useSetting(SETTING_KEYS.SCREEN_TUTORIALS_ENABLED, true);
   const [hiddenSections, setHiddenSections] = useSetting(SETTING_KEYS.HIDDEN_LIBRARY_SECTIONS, []);
   // null = never decided (see SETTING_KEYS.EDUCATOR_MODE); the Switch below
   // treats that as off, and flipping it writes an explicit true/false.
@@ -822,6 +824,40 @@ export default function SettingsScreen() {
         <SettingRow icon="school-outline" iconColor="#b07be0" label="Replay Tutorial" subtitle="Take the guided tour of the app's features again"
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
           onPress={() => { navigation.navigate('MainTabs'); setTimeout(startTour, 300); }}
+          c={c} t={t} s={s} r={r} />
+        {/* Per-screen tutorials — see src/logic/useFirstVisitTutorial.js. The
+            main teaching in the app now, which is why it defaults on. */}
+        <SettingRow icon="chatbubbles-outline" iconColor="#b07be0" label="Screen Tutorials"
+          subtitle="A short walkthrough the first time you open each screen"
+          alwaysShowSubtitle
+          right={
+            <Switch
+              value={screenTutorials !== false}
+              onValueChange={setScreenTutorials}
+              trackColor={{ false: c.bg2, true: c.teal + '88' }}
+              thumbColor={screenTutorials !== false ? c.teal : c.text4}
+            />
+          }
+          c={c} t={t} s={s} r={r} />
+        <SettingRow icon="refresh-outline" iconColor="#b07be0" label="Show All Tutorials Again"
+          subtitle="Forget which screens you've already seen a walkthrough for"
+          right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
+          onPress={() => {
+            Alert.alert(
+              'Show all tutorials again?',
+              "Every screen will walk you through itself once more, the next time you open it.",
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Show again',
+                  onPress: async () => {
+                    await resetSeenScreens();
+                    Alert.alert('Done', "Screen tutorials will show again as you move around the app.");
+                  },
+                },
+              ],
+            );
+          }}
           c={c} t={t} s={s} r={r} />
         <SettingRow icon="information-circle-outline" iconColor={c.teal} label="App Version" subtitle="CT App · ChillTech Hub LLC"
           right={<Text style={{ fontSize: t.xs, color: c.text4 }}>v1.0.0</Text>}

@@ -18,7 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../context/ThemeContext';
 import { useUIPrefs } from '../../../context/UIPrefsContext';
-import { supabase } from '../../api/supabaseClient';
+import { supabase } from '../../api/profileScopedClient';
 import { addCapture, deleteCapture, updateCapture } from '../../api/captureService';
 import { notesToMarkdown, notesToCSV } from '../../logic/exportUtils';
 import LinkifiedText from '../../components/LinkifiedText';

@@ -12,12 +12,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useUIPrefs } from '../../context/UIPrefsContext';
-import { supabase } from '../api/supabaseClient';
+import { supabase } from '../api/profileScopedClient';
 import {
   AREAS, getInstances, getPresetComponents,
   getUserSubscriptions, generateInstances,
   completeInstance, skipInstance, rescheduleInstance, addNoteToInstance,
 } from '../api/plannerService';
+import { useProfiles } from '../../context/ProfileAccountsContext';
+import { buildProfileLookup } from '../data/personas';
+import useViewScope, { SCOPE_PROFILE } from '../logic/useViewScope';
 import { schedulePlanReminder, cancelPlanReminder, hasScheduledReminder } from '../logic/planReminderActions';
 import DailyCheckin from '../components/DailyCheckin';
 import TourSpot from '../components/TourSpot';
@@ -535,6 +538,13 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
 
 // ─── Agenda item row ──────────────────────────────────────────────────────────
 function AgendaRow({ instance, onUpdate, onEdit, navigation, c, t, s, r }) {
+  // Reads the profile list directly rather than having it drilled through
+  // ListView/TimeView — the badge is only needed here, and threading a prop
+  // through two intermediate components for one label isn't worth it.
+  const { profiles, active } = useProfiles();
+  const rowProfile = instance.profile_id && instance.profile_id !== active?.id
+    ? buildProfileLookup(profiles)[instance.profile_id]
+    : null;
   const [expanded, setExpanded] = useState(false);
   const [saving,   setSaving]   = useState(false);
   const area     = AREAS[instance.area] || AREAS.physical;
@@ -606,6 +616,15 @@ function AgendaRow({ instance, onUpdate, onEdit, navigation, c, t, s, r }) {
             {overdue && !done && (
               <View style={{ backgroundColor: '#e0585822', borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1 }}>
                 <Text style={{ fontSize: 9, color: '#e05858', fontWeight: t.bold }}>MISSED</Text>
+              </View>
+            )}
+            {/* Only shown when the item belongs to a profile other than the
+                active one — labelling your own items with your own profile
+                name on every row would be noise. */}
+            {rowProfile && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1, backgroundColor: rowProfile.color + '22', borderWidth: 0.5, borderColor: rowProfile.color + '88' }}>
+                <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: rowProfile.color }} />
+                <Text style={{ fontSize: 9, color: rowProfile.color, fontWeight: t.bold }} numberOfLines={1}>{rowProfile.name}</Text>
               </View>
             )}
           </View>
@@ -786,7 +805,7 @@ function ListView({ instances, onUpdate, onEdit, navigation, c, t, s, r }) {
 }
 
 // ─── Daily page ───────────────────────────────────────────────────────────────
-function DailyPage({ userId, date, activeAreas, timeMode, onUpdate, onEdit, navigation, refreshKey, c, t, s, r }) {
+function DailyPage({ userId, date, activeAreas, timeMode, onUpdate, onEdit, navigation, refreshKey, showingAll, c, t, s, r }) {
   const [instances,  setInstances]  = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -796,12 +815,12 @@ function DailyPage({ userId, date, activeAreas, timeMode, onUpdate, onEdit, navi
   // the parent's state and re-renders this component with a new prop, but
   // never actually re-runs load() to apply it. The chip would visually
   // highlight while the list underneath stayed exactly as it was.
-  useEffect(() => { load(); }, [date, refreshKey, activeAreas]);
+  useEffect(() => { load(); }, [date, refreshKey, activeAreas, showingAll]);
 
   const load = async () => {
     setLoading(true);
     try {
-      let data = await getInstances(userId, { date: toISO(date) });
+      let data = await getInstances(userId, { date: toISO(date), allProfiles: showingAll });
       if (activeAreas.size > 0) data = data.filter(i => activeAreas.has(i.area));
       setInstances(data);
     } catch (e) { console.warn('DailyPage', e); }
@@ -844,19 +863,19 @@ function DailyPage({ userId, date, activeAreas, timeMode, onUpdate, onEdit, navi
 }
 
 // ─── Weekly view ──────────────────────────────────────────────────────────────
-function WeeklyView({ userId, anchor, activeAreas, onDayPress, refreshKey, c, t, s }) {
+function WeeklyView({ userId, anchor, activeAreas, onDayPress, refreshKey, showingAll, c, t, s }) {
   const [byDate,  setByDate]  = useState({});
   const [loading, setLoading] = useState(true);
   const weekDays = getWeekDays(anchor);
   const today    = toISO(new Date());
 
   // Same missing-dependency bug as DailyPage — see its comment above.
-  useEffect(() => { load(); }, [anchor, refreshKey, activeAreas]);
+  useEffect(() => { load(); }, [anchor, refreshKey, activeAreas, showingAll]);
 
   const load = async () => {
     setLoading(true);
     try {
-      let data = await getInstances(userId, { weekStart: toISO(weekDays[0]), weekEnd: toISO(weekDays[6]) });
+      let data = await getInstances(userId, { weekStart: toISO(weekDays[0]), weekEnd: toISO(weekDays[6]), allProfiles: showingAll });
       if (activeAreas.size > 0) data = data.filter(i => activeAreas.has(i.area));
       const map = {};
       data.forEach(inst => { if (!map[inst.date]) map[inst.date] = []; map[inst.date].push(inst); });
@@ -910,7 +929,7 @@ function WeeklyView({ userId, anchor, activeAreas, onDayPress, refreshKey, c, t,
 }
 
 // ─── Monthly view ─────────────────────────────────────────────────────────────
-function MonthlyView({ userId, anchor, activeAreas, onDayPress, refreshKey, c, t, s }) {
+function MonthlyView({ userId, anchor, activeAreas, onDayPress, refreshKey, showingAll, c, t, s }) {
   const [countByDate, setCount]   = useState({});
   const [doneByDate,  setDone]    = useState({});
   const [loading,     setLoading] = useState(true);
@@ -921,12 +940,12 @@ function MonthlyView({ userId, anchor, activeAreas, onDayPress, refreshKey, c, t
   const daysInMonth  = new Date(year, month + 1, 0).getDate();
 
   // Same missing-dependency bug as DailyPage — see its comment above.
-  useEffect(() => { load(); }, [anchor, refreshKey, activeAreas]);
+  useEffect(() => { load(); }, [anchor, refreshKey, activeAreas, showingAll]);
 
   const load = async () => {
     setLoading(true);
     try {
-      let data = await getInstances(userId, { month: month + 1, year });
+      let data = await getInstances(userId, { month: month + 1, year, allProfiles: showingAll });
       if (activeAreas.size > 0) data = data.filter(i => activeAreas.has(i.area));
       const cm = {}, dm = {};
       data.forEach(inst => {
@@ -1139,6 +1158,13 @@ export default function PlannerScreen() {
   const [showModal,  setShowModal]= useState(false);
   const [modalDate,  setModalDate]= useState(null);
 
+  // The planner defaults the opposite way to the calendar: a task list is
+  // context-specific work, so merging every profile's into one is noise. The
+  // calendar defaults to 'all' because you only have one actual day and need
+  // to see clashes. See useViewScope.js.
+  const { showingAll, toggle: toggleScope } = useViewScope('planner', SCOPE_PROFILE);
+  const { profiles } = useProfiles();
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setUserId(user.id);
@@ -1237,6 +1263,25 @@ export default function PlannerScreen() {
               <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: view === v ? '#fff' : c.text3 }}>{v}</Text>
             </TouchableOpacity>
           ))}
+
+          {/* Widen across profiles. Only worth showing once there's more than
+              one profile to widen across. */}
+          {profiles.length > 1 && (
+            <TouchableOpacity
+              onPress={toggleScope}
+              style={{ marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 4,
+                       paddingHorizontal: s.md, paddingVertical: 5, borderRadius: 20, borderWidth: 1,
+                       borderColor: showingAll ? c.gold : c.border,
+                       backgroundColor: showingAll ? c.gold + '22' : 'transparent' }}
+              accessibilityRole="button"
+              accessibilityLabel={showingAll ? 'Showing all profiles. Tap to show only this profile.' : 'Showing this profile only. Tap to show all profiles.'}
+            >
+              <Ionicons name={showingAll ? 'layers' : 'person'} size={12} color={showingAll ? c.gold : c.text3} />
+              <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: showingAll ? c.gold : c.text3 }}>
+                {showingAll ? 'All profiles' : 'This profile'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
         </TourSpot>
 
@@ -1277,20 +1322,21 @@ export default function PlannerScreen() {
       {/* ── Content ── */}
       {view === 'Daily' ? (
         <DailyPage
-          key={`daily-${toISO(anchor)}`}
+          key={`daily-${toISO(anchor)}-${showingAll ? 'all' : 'one'}`}
           userId={userId} date={anchor}
           activeAreas={activeAreas} timeMode={timeMode}
           onUpdate={() => setRefresh(k => k + 1)}
           onEdit={openEdit}
+          showingAll={showingAll}
           navigation={navigation}
           refreshKey={refreshKey} c={c} t={t} s={s} r={r}
         />
       ) : view === 'Weekly' ? (
         <WeeklyView userId={userId} anchor={anchor} activeAreas={activeAreas}
-          onDayPress={onDayPress} refreshKey={refreshKey} c={c} t={t} s={s} />
+          onDayPress={onDayPress} refreshKey={refreshKey} showingAll={showingAll} c={c} t={t} s={s} />
       ) : (
         <MonthlyView userId={userId} anchor={anchor} activeAreas={activeAreas}
-          onDayPress={onDayPress} refreshKey={refreshKey} c={c} t={t} s={s} />
+          onDayPress={onDayPress} refreshKey={refreshKey} showingAll={showingAll} c={c} t={t} s={s} />
       )}
 
       {/* ── Side panel ── */}

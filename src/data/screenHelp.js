@@ -65,6 +65,10 @@ export const SCREEN_HELP = {
     title: 'Discover',
     body: 'Find mentors, fellow scholars, and interesting people and breakthroughs worth knowing about.',
   },
+  WayfinderScreen: {
+    title: 'Wayfinder',
+    body: 'For when you don’t know yet what you want to do or who you want to be. Answer three short steps to get a map of what pulls you and what you can already do, then test a few real paths with small experiments and say how each one felt. Something going on right now? Pick it and get a plan with free help. You can also go deeper: your personality, how you learn, and life beyond work.',
+  },
   LifeAreaScreen: {
     title: 'Life Area',
     body: 'A focused view into one part of your life — log notes and track how it’s going over time.',

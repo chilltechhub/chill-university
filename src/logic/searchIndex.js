@@ -117,6 +117,7 @@ export function getDestinations() {
       icon: subject.icon,
       color: subject.color,
       route: classes('ClassesMain'),
+      personas: subject.personas,
     });
     (subject.children || []).forEach((child) => {
       const screen = CLASS_SCREEN_MAP[child.label];
@@ -127,6 +128,7 @@ export function getDestinations() {
         icon: subject.icon,
         color: subject.color,
         route: classes(screen),
+        personas: subject.personas,
       });
     });
   });
@@ -144,14 +146,47 @@ export function getDestinations() {
   return out;
 }
 
+// ─── Profile-type gating ────────────────────────────────────────────────────
+// Class subjects carry `personas` — school subjects for PERSONAL/STUDENT, the
+// business-ownership tracks for BUSINESS/ENTREPRENEUR (see classCatalog.js).
+// Classes.js has always filtered on it; this index didn't, which meant a
+// guest or a minor's profile could type "Capital & Funding" into the palette
+// and land straight in adult financial content the Academy screen hides from
+// them. Search now applies the same rule.
+//
+// Checked by destination screen as well as by row, because recents are
+// stored without the tag — an adult-track visit saved before switching to a
+// Personal profile must not resurface under "Recent".
+let gatedScreens = null;
+function gatedScreenMap() {
+  if (gatedScreens) return gatedScreens;
+  gatedScreens = {};
+  CLASS_SUBJECTS.forEach((subject) => {
+    if (!subject.personas) return;
+    (subject.children || []).forEach((child) => {
+      const screen = CLASS_SCREEN_MAP[child.label];
+      if (screen) gatedScreens[screen] = subject.personas;
+    });
+  });
+  return gatedScreens;
+}
+
+// Fails closed: a gated destination with no active profile type is hidden,
+// the same way Classes.js treats an unknown type.
+export function isDestinationAllowed(row, activeType) {
+  const personas = row?.personas || gatedScreenMap()[row?.route?.params?.screen];
+  return !personas || (!!activeType && personas.includes(activeType));
+}
+
 // Rank: a title that starts with the query beats one that merely contains
 // it, which beats a subtitle-only match. Without this, typing "math" buries
 // the Math subject under every topic whose subtitle says "Math".
-export function searchDestinations(query, limit = 8) {
+export function searchDestinations(query, limit = 8, activeType) {
   const q = query.trim().toLowerCase();
   if (!q) return [];
   const scored = [];
   getDestinations().forEach((row) => {
+    if (!isDestinationAllowed(row, activeType)) return;
     const title = row.title.toLowerCase();
     const subtitle = (row.subtitle || '').toLowerCase();
     let score = 0;
@@ -168,8 +203,10 @@ export function searchDestinations(query, limit = 8) {
 }
 
 // What the palette shows before anything is typed.
-export function defaultDestinations() {
+export function defaultDestinations(activeType) {
   const wanted = ['Capture Inbox', 'Knowledge Vault', 'The Workshop', 'Planner', 'Academy Classes', 'Idea Garden'];
   const all = getDestinations();
-  return wanted.map((title) => all.find((row) => row.title === title)).filter(Boolean);
+  return wanted
+    .map((title) => all.find((row) => row.title === title))
+    .filter((row) => row && isDestinationAllowed(row, activeType));
 }

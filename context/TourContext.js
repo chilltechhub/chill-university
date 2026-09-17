@@ -171,13 +171,74 @@ export function TourProvider({ children }) {
     } catch {}
   }, [active, start]);
 
+  // ── Teaching by doing ─────────────────────────────────────────────────────
+  // Two things a step can declare so a walkthrough can hand the controls
+  // over instead of narrating:
+  //
+  //   passthrough: true
+  //     TourOverlay stops absorbing touches over the highlighted element, so
+  //     the user can actually press the thing being pointed at. The step
+  //     offers no Next — pressing the real control is what advances it, via
+  //     completeAction() below.
+  //
+  //   prefill: { ...fields }
+  //     Exposed as useTour().prefill for whatever screen owns that form to
+  //     read when it opens. The form comes up filled in with a worked
+  //     example (see src/config/chilltech.js) that the user can edit or
+  //     replace. NOTHING IS WRITTEN by the tutorial — it only becomes a real
+  //     row if the user saves, exactly as if they'd typed it.
+  //
+  // A screen consuming a prefill should clear its own copy on close; the
+  // tutorial's copy goes away with the step.
+  const currentStep = active ? steps[stepIndex] : null;
+
+  // Called by a screen when the user does the thing a passthrough step asked
+  // for. Advancing on the real action rather than on a Next button is the
+  // whole point — otherwise it's still just a slideshow with a hole in it.
+  const completeAction = useCallback(() => {
+    if (!active) return;
+    if (!steps[stepIndex]?.passthrough) return;
+    next();
+  }, [active, steps, stepIndex, next]);
+
+  // ── Guide-taught lessons ──────────────────────────────────────────────────
+  // A step can carry a `quiz: { question, options, answerIndex, explain }`
+  // instead of plain prose. TourOverlay renders the options inside the speech
+  // bubble; answering reveals which was right and why, and only then offers
+  // Next. Used by the curriculum walkthroughs in
+  // src/data/curriculum/guideLessons.js, where the guide summarises a module
+  // and then checks the one thing people actually get wrong about it.
+  //
+  // The chosen answer lives here rather than in the overlay so it survives
+  // the overlay re-rendering, and resets whenever the step changes.
+  const [quizAnswer, setQuizAnswer] = useState(null);
+  useEffect(() => { setQuizAnswer(null); }, [stepIndex, scopedSteps]);
+
+  // Run an arbitrary step list — used by the curriculum walkthroughs, which
+  // are built from content rather than from a screen's TourSpots. Same
+  // overlay, same guide; it just never navigates and never spotlights,
+  // because there is nothing on screen it is pointing at.
+  const startLesson = useCallback((lessonSteps) => {
+    if (!lessonSteps?.length) return;
+    setScopedSteps(lessonSteps);
+    setActive(true);
+    setStepIndex(0);
+  }, []);
+
+  const answerQuiz = useCallback((optionIndex) => {
+    setQuizAnswer(prev => (prev === null ? optionIndex : prev)); // first answer stands
+  }, []);
+
   const value = useMemo(() => ({
     active, stepIndex, targets, steps,
-    currentStep: active ? steps[stepIndex] : null,
+    currentStep,
     isLastStep: stepIndex >= steps.length - 1,
+    prefill: currentStep?.prefill || null,
+    completeAction,
+    quizAnswer, answerQuiz,
     registerNavigator, registerTarget, unregisterTarget, setPersonalization,
-    startTour: start, startScreenTour, startIfFirstTime, nextStep: next, backStep: back, skipTour: finish,
-  }), [active, stepIndex, targets, steps, registerNavigator, registerTarget, unregisterTarget, setPersonalization, start, startScreenTour, startIfFirstTime, next, back, finish]);
+    startTour: start, startScreenTour, startLesson, startIfFirstTime, nextStep: next, backStep: back, skipTour: finish,
+  }), [active, stepIndex, targets, steps, currentStep, completeAction, quizAnswer, answerQuiz, registerNavigator, registerTarget, unregisterTarget, setPersonalization, start, startScreenTour, startLesson, startIfFirstTime, next, back, finish]);
 
   return <TourContext.Provider value={value}>{children}</TourContext.Provider>;
 }

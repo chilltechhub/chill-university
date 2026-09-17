@@ -11,10 +11,12 @@ import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
-import { supabase } from '../api/supabaseClient';
+import { supabase } from '../api/profileScopedClient';
 import { cacheRead, cacheWrite, isOnline } from '../api/offlineCache';
 import { RETENTION_DAYS, getRecentlyDeleted, restoreItem, permanentlyDelete, purgeExpired } from '../api/trashService';
 import TourSpot from '../components/TourSpot';
+import FloatingCard from '../components/FloatingCard';
+import { useTour } from '../../context/TourContext';
 import { todayStr } from '../logic/dateUtils';
 
 // supabase-js resolves { data, error } instead of throwing on a failed
@@ -975,12 +977,24 @@ function CaptureCard({ item, onProcess, onDone, selectMode, selected, onToggleSe
 // ─── Quick Capture Modal ──────────────────────────────────────────────────────
 // Exported so the global floating action button can pop this up from
 // anywhere without navigating to the full Capture Inbox screen.
-export function QuickCaptureModal({ visible, userId, onSaved, onClose, c, t, s, r }) {
+// `prefill` comes from a tutorial step (see `prefill` in
+// context/TourContext.js) — a worked example to open with, editable, and
+// never saved unless the user saves it.
+export function QuickCaptureModal({ visible, userId, onSaved, onClose, prefill, c, t, s, r }) {
   const [draft,  setDraft]  = useState('');
   const [type,   setType]   = useState('note');
   const [tags,   setTags]   = useState('');
   const [saving, setSaving] = useState(false);
   const [url,    setUrl]    = useState(null);
+
+  // Seed from the tutorial's example, and only into empty fields so
+  // reopening mid-typing can't wipe what the user wrote.
+  useEffect(() => {
+    if (!visible || !prefill) return;
+    setDraft(prev => prev || prefill.text || '');
+    if (prefill.type) setType(prev => (prev === 'note' ? prefill.type : prev));
+    if (prefill.url) setUrl(prev => prev || prefill.url);
+  }, [visible, prefill]);
 
   const handleText = (text) => {
     setDraft(text);
@@ -1018,11 +1032,8 @@ export function QuickCaptureModal({ visible, userId, onSaved, onClose, c, t, s, 
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide">
-      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 48, borderTopWidth: 0.5, borderColor: c.border }}>
-          <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
+    <FloatingCard visible={visible} onClose={onClose} c={c}>
+      <View style={{ padding: s.xl, paddingTop: s.sm }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: s.lg }}>
             <Text style={{ fontSize: t.xl, fontWeight: t.bold, color: c.text1 }}>⚡ Quick Capture</Text>
             <TouchableOpacity onPress={() => { setDraft(''); setType('note'); setTags(''); onClose(); }}>
@@ -1074,9 +1085,8 @@ export function QuickCaptureModal({ visible, userId, onSaved, onClose, c, t, s, 
                 : <Text style={{ color: '#fff', fontWeight: t.bold }}>Capture → Process later</Text>}
             </TouchableOpacity>
           </View>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
+      </View>
+    </FloatingCard>
   );
 }
 
@@ -1091,6 +1101,13 @@ export default function CaptureInbox() {
   const [userId,     setUserId]     = useState(null);
   const [filter,     setFilter]     = useState('all');
   const [showAdd,    setShowAdd]    = useState(false);
+  // A tutorial can hand this screen a worked capture to open with, and wants
+  // to know when the user actually taps + rather than a Next arrow.
+  const { prefill: tourPrefill, completeAction } = useTour();
+  // Snapshotted at tap time — see the matching note in library/projects.js.
+  // completeAction() ends the tour in the same tick, so reading the live
+  // prefill when the sheet renders gets null.
+  const [pendingPrefill, setPendingPrefill] = useState(null);
   const [processing, setProcessing] = useState(null); // item being processed
   const [view,       setView]       = useState('inbox'); // inbox | later | done | trash
   const [deletedItems, setDeletedItems] = useState([]);
@@ -1242,8 +1259,10 @@ export default function CaptureInbox() {
               style={{ backgroundColor: c.bg0, borderWidth: 1, borderColor: c.border, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}>
               <Ionicons name="download-outline" size={20} color={c.gold} />
             </TouchableOpacity>
-            <TourSpot id="inbox-capture">
-            <TouchableOpacity onPress={() => setShowAdd(true)}
+            {/* radius 22 matches the 44px circular button below, so the
+                spotlight is a circle rather than a rounded square */}
+            <TourSpot id="inbox-capture" radius={22}>
+            <TouchableOpacity onPress={() => { setPendingPrefill(tourPrefill); setShowAdd(true); completeAction(); }}
               style={{ backgroundColor: c.teal, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}>
               <Ionicons name="add" size={24} color="#fff" />
             </TouchableOpacity>
@@ -1399,9 +1418,9 @@ export default function CaptureInbox() {
       )}
 
       <QuickCaptureModal
-        visible={showAdd} userId={userId}
+        visible={showAdd} userId={userId} prefill={pendingPrefill}
         onSaved={(item) => { setCaptures(prev => [item, ...prev]); setShowAdd(false); }}
-        onClose={() => setShowAdd(false)}
+        onClose={() => { setShowAdd(false); setPendingPrefill(null); }}
         c={c} t={t} s={s} r={r} />
 
       {processing && (

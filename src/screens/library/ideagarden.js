@@ -26,6 +26,7 @@ import {
 import LinkedText from '../../components/LinkedText';
 import LinkSuggest from '../../components/LinkSuggest';
 import TourSpot from '../../components/TourSpot';
+import { useTour } from '../../../context/TourContext';
 
 // SW/SH/CANVAS_H are now dynamic via useWindowDimensions inside the component
 
@@ -816,10 +817,23 @@ export default function IdeaGardenScreen() {
     ]);
   };
 
+  // A tutorial can pre-fill the new-idea sheet and wants to know when the
+  // user actually taps Add rather than a Next arrow.
+  const { prefill: tourPrefill, completeAction } = useTour();
+
   const openNewCore = () => {
     setEditingCore(null);
-    setCoreDraft({ title: '', description: '', plant_type: 'plant', is_project: false, project_status: 'idea', color: '#2e7d32', color_light: '#a5d6a7' });
+    setCoreDraft({
+      // A tutorial step can hand over a worked example to open with (see
+      // `prefill` in context/TourContext.js). Editable, and nothing is
+      // planted until the user presses Plant it themselves.
+      title: tourPrefill?.title || '',
+      description: tourPrefill?.description || '',
+      plant_type: 'plant', is_project: false, project_status: 'idea',
+      color: '#2e7d32', color_light: '#a5d6a7',
+    });
     setCoreModal(true);
+    completeAction();
   };
 
   const openEditCore = (core) => { setEditingCore(core); setCoreDraft({ ...core }); setCoreModal(true); setOpenItem(null); };
@@ -940,10 +954,15 @@ export default function IdeaGardenScreen() {
           </View>
         </View>
         <View style={styles.topbarRight}>
+          {/* radius 16 matches styles.connectBtn — a pill, and the spotlight
+              should trace it as one */}
+          <TourSpot id="garden-vine" radius={16}>
           <TouchableOpacity style={[styles.connectBtn, connectMode && styles.connectBtnActive]} onPress={toggleConnectMode}>
             <Ionicons name="git-network" size={16} color={connectMode ? gc.white : gc.text2} />
             <Text style={[styles.connectBtnText, connectMode && { color: gc.white }]}>Vine</Text>
           </TouchableOpacity>
+          </TourSpot>
+          <TourSpot id="garden-view" radius={8}>
           <View style={styles.viewToggle}>
             {['map', 'list'].map(v => (
               <TouchableOpacity key={v} style={[styles.viewBtn, view === v && styles.viewBtnActive]} onPress={() => setView(v)}>
@@ -951,10 +970,13 @@ export default function IdeaGardenScreen() {
               </TouchableOpacity>
             ))}
           </View>
+          </TourSpot>
           <TouchableOpacity style={styles.exportBtn} onPress={exportGarden}>
             <Ionicons name="share-outline" size={18} color={gc.text2} />
           </TouchableOpacity>
-          <TourSpot id="ideas-list">
+          {/* Historic id — it wraps the ADD button, not a list. radius 17
+              matches styles.addBtn, so the spotlight is a circle. */}
+          <TourSpot id="ideas-list" radius={17}>
           <TouchableOpacity style={styles.addBtn} onPress={openNewCore}>
             <Ionicons name="add" size={18} color={gc.white} />
           </TouchableOpacity>

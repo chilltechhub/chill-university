@@ -9,24 +9,46 @@ import {
   Platform, FlatList, Alert, ActivityIndicator, Animated, Easing,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useUIPrefs } from '../../context/UIPrefsContext';
 import { useUserProgress } from '../../context/UserProgressContext';
-import { supabase } from '../api/supabaseClient';
+import { supabase } from '../api/profileScopedClient';
 import { fetchContentPool } from '../api/remoteConfigService';
 import { getMyOpenAssignments, updateAssignmentStatus } from '../api/organizationService';
+import { completeInstance, skipInstance } from '../api/plannerService';
 import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../api/offlineCache';
 import { syncReminders, computeReminderState } from '../logic/notificationScheduler';
 import TourSpot from '../components/TourSpot';
 import CalendarModal from '../components/CalendarModal';
+import WidgetBoard from '../components/WidgetBoard';
 import LevelRing from '../components/LevelRing';
 import PlayerMatchBackground from '../components/PlayerMatchBackground';
+import GettingStartedCard from '../components/GettingStartedCard';
+import { useProfiles } from '../../context/ProfileAccountsContext';
+import { getPersona, DEFAULT_PERSONA } from '../data/personas';
+import { HabitRingsWidget, LifeAreasWidget, DailyDrillsWidget } from '../components/widgets/PersonalWidgets';
+import { StudyBlocksWidget, ClassProgressWidget } from '../components/widgets/StudentWidgets';
+import { OrgSnapshotWidget, SystemsCheckWidget, RecurringOpsWidget } from '../components/widgets/BusinessWidgets';
+import { VaultStatusWidget, FounderQuestWidget, TargetsReadinessWidget } from '../components/widgets/EntrepreneurWidgets';
+import { WayfinderWidget } from '../components/widgets/WayfinderWidget';
+import { getWayfinderIntent } from '../api/wayfinderService';
 import useCharacterLoadout from '../logic/useCharacterLoadout';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import { RANK_LABELS, FONTS } from '../theme';
 import { GAMES_MASTER } from './GamesScreen';
+import { LIFE_AREAS } from './library/LifeAreaScreen';
 import { useConfigValue } from '../../context/RemoteConfigContext';
+
+function daysSince(iso) {
+  if (!iso) return null;
+  return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000));
+}
+// A domain counts as "due" once it's been this long since its last rating —
+// or if it's never been checked in at all. Same threshold LibraryScreen's
+// Domains tab uses for its own due chips.
+const CHECKIN_DUE_DAYS = 7;
 
 // The four "study" destinations the STUDY button picks randomly among (tap),
 // or lets you choose explicitly (hold). Screen names match the Stack.Screen
@@ -61,6 +83,111 @@ const QUOTES = [
   { text: "Success is the sum of small efforts repeated day in and day out.", author: "Robert Collier" },
   { text: "Real knowledge is to know the extent of one's ignorance.", author: "Confucius" },
 ];
+
+// ─── Today's Activities — type styling ────────────────────────────────────────
+// Same palette as CalendarModal's EVENT_TYPES/PLANNER_AREAS so an item looks
+// like the same thing whether you meet it here or in the full calendar.
+const ACTIVITY_TYPES = {
+  event:    { label: 'Event',    icon: 'calendar-outline',         color: '#2bb5a0' },
+  reminder: { label: 'Reminder', icon: 'notifications-outline',    color: '#c9a84c' },
+  note:     { label: 'Note',     icon: 'document-text-outline',    color: '#8b4fc4' },
+  task:     { label: 'Task',     icon: 'checkmark-circle-outline', color: '#3ac860' },
+  assignment: { label: 'Assignment', icon: 'school-outline',       color: '#c9a84c' },
+  planner:  { label: 'Routine',  icon: 'repeat-outline',           color: '#2bb5a0' },
+};
+const PLANNER_AREA_META = {
+  physical:     { emoji: '💪', color: '#e05858' }, mental:       { emoji: '🧠', color: '#8b4fc4' },
+  social:       { emoji: '🤝', color: '#2bb5a0' }, financial:    { emoji: '💰', color: '#3ac860' },
+  professional: { emoji: '🚀', color: '#c9a84c' }, spiritual:    { emoji: '✨', color: '#6b9fe8' },
+  creative:     { emoji: '🎨', color: '#e0a830' }, digital:      { emoji: '💻', color: '#5a9ae0' },
+};
+function fmtActivityTime(t24) {
+  if (!t24) return '';
+  const [h, m] = t24.split(':').map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+}
+
+// ─── Dashboard widgets ─────────────────────────────────────────────────────
+// The rearrangeable pieces of Home, iOS-widget-screen style — see
+// WidgetBoard.js for the drag/jiggle mechanics and how `layout` (order +
+// hidden flags) round-trips through user_settings.home_widget_layout.
+// Every widget Home can render, across all account types. Titles here are
+// what shows in the "hidden widgets" tray while editing.
+//
+// The first nine are the originals, available to everyone. The eleven below
+// them are the persona widgets — they're in the same flat list on purpose,
+// so a Student who wants the Vault on their dashboard can just un-hide it.
+// The account type decides the DEFAULT layout, not what's permitted.
+const WIDGET_DEFS = [
+  { key: 'hq',         title: 'Commander' },
+  { key: 'wisdom',      title: "Today's Wisdom" },
+  { key: 'focus',       title: 'Focus & Calendar' },
+  { key: 'activities',  title: "Today's Activities" },
+  { key: 'desk',        title: 'On the Desk' },
+  { key: 'ideas',       title: 'Latest Ideas' },
+  { key: 'streak',      title: 'Streak & Level' },
+  { key: 'builds',      title: 'Active Builds' },
+  { key: 'checkins',    title: 'Check-ins Due' },
+  // Not tied to one persona — see personas.defaultWidgets and the
+  // `exploring` option on layoutForPersona.
+  { key: 'wayfinder',   title: 'Wayfinder' },
+  // Persona widgets — src/components/widgets/
+  { key: 'habitRings',       title: 'Habits' },
+  { key: 'lifeAreas',        title: 'Life Areas' },
+  { key: 'dailyDrills',      title: "Today's Drills" },
+  { key: 'studyBlocks',      title: 'Study Blocks' },
+  { key: 'classProgress',    title: 'Subjects' },
+  { key: 'orgSnapshot',      title: 'Organization' },
+  { key: 'systemsCheck',     title: 'Systems Check' },
+  { key: 'recurringOps',     title: 'Recurring Ops' },
+  { key: 'vaultStatus',      title: 'The Vault' },
+  { key: 'founderQuest',     title: 'Founder Quest' },
+  { key: 'targetsReadiness', title: 'Targets & Readiness' },
+];
+
+// The layout a profile of this type starts with: its persona's ordered
+// widgets visible, everything else present but hidden (one tap away in the
+// edit tray). This is the thing that makes picking "Student" versus
+// "Entrepreneur" actually change the app — before this, `active_widgets` was
+// written to every profile row and read by nobody, so all four types got an
+// identical dashboard.
+//
+// `exploring` is onboarding's "I'm not sure yet" answer. Someone who said
+// they don't know what they want gets Wayfinder straight under the
+// Commander card, whatever type they ended up as — it's the one thing on
+// the dashboard built for exactly that answer.
+function layoutForPersona(personaKey, { exploring = false } = {}) {
+  let wanted = getPersona(personaKey)?.defaultWidgets || [];
+  if (exploring) {
+    const rest = wanted.filter(k => k !== 'wayfinder' && k !== 'hq');
+    wanted = [...(wanted.includes('hq') ? ['hq'] : []), 'wayfinder', ...rest];
+  }
+  const known = new Set(WIDGET_DEFS.map(w => w.key));
+  const visible = wanted.filter(k => known.has(k));
+  const shown = new Set(visible);
+  return [
+    ...visible.map(key => ({ key, hidden: false })),
+    ...WIDGET_DEFS.filter(w => !shown.has(w.key)).map(w => ({ key: w.key, hidden: true })),
+  ];
+}
+
+// Reconciles a saved layout against WIDGET_DEFS — drops widgets that no
+// longer exist (an older save referencing a removed key) and appends any
+// new ones the user's never seen, so an app update that adds a widget
+// doesn't silently hide it from someone with a saved layout already.
+//
+// New widgets are appended HIDDEN rather than visible. That was fine when
+// one widget joined a list of eight; appending eleven persona widgets
+// visible would rearrange the dashboard of every existing user without
+// being asked. Someone with a saved layout keeps exactly what they had.
+function reconcileWidgetLayout(stored, personaKey, opts) {
+  if (!Array.isArray(stored) || stored.length === 0) return layoutForPersona(personaKey, opts);
+  const known = new Set(WIDGET_DEFS.map(w => w.key));
+  const kept = stored.filter(l => l && known.has(l.key));
+  const seen = new Set(kept.map(l => l.key));
+  const added = WIDGET_DEFS.filter(w => !seen.has(w.key)).map(w => ({ key: w.key, hidden: true }));
+  return [...kept, ...added];
+}
 
 // ─── Default focus presets ────────────────────────────────────────────────────
 const DEFAULT_PRESETS = [
@@ -472,6 +599,56 @@ function NextUpCard({ item, actions, onAdd, c, t, s, r }) {
   );
 }
 
+// ─── 2b. TODAY'S ACTIVITIES ─────────────────────────────────────────────────
+// One row per item actually dated today (calendar events, tasks due today,
+// planner routines, assignments due today) — tap opens ActivityDetailCard in
+// the same bottom-sheet pattern as the desk ticker's NextUpCard, below.
+function ActivityRow({ item, onPress, c, t, s, r }) {
+  const meta = ACTIVITY_TYPES[item.type] || ACTIVITY_TYPES.event;
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.75}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: item.color || meta.color }}>
+      <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: (item.color || meta.color) + '22', alignItems: 'center', justifyContent: 'center' }}>
+        {item.emoji ? <Text style={{ fontSize: 14 }}>{item.emoji}</Text> : <Ionicons name={meta.icon} size={15} color={item.color || meta.color} />}
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1 }} numberOfLines={1}>{item.title}</Text>
+        <View style={{ flexDirection: 'row', gap: 6, marginTop: 1 }}>
+          {item.time && <Text style={{ fontSize: 10, color: item.color || meta.color, fontWeight: t.bold }}>{fmtActivityTime(item.time)}</Text>}
+          <Text style={{ fontSize: 10, color: c.text4, textTransform: 'uppercase', letterSpacing: 0.3 }}>{meta.label}</Text>
+        </View>
+      </View>
+      <Ionicons name="chevron-forward" size={16} color={c.text4} />
+    </TouchableOpacity>
+  );
+}
+
+function ActivityDetailCard({ item, actions, c, t, s, r }) {
+  if (!item) return null;
+  const meta = ACTIVITY_TYPES[item.type] || ACTIVITY_TYPES.event;
+  const color = item.color || meta.color;
+  return (
+    <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.md, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: color }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: 8 }}>
+        <View style={{ backgroundColor: color + '22', borderRadius: r.full, paddingHorizontal: 8, paddingVertical: 2 }}>
+          <Text style={{ fontSize: 9, color, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>{meta.label}</Text>
+        </View>
+        {item.time && <Text style={{ fontSize: 11, color: c.text3 }}>{fmtActivityTime(item.time)}</Text>}
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm }}>
+        {item.emoji ? <Text style={{ fontSize: 18 }}>{item.emoji}</Text> : <Ionicons name={meta.icon} size={18} color={color} />}
+        <Text style={{ flex: 1, fontSize: t.md, fontWeight: t.bold, color: c.text1 }} numberOfLines={3}>{item.title}</Text>
+      </View>
+      {item.notes ? <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 6 }} numberOfLines={3}>{item.notes}</Text> : null}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm, marginTop: s.md }}>
+        {(actions || []).map(a => (
+          <ActionPill key={a.key} label={a.label} icon={a.icon} tone={a.tone} color={color} c={c} t={t} onPress={a.onPress} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
 // ─── Desk ticker ────────────────────────────────────────────────────────────
 // Small, continuously drifting stock-ticker row — the pre-next-action-
 // surfacing look, kept for its own sake (it's just nicer to glance at than
@@ -480,6 +657,29 @@ function NextUpCard({ item, actions, onAdd, c, t, s, r }) {
 // exactly where the first started, so the loop is seamless. Tapping a chip
 // opens NextUpCard's full detail — badge, headline, one-tap action, Focus
 // button — in a sheet, rather than the old bare preview-and-dismiss card.
+const DESK_FADE_W = 28;
+
+// Edge fade for the auto-scrolling ticker below — signals "this keeps
+// going past the edge" instead of chips clipping abruptly mid-word. Built
+// with react-native-svg (already a dependency, same pattern as the
+// sky gradient in PlayerMatchBackground.js) rather than a new library.
+function EdgeFade({ side, color }) {
+  const stops = side === 'left' ? [1, 0] : [0, 1];
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', top: 0, bottom: 0, [side]: 0, width: DESK_FADE_W }}>
+      <Svg width="100%" height="100%">
+        <Defs>
+          <LinearGradient id={`deskFade-${side}`} x1="0" y1="0" x2="1" y2="0">
+            <Stop offset="0" stopColor={color} stopOpacity={stops[0]} />
+            <Stop offset="1" stopColor={color} stopOpacity={stops[1]} />
+          </LinearGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100%" height="100%" fill={`url(#deskFade-${side})`} />
+      </Svg>
+    </View>
+  );
+}
+
 function DeskTicker({ items, onItemPress, onAdd, c, t, s, r }) {
   const translateX = useRef(new Animated.Value(0)).current;
   const [setWidth, setSetWidth] = useState(0);
@@ -546,6 +746,8 @@ function DeskTicker({ items, onItemPress, onAdd, c, t, s, r }) {
           {items.map(item => chip(item, 'b'))}
         </View>
       </Animated.View>
+      <EdgeFade side="left" color={c.bg0} />
+      <EdgeFade side="right" color={c.bg0} />
     </View>
   );
 }
@@ -555,7 +757,11 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s, radius: r, shadows: sh } = useTheme();
   const { showEmojis, showSubtext } = useUIPrefs();
-  const { profile, streakDays, rank, progress, level, points, dailyMissions } = useUserProgress();
+  const { profile, streakDays, rank, progress, level, points, dailyMissions, subjectProgress } = useUserProgress();
+  // The active profile's type is what decides this dashboard's default
+  // layout, and `active` is what the entrepreneur widgets scope their vault
+  // documents and baseline to.
+  const { activeType, active: activeProfile, refresh: refreshProfiles } = useProfiles();
   const { background: playerBackground } = useCharacterLoadout({ level, points, rank, streakDays });
   // Set from Settings → Appearance, not on this screen itself.
   const [bgMode] = useSetting(SETTING_KEYS.HOME_BACKGROUND, 'plain');
@@ -591,10 +797,35 @@ export default function HomeScreen() {
   const [nextActionDraft,  setNextActionDraft]  = useState('');
   const [savingNextAction, setSavingNextAction] = useState(false);
 
+  // Today's Activities — everything actually scheduled/due today (calendar
+  // events, tasks due today, planner routines, cohort assignments due today),
+  // as opposed to "On the Desk" above which is a ranked NEXT-ACTION pick
+  // regardless of date. See loadAll for the merge.
+  const [todayActivities, setTodayActivities] = useState([]);
+  const [selectedActivity, setSelectedActivity] = useState(null);
+
   // Ideas
   const [ideas,          setIdeas]          = useState([]);
 
+  // New widgets — Active Builds, Check-ins Due (Streak & Level needs no
+  // fetch of its own, it just reads level/points/streakDays above).
+  const [activeBuilds,   setActiveBuilds]   = useState([]);
+  const [checkInDue,     setCheckInDue]     = useState([]);
+  const [lifeAreaStats,  setLifeAreaStats]  = useState([]); // every area + rating; see loadAll
+  // loadAll is memoised on [userId] via useFocusEffect, so it closes over
+  // whatever activeProfile/activeType were at that moment. Reading them
+  // through refs keeps it on the current values without re-creating the
+  // callback (and re-running the whole load) every time the context ticks.
+  const activeProfileIdRef = useRef(null);
+  const activeTypeRef = useRef(DEFAULT_PERSONA);
+
   const [showCalendar,   setShowCalendar]   = useState(false);
+
+  // Dashboard widget order/visibility — see WIDGET_DEFS above and
+  // WidgetBoard.js. Edits are local-only (fast, no network) while editing;
+  // the whole layout is written to Supabase once, on "Done" (exitWidgetEdit).
+  const [widgetLayout,   setWidgetLayout]   = useState(() => layoutForPersona(activeType));
+  const [editingWidgets, setEditingWidgets] = useState(false);
 
   // STUDY / PLAY shortcuts — tap goes somewhere random, hold picks explicitly
   const [showStudyMenu, setShowStudyMenu] = useState(false);
@@ -652,6 +883,71 @@ export default function HomeScreen() {
     if (userId) loadAll(userId);
   }, [userId]));
 
+  // Switching profiles switches dashboards. Without this, the layout state
+  // holds whatever the previous profile had until something else forces a
+  // reload — which is exactly the "picking a type doesn't change anything"
+  // complaint, just one level up.
+  //
+  // Only fires on a genuine profile CHANGE, tracked by id in a ref. It used
+  // to run whenever the context handed back a new object with the same id,
+  // which meant a stale cached active_widgets could land on top of an edit
+  // the user had just made — the layout appearing to revert on its own.
+  // ── The one place the dashboard layout is decided ────────────────────────
+  // Reads persona_profiles directly rather than trusting the context's
+  // cached copy, because exitWidgetEdit writes to that table and the cache
+  // lags behind. Keyed on the profile id so it runs once per profile:
+  // switching profiles switches dashboards, but a re-render (or a context
+  // refresh after a save) must never re-apply an older layout on top of an
+  // edit the user just made.
+  //
+  // Order of preference:
+  //   1. this profile's own saved layout (an array of {key, hidden})
+  //   2. the account-wide layout from before layouts were per-profile
+  //   3. this persona's default
+  // active_widgets holds a SAVED layout (array of {key, hidden}) or nothing.
+  // The typeof check is for legacy rows: createProfile used to seed this
+  // column with the persona's default key list as an array of STRINGS, which
+  // is not a layout. Those rows read as "no saved layout" and fall through to
+  // the persona default, which is the right answer for them.
+  const lastLayoutProfileRef = useRef(null);
+  useEffect(() => {
+    activeProfileIdRef.current = activeProfile?.id || null;
+    activeTypeRef.current = activeProfile?.type || DEFAULT_PERSONA;
+    if (!activeProfile?.id) return;
+    if (lastLayoutProfileRef.current === activeProfile.id) return;
+    lastLayoutProfileRef.current = activeProfile.id;
+
+    const profileId = activeProfile.id;
+    const personaType = activeProfile.type;
+    let alive = true;
+    (async () => {
+      let stored = null;
+      try {
+        const { data } = await supabase
+          .from('persona_profiles').select('active_widgets').eq('id', profileId).maybeSingle();
+        if (Array.isArray(data?.active_widgets) && data.active_widgets.length
+            && typeof data.active_widgets[0] === 'object') {
+          stored = data.active_widgets;
+        }
+        if (!stored) {
+          const { data: us } = await supabase
+            .from('user_settings').select('home_widget_layout')
+            .eq('user_id', activeProfile.user_id).maybeSingle();
+          if (Array.isArray(us?.home_widget_layout) && us.home_widget_layout.length) {
+            stored = us.home_widget_layout;
+          }
+        }
+      } catch (e) {
+        console.warn('HomeScreen: load widget layout', e?.message);
+      }
+      // Only consulted when there's no saved layout — an arranged dashboard
+      // always wins.
+      const exploring = stored ? false : await getWayfinderIntent();
+      if (alive) setWidgetLayout(reconcileWidgetLayout(stored, personaType, { exploring }));
+    })();
+    return () => { alive = false; };
+  }, [activeProfile?.id, activeProfile?.type, activeProfile?.user_id]);
+
   // Applies a previously-cached (or freshly-fetched) desk snapshot to state.
   // Same shape either way, so a cold offline launch and a live load render
   // identically — nothing on Home has to know which one it got.
@@ -659,9 +955,12 @@ export default function HomeScreen() {
     if (!snap) return;
     if (snap.todayFocus !== undefined) { setTodayFocus(snap.todayFocus || ''); setFocusDraft(snap.todayFocus || ''); }
     if (snap.todos)     setTodos(snap.todos);
+    if (snap.activities)  setTodayActivities(snap.activities);
     if (snap.ideas)     setIdeas(snap.ideas);
     if (snap.affirmations)  setAffirmations(snap.affirmations);
     if (snap.focusPresets)  setFocusPresets(snap.focusPresets);
+    if (snap.activeBuilds) setActiveBuilds(snap.activeBuilds);
+    if (snap.checkInDue)   setCheckInDue(snap.checkInDue);
   };
 
   const loadAll = async (uid) => {
@@ -675,17 +974,34 @@ export default function HomeScreen() {
       const [
         focusRes, tasksRes, projRes, capturesRes,
         ideasRes, settingsRes, assignmentsRes,
+        eventsRes, todayTasksRes, agendaRes,
+        buildsRes, lifeAreaRowsRes,
       ] = await Promise.all([
         supabase.from('daily_focus').select('focus_text').eq('user_id', uid).eq('focus_date', todayStr).maybeSingle(),
         supabase.from('tasks').select('id, title').eq('user_id', uid).eq('completed', false).order('priority').limit(3),
         supabase.from('projects').select('id, title, emoji, color, next_action').eq('user_id', uid).eq('status', 'active').is('deleted_at', null).limit(3),
         supabase.from('captures').select('id, title, type').eq('user_id', uid).eq('status', 'inbox').is('deleted_at', null).limit(2),
         supabase.from('garden_cores').select('id, title, plant_type, color, color_light, is_project, project_progress, garden_petals(id, title, petal_type, completed)').eq('user_id', uid).is('deleted_at', null).order('created_at', { ascending: false }).limit(5),
-        supabase.from('user_settings').select('affirmation, focus_presets').eq('user_id', uid).maybeSingle(),
+        supabase.from('user_settings').select('affirmation, focus_presets, home_widget_layout').eq('user_id', uid).maybeSingle(),
         // Fails soft — the institutional-layer migration may not be applied
         // yet (ORG_NOT_CONFIGURED), and that should degrade this one rail
         // source silently rather than blank the whole desk.
         getMyOpenAssignments(5).catch(() => []),
+        // Today's Activities feed — same three sources CalendarModal shows
+        // per-day, just scoped to today instead of a whole week. Daily focus
+        // and open-ended "On the Desk" tasks are deliberately left out: the
+        // focus box above already shows the former, and the desk ticker
+        // above is a ranked pick rather than "what's actually due today".
+        supabase.from('calendar_events').select('*').eq('user_id', uid).eq('date', todayStr),
+        supabase.from('tasks').select('id, title, due_date').eq('user_id', uid).eq('completed', false).eq('due_date', todayStr),
+        supabase.from('agenda_instances').select('id, title, area, date, start_time').eq('user_id', uid).eq('date', todayStr).eq('completed', false).eq('skipped', false),
+        // Active Builds widget — a fuller list than the 3-item OnDesk
+        // candidate above, same fields LibraryScreen's Build tab preview
+        // already uses.
+        supabase.from('projects').select('id, title, emoji, color, next_action').eq('user_id', uid).eq('status', 'active').is('deleted_at', null).order('sort_order').limit(6),
+        // Check-ins Due widget — same per-user life_areas rows
+        // LibraryScreen's Domains tab reads, matched by label the same way.
+        supabase.from('life_areas').select('label, progress, last_check_date').eq('user_id', uid),
       ]);
 
       // Focus
@@ -726,6 +1042,54 @@ export default function HomeScreen() {
       ].sort((a, b) => a.rank - b.rank).slice(0, 6);
       setTodos(merged);
 
+      // Today's Activities — everything with today's actual date on it,
+      // one merged/sorted list so "what does today look like" is a single
+      // glance instead of four separate rails. No-time items (all-day
+      // events, tasks, assignments) sort after timed ones, earliest first.
+      const activities = [
+        ...(eventsRes.data     || []).map(e => ({
+          id: 'evt_' + e.id, title: e.title, time: e.all_day ? null : e.time,
+          type: e.type, color: ACTIVITY_TYPES[e.type]?.color || c.teal,
+          notes: e.description, _src: 'calendar', raw: e,
+        })),
+        ...(todayTasksRes.data || []).map(tk => ({
+          id: 'atask_' + tk.id, title: tk.title, time: null,
+          type: 'task', color: ACTIVITY_TYPES.task.color, _src: 'task', raw: tk,
+        })),
+        ...(agendaRes.data     || []).map(item => {
+          const area = PLANNER_AREA_META[item.area] || { emoji: '•', color: c.teal };
+          return {
+            id: 'agenda_' + item.id, title: item.title, time: item.start_time,
+            type: 'planner', color: area.color, emoji: area.emoji, area: item.area,
+            _src: 'planner', raw: item,
+          };
+        }),
+        ...(assignmentsRes || []).filter(a => a.due_date === todayStr).map(a => ({
+          id: 'aassign_' + a.assignment_id, title: a.title, time: null,
+          type: 'assignment', color: ACTIVITY_TYPES.assignment.color,
+          notes: a.cohort_name, _src: 'assignment', raw: a,
+        })),
+      ].sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
+      setTodayActivities(activities);
+
+      // Active Builds
+      setActiveBuilds(buildsRes.data || []);
+
+      // Every area with its rating and staleness. "Check-ins Due" narrows
+      // this to the overdue ones; the Life Areas and Systems Check widgets
+      // want the standing picture, so it's computed once and kept whole.
+      const areaStats = LIFE_AREAS.map(area => {
+        const saved = (lifeAreaRowsRes.data || []).find(a => a.label?.toLowerCase() === area.label.toLowerCase());
+        return { area, rating: saved?.progress || 0, lastCheck: saved?.last_check_date || null, days: daysSince(saved?.last_check_date) };
+      });
+      setLifeAreaStats(areaStats);
+
+      // Check-ins Due — domains not rated in CHECKIN_DUE_DAYS+ days (or never).
+      const dueAreas = areaStats
+        .filter(x => x.days === null || x.days >= CHECKIN_DUE_DAYS)
+        .slice(0, 4);
+      setCheckInDue(dueAreas);
+
       // Ideas
       if (ideasRes.data) setIdeas(ideasRes.data);
 
@@ -750,15 +1114,25 @@ export default function HomeScreen() {
         }
       }
 
+      // NOTE: the widget layout is deliberately NOT loaded here. It has one
+      // owner — the effect keyed on the active profile, further up. loadAll
+      // runs from both the auth effect and useFocusEffect and does not wait
+      // for ProfileAccountsContext, so when it also set the layout it raced
+      // that effect and usually won with a stale value. That is what made
+      // hiding a widget look like it never saved.
+
       // setState above hasn't committed yet within this same tick, so cache
       // the values just computed rather than reading the (still-stale)
       // `affirmations`/`focusPresets` state back out.
       await cacheWrite(cacheKey, {
         todayFocus: focusRes.data?.focus_text ?? null,
         todos: merged,
+        activities,
         ideas: ideasRes.data || [],
         affirmations: nextAffirmations ?? affirmations,
         focusPresets: nextFocusPresets ?? focusPresets,
+        activeBuilds: buildsRes.data || [],
+        checkInDue: dueAreas,
       });
     } catch (e) { console.warn('HomeScreen loadAll', e); }
   };
@@ -787,6 +1161,35 @@ export default function HomeScreen() {
   const deletePreset = (i) => {
     const next = focusPresets.filter((_, idx) => idx !== i);
     savePresets(next);
+  };
+
+  // Dashboard widgets — WidgetBoard calls this locally on every reorder/
+  // hide/show (fast, no network); the layout only actually gets written to
+  // Supabase once, when edit mode closes, via exitWidgetEdit below.
+  const exitWidgetEdit = async () => {
+    setEditingWidgets(false);
+    if (!userId) return;
+    try {
+      // Per PROFILE, not per account. persona_profiles.active_widgets exists
+      // for exactly this and was previously write-only; user_settings holds
+      // one layout for the whole login, which would mean a Student profile
+      // and an Entrepreneur profile on the same account fighting over one
+      // dashboard. Falls back to user_settings when there's no profile row
+      // yet (guest-ish states, or before the master exists).
+      if (activeProfile?.id) {
+        const { error } = await supabase.from('persona_profiles')
+          .update({ active_widgets: widgetLayout })
+          .eq('id', activeProfile.id);
+        if (error) throw error;
+        // The context caches active_widgets. Without this its copy stays on
+        // the pre-edit value and can overwrite what was just saved the next
+        // time anything reads it.
+        await refreshProfiles();
+      } else {
+        const { error } = await supabase.from('user_settings').upsert({ user_id: userId, home_widget_layout: widgetLayout });
+        if (error) throw error;
+      }
+    } catch (e) { console.warn('HomeScreen: save widget layout', e.message); }
   };
 
   // Affirmation handlers
@@ -835,6 +1238,15 @@ export default function HomeScreen() {
   const goToLibraryScreen = (screen, params) => {
     navigation.navigate('Library');
     setTimeout(() => navigation.navigate('Library', { screen, params }), 0);
+  };
+
+  // Target shape used by GettingStartedCard's first action: {tab} switches
+  // tabs, {tab: 'Library', screen} goes into the Library stack via the
+  // priming helper above.
+  const goToTarget = (target) => {
+    if (!target?.tab) return;
+    if (target.tab === 'Library' && target.screen) goToLibraryScreen(target.screen, target.params);
+    else navigation.navigate(target.tab);
   };
 
   // Removes a resolved candidate from the ranked list — the ticker just
@@ -975,6 +1387,82 @@ export default function HomeScreen() {
     setSavingNextAction(false);
   };
 
+  // ── Today's Activities: detail sheet + per-source actions ──────────────────
+  const dismissActivity = (id) => setTodayActivities(prev => prev.filter(it => it.id !== id));
+  const closeActivitySheet = () => setSelectedActivity(null);
+
+  const completeActivityTask = async (item) => {
+    closeActivitySheet();
+    const rawId = item.raw.id;
+    dismissActivity(item.id);
+    try { await supabase.from('tasks').update({ completed: true, completed_at: new Date().toISOString() }).eq('id', rawId); }
+    catch (e) { console.warn('HomeScreen: complete activity task', e.message); }
+  };
+
+  const deleteActivityTask = async (item) => {
+    closeActivitySheet();
+    const rawId = item.raw.id;
+    dismissActivity(item.id);
+    try { await supabase.from('tasks').delete().eq('id', rawId); }
+    catch (e) { console.warn('HomeScreen: delete activity task', e.message); }
+  };
+
+  const deleteActivityEvent = async (item) => {
+    closeActivitySheet();
+    dismissActivity(item.id);
+    try { await supabase.from('calendar_events').delete().eq('id', item.raw.id); }
+    catch (e) { console.warn('HomeScreen: delete activity event', e.message); }
+  };
+
+  const completeActivityRoutine = async (item) => {
+    closeActivitySheet();
+    dismissActivity(item.id);
+    try { await completeInstance(item.raw.id, true); }
+    catch (e) { console.warn('HomeScreen: complete routine', e.message); }
+  };
+
+  const skipActivityRoutine = async (item) => {
+    closeActivitySheet();
+    dismissActivity(item.id);
+    try { await skipInstance(item.raw.id); }
+    catch (e) { console.warn('HomeScreen: skip routine', e.message); }
+  };
+
+  const completeActivityAssignment = async (item) => {
+    closeActivitySheet();
+    dismissActivity(item.id);
+    try { await updateAssignmentStatus(item.raw.assignment_id, 'completed'); }
+    catch (e) { console.warn('HomeScreen: complete activity assignment', e.message); }
+  };
+
+  const openActivityInCalendar = (item) => { closeActivitySheet(); setShowCalendar(true); };
+  const openActivityInPlanner  = (item) => { closeActivitySheet(); goToLibraryScreen('PlannerScreen'); };
+  const focusOnActivity = (item) => { closeActivitySheet(); goToLibraryScreen('WorkModeScreen', { presetTitle: item.title }); };
+
+  // Every action list closes the sheet itself (see above), so there's
+  // nothing generic left for the sheet's own dismiss button to do beyond that.
+  const actionsForActivity = (item) => {
+    if (!item) return [];
+    if (item._src === 'task') return [
+      { key: 'done',   label: 'Done',   icon: 'checkmark-circle-outline', tone: 'primary',   onPress: () => completeActivityTask(item) },
+      { key: 'focus',  label: 'Focus',  icon: 'timer-outline',            tone: 'secondary', onPress: () => focusOnActivity(item) },
+      { key: 'delete', label: 'Delete', icon: 'trash-outline',            tone: 'danger',    onPress: () => deleteActivityTask(item) },
+    ];
+    if (item._src === 'planner') return [
+      { key: 'complete', label: 'Done',    icon: 'checkmark-circle-outline', tone: 'primary',   onPress: () => completeActivityRoutine(item) },
+      { key: 'skip',     label: 'Skip',    icon: 'play-skip-forward-outline', tone: 'secondary', onPress: () => skipActivityRoutine(item) },
+      { key: 'open',     label: 'Planner', icon: 'list-outline',            tone: 'secondary', onPress: () => openActivityInPlanner(item) },
+    ];
+    if (item._src === 'assignment') return [
+      { key: 'complete', label: 'Complete', icon: 'checkmark-circle-outline', tone: 'primary', onPress: () => completeActivityAssignment(item) },
+    ];
+    // calendar event / reminder / note
+    return [
+      { key: 'open',   label: 'Open Calendar', icon: 'calendar-outline', tone: 'primary', onPress: () => openActivityInCalendar(item) },
+      { key: 'delete', label: 'Delete',        icon: 'trash-outline',    tone: 'danger',  onPress: () => deleteActivityEvent(item) },
+    ];
+  };
+
   const goStudy = () => {
     const pick = STUDY_DESTINATIONS[Math.floor(Math.random() * STUDY_DESTINATIONS.length)];
     goToLibraryScreen(pick.key);
@@ -1006,143 +1494,389 @@ export default function HomeScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.teal} />}
         contentContainerStyle={{ paddingBottom: 40 }}
       >
-        {/* ── Date + streak ── */}
+        {/* ── Date + streak + widget edit toggle ── */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: s.lg, paddingTop: s.md, paddingBottom: s.sm }}>
           <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 0.8 }}>{dateStr}</Text>
-          {(streakDays || 0) > 0 && (
-            <View style={{ backgroundColor: c.bg1, borderRadius: 12, paddingHorizontal: s.sm, paddingVertical: 3, borderWidth: 0.5, borderColor: c.gold }}>
-              <Text style={{ fontSize: t.xs, color: c.gold, fontWeight: t.semibold }}>{showEmojis ? '🔥 ' : ''}{streakDays} day streak</Text>
-            </View>
-          )}
-        </View>
-
-        {/* ── HQ card ── */}
-        <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, marginHorizontal: s.lg, marginBottom: s.md, borderWidth: 0.5, borderColor: c.border, borderTopWidth: 2, borderTopColor: c.gold }}>
-          <CommanderCard
-            profile={profile}
-            rank={rank}
-            progress={progress}
-            c={c} t={t}
-            onPress={() => navigation.navigate('Profile')}
-          />
-          <TourSpot id="home-study-play">
-          <View style={{ flexDirection: 'row', gap: 10, marginTop: s.md }}>
-            <TouchableOpacity
-              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: c.teal, backgroundColor: c.tealLight, borderRadius: r.md, paddingVertical: s.md }}
-              onPress={goStudy} onLongPress={() => setShowStudyMenu(true)} delayLongPress={350}>
-              <Ionicons name="book-outline" size={15} color={c.teal} />
-              <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.teal, letterSpacing: 1 }}>STUDY</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: c.gold, borderRadius: r.md, paddingVertical: s.md }}
-              onPress={goPlay} onLongPress={() => setShowPlayMenu(true)} delayLongPress={350}>
-              <Ionicons name="game-controller-outline" size={15} color="#fff" />
-              <Text style={{ fontSize: t.md, fontWeight: t.bold, color: '#fff', letterSpacing: 1 }}>PLAY</Text>
-            </TouchableOpacity>
-          </View>
-          </TourSpot>
-        </View>
-
-        {/* ── Quote + affirmation ── */}
-        <TourSpot id="home-focus">
-        <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, marginHorizontal: s.lg, marginBottom: s.md, borderLeftWidth: 3, borderLeftColor: c.teal, borderWidth: 0.5, borderColor: c.border }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: s.sm }}>
-            <Text style={{ fontSize: 10, color: c.teal, textTransform: 'uppercase', letterSpacing: 1, fontWeight: t.semibold }}>{showEmojis ? '✦ ' : ''}Today's Wisdom</Text>
-            <TouchableOpacity onPress={() => setEditAffirm(true)}>
-              <Ionicons name="add-circle-outline" size={20} color={c.gold} />
-            </TouchableOpacity>
-          </View>
-          <Text style={{ fontSize: t.sm, color: c.text1, lineHeight: 20, fontStyle: 'italic', marginBottom: s.sm }}>"{todaysQuote.text}"</Text>
-          <Text style={{ fontSize: t.xs, color: c.text3 }}>— {todaysQuote.author}</Text>
-          {todaysAffirmation && (
-            <TouchableOpacity onPress={() => setEditAffirm(true)}
-              style={{ marginTop: s.sm, borderTopWidth: 0.5, borderTopColor: c.border, paddingTop: s.sm }}>
-              <Text style={{ fontSize: 10, color: c.gold, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>{showEmojis ? '💛 ' : ''}My Affirmation</Text>
-              <Text style={{ fontSize: t.sm, color: c.text1, lineHeight: 20 }}>{todaysAffirmation}</Text>
-              {affirmations.length > 1 && (
-                <Text style={{ fontSize: 9, color: c.text4, marginTop: 4 }}>{affirmations.length} affirmations rotating daily</Text>
-              )}
-            </TouchableOpacity>
-          )}
-        </View>
-        </TourSpot>
-
-        {/* ── Focus + calendar ── */}
-        <TourSpot id="home-focus-input">
-        <View style={{ paddingHorizontal: s.lg, marginBottom: s.lg, flexDirection: 'row', gap: s.sm }}>
-          <TouchableOpacity
-            style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 0.5, borderColor: c.border }}
-            onPress={() => { setFocusDraft(todayFocus || ''); setEditFocus(true); }}>
-            <Ionicons name="bookmark" size={14} color={c.teal} />
-            <Text style={{ flex: 1, fontSize: t.sm, color: todayFocus ? c.text1 : c.text4, lineHeight: 20 }} numberOfLines={2}>
-              {todayFocus || "Set today's focus..."}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={{ backgroundColor: c.bg1, borderRadius: r.md, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 0.5, borderColor: c.border, alignItems: 'center', justifyContent: 'center', minWidth: 70 }}
-            onPress={() => setShowCalendar(true)}>
-            <Text style={{ fontSize: t.xxl, fontFamily: FONTS.display, fontWeight: t.bold, color: c.text1, lineHeight: 28 }}>{today.getDate()}</Text>
-            <Text style={{ fontSize: 9, color: c.text4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              {today.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-            </Text>
-          </TouchableOpacity>
-        </View>
-        </TourSpot>
-
-        {/* ── On the desk ── */}
-        <TourSpot id="home-desk">
-        <View style={{ paddingHorizontal: s.lg, marginBottom: s.lg }}>
-          <SectionHead title="On the Desk" action="+ Add" onAction={() => setShowTodoInput(true)} c={c} t={t} />
-          {showTodoInput && (
-            <View style={{ flexDirection: 'row', gap: s.sm, marginBottom: s.sm }}>
-              <TextInput
-                style={{ flex: 1, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 0.5, borderColor: c.border }}
-                value={todoInput} onChangeText={setTodoInput}
-                placeholder="What needs to get done?" placeholderTextColor={c.text4}
-                autoFocus onSubmitEditing={addTodo}
-              />
-              <TouchableOpacity style={{ backgroundColor: c.teal, borderRadius: r.md, padding: s.md, alignItems: 'center', justifyContent: 'center' }} onPress={addTodo}>
-                <Ionicons name="checkmark" size={18} color="#fff" />
-              </TouchableOpacity>
-            </View>
-          )}
-          <DeskTicker
-            items={todos}
-            onItemPress={setSelectedDeskItem}
-            onAdd={() => setShowTodoInput(true)}
-            c={c} t={t} s={s} r={r}
-          />
-        </View>
-        </TourSpot>
-
-        {/* ── Latest ideas ── */}
-        {ideas.length > 0 && (
-          <View style={{ paddingHorizontal: s.lg, marginBottom: s.lg }}>
-            <SectionHead title="Latest Ideas" action="Garden →" onAction={() => navigation.navigate('Library')} c={c} t={t} />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -s.lg }}>
-              <View style={{ flexDirection: 'row', paddingHorizontal: s.lg, gap: s.sm }}>
-                {ideas.map(idea => (
-                  <TouchableOpacity key={idea.id}
-                    onPress={() => { setSelectedIdea(idea); setShowIdeaCard(true); }}
-                    activeOpacity={0.85}
-                    style={{ width: 110, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 1, borderColor: idea.color || c.teal, alignItems: 'center', gap: 6 }}>
-                    <Text style={{ fontSize: 28 }}>
-                      {idea.plant_type === 'tree' ? '🌳' : idea.plant_type === 'flower' ? '🌸' : idea.plant_type === 'plant' ? '🌿' : '🌱'}
-                    </Text>
-                    <Text style={{ fontSize: 11, fontWeight: t.medium, color: c.text1, textAlign: 'center', lineHeight: 15 }} numberOfLines={2}>
-                      {idea.title}
-                    </Text>
-                    {(idea.garden_petals?.length > 0) && (
-                      <Text style={{ fontSize: 9, color: idea.color || c.teal }}>
-                        {idea.garden_petals.length} petals
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                ))}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm }}>
+            {(streakDays || 0) > 0 && !editingWidgets && (
+              <View style={{ backgroundColor: c.bg1, borderRadius: 12, paddingHorizontal: s.sm, paddingVertical: 3, borderWidth: 0.5, borderColor: c.gold }}>
+                <Text style={{ fontSize: t.xs, color: c.gold, fontWeight: t.semibold }}>{showEmojis ? '🔥 ' : ''}{streakDays} day streak</Text>
               </View>
-            </ScrollView>
+            )}
+            <TouchableOpacity onPress={() => (editingWidgets ? exitWidgetEdit() : setEditingWidgets(true))}
+              style={{ paddingHorizontal: s.sm, paddingVertical: 3 }}>
+              <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: editingWidgets ? c.teal : c.text4 }}>
+                {editingWidgets ? 'Done' : 'Edit'}
+              </Text>
+            </TouchableOpacity>
           </View>
-        )}
+        </View>
+
+        {/* ── Getting Started — the deferred half of onboarding, plus the
+             tour offer. Deliberately NOT a widget: it's temporary, it
+             retires itself once setup is finished, and it has no business
+             in a layout the user reorders and persists. Hidden entirely
+             while widgets are being edited, so it can't be mistaken for
+             one. ── */}
+        {!editingWidgets && <GettingStartedCard onNavigate={goToTarget} />}
+
+        {/* ── Dashboard widgets — order/visibility from widgetLayout, drag
+             handles + jiggle only live while editingWidgets. See
+             WIDGET_DEFS above for what each key renders. ── */}
+        <WidgetBoard
+          layout={widgetLayout}
+          editing={editingWidgets}
+          onChangeLayout={setWidgetLayout}
+          c={c} t={t} s={s} r={r}
+          widgets={[
+            {
+              key: 'hq', title: 'Commander',
+              render: () => (
+                <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, marginHorizontal: s.lg, borderWidth: 0.5, borderColor: c.border, borderTopWidth: 2, borderTopColor: c.gold }}>
+                  <CommanderCard
+                    profile={profile}
+                    rank={rank}
+                    progress={progress}
+                    c={c} t={t}
+                    onPress={() => navigation.navigate('Profile')}
+                  />
+                  <TourSpot id="home-study-play">
+                  <View style={{ flexDirection: 'row', gap: 10, marginTop: s.md }}>
+                    <TouchableOpacity
+                      style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: c.teal, backgroundColor: c.tealLight, borderRadius: r.md, paddingVertical: s.md }}
+                      onPress={goStudy} onLongPress={() => setShowStudyMenu(true)} delayLongPress={350}>
+                      <Ionicons name="book-outline" size={15} color={c.teal} />
+                      <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.teal, letterSpacing: 1 }}>STUDY</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: c.gold, borderRadius: r.md, paddingVertical: s.md }}
+                      onPress={goPlay} onLongPress={() => setShowPlayMenu(true)} delayLongPress={350}>
+                      <Ionicons name="game-controller-outline" size={15} color="#fff" />
+                      <Text style={{ fontSize: t.md, fontWeight: t.bold, color: '#fff', letterSpacing: 1 }}>PLAY</Text>
+                    </TouchableOpacity>
+                  </View>
+                  </TourSpot>
+                </View>
+              ),
+            },
+            {
+              key: 'wisdom', title: "Today's Wisdom",
+              render: () => (
+                <TourSpot id="home-focus">
+                <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, marginHorizontal: s.lg, borderLeftWidth: 3, borderLeftColor: c.teal, borderWidth: 0.5, borderColor: c.border }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: s.sm }}>
+                    <Text style={{ fontSize: 10, color: c.teal, textTransform: 'uppercase', letterSpacing: 1, fontWeight: t.semibold }}>{showEmojis ? '✦ ' : ''}Today's Wisdom</Text>
+                    <TouchableOpacity onPress={() => setEditAffirm(true)}>
+                      <Ionicons name="add-circle-outline" size={20} color={c.gold} />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={{ fontSize: t.sm, color: c.text1, lineHeight: 20, fontStyle: 'italic', marginBottom: s.sm }}>"{todaysQuote.text}"</Text>
+                  <Text style={{ fontSize: t.xs, color: c.text3 }}>— {todaysQuote.author}</Text>
+                  {todaysAffirmation && (
+                    <TouchableOpacity onPress={() => setEditAffirm(true)}
+                      style={{ marginTop: s.sm, borderTopWidth: 0.5, borderTopColor: c.border, paddingTop: s.sm }}>
+                      <Text style={{ fontSize: 10, color: c.gold, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>{showEmojis ? '💛 ' : ''}My Affirmation</Text>
+                      <Text style={{ fontSize: t.sm, color: c.text1, lineHeight: 20 }}>{todaysAffirmation}</Text>
+                      {affirmations.length > 1 && (
+                        <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 4 }}>{affirmations.length} affirmations rotating daily</Text>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
+                </TourSpot>
+              ),
+            },
+            {
+              key: 'focus', title: 'Focus & Calendar',
+              render: () => (
+                <TourSpot id="home-focus-input">
+                <View style={{ paddingHorizontal: s.lg, flexDirection: 'row', gap: s.sm }}>
+                  <TouchableOpacity
+                    style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 0.5, borderColor: c.border }}
+                    onPress={() => { setFocusDraft(todayFocus || ''); setEditFocus(true); }}>
+                    <Ionicons name="bookmark" size={14} color={c.teal} />
+                    <Text style={{ flex: 1, fontSize: t.sm, color: todayFocus ? c.text1 : c.text4, lineHeight: 20 }} numberOfLines={2}>
+                      {todayFocus || "Set today's focus..."}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{ backgroundColor: c.bg1, borderRadius: r.md, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 0.5, borderColor: c.border, alignItems: 'center', justifyContent: 'center', minWidth: 70 }}
+                    onPress={() => setShowCalendar(true)}>
+                    <Text style={{ fontSize: t.xxl, fontFamily: FONTS.display, fontWeight: t.bold, color: c.text1, lineHeight: 28 }}>{today.getDate()}</Text>
+                    <Text style={{ fontSize: 9, color: c.text4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      {today.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                </TourSpot>
+              ),
+            },
+            {
+              key: 'activities', title: "Today's Activities",
+              render: () => (
+                todayActivities.length === 0 ? (
+                  editingWidgets ? (
+                    <View style={{ paddingHorizontal: s.lg }}>
+                      <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 0.5, borderColor: c.border, borderStyle: 'dashed' }}>
+                        <Text style={{ fontSize: t.xs, color: c.text4 }}>Today's Activities — nothing scheduled today</Text>
+                      </View>
+                    </View>
+                  ) : <View />
+                ) : (
+                  <TourSpot id="home-today-activities">
+                  <View style={{ paddingHorizontal: s.lg }}>
+                    <SectionHead title="Today's Activities" action="Calendar →" onAction={() => setShowCalendar(true)} c={c} t={t} />
+                    {todayActivities.slice(0, 3).map(item => (
+                      <ActivityRow key={item.id} item={item} onPress={() => setSelectedActivity(item)} c={c} t={t} s={s} r={r} />
+                    ))}
+                    {todayActivities.length > 3 && (
+                      <TouchableOpacity onPress={() => setShowCalendar(true)}>
+                        <Text style={{ fontSize: t.xs, color: c.text4, textAlign: 'center', marginTop: 2 }}>
+                          +{todayActivities.length - 3} more today
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  </TourSpot>
+                )
+              ),
+            },
+            {
+              key: 'desk', title: 'On the Desk',
+              render: () => (
+                <TourSpot id="home-desk">
+                <View style={{ paddingHorizontal: s.lg }}>
+                  <SectionHead title="On the Desk" action="+ Add" onAction={() => setShowTodoInput(true)} c={c} t={t} />
+                  {showTodoInput && (
+                    <View style={{ flexDirection: 'row', gap: s.sm, marginBottom: s.sm }}>
+                      <TextInput
+                        style={{ flex: 1, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 0.5, borderColor: c.border }}
+                        value={todoInput} onChangeText={setTodoInput}
+                        placeholder="What needs to get done?" placeholderTextColor={c.text4}
+                        autoFocus onSubmitEditing={addTodo}
+                      />
+                      <TouchableOpacity style={{ backgroundColor: c.teal, borderRadius: r.md, padding: s.md, alignItems: 'center', justifyContent: 'center' }} onPress={addTodo}>
+                        <Ionicons name="checkmark" size={18} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  <DeskTicker
+                    items={todos}
+                    onItemPress={setSelectedDeskItem}
+                    onAdd={() => setShowTodoInput(true)}
+                    c={c} t={t} s={s} r={r}
+                  />
+                </View>
+                </TourSpot>
+              ),
+            },
+            {
+              key: 'ideas', title: 'Latest Ideas',
+              render: () => (
+                ideas.length === 0 ? (
+                  editingWidgets ? (
+                    <View style={{ paddingHorizontal: s.lg }}>
+                      <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 0.5, borderColor: c.border, borderStyle: 'dashed' }}>
+                        <Text style={{ fontSize: t.xs, color: c.text4 }}>Latest Ideas — nothing planted yet</Text>
+                      </View>
+                    </View>
+                  ) : <View />
+                ) : (
+                  <View style={{ paddingHorizontal: s.lg }}>
+                    <SectionHead title="Latest Ideas" action="Garden →" onAction={() => navigation.navigate('Library')} c={c} t={t} />
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -s.lg }}>
+                      <View style={{ flexDirection: 'row', paddingHorizontal: s.lg, gap: s.sm }}>
+                        {ideas.map(idea => (
+                          <TouchableOpacity key={idea.id}
+                            onPress={() => { setSelectedIdea(idea); setShowIdeaCard(true); }}
+                            activeOpacity={0.85}
+                            style={{ width: 110, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 1, borderColor: idea.color || c.teal, alignItems: 'center', gap: 6 }}>
+                            <Text style={{ fontSize: 28 }}>
+                              {idea.plant_type === 'tree' ? '🌳' : idea.plant_type === 'flower' ? '🌸' : idea.plant_type === 'plant' ? '🌿' : '🌱'}
+                            </Text>
+                            <Text style={{ fontSize: 11, fontWeight: t.medium, color: c.text1, textAlign: 'center', lineHeight: 15 }} numberOfLines={2}>
+                              {idea.title}
+                            </Text>
+                            {(idea.garden_petals?.length > 0) && (
+                              <Text style={{ fontSize: 9, color: idea.color || c.teal }}>
+                                {idea.garden_petals.length} petals
+                              </Text>
+                            )}
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </ScrollView>
+                  </View>
+                )
+              ),
+            },
+            {
+              key: 'streak', title: 'Streak & Level',
+              render: () => (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, marginHorizontal: s.lg, borderWidth: 0.5, borderColor: c.border }}>
+                  <LevelRing pct={progress || 0} size={44} strokeWidth={3} color={c.gold} trackColor={c.bg2}>
+                    <Text style={{ fontSize: 13, fontWeight: '800', color: c.gold, fontFamily: FONTS.mono }}>{level}</Text>
+                  </LevelRing>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: t.sm, fontWeight: '700', color: c.text1 }}>Level {level} · {Math.round(progress || 0)}% to next</Text>
+                    <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>{(points || 0).toLocaleString()} points earned</Text>
+                  </View>
+                  {streakDays > 0 && (
+                    <View style={{ alignItems: 'center', minWidth: 34 }}>
+                      {showEmojis && <Text style={{ fontSize: 17 }}>🔥</Text>}
+                      <Text style={{ fontSize: t.xs, fontWeight: '800', color: c.gold, fontFamily: FONTS.mono }}>{streakDays}d</Text>
+                    </View>
+                  )}
+                </View>
+              ),
+            },
+            {
+              key: 'builds', title: 'Active Builds',
+              render: () => (
+                activeBuilds.length === 0 ? (
+                  editingWidgets ? (
+                    <View style={{ paddingHorizontal: s.lg }}>
+                      <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 0.5, borderColor: c.border, borderStyle: 'dashed' }}>
+                        <Text style={{ fontSize: t.xs, color: c.text4 }}>Active Builds — nothing in progress</Text>
+                      </View>
+                    </View>
+                  ) : <View />
+                ) : (
+                  <View style={{ paddingHorizontal: s.lg }}>
+                    <SectionHead title="Active Builds" action="Workshop →" onAction={() => navigation.navigate('ProjectsScreen')} c={c} t={t} />
+                    <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, borderWidth: 0.5, borderColor: c.border, paddingHorizontal: s.md }}>
+                      {activeBuilds.slice(0, 4).map((p, i, arr) => (
+                        <TouchableOpacity key={p.id} onPress={() => navigation.navigate('Library', { screen: 'ProjectDetail', params: { project: p } })} activeOpacity={0.7}
+                          style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, paddingVertical: 10, borderBottomWidth: i === arr.length - 1 ? 0 : 0.5, borderBottomColor: c.border }}>
+                          <Text style={{ fontSize: 15 }}>{p.emoji || '🏗️'}</Text>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: t.sm, fontWeight: '600', color: c.text1 }} numberOfLines={1}>{p.title}</Text>
+                            <Text style={{ fontSize: 11, color: c.text3 }} numberOfLines={1}>{p.next_action ? `Next: ${p.next_action}` : 'No next step set'}</Text>
+                          </View>
+                          <Ionicons name="chevron-forward" size={14} color={c.text4} />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )
+              ),
+            },
+            {
+              key: 'checkins', title: 'Check-ins Due',
+              render: () => (
+                checkInDue.length === 0 ? (
+                  editingWidgets ? (
+                    <View style={{ paddingHorizontal: s.lg }}>
+                      <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 0.5, borderColor: c.border, borderStyle: 'dashed' }}>
+                        <Text style={{ fontSize: t.xs, color: c.text4 }}>Check-ins Due — every domain is current</Text>
+                      </View>
+                    </View>
+                  ) : <View />
+                ) : (
+                  <View style={{ paddingHorizontal: s.lg }}>
+                    <SectionHead title="Check-ins Due" action="Library →" onAction={() => navigation.navigate('Library')} c={c} t={t} />
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm }}>
+                      {checkInDue.map(({ area, rating, lastCheck, days }) => (
+                        <TouchableOpacity
+                          key={area.id}
+                          onPress={() => navigation.navigate('Library', { screen: 'LifeAreaScreen', params: { areaId: area.id, rating, lastCheck } })}
+                          activeOpacity={0.8}
+                          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: (area.color || c.teal) + '66', backgroundColor: c.bg1 }}>
+                          {showEmojis
+                            ? <Text style={{ fontSize: 13 }}>{area.emoji}</Text>
+                            : <Ionicons name={area.icon} size={13} color={area.color || c.teal} />}
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: area.color || c.teal }}>{area.label}</Text>
+                          <Text style={{ fontSize: 11, color: c.text3, fontFamily: FONTS.mono }}>{days === null ? 'never' : `${days}d`}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )
+              ),
+            },
+
+            // ── Persona widgets ────────────────────────────────────────────
+            // Hidden by default unless the active profile's type asks for
+            // them (see layoutForPersona / personas.defaultWidgets). Each one
+            // owns its own empty state — none of them shows a number it
+            // doesn't have.
+            {
+              key: 'habitRings', title: 'Habits',
+              render: () => <HabitRingsWidget userId={userId} onOpenPlanner={() => goToLibraryScreen('PlannerScreen')} />,
+            },
+            {
+              key: 'lifeAreas', title: 'Life Areas',
+              render: () => (
+                <LifeAreasWidget
+                  areas={lifeAreaStats}
+                  onOpenLibrary={() => navigation.navigate('Library')}
+                  onOpenArea={(area, rating) => goToLibraryScreen('LifeAreaScreen', { areaId: area.id, rating })}
+                />
+              ),
+            },
+            {
+              key: 'dailyDrills', title: "Today's Drills",
+              render: () => <DailyDrillsWidget missions={dailyMissions} onOpenTraining={() => navigation.navigate('Training')} />,
+            },
+            {
+              key: 'studyBlocks', title: 'Study Blocks',
+              render: () => <StudyBlocksWidget userId={userId} onOpenPlanner={() => goToLibraryScreen('PlannerScreen')} />,
+            },
+            {
+              key: 'classProgress', title: 'Subjects',
+              render: () => <ClassProgressWidget subjectProgress={subjectProgress} onOpenClasses={() => goToLibraryScreen('ClassesStack')} />,
+            },
+            {
+              key: 'orgSnapshot', title: 'Organization',
+              render: () => <OrgSnapshotWidget userId={userId} onOpenOrg={() => navigation.navigate('Organization')} />,
+            },
+            {
+              key: 'systemsCheck', title: 'Systems Check',
+              render: () => <SystemsCheckWidget areas={lifeAreaStats} onOpenLibrary={() => navigation.navigate('Library')} />,
+            },
+            {
+              key: 'recurringOps', title: 'Recurring Ops',
+              render: () => <RecurringOpsWidget userId={userId} onOpenPlanner={() => goToLibraryScreen('PlannerScreen')} />,
+            },
+            {
+              key: 'vaultStatus', title: 'The Vault',
+              render: () => (
+                <VaultStatusWidget
+                  userId={userId} profileId={activeProfile?.id}
+                  onOpenVault={() => goToLibraryScreen('ClassesStack')}
+                />
+              ),
+            },
+            {
+              key: 'founderQuest', title: 'Founder Quest',
+              render: () => (
+                <FounderQuestWidget
+                  userId={userId} profileId={activeProfile?.id}
+                  onOpenClasses={() => goToLibraryScreen('ClassesStack')}
+                />
+              ),
+            },
+            {
+              key: 'targetsReadiness', title: 'Targets & Readiness',
+              render: () => (
+                <TargetsReadinessWidget
+                  userId={userId} profile={activeProfile}
+                  onOpenProfiles={() => navigation.navigate('AllProfiles')}
+                  onOpenClasses={() => goToLibraryScreen('ClassesStack')}
+                />
+              ),
+            },
+            {
+              key: 'wayfinder', title: 'Wayfinder',
+              render: () => (
+                <WayfinderWidget
+                  userId={userId}
+                  onOpen={(params) => goToLibraryScreen('WayfinderScreen', params)}
+                />
+              ),
+            },
+          ]}
+        />
       </ScrollView>
 
       {/* ── Focus modal ── */}
@@ -1180,6 +1914,26 @@ export default function HomeScreen() {
               />
             )}
             <TouchableOpacity onPress={() => setSelectedDeskItem(null)}
+              style={{ marginTop: s.md, padding: s.md, alignItems: 'center' }}>
+              <Text style={{ color: c.text3, fontWeight: '600' }}>Dismiss</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Today's Activities row, tapped open — same detail-sheet pattern ── */}
+      <Modal visible={!!selectedActivity} transparent animationType="slide" onRequestClose={closeActivitySheet}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 48 }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
+            {selectedActivity && (
+              <ActivityDetailCard
+                item={selectedActivity}
+                actions={actionsForActivity(selectedActivity)}
+                c={c} t={t} s={s} r={r}
+              />
+            )}
+            <TouchableOpacity onPress={closeActivitySheet}
               style={{ marginTop: s.md, padding: s.md, alignItems: 'center' }}>
               <Text style={{ color: c.text3, fontWeight: '600' }}>Dismiss</Text>
             </TouchableOpacity>

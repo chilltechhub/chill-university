@@ -24,6 +24,22 @@ export const SETTING_KEYS = {
   // from the Library tab (src/screens/library/LibraryScreen.js). Set from
   // onboarding's Look & Layout step or Settings → Library Sections.
   HIDDEN_LIBRARY_SECTIONS: 'hiddenLibrarySections',
+  // Display/default order of the Library's three sub-views — see TABS in
+  // LibraryScreen.js. An array of tab keys, e.g. ['domains','build','knowledge'];
+  // the first one is also which sub-view opens by default. Reorder from the
+  // title dropdown itself.
+  LIBRARY_TAB_ORDER: 'libraryTabOrder',
+  // Whether the user has closed the Getting Started card on Home
+  // (src/components/GettingStartedCard.js). The card also retires itself
+  // once every deferred setup task is done, so this only covers "I don't
+  // want to be asked" — not "I finished".
+  GETTING_STARTED_DISMISSED: 'gettingStartedDismissed',
+  // Whether a screen teaches itself the first time you open it
+  // (src/logic/useFirstVisitTutorial.js). Default ON — it's the app's main
+  // teaching now that the old fourteen-step tour no longer auto-fires. Note
+  // that hook reads this key from AsyncStorage directly rather than through
+  // useSetting, because its caller sits above NavigationContainer.
+  SCREEN_TUTORIALS_ENABLED: 'screenTutorialsEnabled',
   // Teacher / Educator Mode. Academy Classes is a learner's screen — grade
   // bands, topic readings, practice quizzes — while the Classroom Day Lesson
   // Plan Builder (src/screens/LessonBuilder.js + MyLessonPlans.js) is an

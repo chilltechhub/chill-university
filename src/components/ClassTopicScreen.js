@@ -9,6 +9,9 @@ import { useTheme } from '../../context/ThemeContext';
 import { fetchContentPool } from '../api/remoteConfigService';
 import TopicLessonPanel from './TopicLessonPanel';
 import { gamesForTopic, openGame } from '../data/skillLinks';
+import { FONTS } from '../theme';
+
+const FONTS_MONO = FONTS.mono;
 
 // `classKey` (the registered navigation screen name, e.g. 'AlgebraAndFunctions')
 // scopes the Supabase fetch — see ClassesStack.js for the full list. Edit,
@@ -16,7 +19,11 @@ import { gamesForTopic, openGame } from '../data/skillLinks';
 // (type='class_topic', key=classKey); `fallbackTopics` is what still renders
 // before that resolves, or if it ever fails/comes back empty, so nothing
 // regresses if Supabase is unreachable.
-export default function ClassTopicScreen({ title, classKey, fallbackTopics }) {
+// `header` — optional node rendered under the title, above the topics. Used by
+// the curriculum levels (LevelScreen.js) to state what the level is for and
+// how many Vault deliverables it holds. Every existing caller omits it and is
+// unaffected.
+export default function ClassTopicScreen({ title, classKey, fallbackTopics, header }) {
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   const navigation = useNavigation();
   const [openSections, setOpenSections] = useState({});
@@ -61,13 +68,26 @@ export default function ClassTopicScreen({ title, classKey, fallbackTopics }) {
       contentContainerStyle={{ padding: s.lg, paddingBottom: 40 }}
       showsVerticalScrollIndicator={false}
     >
-      <Text style={{ fontSize: t.xxl, fontWeight: t.bold, textAlign: 'center', marginBottom: s.lg, color: c.text1 }}>
+      <Text style={{ fontSize: t.xxl, fontWeight: t.bold, textAlign: 'center', marginBottom: header ? s.sm : s.lg, color: c.text1 }}>
         {title}
       </Text>
 
-      {topics.map((topic) => (
+      {header}
+
+      {topics.map((topic, ti) => (
+        <React.Fragment key={topic.key}>
+        {/* Module heading — only for topics that carry one (the curriculum
+            levels). Printed when the module changes, so a 20-lesson level
+            reads as its five modules instead of one flat list. */}
+        {topic.module && (ti === 0 || topics[ti - 1]?.module !== topic.module) && (
+          <Text style={{
+            fontSize: 11, color: c.text4, fontFamily: FONTS_MONO,
+            textTransform: 'uppercase', letterSpacing: 1, marginTop: ti === 0 ? 4 : s.md, marginBottom: s.sm,
+          }}>
+            {topic.module}
+          </Text>
+        )}
         <View
-          key={topic.key}
           style={{
             marginBottom: s.lg, borderRadius: r.lg, overflow: 'hidden',
             backgroundColor: c.bg1, borderWidth: 0.5, borderColor: c.border,
@@ -131,6 +151,7 @@ export default function ClassTopicScreen({ title, classKey, fallbackTopics }) {
             />
           </View>
         </View>
+        </React.Fragment>
       ))}
     </ScrollView>
   );

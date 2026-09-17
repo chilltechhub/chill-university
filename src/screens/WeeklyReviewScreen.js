@@ -17,13 +17,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useUIPrefs } from '../../context/UIPrefsContext';
-import { supabase } from '../api/supabaseClient';
+import { supabase } from '../api/profileScopedClient';
 import { AREAS, getCompletionRate, getInstances } from '../api/plannerService';
-import { getProjects, upsertTask } from '../api/captureService';
+import { getProjects, getCaptures, upsertTask } from '../api/captureService';
+import { CAPTURE_TYPES } from './CaptureInbox';
 import { FONTS } from '../theme';
 import { dateStr } from '../logic/dateUtils';
 
 const STEPS = ['Snapshot', 'Wins', 'Next 3'];
+const STALE_DAYS = 14;
+// Same icon/color map CaptureInbox and ImportScreen already share, rather
+// than a third copy of it here.
+const TYPE_MAP = Object.fromEntries(CAPTURE_TYPES.map(ct => [ct.key, ct]));
 
 function toISO(d) { return dateStr(d); } // local calendar, not UTC
 function nextMonday() {
@@ -31,6 +36,9 @@ function nextMonday() {
   const day = d.getDay(); // 0 = Sunday
   d.setDate(d.getDate() + ((8 - day) % 7 || 7));
   return toISO(d);
+}
+function daysAgo(iso) {
+  return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000));
 }
 
 function Stepper({ step, color, c, t }) {
@@ -73,6 +81,7 @@ export default function WeeklyReviewScreen() {
   const [instanceStats, setInstanceStats] = useState({ done: 0, total: 0 });
   const [captureStats, setCaptureStats] = useState({ added: 0, processed: 0 });
   const [projectStats, setProjectStats] = useState({ active: 0, withNextAction: 0 });
+  const [staleCaptures, setStaleCaptures] = useState([]);
 
   // Wins
   const [winCandidates, setWinCandidates] = useState([]);
@@ -117,6 +126,18 @@ export default function WeeklyReviewScreen() {
         .eq('user_id', uid).gte('created_at', weekAgoISO).is('deleted_at', null);
       const capList = capRows || [];
       setCaptureStats({ added: capList.length, processed: capList.filter(cp => cp.status !== 'inbox').length });
+
+      // Stale inbox items — unprocessed captures sitting untouched 14+
+      // days, oldest first. A different, older-scoped question than the
+      // "this week" stat above: something can be perfectly fine at the
+      // 7-day mark and still be exactly what's turning the inbox into a
+      // backlog by week three, so it needs its own look further back.
+      const allInbox = await getCaptures(uid, { status: 'inbox' });
+      const staleCutoff = new Date(now); staleCutoff.setDate(staleCutoff.getDate() - STALE_DAYS);
+      const stale = allInbox
+        .filter(cp => new Date(cp.created_at) < staleCutoff)
+        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      setStaleCaptures(stale);
 
       // Projects — active count, and how many already have a next action
       // queued (ties back into next-action surfacing).
@@ -204,10 +225,46 @@ export default function WeeklyReviewScreen() {
                 <StatCard value={completionRate !== null ? `${completionRate}%` : '—'} label="AVG DAILY COMPLETION" color={c.teal} c={c} t={t} />
                 <StatCard value={`${instanceStats.done}/${instanceStats.total}`} label="PLANNER ITEMS DONE" color={c.gold} c={c} t={t} />
               </View>
-              <View style={{ flexDirection: 'row', gap: s.sm, marginBottom: s.xl }}>
+              <View style={{ flexDirection: 'row', gap: s.sm, marginBottom: s.sm }}>
                 <StatCard value={`${captureStats.processed}/${captureStats.added}`} label="CAPTURES PROCESSED" color="#8b4fc4" c={c} t={t} />
                 <StatCard value={`${projectStats.withNextAction}/${projectStats.active}`} label="BUILDS WITH A NEXT STEP" color="#c9a84c" c={c} t={t} />
               </View>
+
+              {/* Stale inbox items — the "this week" stat above can't see
+                  these (it's scoped to the last 7 days), so a growing
+                  backlog would otherwise never surface anywhere. */}
+              {staleCaptures.length > 0 ? (
+                <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, marginBottom: s.xl, borderWidth: 1, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: c.warning }}>
+                  <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.text1, marginBottom: 2 }}>
+                    {showEmojis ? '🗂 ' : ''}{staleCaptures.length} item{staleCaptures.length === 1 ? '' : 's'} sitting untouched {STALE_DAYS}+ days
+                  </Text>
+                  <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: s.sm }}>
+                    Oldest first — archive, tag, or act on them before they pile up.
+                  </Text>
+                  {staleCaptures.slice(0, 5).map(item => {
+                    const meta = TYPE_MAP[item.type] || TYPE_MAP.note;
+                    return (
+                      <View key={item.id} style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, paddingVertical: 5 }}>
+                        <Ionicons name={meta.icon} size={15} color={meta.color} />
+                        <Text style={{ flex: 1, fontSize: t.xs, color: c.text2 }} numberOfLines={1}>{item.title || 'Untitled'}</Text>
+                        <Text style={{ fontSize: t.xs, color: c.text4 }}>{daysAgo(item.created_at)}d</Text>
+                      </View>
+                    );
+                  })}
+                  {staleCaptures.length > 5 && (
+                    <Text style={{ fontSize: t.xs, color: c.text4, marginTop: 2 }}>+{staleCaptures.length - 5} more</Text>
+                  )}
+                  <TouchableOpacity onPress={() => navigation.navigate('CaptureInbox')} style={{ marginTop: s.sm, alignSelf: 'flex-start' }}>
+                    <Text style={{ fontSize: t.xs, color: c.teal, fontWeight: t.bold }}>Review Inbox →</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={{ marginBottom: s.xl }}>
+                  <Text style={{ fontSize: t.xs, color: c.text4 }}>
+                    {showEmojis ? '✅ ' : ''}Inbox is current — nothing's been sitting more than {STALE_DAYS} days.
+                  </Text>
+                </View>
+              )}
 
               <TouchableOpacity onPress={() => setStep(1)}
                 style={{ backgroundColor: color, borderRadius: r.md, paddingVertical: 16, alignItems: 'center' }}>

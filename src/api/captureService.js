@@ -2,7 +2,7 @@
 // All Supabase + offline cache operations for the Capture Inbox,
 // Projects, Tasks, and Save for Later
 
-import { supabase } from './supabaseClient';
+import { supabase } from './profileScopedClient';
 import { cacheWrite, cacheRead, isOnline, smartFetch, offlineWrite } from './offlineCache';
 import { todayStr, dateStr } from '../logic/dateUtils';
 
@@ -31,6 +31,81 @@ export async function getCaptures(userId, { status = 'inbox', type = null } = {}
   const data = await fetchFn();
   await cacheWrite(cacheKey, data);
   return data;
+}
+
+// Total capture count across every status/type — for a card subtitle like
+// "600+ Notes, Bookmarks & Tools", not the inbox-only count getCaptures()
+// returns by default. Count-only (head: true) so it doesn't pull every row
+// just to measure how many there are.
+export async function getCaptureCount(userId) {
+  const { count, error } = await supabase
+    .from('captures')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .is('deleted_at', null);
+  if (error) { console.warn('getCaptureCount:', error.message); return 0; }
+  return count || 0;
+}
+
+// ─── DOMAIN CONTENT (Library "Domains" tab filter) ─────────────────────────────
+// Tasks, captures, and planner items tagged with one of the 8 life domains,
+// merged into one list the same way HomeScreen.js's own multi-source "On
+// the Desk" list is — a `kind` field the render side switches on, a
+// `source` field for the human-readable badge.
+//
+// Two different tagging paths feed this, both already real:
+//   - tasks/captures.life_area_id — a foreign key to this user's own
+//     life_areas row for the domain (ImportScreen.js sets this on import).
+//   - captures.tags containing the domain key directly, e.g. 'physical'
+//     (also written by ImportScreen.js, alongside life_area_id).
+//   - agenda_instances.area — the domain key directly, no resolution
+//     needed; the most reliable of the three since Planner routines are
+//     tagged by domain from the moment they're created.
+// A domain the user has never checked into has no life_areas row yet —
+// that's not an error, it just means the life_area_id-based matches below
+// come back empty and the tag/planner matches carry the result.
+export async function getDomainContent(userId, domainId) {
+  const { data: areaRows } = await supabase
+    .from('life_areas').select('id, label').eq('user_id', userId);
+  const areaRow = (areaRows || []).find(a => a.label?.toLowerCase() === domainId);
+  const areaRowId = areaRow?.id || null;
+
+  const past = new Date(); past.setDate(past.getDate() - 30);
+  const future = new Date(); future.setDate(future.getDate() + 14);
+
+  const [tasksRes, capturesRes, instancesRes] = await Promise.all([
+    areaRowId
+      ? supabase.from('tasks').select('id, title, completed, due_date')
+          .eq('user_id', userId).eq('life_area_id', areaRowId)
+          .order('completed').limit(30)
+      : Promise.resolve({ data: [] }),
+    supabase.from('captures').select('id, title, type, status, created_at')
+      .eq('user_id', userId).is('deleted_at', null)
+      .or(areaRowId ? `life_area_id.eq.${areaRowId},tags.cs.{${domainId}}` : `tags.cs.{${domainId}}`)
+      .order('created_at', { ascending: false }).limit(30),
+    supabase.from('agenda_instances').select('id, title, area, date, start_time, completed')
+      .eq('user_id', userId).eq('area', domainId).eq('skipped', false)
+      .gte('date', dateStr(past)).lte('date', dateStr(future))
+      .order('date').limit(30),
+  ]);
+
+  const merged = [
+    ...(tasksRes.data || []).map(tk => ({
+      id: 'task_' + tk.id, title: tk.title, kind: 'task', source: 'Task',
+      done: tk.completed, raw: tk,
+    })),
+    ...(capturesRes.data || []).map(cp => ({
+      id: 'cap_' + cp.id, title: cp.title || 'Untitled', kind: 'capture', source: cp.type || 'note',
+      done: cp.status !== 'inbox', raw: cp,
+    })),
+    ...(instancesRes.data || []).map(inst => ({
+      id: 'inst_' + inst.id, title: inst.title, kind: 'planner', source: 'planner',
+      done: !!inst.completed, raw: inst,
+    })),
+  ];
+  // Not-done items first, most useful-to-act-on order for a triage view.
+  merged.sort((a, b) => (a.done === b.done) ? 0 : a.done ? 1 : -1);
+  return merged;
 }
 
 export async function getSaveForLater(userId, type = null) {

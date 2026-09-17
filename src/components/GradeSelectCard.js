@@ -16,6 +16,8 @@ export default function GradeSelectCard({
   emoji = '🎮',
   subjectLabel,
   blurbs = {},
+  tierLabels = {}, // optional: relabel a band's displayed name (e.g. "Shift Lead" instead of "Grades 9-12") for games that reuse the shared K-2..9-12 bands as an experience/life-stage tier rather than a literal school grade — see surviveMonth.js and registerReady.js for the pattern this exists for
+  pickerPrompt = 'Choose your grade band', // paired with tierLabels — override when the bands aren't literally grades
   level,
   onSelectLevel,
   onStart,
@@ -40,7 +42,7 @@ export default function GradeSelectCard({
         <Text style={s.title}>{title}</Text>
         {!!subjectLabel && <Text style={s.subject}>{subjectLabel}</Text>}
 
-        <Text style={s.prompt}>Choose your grade band</Text>
+        <Text style={s.prompt}>{pickerPrompt}</Text>
 
         {GRADE_BANDS.map(b => {
           const active = b.key === level;
@@ -53,7 +55,7 @@ export default function GradeSelectCard({
             >
               {showEmojis ? <Text style={s.tierEmoji}>{b.emoji}</Text> : <Ionicons name={b.icon} size={22} color={active ? G.teal : G.muted} />}
               <View style={{ flex: 1 }}>
-                <Text style={[s.tierLabel, active && s.tierLabelActive]}>{b.label}</Text>
+                <Text style={[s.tierLabel, active && s.tierLabelActive]}>{tierLabels[b.key] || b.label}</Text>
                 {!!blurbs[b.key] && <Text style={s.tierBlurb}>{blurbs[b.key]}</Text>}
               </View>
               {active && <Ionicons name="checkmark-circle" size={20} color={G.teal} />}

@@ -1,6 +1,7 @@
 
 // src/api/plannerService.js
-import { supabase } from './supabaseClient';
+import { supabase, unscoped } from './profileScopedClient';
+import { getActiveProfileId } from '../logic/activeProfile';
 import { cacheRead, cacheWrite, isOnline } from './offlineCache';
 import { todayStr, dateStr } from '../logic/dateUtils';
 
@@ -106,17 +107,24 @@ export async function unsubscribeFromComponent(userId, componentId) {
 // Cache-first, one shared implementation for every view (Daily/Weekly/
 // Monthly all call through here with different date-range params) — fixing
 // this once here covers all three instead of patching each view's load().
+// `allProfiles` widens the read across every profile this user owns — the
+// planner's "All" view. Rows are still restricted to the user by RLS; this
+// only drops the per-profile filter. Items remain owned by the profile that
+// created them either way.
 export async function getInstances(userId, {
   date = null, weekStart = null, weekEnd = null,
-  month = null, year = null, area = null,
+  month = null, year = null, area = null, allProfiles = false,
 } = {}) {
-  const cacheKey = `planner_instances_${userId}_${date || ''}_${weekStart || ''}_${weekEnd || ''}_${month || ''}_${year || ''}_${area || ''}`;
+  // Cache key carries the scope and the active profile, or switching either
+  // one serves the other view's rows back from cache.
+  const scopeKey = allProfiles ? 'all' : (getActiveProfileId() || 'none');
+  const cacheKey = `planner_instances_${userId}_${date || ''}_${weekStart || ''}_${weekEnd || ''}_${month || ''}_${year || ''}_${area || ''}_${scopeKey}`;
 
   if (!(await isOnline())) {
     return (await cacheRead(cacheKey)) || [];
   }
 
-  let q = supabase
+  let q = (allProfiles ? unscoped : supabase)
     .from('agenda_instances')
     .select('*, planner_components(library_screen, duration_minutes)')
     .eq('user_id', userId)

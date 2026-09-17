@@ -36,6 +36,56 @@
         "8099"
       ],
       "port": 8099
+    },
+    {
+      "name": "start-web-2",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "web",
+        "--",
+        "--port",
+        "8199"
+      ],
+      "port": 8199
+    },
+    {
+      "name": "start-web-3",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "web",
+        "--",
+        "--port",
+        "8299"
+      ],
+      "port": 8299
+    },
+    {
+      "name": "start-web-4",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "web",
+        "--",
+        "--port",
+        "8399"
+      ],
+      "port": 8399
+    },
+    {
+      "name": "feature-gating-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "C:\\Users\\tawhi\\chill-app\\.claude\\worktrees\\feature-gating-test",
+        "run",
+        "web",
+        "--",
+        "--port",
+        "8499"
+      ],
+      "port": 8499
     }
   ]
 }

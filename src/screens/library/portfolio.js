@@ -10,7 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as Clipboard from 'expo-clipboard';
-import { supabase } from '../../api/supabaseClient';
+import { supabase } from '../../api/profileScopedClient';
 import { cacheRead, cacheWrite, isOnline } from '../../api/offlineCache';
 import { useTheme } from '../../../context/ThemeContext';
 import { useUIPrefs } from '../../../context/UIPrefsContext';

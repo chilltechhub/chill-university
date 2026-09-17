@@ -1,19 +1,23 @@
 // src/components/CalendarModal.js
 // Notebook-style center popup — 7 horizontal day cards stacked vertically
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Modal,
   ScrollView, TextInput, KeyboardAvoidingView,
-  Platform, ActivityIndicator, Alert, Dimensions,
+  Platform, ActivityIndicator, Alert,
 } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
-import { supabase } from '../api/supabaseClient';
+import { supabase } from '../api/profileScopedClient';
+import { unscoped } from '../api/profileScopedClient';
+import { useProfiles } from '../../context/ProfileAccountsContext';
+import { buildProfileLookup } from '../data/personas';
+import useViewScope, { SCOPE_ALL } from '../logic/useViewScope';
 import { cacheRead, cacheWrite, isOnline } from '../api/offlineCache';
 import { dateStr } from '../logic/dateUtils';
-
-const { width: SW, height: SH } = Dimensions.get('window');
 
 // ─── Notifications ────────────────────────────────────────────────────────────
 let Notifications = null;
@@ -195,6 +199,39 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
   const [addDate, setAddDate] = useState(null);
   const [selectedPlannerArea, setSelectedPlannerArea] = useState(null);
 
+  // Draggable — the spine (the row of binding rings) is the handle, so
+  // moving the popup uses the part that already reads as "grip this" rather
+  // than adding a separate bar and disrupting the notebook layout. Same
+  // gesture split as WidgetBoard.js / FloatingCard.js: pan runs on the JS
+  // thread, the resulting position is still a Reanimated shared value so
+  // the motion itself stays smooth.
+  const dragX = useSharedValue(0);
+  const dragY = useSharedValue(0);
+  const dragStart = useRef({ x: 0, y: 0 });
+  useEffect(() => { if (visible) { dragX.value = 0; dragY.value = 0; } }, [visible]);
+  const dragGesture = Gesture.Pan()
+    .runOnJS(true)
+    .onStart(() => { dragStart.current = { x: dragX.value, y: dragY.value }; })
+    .onUpdate((e) => {
+      dragX.value = dragStart.current.x + e.translationX;
+      dragY.value = dragStart.current.y + e.translationY;
+    })
+    .onEnd(() => {
+      dragX.value = withSpring(dragX.value, { damping: 22, stiffness: 220 });
+      dragY.value = withSpring(dragY.value, { damping: 22, stiffness: 220 });
+    });
+  const dragStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: dragX.value }, { translateY: dragY.value }],
+  }));
+
+  // Calendar defaults to showing every profile: a person has one actual day,
+  // and the failure this view exists to prevent is double-booking your night
+  // job against your startup. The planner list defaults the other way — see
+  // useViewScope.js.
+  const { showingAll, toggle: toggleScope } = useViewScope('calendar', SCOPE_ALL);
+  const { profiles, active } = useProfiles();
+  const profileLookup = React.useMemo(() => buildProfileLookup(profiles), [profiles]);
+
   const weekDays  = getWeekDays(anchor);
   const weekStart = toISO(weekDays[0]);
   const weekEnd   = toISO(weekDays[6]);
@@ -207,35 +244,42 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
   const loadWeek = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
-    const cacheKey = `calendar_week_${userId}_${weekStart}_${weekEnd}`;
+    // Cache key includes the scope AND the active profile — otherwise
+    // switching either one serves the previous view's rows from cache.
+    const cacheKey = `calendar_week_${userId}_${weekStart}_${weekEnd}_${showingAll ? 'all' : active?.id || 'none'}`;
     try {
       const cached = await cacheRead(cacheKey);
       if (cached) setEvents(cached);
 
       if (!(await isOnline())) { setLoading(false); return; }
 
+      // `unscoped` deliberately bypasses the per-profile filter for the
+      // all-profiles view. Everything is still scoped to this user by RLS —
+      // this only widens across the profiles they already own.
+      const db = showingAll ? unscoped : supabase;
+
       const [evtRes, taskRes, focusRes, noteRes, plannerRes] = await Promise.all([
-        supabase.from('calendar_events').select('*').eq('user_id', userId).gte('date', weekStart).lte('date', weekEnd),
-        supabase.from('tasks').select('id,title,due_date').eq('user_id', userId).eq('completed', false).gte('due_date', weekStart).lte('due_date', weekEnd),
-        supabase.from('daily_focus').select('id,focus_text,focus_date').eq('user_id', userId).gte('focus_date', weekStart).lte('focus_date', weekEnd),
-        supabase.from('captures').select('id,title,created_at').eq('user_id', userId).eq('status','inbox').gte('created_at', weekStart).lte('created_at', weekEnd+'T23:59:59'),
-        supabase.from('agenda_instances').select('id,title,area,date,start_time').eq('user_id', userId).gte('date', weekStart).lte('date', weekEnd).eq('completed', false).eq('skipped', false),
+        db.from('calendar_events').select('*').eq('user_id', userId).gte('date', weekStart).lte('date', weekEnd),
+        db.from('tasks').select('id,title,due_date,profile_id').eq('user_id', userId).eq('completed', false).gte('due_date', weekStart).lte('due_date', weekEnd),
+        db.from('daily_focus').select('id,focus_text,focus_date,profile_id').eq('user_id', userId).gte('focus_date', weekStart).lte('focus_date', weekEnd),
+        db.from('captures').select('id,title,created_at,profile_id').eq('user_id', userId).eq('status','inbox').gte('created_at', weekStart).lte('created_at', weekEnd+'T23:59:59'),
+        db.from('agenda_instances').select('id,title,area,date,start_time,profile_id').eq('user_id', userId).gte('date', weekStart).lte('date', weekEnd).eq('completed', false).eq('skipped', false),
       ]);
       const map = {};
       const push = (date, item) => { if (!map[date]) map[date]=[]; map[date].push(item); };
-      (evtRes.data  ||[]).forEach(e  => push(e.date, {...e, _src:'calendar'}));
-      (taskRes.data ||[]).forEach(tk => { if(tk.due_date) push(tk.due_date,{id:'task_'+tk.id, title:tk.title, type:'task', color:TYPE_COLORS.task, _src:'task'}); });
-      (focusRes.data||[]).forEach(f  => push(f.focus_date, {id:'focus_'+f.id, title:f.focus_text, type:'focus', color:TYPE_COLORS.focus, _src:'focus'}));
-      (noteRes.data ||[]).forEach(n  => { const d=n.created_at?.split('T')[0]; if(d) push(d,{id:'note_'+n.id, title:n.title||'Note', type:'note', color:TYPE_COLORS.note, _src:'note'}); });
+      (evtRes.data  ||[]).forEach(e  => push(e.date, {...e, _src:'calendar', _profile:e.profile_id}));
+      (taskRes.data ||[]).forEach(tk => { if(tk.due_date) push(tk.due_date,{id:'task_'+tk.id, title:tk.title, type:'task', color:TYPE_COLORS.task, _src:'task', _profile:tk.profile_id}); });
+      (focusRes.data||[]).forEach(f  => push(f.focus_date, {id:'focus_'+f.id, title:f.focus_text, type:'focus', color:TYPE_COLORS.focus, _src:'focus', _profile:f.profile_id}));
+      (noteRes.data ||[]).forEach(n  => { const d=n.created_at?.split('T')[0]; if(d) push(d,{id:'note_'+n.id, title:n.title||'Note', type:'note', color:TYPE_COLORS.note, _src:'note', _profile:n.profile_id}); });
       (plannerRes.data ||[]).forEach(item => {
         const area = PLANNER_AREAS[item.area] || { emoji: '•', color: c.teal };
-        push(item.date, { ...item, type: 'planner', color: area.color, _src: 'planner', area: item.area, emoji: area.emoji, time: item.start_time });
+        push(item.date, { ...item, type: 'planner', color: area.color, _src: 'planner', area: item.area, emoji: area.emoji, time: item.start_time, _profile: item.profile_id });
       });
       setEvents(map);
       await cacheWrite(cacheKey, map);
     } catch(e) { console.warn('CalendarModal', e); }
     setLoading(false);
-  }, [userId, weekStart, weekEnd, c.teal]);
+  }, [userId, weekStart, weekEnd, c.teal, showingAll, active?.id]);
 
   useEffect(() => { if (visible) loadWeek(); }, [visible, loadWeek]);
 
@@ -255,29 +299,44 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
     await loadWeek();
   };
 
-  const POPUP_W = Math.min(SW * 0.92, 420);
-  const POPUP_H = Math.min(SH * 0.78, 600);
   const SPINE   = 28;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      {/* Backdrop */}
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+      {/* Backdrop — lightened from the old 0.6 so the screen behind this
+          stays visible while you're using it, same reasoning as
+          FloatingCard.js's popups. Tapping it still closes. */}
       <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose}>
-        <View style={{ flex:1, backgroundColor:'rgba(0,0,0,0.6)' }} />
+        <View style={{ flex:1, backgroundColor:'rgba(0,0,0,0.18)' }} />
       </TouchableOpacity>
 
       {/* Notebook popup */}
       <View style={{ ...StyleSheet.absoluteFillObject, alignItems:'center', justifyContent:'center' }} pointerEvents="box-none">
-        <View style={{ width:POPUP_W, height:POPUP_H, backgroundColor:paperBg, borderRadius:8,
+        {/* Sized as a PERCENTAGE of this wrapper, not a pixel value computed
+            from useWindowDimensions/SW/SH — on Android specifically, a modal
+            without a translucent status bar is only ever handed the screen
+            area *below* the status bar to lay out in, which is shorter than
+            the full window height those hooks report. A pixel height built
+            from the wrong (taller) number could exceed what's actually
+            available, and centering can't help — the box just gets pinned
+            to the top with dead space below it (exactly what was reported).
+            A percentage is resolved by the layout engine against this
+            wrapper's REAL measured size, so the two numbers can never
+            disagree, on Android or otherwise. */}
+        <Animated.View style={[{ width:'92%', maxWidth:420, height:'78%', maxHeight:600, backgroundColor:paperBg, borderRadius:8,
           flexDirection:'row', overflow:'hidden',
-          shadowColor:'#000', shadowOffset:{width:0,height:10}, shadowOpacity:0.45, shadowRadius:24, elevation:20 }}>
+          shadowColor:'#000', shadowOffset:{width:0,height:10}, shadowOpacity:0.45, shadowRadius:24, elevation:20 }, dragStyle]}>
 
-          {/* Spine */}
-          <View style={{ width:SPINE, backgroundColor:'#c9a84c18', alignItems:'center', paddingVertical:14, gap:12 }}>
-            {[0,1,2,3,4,5,6,7].map(i => (
-              <View key={i} style={{ width:12, height:12, borderRadius:6, backgroundColor:paperBg, borderWidth:1.5, borderColor:'#c9a84c55' }} />
-            ))}
-          </View>
+          {/* Spine — also the drag handle. It already reads as "grip this"
+              (a notebook's binding), so moving the popup reuses it instead
+              of adding a separate bar that would clash with the layout. */}
+          <GestureDetector gesture={dragGesture}>
+            <View style={{ width:SPINE, backgroundColor:'#c9a84c18', alignItems:'center', paddingVertical:14, gap:12 }}>
+              {[0,1,2,3,4,5,6,7].map(i => (
+                <View key={i} style={{ width:12, height:12, borderRadius:6, backgroundColor:paperBg, borderWidth:1.5, borderColor:'#c9a84c55' }} />
+              ))}
+            </View>
+          </GestureDetector>
 
           {/* Red margin */}
           <View style={{ position:'absolute', left:SPINE+10, top:0, bottom:0, width:1.5, backgroundColor:redLine }} />
@@ -300,10 +359,45 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
               <TouchableOpacity onPress={nextWeek} style={{ padding:5 }}>
                 <Ionicons name="chevron-forward" size={16} color={c.text3} />
               </TouchableOpacity>
+              {/* All-profiles toggle. Ownership never changes — this only
+                  widens what's shown, so a clash between two jobs is visible
+                  instead of hidden behind a profile switch. */}
+              {profiles.length > 1 && (
+                <TouchableOpacity
+                  onPress={toggleScope}
+                  style={{ flexDirection:'row', alignItems:'center', gap:3, paddingHorizontal:6, paddingVertical:3,
+                           borderRadius:9, borderWidth:1,
+                           borderColor: showingAll ? c.teal : c.border,
+                           backgroundColor: showingAll ? c.teal + '18' : 'transparent' }}
+                  accessibilityRole="button"
+                  accessibilityLabel={showingAll ? 'Showing all profiles. Tap to show only this profile.' : 'Showing this profile only. Tap to show all profiles.'}
+                >
+                  <Ionicons name={showingAll ? 'layers' : 'person'} size={11} color={showingAll ? c.teal : c.text3} />
+                  <Text style={{ fontSize:9, fontWeight:'800', color: showingAll ? c.teal : c.text3 }}>
+                    {showingAll ? 'ALL' : 'THIS'}
+                  </Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity onPress={onClose} style={{ padding:5 }}>
                 <Ionicons name="close" size={16} color={c.text3} />
               </TouchableOpacity>
             </View>
+
+            {/* Legend — only earns its space when actually showing a mix. */}
+            {showingAll && profiles.length > 1 && (
+              <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, paddingRight:12, paddingTop:6, paddingBottom:2 }}>
+                {profiles.map(pr => {
+                  const meta = profileLookup[pr.id];
+                  if (!meta) return null;
+                  return (
+                    <View key={pr.id} style={{ flexDirection:'row', alignItems:'center', gap:3 }}>
+                      <View style={{ width:7, height:7, borderRadius:4, backgroundColor: meta.color }} />
+                      <Text style={{ fontSize:9, color:c.text3 }} numberOfLines={1}>{meta.name}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
 
             {/* Day cards scrollable */}
             {loading ? (
@@ -378,8 +472,16 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
                         <View style={{ paddingHorizontal:10, paddingVertical:6, gap:4 }}>
                           {visibleEvs.map((evt, j) => (
                             <View key={evt.id||j} style={{ flexDirection:'row', alignItems:'center', gap:8, paddingVertical:3 }}>
-                              {/* Color dot */}
-                              <View style={{ width:6, height:6, borderRadius:3, backgroundColor:evt.color||c.teal, flexShrink:0 }} />
+                              {/* In all-profiles mode the leading marker
+                                  becomes the PROFILE's colour, not the item
+                                  type's — "whose is this" is the question this
+                                  view exists to answer. The type still reads
+                                  in the label row below. */}
+                              {showingAll && evt._profile && profileLookup[evt._profile] ? (
+                                <View style={{ width:3, height:20, borderRadius:2, backgroundColor: profileLookup[evt._profile].color, flexShrink:0 }} />
+                              ) : (
+                                <View style={{ width:6, height:6, borderRadius:3, backgroundColor:evt.color||c.teal, flexShrink:0 }} />
+                              )}
                               {/* Title + time */}
                               <View style={{ flex:1 }}>
                                 <Text style={{ fontSize:11, fontWeight:'600', color:c.text1 }} numberOfLines={1}>
@@ -389,6 +491,11 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
                                   {evt.time && <Text style={{ fontSize:9, color:c.teal }}>{fmt12(evt.time)}</Text>}
                                   <Text style={{ fontSize:9, color:evt.color||c.teal, textTransform:'uppercase', letterSpacing:0.3 }}>{evt.type}</Text>
                                   {evt._src !== 'calendar' && <Text style={{ fontSize:9, color:c.text4, fontStyle:'italic' }}>· {evt._src}</Text>}
+                                  {showingAll && evt._profile && profileLookup[evt._profile] && (
+                                    <Text style={{ fontSize:9, fontWeight:'700', color: profileLookup[evt._profile].color }} numberOfLines={1}>
+                                      · {profileLookup[evt._profile].name}
+                                    </Text>
+                                  )}
                                   {evt.reminder_min && <Text style={{ fontSize:9, color:c.gold }}>🔔</Text>}
                                 </View>
                               </View>
@@ -409,14 +516,14 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
               </ScrollView>
             )}
           </View>
-        </View>
+        </Animated.View>
       </View>
 
       {/* Add sheet */}
-      <Modal visible={!!addDate} transparent animationType="slide" onRequestClose={() => setAddDate(null)}>
+      <Modal visible={!!addDate} transparent animationType="slide" onRequestClose={() => setAddDate(null)} statusBarTranslucent>
         <View style={{ flex:1, backgroundColor:'rgba(0,0,0,0.5)', justifyContent:'flex-end' }}>
           <KeyboardAvoidingView behavior={Platform.OS==='ios' ? 'padding' : undefined}>
-            <View style={{ backgroundColor:c.bg1, borderTopLeftRadius:20, borderTopRightRadius:20, paddingBottom:40, maxHeight:SH*0.85 }}>
+            <View style={{ backgroundColor:c.bg1, borderTopLeftRadius:20, borderTopRightRadius:20, paddingBottom:40, maxHeight:'85%' }}>
               <View style={{ width:36, height:4, borderRadius:2, backgroundColor:c.border, alignSelf:'center', marginTop:10, marginBottom:6 }} />
               {addDate && (
                 <AddEventForm

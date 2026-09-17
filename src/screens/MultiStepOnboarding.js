@@ -1,81 +1,60 @@
 // src/screens/MultiStepOnboarding.js
-// 7-step sliding card onboarding — same visual language as the rest of the
-// app (ThemeContext colors + FONTS), not a standalone look of its own.
 //
-// Every step here actually does something, not just fills a `profiles`
-// column nobody reads back:
-//   - Sectors (Step2) narrows what shows up in the Library tab's life-area
-//     grid (LibraryScreen.js reads `active_life_areas` back) — add more
-//     any time from the "+ Add" tile there or Settings.
-//   - Character (Step3) shows the *real* playable character (the same
-//     CharacterWalker/useCharacterLoadout rendering Home/Training use),
-//     not a fictional astronaut unrelated to what you actually see in the
-//     app. Crest color + role badge are real, small, already-wired
-//     flourishes (Home's CommanderCard / library/portfolio.js read them)
-//     — just honestly framed as that instead of "helmet"/"suit" (there's
-//     no such wearable in the real system).
-//   - Planner (Step4) offers real starter templates fetched from
-//     plannerService.js's planner_components table for your chosen
-//     sectors, and actually subscribes + schedules them on finish — the
-//     same functions PlannerScreen's own "Add" panel calls.
-//   - Look & Layout (Step7) picks a theme live (you can watch this whole
-//     screen re-skin as you tap), and lets you hide any Library section
-//     you don't want — same AsyncStorage setting Settings' own editor
-//     uses, so either place stays in sync.
-//   - Finishing personalizes the guided tour (context/TourContext.js) with
-//     what you just picked, before it's ever shown.
+// The REQUIRED part of onboarding, and nothing else.
+//
+// It used to be eight steps and roughly twenty questions, all held in one
+// useState object and written in a single upsert at the very end — so
+// quitting at step six lost the lot, and the first thing anyone saw after
+// finishing was a twelve-step tour. What's left here is the two answers
+// that have to exist before the app can render honestly:
+//
+//   1. Persona  — decides the default widgets on Home, the quest line, the
+//                 curriculum track, and which life areas step 2 pre-selects.
+//   2. Sectors  — exactly what the Library tab's life-area grid shows.
+//
+// Everything else (character, planner starters, interests, goals, theme
+// and layout) moved to the Getting Started card on Home, where the user
+// can see what each answer changes as they make it. Same components, same
+// columns — see src/logic/onboardingTasks.js and
+// src/screens/onboarding/steps.js.
+//
+// In front of both steps is the age gate, unchanged: this app's users are
+// K-12, so a real share are minors under COPPA (US, default 13) or a
+// country's GDPR Article 8 age. Consent has to be collected before we ask
+// for anything personal, not after — see src/logic/ageOfConsent.js and
+// src/api/kwsVerification.js.
 
 import React, { useState, useRef, useEffect } from 'react';
 import { PRIVACY_POLICY_URL } from '../config/legal';
 import {
   View, Text, ScrollView, TouchableOpacity,
   TextInput, Animated, Dimensions, StyleSheet, Linking,
-  ActivityIndicator, Alert, Switch, KeyboardAvoidingView, Platform,
+  ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useTour } from '../../context/TourContext';
 import { useUserProgress } from '../../context/UserProgressContext';
-import { THEMES, FONTS } from '../theme';
+import { FONTS } from '../theme';
 import { supabase } from '../api/supabaseClient';
 import { generateRecommendations } from '../api/recommendationEngine';
-import useSetting, { SETTING_KEYS } from '../logic/useSetting';
-import { ensureNotificationPermission } from '../logic/notificationScheduler';
+import { setWayfinderIntent } from '../api/wayfinderService';
+import {
+  saveOnboardingFields, loadOnboardingDraft, saveOnboardingDraft, clearOnboardingDraft,
+} from '../api/onboardingService';
+import { ageCategoryFromDob } from '../logic/onboardingTasks';
 import { LIFE_AREAS } from './library/LifeAreaScreen';
-import { LIBRARY_HUBS } from './library/LibraryScreen';
-import { AREAS as PLANNER_AREAS, getPresetComponents, subscribeToComponent, generateInstances } from '../api/plannerService';
-import { CREST_COLORS, ROLE_BADGES } from '../data/crestOptions';
-import useCharacterLoadout from '../logic/useCharacterLoadout';
-import LandscapeBackground from '../components/LandscapeBackground';
-import CharacterWalker from '../components/CharacterWalker';
-import PlayerCharacter from '../components/PlayerCharacter';
-import { OUTFITS } from '../data/characterOptions';
 import { isMinorRequiringConsent } from '../logic/ageOfConsent';
 import { startParentVerification, getVerificationStatus } from '../api/kwsVerification';
+import { DEFAULT_PERSONA, personasFor, getPersona } from '../data/personas';
+import { useProfiles } from '../../context/ProfileAccountsContext';
+import useSetting, { SETTING_KEYS } from '../logic/useSetting';
+import {
+  PersonaStep, SectorsStep, LookStep, PERSONA_AREA_DEFAULTS, pickFocusHub, buildRecommendations,
+} from './onboarding/steps';
 
 const { width: SW } = Dimensions.get('window');
-
-// ─── Config (content unchanged from the original 7 questions — only how
-// they're answered/rendered, and what happens with the answers, changed) ──
-
-const WHY_OPTIONS = [
-  { key: 'growth',    emoji: '🌱', label: 'Personal growth' },
-  { key: 'career',    emoji: '🚀', label: 'Career & skills' },
-  { key: 'wellness',  emoji: '❤️', label: 'Health & wellness' },
-  { key: 'learning',  emoji: '🎓', label: 'Learning & education' },
-  { key: 'finance',   emoji: '💰', label: 'Financial freedom' },
-  { key: 'creativity',emoji: '🎨', label: 'Creative projects' },
-  { key: 'all',       emoji: '🌌', label: 'All of the above' },
-];
-
-const AGE_CATS = [
-  { key: 'kid',           label: 'Kid (5-12)' },
-  { key: 'teen',          label: 'Teen (13-17)' },
-  { key: 'young_adult',   label: 'Young Adult (18-25)' },
-  { key: 'adult',         label: 'Adult (26-40)' },
-  { key: 'professional',  label: 'Professional (40+)' },
-];
 
 // Countries with local privacy law shown as quick picks in the age gate
 // below; "Other" falls back to DEFAULT_AODC (13) in src/logic/ageOfConsent.js.
@@ -90,700 +69,20 @@ const COUNTRY_CHOICES = [
   { value: 'OTHER', label: 'Somewhere else' },
 ];
 
-
-
-const TOPICS = [
-  'AI & Technology', 'Cybersecurity', 'Personal Finance', 'Entrepreneurship',
-  'Mental Health', 'Creativity & Design', 'Leadership', 'Coding',
-  'Philosophy', 'Health & Nutrition', 'Writing', 'Science',
-];
-
-const FORMATS = [
-  { key: 'reading', emoji: '📖', label: 'Reading' },
-  { key: 'video',   emoji: '🎬', label: 'Videos' },
-  { key: 'audio',   emoji: '🎧', label: 'Audio' },
-  { key: 'game',    emoji: '🎮', label: 'Games' },
-  { key: 'quiz',    emoji: '❓', label: 'Quizzes' },
-  { key: 'hands',   emoji: '🛠️', label: 'Hands-on' },
-];
-
-const DAILY_MIN = [
-  { val: 5,   label: '5 min',  desc: 'Just a taste' },
-  { val: 15,  label: '15 min', desc: 'Steady pace' },
-  { val: 30,  label: '30 min', desc: 'Solid session' },
-  { val: 60,  label: '1 hour', desc: 'Deep work' },
-];
-
-const PRIMARY_GOALS = [
-  'Build better habits', 'Learn new skills', 'Advance my career',
-  'Improve my health', 'Grow financially', 'Find my purpose',
-  'Start a project', 'Feel more confident',
-];
-
-// A direct question, rather than inferring usage from word overlap in
-// unrelated answers (motivation/topics) alone — this is the actual signal
-// buildRecommendations() below weighs most heavily, since it's the user
-// telling us straight out how they intend to actually use the app
-// day-to-day, not just what they're broadly here for.
-const USAGE_PATTERNS = [
-  { key: 'habits',    emoji: '📅', label: 'Daily habits & check-ins' },
-  { key: 'building',  emoji: '🏗️', label: 'Building projects' },
-  { key: 'learning',  emoji: '📚', label: 'Structured courses' },
-  { key: 'reflecting',emoji: '🧠', label: 'Journaling & reflection' },
-  { key: 'planning',  emoji: '🗂️', label: 'Planning & organizing' },
-  { key: 'breaks',    emoji: '🎮', label: 'Quick games & breaks' },
-];
-
-// Simple keyword → Library section match for personalizing the tour.
-// First match wins; order matters. usage_patterns (an explicit multi-select
-// in Step6) is weighed above motivation/topics, since it's a direct signal
-// rather than an inferred one.
-const HUB_INTEREST_MAP = [
-  { screen: 'ProjectsScreen', keywords: ['building', 'project', 'creativity', 'creative', 'build', 'confident'],
-    reason: (l) => `You mentioned wanting to build or create — ${l} is where your projects live, from first idea to shipped.` },
-  { screen: 'PlannerScreen', keywords: ['planning', 'habits'],
-    reason: (l) => `You're here to plan and stay on top of things — ${l} is your full agenda, daily to monthly.` },
-  { screen: 'CareerExplorationScreen', keywords: ['career', 'work', 'job'],
-    reason: (l) => `Since career growth is on your mind, ${l} is worth a look — explore paths and next steps.` },
-  { screen: 'ClassesStack', keywords: ['learning', 'learn', 'education', 'skill'],
-    reason: (l) => `${l} has structured lessons across every subject — a solid place to start.` },
-  { screen: 'KnowledgeScreen', keywords: ['learn', 'skill', 'education', 'growth', 'purpose'],
-    reason: (l) => `You're here to learn and grow — ${l} is where your notes, saved research, and reference tools live.` },
-  { screen: 'IdeaGardenScreen', keywords: ['reflecting', 'creativity', 'creative'],
-    reason: (l) => `${l} is where loose ideas get planted and grow — a good fit for reflecting and creative thinking.` },
-];
-
-function pickFocusHub(data) {
-  const haystack = [data.primary_goal, data.motivation, ...(data.usage_patterns || []), ...(data.topics || [])]
-    .filter(Boolean).join(' ').toLowerCase();
-  for (const entry of HUB_INTEREST_MAP) {
-    if (entry.keywords.some(kw => haystack.includes(kw))) {
-      const hubItem = LIBRARY_HUBS.flatMap(h => h.items).find(i => i.screen === entry.screen);
-      if (hubItem) return { screen: hubItem.screen, label: hubItem.label, reason: entry.reason(hubItem.label) };
-    }
-  }
-  return null;
-}
-
-// ─── Feature recommendations ──────────────────────────────────────────────────
-// Distinct from pickFocusHub (one Library hub, spliced into the guided
-// tour) — this surfaces up to 3 concrete features across the WHOLE app,
-// shown directly in Step7's Mission Summary so the "suggest things based
-// on usage" payoff is visible before onboarding even finishes, not just
-// buried in a later tour step.
-const FEATURE_RECS = [
-  { pattern: 'habits',     icon: 'checkmark-circle-outline', title: 'Daily Check-in',       body: 'A one-tap log for your life areas — Library → any area → Quick Log.' },
-  { pattern: 'habits',     icon: 'notifications-outline',     title: 'Daily Reminders',       body: 'Turn on below — a nudge if today\'s drills are open or your streak is at risk.' },
-  { pattern: 'building',   icon: 'hammer-outline',            title: 'The Workshop',          body: 'Start your first build — Library → The Workshop → New Build.' },
-  { pattern: 'building',   icon: 'briefcase-outline',         title: 'Portfolio Archives',    body: 'Finished builds land here automatically as a running showcase.' },
-  { pattern: 'learning',   icon: 'ribbon-outline',            title: 'Academy Classes',       body: 'Structured coursework across every subject — Library → Academy Classes.' },
-  { pattern: 'reflecting', icon: 'journal-outline',           title: 'Weekly Reflection',     body: 'A guided prompt on any life area, once a week — good for spotting patterns.' },
-  { pattern: 'reflecting', icon: 'leaf-outline',               title: 'Idea Garden',           body: 'Plant loose thoughts and let them grow over time.' },
-  { pattern: 'planning',   icon: 'calendar-outline',          title: 'Planner',               body: 'Daily, weekly, and monthly views — Library → Planner.' },
-  { pattern: 'planning',   icon: 'file-tray-full-outline',    title: 'Capture Inbox',         body: 'Jot anything fast, decide where it belongs later.' },
-  { pattern: 'breaks',     icon: 'game-controller-outline',    title: 'Training',              body: 'Quick games across any subject — the PLAY button on Home.' },
-];
-
-function buildRecommendations(data) {
-  const patterns = data.usage_patterns || [];
-  if (!patterns.length) return [];
-  const byPattern = patterns.map(p => FEATURE_RECS.filter(r => r.pattern === p));
-  const seen = new Set();
-  const picks = [];
-  // Round-robin across picked patterns (one from each before repeating) so
-  // someone who picked 3 patterns sees a spread, not 3 recs all from
-  // whichever pattern happens to be first.
-  for (let round = 0; round < 3 && picks.length < 3; round++) {
-    for (const group of byPattern) {
-      const candidate = group[round];
-      if (candidate && !seen.has(candidate.title)) {
-        seen.add(candidate.title);
-        picks.push(candidate);
-        if (picks.length >= 3) break;
-      }
-    }
-  }
-  return picks;
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function stepStyles(theme) {
-  const { c, s } = theme;
-  return {
-    stepContent:  { padding: s.xl },
-    stepTitle:    { fontSize: 22, fontFamily: FONTS.display, fontWeight: '800', color: c.text1, marginBottom: 6 },
-    stepSubtitle: { fontSize: 14, color: c.text3, lineHeight: 20, marginBottom: s.xl },
-    input:        { backgroundColor: c.bg0, borderRadius: 12, padding: 14, fontSize: 15, color: c.text1, borderWidth: 1, borderColor: c.border },
-  };
-}
-
-function Chip({ label, selected, color, onPress, emoji, theme }) {
-  const { c } = theme;
-  return (
-    <TouchableOpacity onPress={onPress}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: selected ? color : c.border, backgroundColor: selected ? color + '22' : c.bg0, marginRight: 8, marginBottom: 8 }}>
-      {emoji && <Text style={{ fontSize: 14 }}>{emoji}</Text>}
-      <Text style={{ fontSize: 13, fontWeight: selected ? '700' : '400', color: selected ? color : c.text3 }}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
-function SectionLabel({ label, theme }) {
-  return <Text style={{ fontSize: 11, color: theme.c.text4, fontFamily: FONTS.mono, textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 10, marginTop: 4 }}>{label}</Text>;
-}
-
-// ─── Step screens ─────────────────────────────────────────────────────────────
-
-function Step1({ data, set, theme }) {
-  const { c } = theme;
-  const st = stepStyles(theme);
-  return (
-    <View style={st.stepContent}>
-      <Text style={st.stepTitle}>Welcome 👋</Text>
-      <Text style={st.stepSubtitle}>Let's set up your base. What should we call you?</Text>
-
-      <SectionLabel label="Your name" theme={theme} />
-      <TextInput
-        style={st.input}
-        value={data.display_name}
-        onChangeText={v => set('display_name', v)}
-        placeholder="Display name..." placeholderTextColor={c.text4}
-        autoFocus
-      />
-
-      <View style={{ marginTop: 16 }}>
-        <SectionLabel label="Where are you at in life?" theme={theme} />
-        {AGE_CATS.map(ag => {
-          const sel = data.age_category === ag.key;
-          return (
-            <TouchableOpacity key={ag.key} onPress={() => set('age_category', ag.key)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 10, marginBottom: 6, borderWidth: 1, borderColor: sel ? c.teal : c.border, backgroundColor: sel ? c.teal + '18' : c.bg0 }}>
-              <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: sel ? c.teal : c.text4, alignItems: 'center', justifyContent: 'center' }}>
-                {sel && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: c.teal }} />}
-              </View>
-              <Text style={{ fontSize: 14, color: sel ? c.text1 : c.text3, fontWeight: sel ? '700' : '400' }}>{ag.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      <View style={{ marginTop: 8 }}>
-        <SectionLabel label="What brings you here?" theme={theme} />
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-          {WHY_OPTIONS.map(opt => (
-            <Chip key={opt.key} label={opt.label} emoji={opt.emoji}
-              selected={data.motivation === opt.key} color={c.teal}
-              onPress={() => set('motivation', opt.key)} theme={theme} />
-          ))}
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function Step2({ data, set, theme }) {
-  const { c } = theme;
-  const st = stepStyles(theme);
-  const toggle = (id) => {
-    const cur = data.active_life_areas || [];
-    set('active_life_areas', cur.includes(id) ? cur.filter(k => k !== id) : [...cur, id]);
-  };
-
-  return (
-    <View style={st.stepContent}>
-      <Text style={st.stepTitle}>Choose Your Sectors</Text>
-      <Text style={st.stepSubtitle}>Pick 2-5 life areas to focus on first. These are exactly what shows up in your Library's life-area grid — add the rest any time with the "+ Add" tile there, or from Settings.</Text>
-
-      {LIFE_AREAS.map(area => {
-        const sel = (data.active_life_areas || []).includes(area.id);
-        return (
-          <TouchableOpacity key={area.id} onPress={() => toggle(area.id)}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: sel ? area.color + '18' : c.bg0, borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: sel ? area.color : c.border }}>
-            <Text style={{ fontSize: 24 }}>{area.emoji}</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: '600', color: sel ? area.color : c.text1, marginBottom: 2 }}>{area.label}</Text>
-              <Text style={{ fontSize: 12, color: c.text3 }}>{area.subtitle}</Text>
-            </View>
-            <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: sel ? area.color : c.border, backgroundColor: sel ? area.color : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
-              {sel && <Ionicons name="checkmark" size={13} color="#fff" />}
-            </View>
-          </TouchableOpacity>
-        );
-      })}
-
-      <Text style={{ fontSize: 11, color: c.text4, textAlign: 'center', marginTop: 8 }}>
-        {(data.active_life_areas || []).length} selected — aim for 2-5
-      </Text>
-    </View>
-  );
-}
-
-// Starter-tier outfits (requirement: null) — every one of these is
-// available from level 1, so this is the actual full menu of "which
-// character do you want to start as," not a fixed look with a preview
-// slapped in front of it. See the note above OUTFITS in
-// characterOptions.js.
-const STARTER_OUTFITS = OUTFITS.filter(o => !o.requirement);
-
-function Step3({ data, set, theme }) {
-  const { c, s } = theme;
-  const st = stepStyles(theme);
-  // Fresh account, nothing unlocked yet — same stats a real level-1
-  // profile would have, so this preview shows exactly what you'll see on
-  // Home/Training the moment you land there.
-  const stats = { level: 1, points: 0, rank: 20, streakDays: 0 };
-  const { ready, outfit, pet, accessory, background, equip } = useCharacterLoadout(stats);
-  const crestColor = CREST_COLORS.find(cc => cc.key === data.crest_color)?.color || c.teal;
-
-  return (
-    <View style={st.stepContent}>
-      <Text style={st.stepTitle}>Meet Your Character</Text>
-      <Text style={st.stepSubtitle}>This is who walks around your Home and Training screens — pick who you start as below. New outfits, pets, and gear unlock as you level up either way. Customize any time from your Profile.</Text>
-
-      {ready && (
-        <LandscapeBackground background={background} height={130} style={{ marginBottom: s.md }}>
-          <CharacterWalker outfit={outfit} accessory={accessory} pet={pet} characterSize={80} petSize={34} rewards={[]} />
-        </LandscapeBackground>
-      )}
-
-      <SectionLabel label="Choose your character" theme={theme} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 18 }}>
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          {STARTER_OUTFITS.map(o => {
-            const sel = outfit?.id === o.id;
-            return (
-              <TouchableOpacity
-                key={o.id}
-                onPress={() => equip('outfitId', o.id)}
-                style={{
-                  width: 72, alignItems: 'center', gap: 4, paddingVertical: 8, borderRadius: 12,
-                  borderWidth: 1.5, borderColor: sel ? crestColor : c.border,
-                  backgroundColor: sel ? crestColor + '18' : c.bg0,
-                }}
-              >
-                <PlayerCharacter outfit={o} accessory={null} size={48} />
-                <Text numberOfLines={1} style={{ fontSize: 10, color: sel ? crestColor : c.text3, fontWeight: sel ? '700' : '400' }}>{o.name}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </ScrollView>
-
-      <SectionLabel label="Traveler name (optional)" theme={theme} />
-      <TextInput
-        style={[st.input, { marginBottom: 18 }]}
-        value={data.traveler_name}
-        onChangeText={v => set('traveler_name', v)}
-        placeholder={data.display_name || 'Name your traveler...'}
-        placeholderTextColor={c.text4}
-      />
-
-      <SectionLabel label="Crest color" theme={theme} />
-      <Text style={{ fontSize: 11, color: c.text4, marginTop: -6, marginBottom: 10 }}>Colors your name card on Home & Portfolio</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 18 }}>
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          {CREST_COLORS.map(cc => {
-            const sel = data.crest_color === cc.key;
-            return (
-              <TouchableOpacity key={cc.key} onPress={() => set('crest_color', cc.key)} style={{ alignItems: 'center', gap: 5 }}>
-                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: cc.color, borderWidth: 3, borderColor: sel ? c.text1 : 'transparent' }} />
-                <Text style={{ fontSize: 9, color: sel ? c.text1 : c.text4, fontWeight: sel ? '700' : '400' }}>{cc.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </ScrollView>
-
-      <SectionLabel label="Role badge" theme={theme} />
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        {ROLE_BADGES.map(b => {
-          const sel = data.role_badge === b.key;
-          return (
-            <TouchableOpacity key={b.key} onPress={() => set('role_badge', b.key)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: sel ? crestColor : c.border, backgroundColor: sel ? crestColor + '22' : c.bg0 }}>
-              <Text style={{ fontSize: 16 }}>{b.emoji}</Text>
-              <Text style={{ fontSize: 12, color: sel ? crestColor : c.text3, fontWeight: sel ? '700' : '400' }}>{b.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
-function Step4({ data, set, theme }) {
-  const { c } = theme;
-  const st = stepStyles(theme);
-  const areas = data.active_life_areas || [];
-  const [byArea, setByArea] = useState({});
-
-  useEffect(() => {
-    let alive = true;
-    areas.forEach((key) => {
-      if (byArea[key] !== undefined) return;
-      const preset = PLANNER_AREAS[key]?.preset;
-      if (!preset) { setByArea(prev => ({ ...prev, [key]: 'none' })); return; }
-      setByArea(prev => ({ ...prev, [key]: 'loading' }));
-      getPresetComponents(preset)
-        .then(comps => { if (alive) setByArea(prev => ({ ...prev, [key]: comps })); })
-        .catch(() => { if (alive) setByArea(prev => ({ ...prev, [key]: 'none' })); });
-    });
-    return () => { alive = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [areas.join(',')]);
-
-  const toggle = (comp) => {
-    const cur = data.planner_picks || [];
-    const exists = cur.some(p => p.id === comp.id);
-    set('planner_picks', exists ? cur.filter(p => p.id !== comp.id) : [...cur, comp]);
-  };
-
-  if (areas.length === 0) {
-    return (
-      <View style={st.stepContent}>
-        <Text style={st.stepTitle}>Set Up Your Planner</Text>
-        <Text style={st.stepSubtitle}>Pick a few sectors on the previous step first — starter planner templates are pulled from those.</Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={st.stepContent}>
-      <Text style={st.stepTitle}>Set Up Your Planner</Text>
-      <Text style={st.stepSubtitle}>Real starter templates for your sectors — turn on the ones you want scheduled today. Add or drop items any time from the Planner itself.</Text>
-
-      {areas.map(key => {
-        const area = PLANNER_AREAS[key];
-        if (!area) return null;
-        const comps = byArea[key];
-        return (
-          <View key={key} style={{ marginBottom: 18 }}>
-            <SectionLabel label={`${area.emoji} ${area.label}`} theme={theme} />
-            {comps === 'loading' && <ActivityIndicator color={area.color} style={{ marginVertical: 8 }} />}
-            {comps === 'none' && (
-              <Text style={{ fontSize: 12, color: c.text4, fontStyle: 'italic', marginBottom: 4 }}>
-                No starter templates yet for this sector — add your own from the Planner any time.
-              </Text>
-            )}
-            {Array.isArray(comps) && comps.length === 0 && (
-              <Text style={{ fontSize: 12, color: c.text4, fontStyle: 'italic', marginBottom: 4 }}>
-                No starter templates yet for this sector — add your own from the Planner any time.
-              </Text>
-            )}
-            {Array.isArray(comps) && comps.map(comp => {
-              const sel = (data.planner_picks || []).some(p => p.id === comp.id);
-              return (
-                <TouchableOpacity key={comp.id} onPress={() => toggle(comp)}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: sel ? area.color + '18' : c.bg0, borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: sel ? area.color : c.border }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 14, color: sel ? c.text1 : c.text3, fontWeight: sel ? '700' : '400' }}>{comp.title}</Text>
-                    <Text style={{ fontSize: 11, color: c.text4, marginTop: 2, textTransform: 'capitalize' }}>
-                      {comp.cadence}{comp.duration_minutes ? ` · ${comp.duration_minutes}m` : ''}
-                    </Text>
-                  </View>
-                  <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: sel ? area.color : c.border, backgroundColor: sel ? area.color : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
-                    {sel && <Ionicons name="checkmark" size={13} color="#fff" />}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
-function Step5({ data, set, theme }) {
-  const { c } = theme;
-  const st = stepStyles(theme);
-  const toggleTopic = (tp) => {
-    const cur = data.topics || [];
-    set('topics', cur.includes(tp) ? cur.filter(x => x !== tp) : [...cur, tp]);
-  };
-  const toggleFormat = (f) => {
-    const cur = data.formats || [];
-    set('formats', cur.includes(f) ? cur.filter(x => x !== f) : [...cur, f]);
-  };
-
-  return (
-    <View style={st.stepContent}>
-      <Text style={st.stepTitle}>Your Interests</Text>
-      <Text style={st.stepSubtitle}>Powers your class and game recommendations.</Text>
-
-      <SectionLabel label="Topics you're into" theme={theme} />
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-        {TOPICS.map(tp => (
-          <Chip key={tp} label={tp} selected={(data.topics || []).includes(tp)} color={c.purple} onPress={() => toggleTopic(tp)} theme={theme} />
-        ))}
-      </View>
-
-      <View style={{ marginTop: 8 }}>
-        <SectionLabel label="How you like to learn" theme={theme} />
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {FORMATS.map(f => {
-            const sel = (data.formats || []).includes(f.key);
-            return (
-              <TouchableOpacity key={f.key} onPress={() => toggleFormat(f.key)}
-                style={{ alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 1.5, borderColor: sel ? c.purple : c.border, backgroundColor: sel ? c.purple + '22' : c.bg0, minWidth: 80 }}>
-                <Text style={{ fontSize: 22, marginBottom: 4 }}>{f.emoji}</Text>
-                <Text style={{ fontSize: 11, color: sel ? c.purple : c.text3, fontWeight: sel ? '700' : '400' }}>{f.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-
-      <View style={{ marginTop: 8 }}>
-        <SectionLabel label="Tech / skill level" theme={theme} />
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          {['beginner','intermediate','advanced'].map(lvl => {
-            const sel = data.tech_level === lvl;
-            return (
-              <TouchableOpacity key={lvl} onPress={() => set('tech_level', lvl)}
-                style={{ flex: 1, padding: 10, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', borderColor: sel ? c.tech : c.border, backgroundColor: sel ? c.tech + '22' : c.bg0 }}>
-                <Text style={{ fontSize: 12, color: sel ? c.tech : c.text3, fontWeight: sel ? '700' : '400', textTransform: 'capitalize' }}>{lvl}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function Step6({ data, set, theme }) {
-  const { c } = theme;
-  const st = stepStyles(theme);
-  const [remindersEnabled, setRemindersEnabled] = useSetting(SETTING_KEYS.DAILY_REMINDERS_ENABLED, false);
-  const toggleUsage = (key) => {
-    const cur = data.usage_patterns || [];
-    set('usage_patterns', cur.includes(key) ? cur.filter(k => k !== key) : [...cur, key]);
-  };
-
-  // Not part of the `data`/`set` payload sent to `profiles` — reminders are
-  // a device-local preference (same AsyncStorage key SettingsScreen's
-  // toggle uses), not a server column. Requests OS permission right away
-  // if turned on here; HomeScreen picks up the setting and actually
-  // schedules today's reminders once real mission/streak data is loaded.
-  const toggleReminders = async (v) => {
-    setRemindersEnabled(v);
-    if (v) {
-      const granted = await ensureNotificationPermission();
-      if (!granted) {
-        // Was silently flipping back off here with no explanation — looked
-        // exactly like "I turned this on" followed by Settings later
-        // showing it off with nothing in between to explain why. Match
-        // SettingsScreen's own toggleReminders: say why.
-        setRemindersEnabled(false);
-        Alert.alert('Notifications blocked', 'Enable notifications for this app in your device Settings to use reminders. You can turn this back on any time from Settings.');
-      }
-    }
-  };
-
-  return (
-    <View style={st.stepContent}>
-      <Text style={st.stepTitle}>Your Goals & Style</Text>
-      <Text style={st.stepSubtitle}>Help us personalize your experience.</Text>
-
-      <SectionLabel label="Primary goal" theme={theme} />
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-        {PRIMARY_GOALS.map(g => (
-          <Chip key={g} label={g} selected={data.primary_goal === g} color={c.error} onPress={() => set('primary_goal', g)} theme={theme} />
-        ))}
-      </View>
-
-      <View style={{ marginTop: 16 }}>
-        <SectionLabel label="How will you actually use this?" theme={theme} />
-        <Text style={{ fontSize: 12, color: c.text4, marginTop: -6, marginBottom: 10 }}>
-          Pick what fits — shapes what we point out in your tour and recommend below. Pick as many as apply.
-        </Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-          {USAGE_PATTERNS.map(u => (
-            <Chip key={u.key} emoji={u.emoji} label={u.label}
-              selected={(data.usage_patterns || []).includes(u.key)}
-              color={c.teal} onPress={() => toggleUsage(u.key)} theme={theme} />
-          ))}
-        </View>
-      </View>
-
-      <View style={{ marginTop: 8 }}>
-        <SectionLabel label="Daily time commitment" theme={theme} />
-        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 4 }}>
-          {DAILY_MIN.map(opt => {
-            const sel = data.daily_minutes === opt.val;
-            return (
-              <TouchableOpacity key={opt.val} onPress={() => set('daily_minutes', opt.val)}
-                style={{ flex: 1, alignItems: 'center', padding: 10, borderRadius: 12, borderWidth: 1.5, borderColor: sel ? c.error : c.border, backgroundColor: sel ? c.error + '22' : c.bg0 }}>
-                <Text style={{ fontSize: 15, fontWeight: '700', color: sel ? c.error : c.text1 }}>{opt.label}</Text>
-                <Text style={{ fontSize: 10, color: c.text4, marginTop: 2 }}>{opt.desc}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-
-      <View style={{ marginTop: 16 }}>
-        <SectionLabel label="Life stage" theme={theme} />
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-          {['In school','Starting out','Mid-career','Career change','Side hustle','Just exploring'].map(ls => (
-            <Chip key={ls} label={ls} selected={data.life_stage === ls} color={c.success} onPress={() => set('life_stage', ls)} theme={theme} />
-          ))}
-        </View>
-      </View>
-
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: c.bg1, borderRadius: 12, padding: 14, marginTop: 8, borderWidth: 0.5, borderColor: c.border }}>
-        <View style={{ flex: 1, marginRight: 12 }}>
-          <Text style={{ color: c.text1, fontWeight: '600', fontSize: 14 }}>Track reflections</Text>
-          <Text style={{ color: c.text3, fontSize: 12, marginTop: 2 }}>Guided prompts to log what you learned</Text>
-        </View>
-        <Switch
-          value={data.wants_reflection || false}
-          onValueChange={v => set('wants_reflection', v)}
-          trackColor={{ false: c.bg2, true: c.success + '88' }}
-          thumbColor={data.wants_reflection ? c.success : c.text4}
-        />
-      </View>
-
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: c.bg1, borderRadius: 12, padding: 14, marginTop: 8, borderWidth: 0.5, borderColor: c.border }}>
-        <View style={{ flex: 1, marginRight: 12 }}>
-          <Text style={{ color: c.text1, fontWeight: '600', fontSize: 14 }}>Daily reminders</Text>
-          <Text style={{ color: c.text3, fontSize: 12, marginTop: 2 }}>A nudge if today's Daily Drills are open, or your streak's at risk</Text>
-        </View>
-        <Switch
-          value={remindersEnabled}
-          onValueChange={toggleReminders}
-          trackColor={{ false: c.bg2, true: c.gold + '88' }}
-          thumbColor={remindersEnabled ? c.gold : c.text4}
-        />
-      </View>
-    </View>
-  );
-}
-
-function Step7({ data, set, theme, onThemeChange }) {
-  const { c } = theme;
-  const st = stepStyles(theme);
-  const allSections = LIBRARY_HUBS.flatMap(hub => hub.items);
-  const toggleSection = (screen) => {
-    const cur = data.hidden_sections || [];
-    set('hidden_sections', cur.includes(screen) ? cur.filter(x => x !== screen) : [...cur, screen]);
-  };
-  const pickTheme = (name) => { set('theme', name); onThemeChange(name); };
-
-  return (
-    <View style={st.stepContent}>
-      <Text style={st.stepTitle}>Look & Layout</Text>
-      <Text style={st.stepSubtitle}>Pick your theme, and choose which Library sections show up. Everything here is changeable any time from Settings.</Text>
-
-      <SectionLabel label="Theme — tap to preview live" theme={theme} />
-      <View style={{ gap: 12, marginBottom: 20 }}>
-        <TouchableOpacity onPress={() => pickTheme('dark')}
-          style={{ flexDirection: 'row', alignItems: 'center', borderRadius: 16, padding: 16, borderWidth: 2, backgroundColor: THEMES.dark.bg0, borderColor: data.theme === 'dark' ? THEMES.dark.gold : THEMES.dark.border }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: THEMES.dark.text1, fontWeight: '700', fontSize: 16, marginBottom: 4 }}>Dark · Command</Text>
-            <Text style={{ color: THEMES.dark.text3, fontSize: 13 }}>Command-deck slate. Gold accents.</Text>
-            <View style={{ flexDirection: 'row', gap: 6, marginTop: 10 }}>
-              {[THEMES.dark.bg0, THEMES.dark.bg1, THEMES.dark.gold, THEMES.dark.teal, THEMES.dark.text1].map((col, i) => (
-                <View key={i} style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: col, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.2)' }} />
-              ))}
-            </View>
-          </View>
-          {data.theme === 'dark' && <Ionicons name="checkmark-circle" size={24} color={THEMES.dark.gold} />}
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => pickTheme('light')}
-          style={{ flexDirection: 'row', alignItems: 'center', borderRadius: 16, padding: 16, borderWidth: 2, backgroundColor: THEMES.light.bg0, borderColor: data.theme === 'light' ? THEMES.light.teal : THEMES.light.border }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: THEMES.light.text1, fontWeight: '700', fontSize: 16, marginBottom: 4 }}>Light · Daylight</Text>
-            <Text style={{ color: THEMES.light.text3, fontSize: 13 }}>Cool steel and paper.</Text>
-            <View style={{ flexDirection: 'row', gap: 6, marginTop: 10 }}>
-              {[THEMES.light.bg0, THEMES.light.bg1, THEMES.light.gold, THEMES.light.teal, THEMES.light.text1].map((col, i) => (
-                <View key={i} style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: col, borderWidth: 0.5, borderColor: 'rgba(0,0,0,0.15)' }} />
-              ))}
-            </View>
-          </View>
-          {data.theme === 'light' && <Ionicons name="checkmark-circle" size={24} color={THEMES.light.teal} />}
-        </TouchableOpacity>
-      </View>
-
-      <SectionLabel label="Background" theme={theme} />
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: c.bg1, borderRadius: 12, padding: 14, marginBottom: 20, borderWidth: 0.5, borderColor: c.border }}>
-        <Ionicons name="image-outline" size={20} color={c.text3} />
-        <Text style={{ flex: 1, fontSize: 12, color: c.text3, lineHeight: 17 }}>
-          Starting plain and simple. Switch Home or Library to match your traveler's landscape any time from Settings — we'll point out where in the tour.
-        </Text>
-      </View>
-
-      <SectionLabel label="Library sections" theme={theme} />
-      <Text style={{ fontSize: 12, color: c.text4, marginTop: -6, marginBottom: 10 }}>All on by default — tap to hide any you don't need. Bring them back any time from Settings.</Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
-        {allSections.map(item => {
-          const hidden = (data.hidden_sections || []).includes(item.screen);
-          return (
-            <TouchableOpacity key={item.screen} onPress={() => toggleSection(item.screen)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: hidden ? c.border : c.teal, backgroundColor: hidden ? c.bg0 : c.teal + '18', opacity: hidden ? 0.5 : 1 }}>
-              <Ionicons name={item.icon} size={13} color={hidden ? c.text4 : c.teal} />
-              <Text style={{ fontSize: 12, color: hidden ? c.text4 : c.teal, fontWeight: hidden ? '400' : '700' }}>{item.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {/* Recommended for you — built from the "How will you actually use
-          this?" answer in the previous step (buildRecommendations, above),
-          so what shows here directly reflects what was just picked instead
-          of a generic feature list. */}
-      {(() => {
-        const recs = buildRecommendations(data);
-        if (!recs.length) return null;
-        return (
-          <>
-            <SectionLabel label="Recommended for you" theme={theme} />
-            <View style={{ marginBottom: 20, gap: 8 }}>
-              {recs.map(rec => (
-                <View key={rec.title} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, backgroundColor: c.tealLight, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: c.teal + '44' }}>
-                  <Ionicons name={rec.icon} size={18} color={c.teal} style={{ marginTop: 1 }} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: c.text1 }}>{rec.title}</Text>
-                    <Text style={{ fontSize: 12, color: c.text3, marginTop: 2, lineHeight: 16 }}>{rec.body}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </>
-        );
-      })()}
-
-      {/* Summary */}
-      <View style={{ backgroundColor: c.bg1, borderRadius: 14, padding: 16, borderWidth: 0.5, borderColor: c.border }}>
-        <Text style={{ color: c.text4, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>Mission Summary</Text>
-        {[
-          { label: 'Traveler', value: data.traveler_name || data.display_name || '—' },
-          { label: 'Sectors', value: (data.active_life_areas || []).length + ' selected' },
-          { label: 'Planner items', value: (data.planner_picks || []).length + ' scheduled' },
-          { label: 'Daily commitment', value: data.daily_minutes ? data.daily_minutes + ' min' : '—' },
-          { label: 'Goal', value: data.primary_goal || '—' },
-        ].map(row => (
-          <View key={row.label} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
-            <Text style={{ color: c.text4, fontSize: 13 }}>{row.label}</Text>
-            <Text style={{ color: c.text1, fontSize: 13, fontWeight: '600' }} numberOfLines={1}>{row.value}</Text>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
 // ─── Main Onboarding ──────────────────────────────────────────────────────────
+// Three, and the bar for a fourth is high: either the app can't render
+// honestly without the answer, or it's part of setting the place up to look
+// how you want. Anything else belongs in SETUP_TASKS, answered later from
+// Home where its effect is visible.
+//
+// Navigation is deliberately NOT a step here. It's taught by the Home
+// screen's own tutorial firing the moment you land, spotlighting the real
+// tab bar — see src/logic/useFirstVisitTutorial.js. A card describing UI the
+// user can't see yet teaches nobody.
 const STEPS = [
-  { component: Step1, title: 'You',        subtitle: 'Who you are' },
-  { component: Step2, title: 'Sectors',    subtitle: 'Your focus areas' },
-  { component: Step3, title: 'Character',  subtitle: 'Meet your traveler' },
-  { component: Step4, title: 'Planner',    subtitle: 'Daily habits' },
-  { component: Step5, title: 'Interests',  subtitle: 'Topics & formats' },
-  { component: Step6, title: 'Goals',      subtitle: 'Style & commitment' },
-  { component: Step7, title: 'Look',       subtitle: 'Theme & layout' },
+  { component: PersonaStep, title: 'Profile', subtitle: 'Your account type' },
+  { component: SectorsStep, title: 'Sectors', subtitle: 'Your focus areas' },
+  { component: LookStep,    title: 'Look',    subtitle: 'Theme & layout' },
 ];
 
 export default function MultiStepOnboarding() {
@@ -794,8 +93,15 @@ export default function MultiStepOnboarding() {
   // ({c, t, s, r, sh, isDark}) — not the same shape as the raw context
   // value above, which uses the full property names.
   const theme = { c, t, s, r, sh, isDark };
-  const { setPersonalization, startTour } = useTour();
+  // setPersonalization only — the tour is tailored here but no longer
+  // started here. Landing straight in a twelve-step tour on top of a form
+  // was two walkthroughs back to back; it's offered from the Getting
+  // Started card on Home instead (and from Settings, as it always was).
+  const { setPersonalization } = useTour();
+  const { createMasterProfile } = useProfiles();
   const { refreshProfile } = useUserProgress();
+  // Written by the Look step. Device-local, same key Settings' own "Library
+  // Sections" editor reads and writes.
   const [, setHiddenSections] = useSetting(SETTING_KEYS.HIDDEN_LIBRARY_SECTIONS, []);
 
   const [step,    setStep]    = useState(0);
@@ -804,7 +110,7 @@ export default function MultiStepOnboarding() {
   const slideAnim = useRef(new Animated.Value(0)).current;
   const [direction, setDir]   = useState(1); // 1=forward, -1=back
 
-  // ── Age gate + parental consent — runs before Step1 (see below). This
+  // ── Age gate + parental consent — runs before the steps (see below). This
   // app's users are K-12, so a real share are minors under COPPA (US,
   // default 13) or a country's GDPR Article 8 age — see
   // src/logic/ageOfConsent.js. 'age_gate' -> 'parent_email' ->
@@ -818,28 +124,35 @@ export default function MultiStepOnboarding() {
   const [parentEmail, setParentEmail] = useState('');
   const [gateBusy, setGateBusy] = useState(false);
   const [consentChecked, setConsentChecked] = useState(false);
+  // Drives which personas PersonaStep offers. Set from the profile prefill
+  // below and from submitBirthDate, the same two places `phase` is decided.
+  const [isMinorUser, setIsMinorUser] = useState(false);
   const pollRef = useRef(null);
 
+  // Only what the two required steps ask. Everything the old eight-step
+  // version carried around — crest, planner picks, topics, formats, goal,
+  // daily minutes, theme — is seeded from the profile by each deferred
+  // task instead (src/logic/onboardingTasks.js).
   const [data, setData] = useState({
+    active_persona:    DEFAULT_PERSONA,
+    // "I'm not sure yet" on the persona step. Not a column — it rides in the
+    // local draft and lands as the Wayfinder intent flag in finish().
+    exploring:         false,
+    persona_baseline:  {},
     display_name:      '',
-    age_category:      '',
-    motivation:        '',
-    active_life_areas: [],
-    crest_color:       'teal',
-    role_badge:        'explorer',
-    traveler_name:     '',
-    planner_picks:     [],
-    hidden_sections:   [],
-    topics:            [],
-    formats:            [],
-    tech_level:        'beginner',
-    primary_goal:      '',
-    daily_minutes:     15,
-    life_stage:        '',
-    wants_reflection:  false,
+    active_life_areas: PERSONA_AREA_DEFAULTS[DEFAULT_PERSONA],
+    areas_touched:     false,
     theme:             'dark',
-    usage_patterns:    [],
+    hidden_sections:   [],
   });
+  // The exact date the age gate stored, kept so finish() can derive
+  // age_category from it rather than asking a second, vaguer version of
+  // the same question. Set by the prefill effect and by submitBirthDate.
+  const dobRef = useRef(null);
+  // Set by `set()` below. The draft restore is async, so without this a
+  // user quick enough to tap a persona before AsyncStorage comes back would
+  // have their pick overwritten by the stored one.
+  const userTouched = useRef(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -848,14 +161,29 @@ export default function MultiStepOnboarding() {
       try {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('date_of_birth, country_code, is_minor, parent_email, kws_pv_status, parent_consent_given')
+          .select('date_of_birth, country_code, is_minor, parent_email, kws_pv_status, parent_consent_given, display_name, active_life_areas')
           .eq('id', user.id)
           .maybeSingle();
+
+        // Whatever the two steps already wrote on a previous attempt —
+        // paired with the AsyncStorage draft below, this is what makes
+        // quitting mid-flow resume instead of restart.
+        if (profile?.display_name || profile?.active_life_areas?.length) {
+          setData(prev => ({
+            ...prev,
+            display_name:      profile.display_name || prev.display_name,
+            active_life_areas: profile.active_life_areas?.length ? profile.active_life_areas : prev.active_life_areas,
+            areas_touched:     !!profile.active_life_areas?.length,
+          }));
+        }
+
         if (!profile) return; // brand new — starts at the default 'age_gate' phase
 
+        if (profile.is_minor === true) setIsMinorUser(true);
         if (profile.parent_email) setParentEmail(profile.parent_email);
         if (profile.country_code) setCountryCode(profile.country_code);
         if (profile.date_of_birth) {
+          dobRef.current = profile.date_of_birth;
           const [y, m, d] = profile.date_of_birth.split('-');
           setBirthYear(y); setBirthMonth(m); setBirthDay(d);
         }
@@ -866,6 +194,27 @@ export default function MultiStepOnboarding() {
         else if (profile.kws_pv_status === 'pending') setPhase('waiting_parent');
         else setPhase('parent_email');
       } catch (e) { console.warn('age gate prefill failed', e); }
+    });
+  }, []);
+
+  // The other half of resume: the step index and the persona pick, neither
+  // of which has a `profiles` column to live in (profiles.active_persona is
+  // in a migration but not on the live table; the persona's real home is
+  // the persona_profiles row, which isn't created until finish()).
+  useEffect(() => {
+    loadOnboardingDraft().then(draft => {
+      if (!draft || userTouched.current) return;
+      setData(prev => ({
+        ...prev,
+        active_persona:   draft.active_persona || prev.active_persona,
+        exploring:        typeof draft.exploring === 'boolean' ? draft.exploring : prev.exploring,
+        persona_baseline: draft.persona_baseline || prev.persona_baseline,
+        theme:            draft.theme || prev.theme,
+        hidden_sections:  draft.hidden_sections || prev.hidden_sections,
+      }));
+      if (typeof draft.step === 'number') {
+        setStep(Math.min(Math.max(draft.step, 0), STEPS.length - 1));
+      }
     });
   }, []);
 
@@ -895,6 +244,8 @@ export default function MultiStepOnboarding() {
     }
     const dateOfBirth = `${yyyy}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
     const isMinor = isMinorRequiringConsent(dateOfBirth, countryCode);
+    setIsMinorUser(isMinor);
+    dobRef.current = dateOfBirth;
 
     setGateBusy(true);
     try {
@@ -961,7 +312,18 @@ export default function MultiStepOnboarding() {
     }
   };
 
-  const set = (key, value) => setData(prev => ({ ...prev, [key]: value }));
+  useEffect(() => {
+    if (!isMinorUser) return;
+    const allowed = personasFor({ isMinor: true }).map(p => p.key);
+    if (!allowed.includes(data.active_persona)) {
+      setData(prev => ({ ...prev, active_persona: DEFAULT_PERSONA }));
+    }
+  }, [isMinorUser, data.active_persona]);
+
+  const set = (key, value) => {
+    userTouched.current = true;
+    setData(prev => ({ ...prev, [key]: value }));
+  };
 
   // Guards against a race where rapid taps (e.g. mashing "Skip") fire goNext()
   // several times before `step` has re-rendered — each call reads the same
@@ -980,11 +342,32 @@ export default function MultiStepOnboarding() {
     });
   };
 
+  // Checkpoint on every advance. The columns go to `profiles`, the rest to
+  // the local draft; both are best-effort and neither blocks the
+  // transition, because a slow network is not a reason to make someone
+  // stare at a spinner between two questions. Anything that fails here is
+  // written again by finish(), which does block.
+  const checkpoint = (nextStep) => {
+    saveOnboardingDraft({
+      step: nextStep,
+      active_persona: data.active_persona,
+      exploring: !!data.exploring,
+      persona_baseline: data.persona_baseline,
+      theme: data.theme,
+      hidden_sections: data.hidden_sections,
+    });
+    saveOnboardingFields(userId, {
+      display_name:      data.display_name || null,
+      active_life_areas: data.active_life_areas,
+    }).catch(e => console.warn('onboarding checkpoint', e?.message));
+  };
+
   const goNext = () => {
     if (advancing.current) return;
     if (step >= STEPS.length - 1) { finish(); return; }
     advancing.current = true;
     setDir(1);
+    checkpoint(step + 1);
     animateSlide(1, () => setStep(s2 => Math.min(s2 + 1, STEPS.length - 1)));
   };
 
@@ -996,90 +379,123 @@ export default function MultiStepOnboarding() {
     animateSlide(-1, () => setStep(s2 => Math.max(s2 - 1, 0)));
   };
 
-  const skip = () => goNext();
+  // Real escape hatch, not a per-step "next" in disguise. The old Skip
+  // just called goNext(), so the only way out of eight steps was eight
+  // taps. Both remaining steps have a working default (the persona
+  // defaults to PERSONAL, sectors to that persona's three areas), so
+  // leaving early gives you a configured app rather than an empty one.
+  const skip = () => finish();
 
   const finish = async () => {
     setSaving(true);
+
+    // ── The one write that has to succeed ────────────────────────────────
+    // Everything after this point is recoverable or repeatable; this isn't.
+    // Note what's NOT here any more: the master profile, the planner
+    // subscriptions, the recommendation pass. Those used to sit inside the
+    // same try, after `onboarding_completed: true` had already been
+    // written — so any one of them throwing showed "Could not save your
+    // setup. Try again." and never navigated, stranding the user on a
+    // wizard whose work was in fact already saved.
     try {
       if (!userId) throw new Error('No user');
 
-      // Build hidden areas (all areas NOT in active)
+      // Every area NOT picked. The Library grid reads this back.
       const hidden = LIFE_AREAS
         .map(a => a.id)
         .filter(id => !(data.active_life_areas || []).includes(id));
 
-      const payload = {
-        id:                   userId,
-        display_name:         data.display_name || null,
-        traveler_name:        data.traveler_name || data.display_name || null,
-        age_category:         data.age_category || null,
-        motivation:           data.motivation || null,
-        active_life_areas:    data.active_life_areas,
-        hidden_life_areas:    hidden,
-        suit_color:           data.crest_color,
-        badge:                data.role_badge,
-        topics:               data.topics,
-        formats:              data.formats,
-        tech_level:           data.tech_level,
-        primary_goal:         data.primary_goal || null,
-        daily_minutes:        data.daily_minutes,
-        life_stage:           data.life_stage || null,
-        wants_reflection:     data.wants_reflection,
-        theme:                data.theme,
+      await saveOnboardingFields(userId, {
+        display_name:      data.display_name || null,
+        traveler_name:     data.display_name || null,
+        // Derived from the date the age gate already took, rather than
+        // asked again as a five-way "where are you at in life?" radio.
+        // recommendationEngine.scoreItem() reads this column.
+        age_category:      ageCategoryFromDob(dobRef.current),
+        active_life_areas: data.active_life_areas,
+        hidden_life_areas: hidden,
+        theme:             data.theme,
         onboarding_completed: true,
-      };
+      });
+    } catch (e) {
+      console.warn('onboarding finish', e);
+      Alert.alert('Error', 'Could not save your setup. Try again.');
+      setSaving(false);
+      return;
+    }
 
-      const { error } = await supabase.from('profiles').upsert(payload);
-      if (error) throw error;
+    // Local and can't throw — and Home reads it when it first lays out the
+    // dashboard, so it has to be down before Home mounts.
+    await setWayfinderIntent(!!data.exploring);
 
-      // UserProgressContext loaded `profile` once at login and has no
-      // reason to know this upsert just happened — without this, Home's
-      // character card keeps showing whatever was true before onboarding
-      // (the signup-time placeholder name, defaults, etc.) until something
-      // else forces a full reload.
-      await refreshProfile();
+    // ── Out of the wizard, immediately ───────────────────────────────────
+    // Saved is saved. Nothing below is worth holding someone on this
+    // screen for, and nothing below can strand them if it fails.
+    navigation.replace('MainTabs');
 
-      // Actually schedule the planner items picked in Step4 — real
-      // components from plannerService.js, not a discarded local list. The
-      // same subscribeToComponent/generateInstances pair PlannerScreen's
-      // own "Add" panel calls.
-      for (const comp of (data.planner_picks || [])) {
-        try {
-          await subscribeToComponent(userId, comp.id);
-          await generateInstances(userId, comp);
-        } catch (e) { console.warn('onboarding planner subscribe', comp.id, e); }
-      }
+    // ── Best-effort, each isolated ───────────────────────────────────────
+    // The master profile: the one this account manages the rest from, and
+    // the one every fallback resolves to. Its type drives the default
+    // widgets, quest line and curriculum track. Non-fatal on failure —
+    // ProfileAccountsContext treats "no profiles yet" as an empty state,
+    // and the switcher just doesn't render until one exists.
+    try {
+      await createMasterProfile({
+        type: data.active_persona || DEFAULT_PERSONA,
+        // No name: createProfile() falls back to the persona's short label
+        // ("Personal", "Student"...), and it's renameable in the switcher.
+        baseline: data.persona_baseline || {},
+      });
+    } catch (e) {
+      // Still non-fatal — the user is already on Home and the rest of their
+      // setup is saved. But this is NOT a silent failure any more: if it
+      // fails, the account type is not what they just picked, and the whole
+      // app (dashboard, Academy subjects, quest line) keys off that. Being
+      // quiet here is exactly how "I picked Student and got Personal" went
+      // unnoticed.
+      console.warn('onboarding master profile', e?.message);
+      Alert.alert(
+        'Account type not saved',
+        `We couldn't set your account type to ${getPersona(data.active_persona || DEFAULT_PERSONA).short}. `
+        + 'Everything else saved fine. You can set it from the profile switcher at the top of the screen.',
+      );
+    }
 
-      // Library section visibility — device-local, same setting Settings'
-      // own "Library Sections" editor reads/writes.
-      await setHiddenSections(data.hidden_sections || []);
+    // UserProgressContext loaded `profile` once at login and has no reason
+    // to know the upsert above happened — without this, Home's character
+    // card keeps showing the signup-time placeholder until something else
+    // forces a reload.
+    try { await refreshProfile(); } catch (e) { console.warn('onboarding refreshProfile', e?.message); }
 
-      // Personalize the guided tour with what was just picked.
+    // Library section visibility from the Look step — device-local, so it
+    // never rides along with the profile upsert above.
+    try { await setHiddenSections(data.hidden_sections || []); }
+    catch (e) { console.warn('onboarding hidden sections', e?.message); }
+
+    // Tailor the tour to what was just picked, so it's already
+    // personalized whenever the user chooses to start it from Home or
+    // Settings. buildRecommendations needs usage_patterns, which is now a
+    // deferred question — it returns [] here and the Getting Started card
+    // re-runs this once the Goals task is done.
+    try {
       const areaLabels = LIFE_AREAS
         .filter(a => (data.active_life_areas || []).includes(a.id))
         .map(a => a.label);
-      setPersonalization({ areaLabels, focusHub: pickFocusHub(data), recommendations: buildRecommendations(data) });
+      setPersonalization({
+        areaLabels,
+        focusHub: pickFocusHub(data),
+        recommendations: buildRecommendations(data),
+      });
+    } catch (e) { console.warn('onboarding personalization', e?.message); }
 
-      // Generate recommendations based on answers
-      await generateRecommendations(userId, payload);
+    try {
+      await generateRecommendations(userId, {
+        active_life_areas: data.active_life_areas,
+        age_category: ageCategoryFromDob(dobRef.current),
+      });
+    } catch (e) { console.warn('onboarding recommendations', e?.message); }
 
-      // Navigate to home, then force-start the tour — not
-      // startIfFirstTime()'s auto-detection (App.js), which gates on a
-      // device-level "have you EVER seen it" AsyncStorage flag, not a
-      // per-account one. Testing onboarding more than once on the same
-      // device — or a second account on a device that already saw the
-      // tour once — would otherwise never see it again. Finishing
-      // onboarding should always show it, period. Same
-      // navigate-then-delayed-start pattern SettingsScreen.js's own
-      // "Replay Tutorial" uses, needed because TourOverlay's spotlight
-      // targets (TourSpot) haven't measured themselves until MainTabs has
-      // actually mounted.
-      navigation.replace('MainTabs');
-      setTimeout(startTour, 300);
-    } catch (e) {
-      Alert.alert('Error', 'Could not save your setup. Try again.');
-      console.warn('onboarding finish', e);
-    }
+    clearOnboardingDraft();
     setSaving(false);
   };
 
@@ -1221,7 +637,7 @@ export default function MultiStepOnboarding() {
           </View>
 
           <TouchableOpacity onPress={skip} style={cs.navBtn}>
-            <Text style={cs.skipText}>Skip</Text>
+            <Text style={cs.skipText}>Skip for now</Text>
           </TouchableOpacity>
         </View>
 
@@ -1240,7 +656,7 @@ export default function MultiStepOnboarding() {
         {/* Sliding card */}
         <Animated.View style={[cs.card, { transform: [{ translateX: slideAnim }] }]}>
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-            <StepComponent data={data} set={set} theme={theme} onThemeChange={setTheme} />
+            <StepComponent data={data} set={set} theme={theme} isMinor={isMinorUser} onThemeChange={setTheme} />
           </ScrollView>
         </Animated.View>
 
