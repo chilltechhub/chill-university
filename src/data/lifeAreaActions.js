@@ -54,7 +54,7 @@ export const ACTION_TIERS = ['quick', 'learn', 'habit', 'step'];
 //   read     — open the body in a sheet
 //   timer    — WorkModeScreen with presetTitle + lifeAreaId   payload.minutes
 //   task     — insert a tasks row tagged to the area
-//   routine  — subscribeToPreset()                             payload.preset
+//   routine  — add to the planner: one item or a preset        payload.component (title) | payload.preset
 //   screen   — navigate                                        payload.screen, payload.params
 //   link     — open a URL                                      payload.url
 //   reminder — local notification                              payload.time 'HH:MM'
@@ -151,7 +151,7 @@ export const AREA_ACTIONS = [
       why: "Sitting for a long time makes muscles stiff. Moving resets them." }],
     ['step', 'walk-15', "Go for a 15-minute walk", { featured: true, handler: 'timer', payload: { minutes: 15 },
       why: "A brisk walk is real exercise. No gym or gear needed." }],
-    ['step', 'strength-plan', "Put two strength sessions in your week", { bands: YU, handler: 'routine', payload: { preset: 'physical_starter' },
+    ['step', 'strength-plan', "Put two strength sessions in your week", { bands: YU, handler: 'routine', payload: { component: 'Plan week workouts' },
       why: "Muscle work twice a week is half of the adult guideline, and the half most people skip." }],
     ['learn', 'kids-how-much', "How much should kids and teens move?", { bands: KT,
       body: "Kids and teens aged 6 to 17 need about 60 minutes of activity every day. It doesn't have to be all at once. Biking to a friend's, playing tag and shooting hoops all count. Try to include things that make you breathe hard, things that build strength like climbing, and things that make bones strong, like jumping." }],
@@ -369,7 +369,9 @@ export const AREA_ACTIONS = [
     ['learn', 'split', "A simple way to split your money", { bands: YU,
       body: "One common starting point is 50/30/20: about half of take-home pay for needs like rent, food and bills, about a third for wants, and a fifth for savings or paying down debt (reviewed 2026). It's a rule of thumb, not a law. In expensive cities, needs often take more. The point is to decide the split on purpose instead of finding out at the end of the month." }],
     ['habit', 'wait-a-day', "Wait a day before buying something I didn't plan", { why: "The want that survives a night's sleep is the real one." }],
-    ['step', 'subscriptions', "List every subscription you pay for", { bands: YU, handler: 'task',
+    ['step', 'spent-list', "Write down everything you spent money on this week", { bands: KT, featured: true,
+      why: "Seeing it all in one place is how you spot where it goes." }],
+    ['step', 'subscriptions', "List every subscription you pay for", { bands: YU, featured: true, handler: 'task',
       why: "Most people find at least one they forgot about." }],
   ]),
 
@@ -393,7 +395,7 @@ export const AREA_ACTIONS = [
       why: "Label them, and split any money you get between them." }],
     ['step', 'save-goal', "Pick one thing to save for and write down the price", { bands: TEEN, featured: true,
       why: "A goal with a number on it is much easier to save toward." }],
-    ['step', 'employer-match', "Find out if your employer matches retirement savings", { bands: YU, handler: 'task',
+    ['step', 'employer-match', "Find out if your employer matches retirement savings", { bands: YU, featured: true, handler: 'task',
       why: "Some employers add money when you contribute. Not knowing is how people miss it." }],
   ]),
 
@@ -412,10 +414,12 @@ export const AREA_ACTIONS = [
     ['learn', 'avalanche-snowball', "Avalanche vs. snowball", { bands: YU,
       body: "Two common ways to pay off several debts. Avalanche: pay minimums on everything, then put every extra dollar on the highest interest rate first. It costs the least overall. Snowball: put extra on the smallest balance first. You clear whole debts sooner, which keeps many people motivated. The math favors avalanche; the one that works is the one you'll stick to." }],
     ['habit', 'on-time', "Pay back what I owe on time", { why: "Friends, family or a lender. On time is the whole game." }],
-    ['step', 'ask-credit', "Ask a parent or guardian how credit works in real life", { bands: TEEN,
+    ['step', 'ask-credit', "Ask a parent or guardian how credit works in real life", { bands: TEEN, featured: true,
       why: "Real examples teach more than any definition." }],
-    ['step', 'list-debts', "List every debt with its balance and interest rate", { bands: YU,
+    ['step', 'list-debts', "List every debt with its balance and interest rate", { bands: YU, featured: true,
       why: "You can't choose a payoff order until you can see them side by side." }],
+    ['step', 'iou-list', "Make a list of anything you've borrowed, and who from", { bands: KID, featured: true,
+      why: "Then nothing gets forgotten, and friends know they can trust you." }],
   ]),
 
   /* ─── CREATIVE ─────────────────────────────────────────────────────────── */
@@ -618,6 +622,8 @@ export const AREA_ACTIONS = [
     ['habit', 'lock-devices', "Lock my devices when I step away", { why: "An unlocked phone is an open door." }],
     ['step', 'enable-2fa', "Turn on two-step login for your email", { bands: TU, featured: true,
       why: "Your email can reset every other account you have." }],
+    ['step', 'kid-password', "Make a strong password for one account with a grown-up", { bands: KID, featured: true,
+      why: "Three or four random words together are easy to remember and hard to guess." }],
     ['step', 'password-manager', "Set up a password manager", { bands: YU, handler: 'link',
       payload: { url: 'https://bitwarden.com' },
       why: "Free options exist. One strong password protects all the others." }],

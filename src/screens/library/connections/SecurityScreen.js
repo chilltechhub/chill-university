@@ -8,6 +8,10 @@ import { useUIPrefs } from '../../../../context/UIPrefsContext';
 import { supabase } from '../../../api/profileScopedClient';
 import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../../api/offlineCache';
 import { AREA_COLORS } from '../../../data/areaColors';
+import useAreaActions from '../../../logic/useAreaActions';
+import ActionPanel from '../../../components/lifeareas/ActionPanel';
+import ActionEditSheet from '../../../components/lifeareas/ActionEditSheet';
+import GoDeeperList from '../../../components/lifeareas/GoDeeperList';
 import RelatedLinks from '../RelatedLinks';
 
 const TIPS = [
@@ -24,6 +28,10 @@ const SCREEN_TAG = '[Security]';
 
 export default function SecurityScreen() {
   const navigation = useNavigation();
+  // The Life Area action panel. Logged actions are tagged [SecurityScreen], so
+  // they stay out of this screen's own log, which reads its own tag.
+  const aa = useAreaActions({ screenTag: 'SecurityScreen', areaId: 'digital', navigation });
+  const [editOpen, setEditOpen] = useState(false);
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   const { showEmojis, showSubtext } = useUIPrefs();
   const [entries, setEntries] = useState([]);
@@ -79,6 +87,9 @@ export default function SecurityScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }}>
+        <ActionPanel aa={aa} color={color} onEdit={() => setEditOpen(true)} />
+        <View style={{ height: s.xl }} />
+
         <View style={{ backgroundColor: color + '18', borderRadius: r.lg, padding: s.lg, borderWidth: 1, borderColor: color + '44', marginBottom: s.lg }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: s.sm }}>
             <Ionicons name="shield-checkmark" size={20} color={color} />
@@ -155,12 +166,18 @@ export default function SecurityScreen() {
           </View>
         ))}
 
+        <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginTop: s.lg, marginBottom: s.md }}>
+          Go deeper
+        </Text>
+        <GoDeeperList resources={aa.resources} color={color} />
+
         {/* ── Related ── */}
         <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginTop: s.lg, marginBottom: s.md }}>
           {showEmojis ? '🔗 ' : ''}Related
         </Text>
         <RelatedLinks areaId="digital" color={color} c={c} t={t} s={s} r={r} />
       </ScrollView>
+      <ActionEditSheet visible={editOpen} onClose={() => setEditOpen(false)} aa={aa} color={color} title="Digital Security" />
     </KeyboardAvoidingView>
   );
 }

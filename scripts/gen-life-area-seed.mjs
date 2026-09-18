@@ -10,6 +10,11 @@
 //   node scripts/gen-life-area-seed.mjs                  validate + write the migration
 //   node scripts/gen-life-area-seed.mjs --check-links    also fetch every resource URL
 //   node scripts/gen-life-area-seed.mjs --json <path>    also dump the content as JSON
+//   node scripts/gen-life-area-seed.mjs --check          validate only; write nothing
+//
+// 20260917130000 is applied, so its file is history now: change live rows
+// in the dashboard or a new migration, and use --check to validate the data
+// file (it is still the offline fallback) without rewriting that migration.
 //
 // Seed rows insert with ON CONFLICT (key) DO NOTHING. Once this is applied the
 // database is the source of truth: re-running never overwrites an edit made
@@ -34,6 +39,7 @@ const {
 
 const args = process.argv.slice(2);
 const checkLinks = args.includes('--check-links');
+const checkOnly = args.includes('--check');
 const jsonIdx = args.indexOf('--json');
 const jsonOut = jsonIdx >= 0 ? args[jsonIdx + 1] : null;
 
@@ -74,7 +80,7 @@ for (const a of AREA_ACTIONS) {
   if (a.handler === 'link' && !/^https:\/\//.test(p.url || '')) err(`${id}: link needs an https payload.url`);
   if (a.handler === 'screen' && !p.screen) err(`${id}: screen needs payload.screen`);
   if (a.handler === 'reminder' && !/^\d{2}:\d{2}$/.test(p.time || '')) err(`${id}: reminder needs payload.time HH:MM`);
-  if (a.handler === 'routine' && !p.preset) err(`${id}: routine needs payload.preset`);
+  if (a.handler === 'routine' && !p.preset && !p.component) err(`${id}: routine needs payload.component or payload.preset`);
 }
 
 /* ─── Coverage: every sub-section has something for every age ─────────────── */
@@ -91,6 +97,13 @@ for (const screen of Object.keys(SUBSECTIONS)) {
     if (!mine.some(a => a.featured)) missing.push('featured');
     for (const tier of ['quick', 'learn', 'habit']) if (!mine.some(a => a.tier === tier)) missing.push(tier);
     if (missing.length) err(`${screen} / ${band}: missing ${missing.join(', ')}`);
+
+    // And at least one Today's pick has to leave the deck full: if the only
+    // featured action is also the only 2-minute win, the deck drops a card.
+    const fullDeckAfter = f => ['quick', 'learn', 'habit'].every(tier => mine.some(a => a.tier === tier && a.key !== f.key));
+    if (mine.some(a => a.featured) && !mine.some(a => a.featured && fullDeckAfter(a))) {
+      err(`${screen} / ${band}: every Today's pick empties a deck slot — feature a step, or add a second action of that tier`);
+    }
   }
 }
 
@@ -409,8 +422,12 @@ ${resourceRows}
 on conflict (key) do nothing;
 `;
 
-await writeFile(new URL(`../${MIGRATION}`, import.meta.url), sql);
-console.log(`wrote ${MIGRATION}`);
+if (checkOnly) {
+  console.log('valid (--check: nothing written)');
+} else {
+  await writeFile(new URL(`../${MIGRATION}`, import.meta.url), sql);
+  console.log(`wrote ${MIGRATION}`);
+}
 
 if (jsonOut) {
   await writeFile(jsonOut, JSON.stringify({ SUBSECTIONS, AREA_ACTIONS, AREA_RESOURCES, linkReport }, null, 1));
