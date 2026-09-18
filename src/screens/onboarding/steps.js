@@ -42,7 +42,7 @@ import LandscapeBackground from '../../components/LandscapeBackground';
 import CharacterWalker from '../../components/CharacterWalker';
 import PlayerCharacter from '../../components/PlayerCharacter';
 import { OUTFITS } from '../../data/characterOptions';
-import { personasFor, getPersona, DEFAULT_PERSONA } from '../../data/personas';
+import { personasFor, defaultPersonaFor, getPersona } from '../../data/personas';
 
 const { width: SW } = Dimensions.get('window');
 
@@ -52,8 +52,9 @@ const { width: SW } = Dimensions.get('window');
 // on Home, which Academy track surfaces first, and which first action the
 // Getting Started card suggests.
 //
-// The list shown is age-aware — personasFor({isMinor}) hides the two adult
-// financial modes from a minor. The persona's real home is the
+// The list shown is age-aware — personasFor({ isMinor, ageBand }) offers a
+// kid Student only, a teen Student or Personal (Student first), and hides the
+// two adult financial modes from anyone under 18. The persona's real home is the
 // persona_profiles row created at the end of onboarding; note that
 // profiles.active_persona, which an older migration adds and some comments
 // still reference, is NOT on the live table.
@@ -226,17 +227,23 @@ function SectionLabel({ label, theme }) {
 
 // Kept true the same way personas.changes is: each line is checkable —
 // HomeScreen's layoutForPersona({ exploring }), the Wayfinder screen, and
-// PERSONAL being the type underneath.
-const EXPLORING_CHANGES = [
+// the age-appropriate default type being the one underneath.
+const exploringChanges = (baseKey, ageBand) => [
   'Home leads with Wayfinder — three short steps to see what pulls you and what you can already do',
   'Then a few real paths to test, with small experiments you can try this week',
-  'You start as a Personal profile — you can change type any time',
+  ageBand === 'kid'
+    ? `You start as a ${getPersona(baseKey).short} profile — more types open up as you get older`
+    : `You start as a ${getPersona(baseKey).short} profile — you can change type any time`,
 ];
 
-export function PersonaStep({ data, set, theme, isMinor }) {
+export function PersonaStep({ data, set, theme, isMinor, ageBand }) {
   const { c } = theme;
   const st = stepStyles(theme);
-  const options = personasFor({ isMinor });
+  const personaCtx = { isMinor, ageBand };
+  const options = personasFor(personaCtx);
+  // What "I'm not sure yet" lands on underneath: Personal for an adult,
+  // Student for anyone under 18.
+  const exploringBase = defaultPersonaFor(personaCtx);
   const exploring = !!data.exploring;
   // Nobody who just said "I don't know yet" should be asked for a baseline
   // number about the thing they don't know yet.
@@ -256,9 +263,9 @@ export function PersonaStep({ data, set, theme, isMinor }) {
 
   const chooseExploring = () => {
     set('exploring', true);
-    set('active_persona', DEFAULT_PERSONA);
+    set('active_persona', exploringBase);
     if (!data.areas_touched) {
-      set('active_life_areas', PERSONA_AREA_DEFAULTS[DEFAULT_PERSONA] || []);
+      set('active_life_areas', PERSONA_AREA_DEFAULTS[exploringBase] || []);
     }
   };
 
@@ -291,8 +298,9 @@ export function PersonaStep({ data, set, theme, isMinor }) {
       {/* Every option above assumes you already know what you're here for.
           This one is for everyone who doesn't — it still has to land on a
           real profile type (the app can't render without one), so it's
-          PERSONAL underneath, the one type with no assumptions baked in,
-          plus a flag that makes Home lead with Wayfinder. */}
+          the age-appropriate default underneath — PERSONAL for an adult,
+          STUDENT for anyone under 18 — plus a flag that makes Home lead
+          with Wayfinder. */}
       <TouchableOpacity onPress={chooseExploring}
         accessibilityRole="radio" accessibilityState={{ checked: exploring }}
         style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: exploring ? c.teal + '18' : c.bg0, borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderStyle: exploring ? 'solid' : 'dashed', borderColor: exploring ? c.teal : c.border }}>
@@ -306,7 +314,12 @@ export function PersonaStep({ data, set, theme, isMinor }) {
         </View>
       </TouchableOpacity>
 
-      {isMinor && (
+      {ageBand === 'kid' ? (
+        <Text style={{ fontSize: 11, color: c.text4, lineHeight: 16, marginTop: 4 }}>
+          Student is built for your age — lessons, study tools and life areas written for you.
+          More profile types open up as you get older.
+        </Text>
+      ) : isMinor && (
         <Text style={{ fontSize: 11, color: c.text4, lineHeight: 16, marginTop: 4 }}>
           Two more modes — Business Systems and Entrepreneur — cover adult financial topics like
           business credit and taxes. They unlock on an adult account.
@@ -323,7 +336,7 @@ export function PersonaStep({ data, set, theme, isMinor }) {
           <Text style={{ fontSize: 11, color: c.teal, fontFamily: FONTS.mono, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
             What this changes
           </Text>
-          {EXPLORING_CHANGES.map(line => (
+          {exploringChanges(exploringBase, ageBand).map(line => (
             <View key={line} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
               <Ionicons name="checkmark" size={13} color={c.teal} style={{ marginTop: 2 }} />
               <Text style={{ fontSize: 12, color: c.text2, flex: 1, lineHeight: 17 }}>{line}</Text>

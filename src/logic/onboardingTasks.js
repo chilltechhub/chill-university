@@ -29,23 +29,10 @@ import {
 //
 // Buckets and keys match what recommendationEngine.scoreItem() expects
 // (src/api/recommendationEngine.js) and what the old radio list wrote, so
-// nothing downstream changes.
-export function ageCategoryFromDob(dob) {
-  if (!dob) return null;
-  const birth = new Date(dob);
-  if (Number.isNaN(birth.getTime())) return null;
-
-  const now = new Date();
-  let age = now.getFullYear() - birth.getFullYear();
-  const monthDelta = now.getMonth() - birth.getMonth();
-  if (monthDelta < 0 || (monthDelta === 0 && now.getDate() < birth.getDate())) age -= 1;
-
-  if (age < 13) return 'kid';
-  if (age < 18) return 'teen';
-  if (age < 26) return 'young_adult';
-  if (age <= 40) return 'adult';
-  return 'professional';
-}
+// nothing downstream changes. The function now lives in profileResolver.js,
+// alongside everything else that reads age; re-exported so this import
+// path keeps working.
+export { ageCategoryFromDob } from './profileResolver';
 
 // ─── Deferred setup tasks ───────────────────────────────────────────────────
 // `isDone` takes both the profile row and the set of task keys saved

@@ -4,10 +4,11 @@
 // step, the dashboard widget filter, and SettingsScreen all read this rather
 // than keeping their own copies of the labels/colors/widget defaults.
 //
-// `adultOnly` is the app-side half of the age gate. The enforcing half is a
-// CHECK constraint on profiles (20260910120000_persona_system.sql) — this
-// flag is what keeps the adult modes from being *shown* to a minor, so they
-// never hit a database error they can't act on.
+// `adultOnly` is the app-side half of the age gate. The enforcing half is the
+// persona_profiles trigger (enforce_profile_limits, tightened to a real
+// under-18 test in 20260917140000_age_gating_fixes.sql) — this flag is what
+// keeps the adult modes from being *shown* to a minor, so they never hit a
+// database error they can't act on.
 
 // ─── defaultWidgets ─────────────────────────────────────────────────────────
 // The ORDERED list of Home widgets a new profile of this type gets, by key.
@@ -105,17 +106,33 @@ export function getPersona(key) {
   return PERSONAS.find(p => p.key === key) || PERSONAS[0];
 }
 
-// What a given account is allowed to see. A minor gets the two general modes;
-// everyone else gets all four. Mirrors the DB CHECK constraint exactly — if
-// you change one, change the other.
-export function personasFor({ isMinor } = {}) {
-  return isMinor ? PERSONAS.filter(p => !p.adultOnly) : PERSONAS;
+// What a given account may use, in the order to offer them — the first is
+// the default.
+//   kid (under 13)   Student only. The learning track is the product at this age.
+//   teen (13–17)     Student or Personal, Student first.
+//   18+              all four, Personal first.
+//
+// `ageBand` comes from ageBandFor() in src/logic/profileResolver.js, which
+// reads the birth date. `isMinor` means "under 18, or age unknown" — the
+// restricted flag a guest or an un-aged account carries. It is NOT
+// profiles.is_minor: that column is the digital-consent flag (under 13 in
+// the US), and reading it as under-18 is how a 15-year-old got offered
+// Business. The database trigger makes the same under-18 test on its side.
+export function personasFor({ isMinor, ageBand } = {}) {
+  if (ageBand === 'kid') return PERSONAS.filter(p => p.key === 'STUDENT');
+  if (isMinor || ageBand === 'teen') {
+    return PERSONAS.filter(p => !p.adultOnly)
+      .sort((a, b) => (b.key === 'STUDENT') - (a.key === 'STUDENT'));
+  }
+  return PERSONAS;
 }
 
-export function isPersonaAllowed(key, { isMinor } = {}) {
-  const p = PERSONAS.find(x => x.key === key);
-  if (!p) return false;
-  return !(p.adultOnly && isMinor);
+export function defaultPersonaFor(ctx = {}) {
+  return personasFor(ctx)[0]?.key || DEFAULT_PERSONA;
+}
+
+export function isPersonaAllowed(key, ctx = {}) {
+  return personasFor(ctx).some(p => p.key === key);
 }
 
 // ─── Per-profile colour ──────────────────────────────────────────────────────

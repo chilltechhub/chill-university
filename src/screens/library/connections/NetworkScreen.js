@@ -7,6 +7,7 @@ import { useTheme } from '../../../../context/ThemeContext';
 import { useUIPrefs } from '../../../../context/UIPrefsContext';
 import { supabase } from '../../../api/profileScopedClient';
 import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../../api/offlineCache';
+import { AREA_COLORS } from '../../../data/areaColors';
 import RelatedLinks, { EXCLUDE_LINK_FILTER } from '../RelatedLinks';
 
 const TYPES = [
@@ -15,6 +16,13 @@ const TYPES = [
   { key: 'community', label: 'Community', emoji: '🌐', icon: 'globe',      color: '#4caf7d' },
   { key: 'industry',  label: 'Industry',  emoji: '🏭', icon: 'business',   color: '#7eb8e0' },
 ];
+
+// Network & Community sits under Social, and its rows carry this tag. It used
+// to write area_id 'professional' with no tag and read back EVERY
+// professional note — so Career, Skills and Business entries turned up here
+// as contact cards. 20260917140000_age_gating_fixes.sql moves the old rows.
+const AREA_ID = 'social';
+const TAG = '[NetworkScreen]';
 
 export default function NetworkScreen() {
   const navigation = useNavigation();
@@ -28,7 +36,7 @@ export default function NetworkScreen() {
   const [role,    setRole]    = useState('');
   const [note,    setNote]    = useState('');
   const [type,    setType]    = useState('colleague');
-  const color = '#c9a84c';
+  const color = AREA_COLORS.social;
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -39,12 +47,12 @@ export default function NetworkScreen() {
 
   const load = async (uid) => {
     setLoading(true);
-    const cacheKey = `network_${uid}`;
+    const cacheKey = `network_v2_${uid}`;
     const cached = await cacheRead(cacheKey);
     if (cached) setEntries(cached);
 
     if (await isOnline()) {
-      const { data } = await EXCLUDE_LINK_FILTER(supabase.from('area_notes').select('*').eq('user_id', uid).eq('area_id', 'professional'))
+      const { data } = await EXCLUDE_LINK_FILTER(supabase.from('area_notes').select('*').eq('user_id', uid).eq('area_id', AREA_ID).ilike('content', `${TAG}%`))
         .order('created_at', { ascending: false }).limit(50);
       if (data) { setEntries(data); cacheWrite(cacheKey, data); }
     }
@@ -53,8 +61,8 @@ export default function NetworkScreen() {
 
   const add = async () => {
     if (!name.trim()) return;
-    const content = JSON.stringify({ name: name.trim(), role: role.trim(), note: note.trim(), type });
-    const { row: data } = await offlineWrite(supabase, 'area_notes', { user_id: userId, area_id: 'professional', content, created_at: new Date().toISOString() });
+    const content = `${TAG} ${JSON.stringify({ name: name.trim(), role: role.trim(), note: note.trim(), type })}`;
+    const { row: data } = await offlineWrite(supabase, 'area_notes', { user_id: userId, area_id: AREA_ID, content, created_at: new Date().toISOString() });
     if (data) setEntries(prev => [data, ...prev]);
     setName(''); setRole(''); setNote(''); setType('colleague'); setShowAdd(false);
   };
@@ -64,7 +72,10 @@ export default function NetworkScreen() {
     await supabase.from('area_notes').delete().eq('id', id);
   };
 
-  const parse = (entry) => { try { return JSON.parse(entry.content); } catch { return { name: entry.content, role: '', note: '', type: 'colleague' }; } };
+  const parse = (entry) => {
+    const raw = (entry.content || '').startsWith(TAG) ? entry.content.slice(TAG.length).trim() : entry.content;
+    try { return JSON.parse(raw); } catch { return { name: raw, role: '', note: '', type: 'colleague' }; }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg0 }}>
@@ -73,7 +84,7 @@ export default function NetworkScreen() {
           <Ionicons name="chevron-back" size={20} color={color} />
         </TouchableOpacity>
         <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>{showEmojis ? '🤝 ' : ''}Network</Text>
-        {showSubtext && <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 3 }}>Your professional connections and community</Text>}
+        {showSubtext && <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 3 }}>The people you know — colleagues, mentors and community</Text>}
       </View>
 
       <TouchableOpacity onPress={() => setShowAdd(true)}
@@ -116,7 +127,7 @@ export default function NetworkScreen() {
           <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginTop: s.lg, marginBottom: s.md }}>
             {showEmojis ? '🔗 ' : ''}Related
           </Text>
-          <RelatedLinks areaId="professional" color={color} c={c} t={t} s={s} r={r} />
+          <RelatedLinks areaId={AREA_ID} color={color} c={c} t={t} s={s} r={r} />
         </ScrollView>
       )}
 

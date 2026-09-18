@@ -20,12 +20,13 @@ import { useFeatureGate } from '../../components/FeatureGate';
 import { featureForScreen } from '../../data/featureCatalog';
 import { unlockHint } from '../../logic/featureAccess';
 import { todayStr } from '../../logic/dateUtils';
+import { AREA_COLORS } from '../../data/areaColors';
 
 // ─── Life area config ─────────────────────────────────────────────────────────
 export const LIFE_AREAS = [
   {
     id: 'physical', label: 'Physical', emoji: '💪', icon: 'fitness',
-    color: '#e05c5c',
+    color: AREA_COLORS.physical,
     subtitle: 'Fitness, nutrition, sleep & energy',
     description: 'Your body is your foundation. Track how you eat, move, rest and recover.',
     sections: [
@@ -39,7 +40,7 @@ export const LIFE_AREAS = [
   },
   {
     id: 'mental', label: 'Mental', emoji: '🧠', icon: 'bulb',
-    color: '#7eb8e0',
+    color: AREA_COLORS.mental,
     subtitle: 'Emotions, stress, mindfulness & therapy',
     description: 'Mental health is the lens through which you experience everything else.',
     sections: [
@@ -53,7 +54,7 @@ export const LIFE_AREAS = [
   },
   {
     id: 'social', label: 'Social', emoji: '🤝', icon: 'people',
-    color: '#b07be0',
+    color: AREA_COLORS.social,
     subtitle: 'Relationships, family, friends & community',
     description: 'The people around you shape your life more than almost anything else.',
     sections: [
@@ -67,7 +68,7 @@ export const LIFE_AREAS = [
   },
   {
     id: 'financial', label: 'Financial', emoji: '💰', icon: 'cash',
-    color: '#4caf7d',
+    color: AREA_COLORS.financial,
     subtitle: 'Money, budget, savings & income',
     description: 'Financial clarity creates freedom. Know where you stand and where you\'re going.',
     sections: [
@@ -81,7 +82,7 @@ export const LIFE_AREAS = [
   },
   {
     id: 'creative', label: 'Creative', emoji: '🎨', icon: 'color-palette',
-    color: '#f5a623',
+    color: AREA_COLORS.creative,
     subtitle: 'Hobbies, art, music & expression',
     description: 'Creativity is how you process the world and contribute something uniquely yours.',
     sections: [
@@ -95,21 +96,21 @@ export const LIFE_AREAS = [
   },
   {
     id: 'professional', label: 'Professional', emoji: '🚀', icon: 'rocket',
-    color: '#c9a84c',
+    color: AREA_COLORS.professional,
     subtitle: 'Career, skills, projects & growth',
     description: 'Your professional life is where ambition meets action. Build deliberately.',
     sections: [
       { title: 'Career & Jobs',      icon: 'briefcase-outline',  screen: 'CareerExplorationScreen', items: ['Current role', 'Job search', 'Career path', 'Promotions'] },
       { title: 'Skills & Learning',  icon: 'school-outline',     screen: 'ResearchScreen',          items: ['Technical skills', 'Soft skills', 'Certifications'] },
       { title: 'Projects & Work',    icon: 'construct-outline',  screen: 'ProjectsScreen',          items: ['Active projects', 'Deadlines', 'Collaborations'] },
-      { title: 'Business & Ventures',icon: 'storefront-outline', screen: 'BusinessVenturesScreen', items: ['Side ventures', 'Ideas pipeline', 'CTH projects'] },
+      { title: 'Business & Ventures',icon: 'storefront-outline', screen: 'BusinessVenturesScreen', items: ['Side ventures', 'Ideas pipeline', 'Your projects'] },
     ],
     weeklyPrompt: 'How did you invest in your professional growth this week?',
     quickLog: ['Completed a work task', 'Learned something new', 'Networked with someone', 'Worked on a side project', 'Achieved a milestone'],
   },
   {
     id: 'spiritual', label: 'Spiritual', emoji: '✨', icon: 'sparkles',
-    color: '#c084e0',
+    color: AREA_COLORS.spiritual,
     subtitle: 'Purpose, values, reflection & faith',
     description: 'Knowing what you stand for and why gives everything else meaning.',
     sections: [
@@ -123,7 +124,7 @@ export const LIFE_AREAS = [
   },
   {
     id: 'digital', label: 'Digital', emoji: '💻', icon: 'laptop',
-    color: '#64b5f6',
+    color: AREA_COLORS.digital,
     subtitle: 'Screen time, privacy, security & tools',
     description: 'Your digital life shapes your attention, safety and productivity.',
     sections: [

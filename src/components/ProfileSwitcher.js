@@ -36,6 +36,12 @@ export default function ProfileSwitcher() {
   const [mode, setMode] = useState('list');       // 'list' | 'add' | 'pin'
   const [busy, setBusy] = useState(false);
   const [newType, setNewType] = useState(allowedTypes[0]?.key || 'PERSONAL');
+  // allowedTypes settles once the profile row (and its birth date) loads,
+  // which can be after this mounts — don't leave a type selected that the
+  // account can't have, or Create fails with an error instead of just working.
+  React.useEffect(() => {
+    if (!allowedTypes.some(p => p.key === newType)) setNewType(allowedTypes[0]?.key || 'PERSONAL');
+  }, [allowedTypes, newType]);
   const [newName, setNewName] = useState('');
   const [pinFor, setPinFor] = useState(null);
   const [pinValue, setPinValue] = useState('');
@@ -304,6 +310,17 @@ export default function ProfileSwitcher() {
                   <Text style={st.gateNote}>
                     Business and Entrepreneur profiles cover adult financial topics and are available on an
                     adult account.
+                  </Text>
+                )}
+                {restrictedReason === 'kid' && (
+                  <Text style={st.gateNote}>
+                    Student is the profile type built for your age. More types open up as you get older.
+                  </Text>
+                )}
+                {restrictedReason === 'unknown' && (
+                  <Text style={st.gateNote}>
+                    Business and Entrepreneur profiles cover adult financial topics, so they need a confirmed
+                    date of birth on the account.
                   </Text>
                 )}
 

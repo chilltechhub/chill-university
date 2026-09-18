@@ -4,16 +4,17 @@ import { supabase, unscoped } from './profileScopedClient';
 import { getActiveProfileId } from '../logic/activeProfile';
 import { cacheRead, cacheWrite, isOnline } from './offlineCache';
 import { todayStr, dateStr } from '../logic/dateUtils';
+import { AREA_COLORS } from '../data/areaColors';
 
 export const AREAS = {
-  physical:     { label: 'Physical',     emoji: '💪', color: '#e05858', preset: 'physical_starter' },
-  mental:       { label: 'Mental',       emoji: '🧠', color: '#8b4fc4', preset: 'mental_starter' },
-  social:       { label: 'Social',       emoji: '🤝', color: '#2bb5a0', preset: 'social_starter' },
-  financial:    { label: 'Financial',    emoji: '💰', color: '#3ac860', preset: 'financial_starter' },
-  professional: { label: 'Professional', emoji: '🚀', color: '#c9a84c', preset: 'professional_starter' },
-  spiritual:    { label: 'Spiritual',    emoji: '✨', color: '#6b9fe8', preset: 'spiritual_starter' },
-  creative:     { label: 'Creative',     emoji: '🎨', color: '#e0a830', preset: null },
-  digital:      { label: 'Digital',      emoji: '💻', color: '#5a9ae0', preset: null },
+  physical:     { label: 'Physical',     emoji: '💪', color: AREA_COLORS.physical, preset: 'physical_starter' },
+  mental:       { label: 'Mental',       emoji: '🧠', color: AREA_COLORS.mental, preset: 'mental_starter' },
+  social:       { label: 'Social',       emoji: '🤝', color: AREA_COLORS.social, preset: 'social_starter' },
+  financial:    { label: 'Financial',    emoji: '💰', color: AREA_COLORS.financial, preset: 'financial_starter' },
+  professional: { label: 'Professional', emoji: '🚀', color: AREA_COLORS.professional, preset: 'professional_starter' },
+  spiritual:    { label: 'Spiritual',    emoji: '✨', color: AREA_COLORS.spiritual, preset: 'spiritual_starter' },
+  creative:     { label: 'Creative',     emoji: '🎨', color: AREA_COLORS.creative, preset: null },
+  digital:      { label: 'Digital',      emoji: '💻', color: AREA_COLORS.digital, preset: null },
 };
 
 export const CADENCES = ['daily', 'weekly', 'monthly'];

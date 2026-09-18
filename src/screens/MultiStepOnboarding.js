@@ -43,11 +43,11 @@ import { setWayfinderIntent } from '../api/wayfinderService';
 import {
   saveOnboardingFields, loadOnboardingDraft, saveOnboardingDraft, clearOnboardingDraft,
 } from '../api/onboardingService';
-import { ageCategoryFromDob } from '../logic/onboardingTasks';
 import { LIFE_AREAS } from './library/LifeAreaScreen';
 import { isMinorRequiringConsent } from '../logic/ageOfConsent';
 import { startParentVerification, getVerificationStatus } from '../api/kwsVerification';
-import { DEFAULT_PERSONA, personasFor, getPersona } from '../data/personas';
+import { DEFAULT_PERSONA, personasFor, defaultPersonaFor, getPersona } from '../data/personas';
+import { ageCategoryFromDob, isMinorBand } from '../logic/profileResolver';
 import { useProfiles } from '../../context/ProfileAccountsContext';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import {
@@ -124,9 +124,13 @@ export default function MultiStepOnboarding() {
   const [parentEmail, setParentEmail] = useState('');
   const [gateBusy, setGateBusy] = useState(false);
   const [consentChecked, setConsentChecked] = useState(false);
-  // Drives which personas PersonaStep offers. Set from the profile prefill
-  // below and from submitBirthDate, the same two places `phase` is decided.
-  const [isMinorUser, setIsMinorUser] = useState(false);
+  // The age band, from the birth date — decides which personas PersonaStep
+  // offers. Not profiles.is_minor: that's the digital-consent flag (under 13
+  // in the US) and only routes the parent-consent phases below. A 15-year-old
+  // is past the consent age and is still a minor. Set from the profile
+  // prefill and from submitBirthDate, the same two places `phase` is decided.
+  const [ageBand, setAgeBand] = useState(null);
+  const personaCtx = { isMinor: isMinorBand(ageBand), ageBand };
   const pollRef = useRef(null);
 
   // Only what the two required steps ask. Everything the old eight-step
@@ -153,6 +157,10 @@ export default function MultiStepOnboarding() {
   // user quick enough to tap a persona before AsyncStorage comes back would
   // have their pick overwritten by the stored one.
   const userTouched = useRef(false);
+  // True once a persona was actually chosen — tapped, or restored from the
+  // draft. Until then the persona is just the initial placeholder, and a
+  // minor's gets swapped for Student when the birth date comes in.
+  const personaChosen = useRef(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -179,11 +187,11 @@ export default function MultiStepOnboarding() {
 
         if (!profile) return; // brand new — starts at the default 'age_gate' phase
 
-        if (profile.is_minor === true) setIsMinorUser(true);
         if (profile.parent_email) setParentEmail(profile.parent_email);
         if (profile.country_code) setCountryCode(profile.country_code);
         if (profile.date_of_birth) {
           dobRef.current = profile.date_of_birth;
+          setAgeBand(ageCategoryFromDob(profile.date_of_birth));
           const [y, m, d] = profile.date_of_birth.split('-');
           setBirthYear(y); setBirthMonth(m); setBirthDay(d);
         }
@@ -204,6 +212,7 @@ export default function MultiStepOnboarding() {
   useEffect(() => {
     loadOnboardingDraft().then(draft => {
       if (!draft || userTouched.current) return;
+      if (draft.active_persona) personaChosen.current = true;
       setData(prev => ({
         ...prev,
         active_persona:   draft.active_persona || prev.active_persona,
@@ -244,7 +253,7 @@ export default function MultiStepOnboarding() {
     }
     const dateOfBirth = `${yyyy}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
     const isMinor = isMinorRequiringConsent(dateOfBirth, countryCode);
-    setIsMinorUser(isMinor);
+    setAgeBand(ageCategoryFromDob(dateOfBirth));
     dobRef.current = dateOfBirth;
 
     setGateBusy(true);
@@ -312,16 +321,28 @@ export default function MultiStepOnboarding() {
     }
   };
 
+  // Once the birth date is known: a persona this account can't have falls
+  // back to the one it should start on (Student for anyone under 18 — this
+  // used to fall back to Personal), and an untouched placeholder is swapped
+  // for that same default. The Sectors step follows along unless edited.
   useEffect(() => {
-    if (!isMinorUser) return;
-    const allowed = personasFor({ isMinor: true }).map(p => p.key);
-    if (!allowed.includes(data.active_persona)) {
-      setData(prev => ({ ...prev, active_persona: DEFAULT_PERSONA }));
-    }
-  }, [isMinorUser, data.active_persona]);
+    if (!ageBand) return;
+    const allowed = personasFor(personaCtx).map(p => p.key);
+    const want = defaultPersonaFor(personaCtx);
+    const keep = allowed.includes(data.active_persona)
+      && (personaChosen.current || data.active_persona === want);
+    if (keep) return;
+    setData(prev => ({
+      ...prev,
+      active_persona: want,
+      active_life_areas: prev.areas_touched ? prev.active_life_areas : (PERSONA_AREA_DEFAULTS[want] || prev.active_life_areas),
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ageBand, data.active_persona]);
 
   const set = (key, value) => {
     userTouched.current = true;
+    if (key === 'active_persona') personaChosen.current = true;
     setData(prev => ({ ...prev, [key]: value }));
   };
 
@@ -656,7 +677,7 @@ export default function MultiStepOnboarding() {
         {/* Sliding card */}
         <Animated.View style={[cs.card, { transform: [{ translateX: slideAnim }] }]}>
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-            <StepComponent data={data} set={set} theme={theme} isMinor={isMinorUser} onThemeChange={setTheme} />
+            <StepComponent data={data} set={set} theme={theme} isMinor={personaCtx.isMinor} ageBand={ageBand} onThemeChange={setTheme} />
           </ScrollView>
         </Animated.View>
 
