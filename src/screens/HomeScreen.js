@@ -35,6 +35,8 @@ import { VaultStatusWidget, FounderQuestWidget, TargetsReadinessWidget } from '.
 import { WayfinderWidget } from '../components/widgets/WayfinderWidget';
 import CompassCard from '../components/CompassCard';
 import { getWayfinderIntent } from '../api/wayfinderService';
+import { useAccess } from '../../context/AccessContext';
+import { starterWidgetLayout } from '../logic/experienceStage';
 import useCharacterLoadout from '../logic/useCharacterLoadout';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import { RANK_LABELS, FONTS } from '../theme';
@@ -149,6 +151,7 @@ const WIDGET_DEFS = [
   { key: 'founderQuest',     title: 'Founder Quest' },
   { key: 'targetsReadiness', title: 'Targets & Readiness' },
 ];
+const WIDGET_KEYS = WIDGET_DEFS.map(w => w.key);
 
 // The layout a profile of this type starts with: its persona's ordered
 // widgets visible, everything else present but hidden (one tap away in the
@@ -767,14 +770,25 @@ export default function HomeScreen() {
   // layout, and `active` is what the entrepreneur widgets scope their vault
   // documents and baseline to.
   const { activeType, active: activeProfile, refresh: refreshProfiles } = useProfiles();
+  // How much of the app is on show (src/data/experienceStages.js). Stage 1
+  // is a fixed three-widget Home; stage 2 is this type's dashboard with an
+  // editor that only offers this type's widgets; stage 3 is all twenty.
+  const { stage, isScreenVisible, isGameVisible } = useAccess();
   const { background: playerBackground } = useCharacterLoadout({ level, points, rank, streakDays });
   // Set from Settings → Appearance, not on this screen itself.
   const [bgMode] = useSetting(SETTING_KEYS.HOME_BACKGROUND, 'plain');
   // Admin-side kill switch — see the matching comment in GamesScreen.js.
   const disabledGameIds = useConfigValue('disabled_games', []);
   const GAMES = useMemo(
-    () => GAMES_MASTER.filter(g => !disabledGameIds.includes(g.key)),
-    [disabledGameIds]
+    () => GAMES_MASTER.filter(g => !disabledGameIds.includes(g.key) && isGameVisible(g.key)),
+    [disabledGameIds, isGameVisible]
+  );
+  // STUDY picks among these, so it can only land somewhere this stage shows.
+  // A Personal account's first day has none of them — the button steps
+  // aside rather than going somewhere it shouldn't.
+  const studyDestinations = useMemo(
+    () => STUDY_DESTINATIONS.filter(d => isScreenVisible(d.key)),
+    [isScreenVisible]
   );
 
   const [refreshing,      setRefreshing]     = useState(false);
@@ -952,6 +966,33 @@ export default function HomeScreen() {
     })();
     return () => { alive = false; };
   }, [activeProfile?.id, activeProfile?.type, activeProfile?.user_id]);
+
+  // What the board actually shows, per stage. Derived, never written back:
+  // widgetLayout above stays the one saved layout, and stage 1's fixed
+  // three are no more a saved layout than the persona default is. So an
+  // arranged dashboard is still exactly as it was the day stage 2 opens.
+  const [exploringIntent, setExploringIntent] = useState(false);
+  useEffect(() => {
+    getWayfinderIntent().then(v => setExploringIntent(!!v)).catch(() => {});
+  }, []);
+  const boardLayout = useMemo(() => {
+    if (stage <= 1) return starterWidgetLayout(activeType, WIDGET_KEYS, { exploring: exploringIntent });
+    if (stage === 2) {
+      // The editor's tray offers this type's own widgets, not all twenty.
+      const offer = new Set(getPersona(activeType)?.defaultWidgets || []);
+      return widgetLayout.filter(l => !l.hidden || offer.has(l.key));
+    }
+    return widgetLayout;
+  }, [stage, activeType, exploringIntent, widgetLayout]);
+  // The board only ever sees boardLayout, so what it hands back is missing
+  // whatever stage 2 left out of the tray. Put those back, as they were.
+  const changeBoardLayout = useCallback((next) => {
+    setWidgetLayout(prev => {
+      const inNext = new Set(next.map(l => l.key));
+      return [...next, ...prev.filter(l => !inNext.has(l.key))];
+    });
+  }, []);
+  const canEditWidgets = stage > 1;
 
   // Applies a previously-cached (or freshly-fetched) desk snapshot to state.
   // Same shape either way, so a cold offline launch and a live load render
@@ -1469,7 +1510,8 @@ export default function HomeScreen() {
   };
 
   const goStudy = () => {
-    const pick = STUDY_DESTINATIONS[Math.floor(Math.random() * STUDY_DESTINATIONS.length)];
+    if (!studyDestinations.length) return;
+    const pick = studyDestinations[Math.floor(Math.random() * studyDestinations.length)];
     goToLibraryScreen(pick.key);
   };
   const pickStudy = (key) => {
@@ -1508,12 +1550,14 @@ export default function HomeScreen() {
                 <Text style={{ fontSize: t.xs, color: c.gold, fontWeight: t.semibold }}>{showEmojis ? '🔥 ' : ''}{streakDays} day streak</Text>
               </View>
             )}
+            {canEditWidgets && (
             <TouchableOpacity onPress={() => (editingWidgets ? exitWidgetEdit() : setEditingWidgets(true))}
               style={{ paddingHorizontal: s.sm, paddingVertical: 3 }}>
               <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: editingWidgets ? c.teal : c.text4 }}>
                 {editingWidgets ? 'Done' : 'Edit'}
               </Text>
             </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -1523,15 +1567,18 @@ export default function HomeScreen() {
              in a layout the user reorders and persists. Hidden entirely
              while widgets are being edited, so it can't be mistaken for
              one. ── */}
-        {!editingWidgets && <GettingStartedCard onNavigate={goToTarget} />}
+        {/* Not on a first day: the first goal on the Compass card is the
+            one thing to do, and a setup checklist beside it would be a
+            second. It arrives with stage 2, when there's more to set up. */}
+        {!editingWidgets && stage > 1 && <GettingStartedCard onNavigate={goToTarget} />}
 
         {/* ── Dashboard widgets — order/visibility from widgetLayout, drag
              handles + jiggle only live while editingWidgets. See
              WIDGET_DEFS above for what each key renders. ── */}
         <WidgetBoard
-          layout={widgetLayout}
-          editing={editingWidgets}
-          onChangeLayout={setWidgetLayout}
+          layout={boardLayout}
+          editing={editingWidgets && canEditWidgets}
+          onChangeLayout={changeBoardLayout}
           c={c} t={t} s={s} r={r}
           widgets={[
             {
@@ -1547,12 +1594,14 @@ export default function HomeScreen() {
                   />
                   <TourSpot id="home-study-play">
                   <View style={{ flexDirection: 'row', gap: 10, marginTop: s.md }}>
+                    {studyDestinations.length > 0 && (
                     <TouchableOpacity
                       style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: c.teal, backgroundColor: c.tealLight, borderRadius: r.md, paddingVertical: s.md }}
                       onPress={goStudy} onLongPress={() => setShowStudyMenu(true)} delayLongPress={350}>
                       <Ionicons name="book-outline" size={15} color={c.teal} />
                       <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.teal, letterSpacing: 1 }}>STUDY</Text>
                     </TouchableOpacity>
+                    )}
                     <TouchableOpacity
                       style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: c.gold, borderRadius: r.md, paddingVertical: s.md }}
                       onPress={goPlay} onLongPress={() => setShowPlayMenu(true)} delayLongPress={350}>
@@ -2004,7 +2053,7 @@ export default function HomeScreen() {
           <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 44 }}>
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
             <Text style={{ fontSize: t.lg, fontFamily: FONTS.display, fontWeight: t.bold, color: c.text1, marginBottom: s.md }}>Study</Text>
-            {STUDY_DESTINATIONS.map(d => (
+            {studyDestinations.map(d => (
               <TouchableOpacity key={d.key} onPress={() => pickStudy(d.key)}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, paddingVertical: s.md, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
                 <Ionicons name={d.icon} size={18} color={c.teal} />

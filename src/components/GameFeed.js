@@ -88,6 +88,7 @@ import SurviveMonthGame from './SurviveMonthGame';
 import RegisterReadyGame from './RegisterReadyGame';
 import ShiftManagerGame from './ShiftManagerGame';
 import { getEnabledGames } from '../services/gameRegistry';
+import { useAccess } from '../../context/AccessContext';
 import { useConfigValue } from '../../context/RemoteConfigContext';
 
 // Maps gameRegistry's `component` field to the actual component.
@@ -162,9 +163,15 @@ const GameFeed = forwardRef(({ initialGame }, ref) => {
   // GAMES_MASTER above, so a game hidden mid-session (config arrives
   // after this module already evaluated) disappears without a relaunch.
   const disabledIds = useConfigValue('disabled_games', []);
+  // Only the games this experience stage shows (src/data/experienceStages.js)
+  // — plus one asked for by name. A specific "Start" tap came from somewhere
+  // that chose to offer it (a class's recommended game, a search result), so
+  // honouring it beats silently opening a different game.
+  const { isGameVisible } = useAccess();
   const GAMES = useMemo(
-    () => GAMES_MASTER.filter(g => !disabledIds.includes(g.id)),
-    [disabledIds]
+    () => GAMES_MASTER.filter(g => !disabledIds.includes(g.id)
+      && (isGameVisible(g.id) || g.id === initialGame)),
+    [disabledIds, isGameVisible, initialGame]
   );
   const indexForGame = useMemo(() => (indexOrId) => {
     if (typeof indexOrId === 'number') {

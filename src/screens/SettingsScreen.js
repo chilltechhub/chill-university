@@ -29,6 +29,8 @@ import { LIBRARY_HUBS } from './library/LibraryScreen';
 import { CREST_COLORS, ROLE_BADGES } from '../data/crestOptions';
 import { useAccess } from '../../context/AccessContext';
 import { FEATURES } from '../data/featureCatalog';
+import { stageMeta } from '../logic/experienceStage';
+import { MAX_STAGE } from '../data/experienceStages';
 
 // `alwaysShowSubtitle` is for the Show Emojis / Show Subtitles rows
 // themselves — hiding the explanation of what "show subtitles" does the
@@ -487,7 +489,9 @@ export default function SettingsScreen() {
   // X", so the same switches the Compass offers live here too.
   const {
     purpose, activeObjective, accessFor, experimentalOn, setExperimental, isPlus,
+    stage, nextStage, experienceMode, setExperienceMode,
   } = useAccess();
+  const showAll = stage >= MAX_STAGE;
   // null = never decided (see SETTING_KEYS.EDUCATOR_MODE); the Switch below
   // treats that as off, and flipping it writes an explicit true/false.
   const [educatorMode, setEducatorMode] = useSetting(SETTING_KEYS.EDUCATOR_MODE, null);
@@ -761,6 +765,39 @@ export default function SettingsScreen() {
         />
         <FabPositionPicker value={fabPosition} onChange={setFabPosition} c={c} t={t} s={s} r={r} />
 
+        {/* App experience — how much of the app is on show. First, because
+            it's the answer to "where did X go?" for anyone below stage 3.
+            See src/data/experienceStages.js. */}
+        <SectionLabel label="App experience" c={c} t={t} s={s} />
+        <SettingRow
+          icon="layers-outline"
+          iconColor={c.teal}
+          label={`Stage ${stage} of ${MAX_STAGE} · ${stageMeta(stage).label}`}
+          subtitle={experienceMode === 'full'
+            ? 'Everything is on show because you asked for it. Turn the switch below off and the app goes by your progress again.'
+            : nextStage
+              ? `The app starts simple and adds more as you go. ${nextStage.text} to open the next stage.`
+              : 'Everything is on show.'}
+          alwaysShowSubtitle
+          c={c} t={t} s={s} r={r}
+        />
+        <SettingRow
+          icon="eye-outline"
+          iconColor={c.teal}
+          label="Show everything now"
+          subtitle="Every tool, game and widget from today, including locked tools and how to open them. For people who know their way around apps like this."
+          alwaysShowSubtitle
+          right={
+            <Switch
+              value={experienceMode === 'full'}
+              onValueChange={(on) => setExperienceMode(on ? 'full' : 'auto')}
+              trackColor={{ false: c.bg2, true: c.teal + '88' }}
+              thumbColor={experienceMode === 'full' ? c.teal : c.text4}
+            />
+          }
+          c={c} t={t} s={s} r={r}
+        />
+
         {/* Compass — the purpose/objective/gating layer. First under
             Personalization because it's the setting that changes most of
             what the rest of the app shows you. */}
@@ -777,6 +814,9 @@ export default function SettingsScreen() {
           onPress={() => navigation.navigate('Compass')}
           c={c} t={t} s={s} r={r}
         />
+        {/* Experimental, Plus and the unlock tally are stage 3 things — below
+            that, none of what they talk about is on show. */}
+        {showAll && (<>
         <SettingRow
           icon="flask-outline"
           iconColor={c.purple}
@@ -806,6 +846,7 @@ export default function SettingsScreen() {
           c={c} t={t} s={s} r={r}
         />
         <UnlockSummary accessFor={accessFor} c={c} t={t} s={s} r={r} onPress={() => navigation.navigate('Compass')} />
+        </>)}
 
         {/* Personalization — same fields onboarding's Sectors / Look &
             Layout / Character steps set, editable here without re-running

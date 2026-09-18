@@ -307,7 +307,10 @@ export default function LibraryScreen() {
   // the unlock sheet if it isn't — a locked tile still does something when
   // tapped, which is the difference between a gate and a dead button.
   const { accessFor, gatedNavigate, sheet: unlockSheet } = useFeatureGate();
-  const { purpose } = useAccess();
+  // isScreenVisible is the experience stage (src/data/experienceStages.js):
+  // on a first day this Library is a handful of tools picked for the
+  // profile type, and a view with none of them in it isn't offered at all.
+  const { purpose, isScreenVisible } = useAccess();
 
   const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -332,8 +335,14 @@ export default function LibraryScreen() {
   // new appended so a future 4th tab doesn't just vanish for someone with
   // a saved order already.
   const [tabOrder, setTabOrder] = useSetting(SETTING_KEYS.LIBRARY_TAB_ORDER, DEFAULT_TAB_ORDER);
-  const orderedTabs = tabOrder.filter(k => TABS_BY_KEY[k]).map(k => TABS_BY_KEY[k]);
-  TABS.forEach(t => { if (!orderedTabs.find(ot => ot.key === t.key)) orderedTabs.push(t); });
+  const allOrderedTabs = tabOrder.filter(k => TABS_BY_KEY[k]).map(k => TABS_BY_KEY[k]);
+  TABS.forEach(t => { if (!allOrderedTabs.find(ot => ot.key === t.key)) allOrderedTabs.push(t); });
+  // Life always shows — it's the life-area grid. Build and Knowledge show
+  // once at least one of their hub cards does.
+  const tabHasCards = (key) => key === 'domains' || LIBRARY_HUBS
+    .filter(hub => hub.tab === key)
+    .some(hub => hub.items.some(item => isScreenVisible(item.screen)));
+  const orderedTabs = allOrderedTabs.filter(tb => tabHasCards(tb.key));
 
   const [activeTab, setActiveTabRaw] = useState(orderedTabs[0]?.key || 'domains');
   const [tabMenuOpen, setTabMenuOpen] = useState(false);
@@ -353,11 +362,25 @@ export default function LibraryScreen() {
 
   const setActiveTab = (key) => { userPickedTabRef.current = true; setActiveTabRaw(key); };
 
+  // A view can stop being offered while it's open (switching "show me
+  // everything" back off in Settings). Fall back rather than show a view
+  // the switcher no longer lists.
+  const activeTabShown = orderedTabs.some(tb => tb.key === activeTab);
+  useEffect(() => {
+    if (!activeTabShown) setActiveTabRaw(orderedTabs[0]?.key || 'domains');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTabShown]);
+
+  // Reorders the full saved order, not just the views on show, so a view
+  // that isn't offered yet keeps its place for when it is.
   const moveTab = (index, direction) => {
-    const keys = orderedTabs.map(t => t.key);
-    const swapWith = index + direction;
-    if (swapWith < 0 || swapWith >= keys.length) return;
-    [keys[index], keys[swapWith]] = [keys[swapWith], keys[index]];
+    const shownKeys = orderedTabs.map(t => t.key);
+    const swapWithKey = shownKeys[index + direction];
+    if (!swapWithKey) return;
+    const keys = allOrderedTabs.map(t => t.key);
+    const a = keys.indexOf(shownKeys[index]);
+    const b = keys.indexOf(swapWithKey);
+    [keys[a], keys[b]] = [keys[b], keys[a]];
     setTabOrder(keys);
   };
 
@@ -580,18 +603,18 @@ export default function LibraryScreen() {
   const renderHub = (hub) => {
     const accent = c[hub.accentKey] || c.teal;
     // Each entry is looked up in the feature catalog and ordered so anything
-    // still shut sinks below what's open. Locked entries are not removed: a
-    // Library that quietly shrinks is more disorienting than one that says
-    // "not yet, and here's how". The exception is experimental work
-    // (access.hidden), which stays out until it's asked for in the Compass
-    // or Settings.
+    // still shut sinks below what's open. What's removed is whatever
+    // access.hidden says: experimental work until it's asked for, and —
+    // since the experience stages — anything this stage doesn't show yet,
+    // locked tools included until stage 3. Entries outside the catalog (the
+    // Wayfinder) go by isScreenVisible, which applies the same stage.
     const visibleItems = hub.items
       .filter(item => !hiddenSections.includes(item.screen))
       .map(item => {
         const feature = featureForScreen(item.screen);
         return { item, feature, access: feature ? accessFor(feature.id) : null };
       })
-      .filter(entry => !entry.access?.hidden)
+      .filter(entry => (entry.access ? !entry.access.hidden : isScreenVisible(entry.item.screen)))
       .sort((a, b) => {
         const openA = a.access ? a.access.available : true;
         const openB = b.access ? b.access.available : true;
@@ -602,13 +625,18 @@ export default function LibraryScreen() {
     // The screen title already names the view, so a hub whose title says
     // the same thing just repeats itself — keep only its tagline then.
     const showHubTitle = hub.title !== TABS.find(tb => tb.key === activeTab)?.label;
+    // The tagline describes the hub's headline tool. On a first day that
+    // tool may not be on show yet (a Personal account's Build view is just
+    // the Wayfinder), and "execution, projects & career archives" over a
+    // single self-discovery card reads as a mistake.
+    const showTagline = showSubtext && visibleItems.some(e => e.item.featured);
     return (
       <View key={hub.id} style={styles.hubContainer}>
         <TourSpot id={`hub-section-${hub.id}`}>
         <View style={[styles.hubHeader, !showHubTitle && { marginBottom: 12 }]}>
           <View style={{ flex: 1 }}>
             {showHubTitle && <Text style={styles.hubTitle}>{hub.title}</Text>}
-            {showSubtext && <Text style={styles.hubTagline}>{hub.tagline}</Text>}
+            {showTagline && <Text style={styles.hubTagline}>{hub.tagline}</Text>}
           </View>
         </View>
         </TourSpot>
@@ -875,9 +903,10 @@ export default function LibraryScreen() {
         {/* ── Build / Knowledge tabs ── */}
         {activeTab !== 'domains' && LIBRARY_HUBS.filter(hub => hub.tab === activeTab).map(renderHub)}
 
-        {/* ── Build previews ── */}
+        {/* ── Build previews ── Each only where its own tool is on show. */}
         {activeTab === 'build' && (
           <>
+            {isScreenVisible('ProjectsScreen') && (
             <PreviewSection
               title="Active builds"
               action="Workshop →"
@@ -903,8 +932,9 @@ export default function LibraryScreen() {
                 </View>
               )}
             </PreviewSection>
+            )}
 
-            {trophies.length > 0 && (
+            {trophies.length > 0 && isScreenVisible('PortfolioScreen') && (
               <PreviewSection
                 title="Recently shipped"
                 action="Portfolio →"
@@ -933,6 +963,7 @@ export default function LibraryScreen() {
         {/* ── Knowledge previews ── */}
         {activeTab === 'knowledge' && (
           <>
+            {isScreenVisible('KnowledgeScreen') && (
             <PreviewSection
               title="Recent in your vault"
               action="Vault →"
@@ -962,8 +993,9 @@ export default function LibraryScreen() {
                 </View>
               )}
             </PreviewSection>
+            )}
 
-            {gardenIdeas.length > 0 && (
+            {gardenIdeas.length > 0 && isScreenVisible('IdeaGardenScreen') && (
               <PreviewSection
                 title="Latest ideas"
                 action="Idea Garden →"

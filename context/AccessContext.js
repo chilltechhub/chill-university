@@ -17,6 +17,11 @@
 //   asks the server, because a tick on a checklist should not wait on a
 //   round-trip.
 //
+// It also holds the experience stage (src/data/experienceStages.js): how
+// much of the app is on show, from a first-day account's handful of tools
+// to everything. Same reason it lives here — the Library, Training, Home,
+// search and the + button all have to agree on it.
+//
 // Every write goes through src/api/accessService.js, which never grants
 // anything itself — the RPCs re-check each gate server-side. If this file
 // and the database ever disagree, the database is right.
@@ -25,7 +30,9 @@ import React, {
   createContext, useContext, useState, useEffect, useMemo, useCallback, useRef,
 } from 'react';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUserProgress } from './UserProgressContext';
+import { useProfiles } from './ProfileAccountsContext';
 import {
   fetchAccessState, startObjective as startObjectiveApi, saveObjectiveSteps,
   completeObjective as completeObjectiveApi, abandonObjective as abandonObjectiveApi,
@@ -33,15 +40,30 @@ import {
   setExperimentalOptIn, EMPTY_ACCESS,
 } from '../src/api/accessService';
 import { cacheWrite } from '../src/api/offlineCache';
-import { FEATURES, getFeature } from '../src/data/featureCatalog';
+import { FEATURES, getFeature, featureForScreen } from '../src/data/featureCatalog';
 import { getObjective, getPurpose, suggestPurpose } from '../src/data/objectives';
 import { gradeTest } from '../src/data/competencyTests';
 import { evaluateAccess, objectiveProgress, planActive as planIsActive, rankForPurpose } from '../src/logic/featureAccess';
+import {
+  stageFromProgress, resolveStage, starterPlanFor, screenShownAtStage, visibleGameIdsFor,
+  fabActionsFor, nextStageNeeds, stageOpens,
+} from '../src/logic/experienceStage';
+import { forgetSeenScreens } from '../src/logic/useFirstVisitTutorial';
 
 const AccessContext = createContext(null);
 
+// Device-local, per account. The stage itself is derived from progress that
+// lives on the server, so the only thing a reinstall loses is an explicit
+// "show me everything" — which is one switch in Settings to get back.
+const modeKey = (userId) => `@cth_experience_mode_${userId || 'guest'}`;
+const seenStageKey = (userId) => `@cth_experience_stage_seen_${userId}`;
+
 export function AccessProvider({ children }) {
-  const { user, profile, level, points, streakDays, dailyMissions, refreshProfile } = useUserProgress();
+  const { user, profile, level, points, streakDays, dailyMissions, gameplayStats, refreshProfile } = useUserProgress();
+  // Which profile type is active decides what stage 1 shows. Account-level
+  // progress decides the stage — level, points and objectives are shared
+  // across an account's profiles, so the stage is too.
+  const { activeType } = useProfiles();
 
   const [state, setState] = useState(EMPTY_ACCESS);
   const [loading, setLoading] = useState(true);
@@ -132,10 +154,99 @@ export function AccessProvider({ children }) {
     [dailyMissions]
   );
 
+  // Lifetime activities answered in any game — the counter behind "play one
+  // training game", which has to tick after one round of anything.
+  const played = gameplayStats?.totalProblemsAttempted || 0;
+
   const stats = useMemo(
-    () => ({ streakDays, level, points, missionsToday }),
-    [streakDays, level, points, missionsToday]
+    () => ({ streakDays, level, points, missionsToday, played }),
+    [streakDays, level, points, missionsToday, played]
   );
+
+  /* ── Experience stage ──────────────────────────────────────────────────
+     See src/data/experienceStages.js. Worked out from finished objectives
+     and level, so there's nothing to keep in sync with the server. */
+
+  const [experienceMode, setExperienceModeState] = useState('auto');
+  const [stageEvents, setStageEvents] = useState([]);
+  // The highest stage this account has been seen at, read back at launch.
+  // Progress (objectives, level) arrives a beat after first render, and
+  // without this an account at stage 3 would flash the first-day app every
+  // time it opened. Stages only ever go up, so the last one seen is a safe
+  // stand-in until the real numbers land.
+  const [cachedStage, setCachedStage] = useState(null);
+  const [prefsReady, setPrefsReady] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    setExperienceModeState('auto');
+    setCachedStage(null);
+    setPrefsReady(false);
+    Promise.all([
+      AsyncStorage.getItem(modeKey(userId)),
+      userId ? AsyncStorage.getItem(seenStageKey(userId)) : Promise.resolve(null),
+    ])
+      .then(([rawMode, rawSeen]) => {
+        if (!alive) return;
+        if (rawMode === 'full') setExperienceModeState('full');
+        const n = parseInt(rawSeen, 10);
+        if (Number.isFinite(n)) setCachedStage(n);
+      })
+      .catch(() => {})
+      .finally(() => { if (alive) setPrefsReady(true); });
+    return () => { alive = false; };
+  }, [userId]);
+
+  const setExperienceMode = useCallback(async (mode) => {
+    const next = mode === 'full' ? 'full' : 'auto';
+    setExperienceModeState(next);
+    try { await AsyncStorage.setItem(modeKey(userId), next); } catch { /* local pref */ }
+  }, [userId]);
+
+  const completedCount = useMemo(
+    () => Object.values(state.objectives || {}).filter(row => row.status === 'completed').length,
+    [state.objectives]
+  );
+  const progressReady = !!state.ready && (!userId || !!profile);
+  const liveStage = stageFromProgress({ completedObjectives: completedCount, level });
+  const derivedStage = progressReady ? liveStage : Math.max(liveStage, cachedStage || 1);
+  const stage = resolveStage({ derived: derivedStage, mode: experienceMode });
+  const persona = activeType || null;
+  const starterPlan = useMemo(() => starterPlanFor(persona), [persona]);
+
+  // "More of the app is open" — only for stages reached by progress. A
+  // stage you switched on yourself in Settings isn't news. The first real
+  // load records a baseline instead of celebrating, for the same reason
+  // knownUnlocksRef does: an account that's been at stage 3 for months
+  // shouldn't be congratulated on a new phone. Waits for the stored mode
+  // too, so "show me everything" is known before anything is celebrated.
+  useEffect(() => {
+    if (!userId || !progressReady || !prefsReady) return;
+    let alive = true;
+    (async () => {
+      let seen = null;
+      try { seen = parseInt(await AsyncStorage.getItem(seenStageKey(userId)), 10); } catch {}
+      if (!alive) return;
+      if (Number.isFinite(seen) && derivedStage > seen) {
+        const lines = [];
+        for (let n = seen + 1; n <= derivedStage; n++) lines.push(...stageOpens(n));
+        if (experienceMode !== 'full') {
+          setStageEvents(q => [...q, { from: seen, to: derivedStage, lines }]);
+          // Home and the Library have more on them now than when they last
+          // taught themselves.
+          forgetSeenScreens(['Home', 'LibraryScreen']);
+        }
+      }
+      if (!Number.isFinite(seen) || derivedStage > seen) {
+        try { await AsyncStorage.setItem(seenStageKey(userId), String(derivedStage)); } catch {}
+      }
+    })();
+    return () => { alive = false; };
+  }, [userId, progressReady, prefsReady, derivedStage, experienceMode]);
+
+  const dismissStageEvent = useCallback(() => setStageEvents(q => q.slice(1)), []);
+
+  const experience = useMemo(() => ({ stage, persona }), [stage, persona]);
 
   // The context handed to evaluateAccess. Built from the local profile echoes
   // rather than the raw row, so a just-flipped toggle is reflected everywhere
@@ -148,7 +259,8 @@ export function AccessProvider({ children }) {
     attempts: state.attempts || {},
     objectives: state.objectives || {},
     stats,
-  }), [profile, experimentalOn, purposeKey, state, stats]);
+    experience,
+  }), [profile, experimentalOn, purposeKey, state, stats, experience]);
 
   const accessFor = useCallback(
     (featureId) => evaluateAccess(getFeature(featureId), gateCtx),
@@ -163,6 +275,38 @@ export function AccessProvider({ children }) {
     if (!feature) return true;
     return evaluateAccess(feature, gateCtx).available;
   }, [gateCtx]);
+
+  // Whether a route's entry points should show at this stage. A catalog
+  // feature answers through its access (so a lock, an opt-in and the stage
+  // all agree); anything else goes by STAGED_SCREENS and otherwise shows.
+  // Like isOpen, an unknown screen is shown, never swallowed.
+  const isFeatureShown = useCallback(
+    (featureId) => {
+      const feature = getFeature(featureId);
+      return !feature || !evaluateAccess(feature, gateCtx).hidden;
+    },
+    [gateCtx]
+  );
+
+  const isScreenVisible = useCallback((screen) => {
+    if (!screen) return true;
+    const feature = featureForScreen(screen);
+    if (feature) return !evaluateAccess(feature, gateCtx).hidden;
+    return screenShownAtStage(screen, { stage, persona, featureShown: isFeatureShown });
+  }, [gateCtx, stage, persona, isFeatureShown]);
+
+  // Null = every game. Stage 1 is the type's six.
+  const visibleGameIds = useMemo(() => visibleGameIdsFor({ stage, persona }), [stage, persona]);
+  const isGameVisible = useCallback(
+    (gameId) => !visibleGameIds || visibleGameIds.has(gameId),
+    [visibleGameIds]
+  );
+  const visibleFabActions = useMemo(() => fabActionsFor({ stage, persona }), [stage, persona]);
+
+  const nextStage = useMemo(
+    () => nextStageNeeds({ stage: derivedStage, completedObjectives: completedCount, level }),
+    [derivedStage, completedCount, level]
+  );
 
   const activeObjectiveId = useMemo(() => {
     const rows = Object.entries(state.objectives || {});
@@ -229,6 +373,20 @@ export function AccessProvider({ children }) {
     if (!userId) return {};
     return startObjectiveApi(userId, objectiveId);
   }, [userId, applyLocal]);
+
+  // The profile type's simple first goal, with a purpose to go with it if
+  // there isn't one yet — a brand-new account is handed one thing to do
+  // rather than asked what it's here for (it can still change the purpose on
+  // the Compass). Called by onboarding and by Home's Compass card.
+  //
+  // Onboarding passes the type it just picked: it calls this before the
+  // master profile exists, when activeType is still whatever the context
+  // had (usually nothing), and the plan has to be the chosen type's.
+  const startFirstGoal = useCallback(async (forPersona) => {
+    const plan = forPersona ? starterPlanFor(forPersona) : starterPlan;
+    if (!purposeKey && plan.purpose) await choosePurpose(plan.purpose);
+    return startObjective(plan.firstObjective);
+  }, [purposeKey, starterPlan, choosePurpose, startObjective]);
 
   const abandonActiveObjective = useCallback(async () => {
     if (!activeObjectiveId) return {};
@@ -382,6 +540,23 @@ export function AccessProvider({ children }) {
     unlockEvents,
     dismissUnlockEvent,
 
+    // experience stage
+    stage,
+    derivedStage,
+    nextStage,
+    experienceMode,
+    setExperienceMode,
+    starterPlan,
+    firstGoalId: starterPlan.firstObjective,
+    startFirstGoal,
+    isFeatureShown,
+    isScreenVisible,
+    isGameVisible,
+    visibleGameIds,
+    visibleFabActions,
+    stageEvents,
+    dismissStageEvent,
+
     refresh,
     stats,
   }), [
@@ -389,7 +564,11 @@ export function AccessProvider({ children }) {
     isPlus, experimentalOn, setExperimental, accessFor, isOpen, rankedFeatures,
     activeObjective, activeObjectiveId, completedObjectiveIds, startObjective,
     toggleStep, completeActiveObjective, abandonActiveObjective, submitTest,
-    claimPlanFeature, unlockEvents, dismissUnlockEvent, refresh, stats,
+    claimPlanFeature, unlockEvents, dismissUnlockEvent,
+    stage, derivedStage, nextStage, experienceMode, setExperienceMode, starterPlan,
+    startFirstGoal, isFeatureShown, isScreenVisible, isGameVisible, visibleGameIds,
+    visibleFabActions, stageEvents, dismissStageEvent,
+    refresh, stats,
   ]);
 
   return <AccessContext.Provider value={value}>{children}</AccessContext.Provider>;

@@ -462,6 +462,10 @@ export default function LifeAreaScreen() {
           <TourSpot id="lifearea-sections">
           {area.sections.map((sec, i) => {
             const feature = sec.screen ? featureForScreen(sec.screen) : null;
+            // A locked sub-section (Savings & Investing, Debt & Credit)
+            // stays out of sight until stage 3 or until it's earned — see
+            // src/data/experienceStages.js. Earned, it shows like any other.
+            if (feature && accessFor(feature.id).hidden) return null;
             return (
               <SectionCard key={i} section={sec} color={color}
                 access={feature ? accessFor(feature.id) : null}
