@@ -187,15 +187,34 @@ export function isDestinationAllowed(row, activeType) {
   return !personas || (!!activeType && personas.includes(activeType));
 }
 
+// ─── Experience-stage gating ────────────────────────────────────────────────
+// Search is an entry point like any other, so it shows only what the
+// current stage shows (src/data/experienceStages.js) — a first-day account
+// typing "portfolio" shouldn't turn up the one thing the Library is keeping
+// out of sight. The checks come from AccessContext (isScreenVisible,
+// isGameVisible); this just knows which part of a route to hand them.
+// From stage 3 the locked screens are back in results and land on their
+// lock, as described above.
+export function isRowShown(row, { isScreenVisible, isGameVisible } = {}) {
+  const route = row?.route;
+  if (!route || !isScreenVisible) return true;
+  if (route.type === 'root') {
+    if (route.screen === 'Play') return isGameVisible ? isGameVisible(route.params?.gameId) : true;
+    return isScreenVisible(route.screen);
+  }
+  return route.screen ? isScreenVisible(route.screen) : true;
+}
+
 // Rank: a title that starts with the query beats one that merely contains
 // it, which beats a subtitle-only match. Without this, typing "math" buries
 // the Math subject under every topic whose subtitle says "Math".
-export function searchDestinations(query, limit = 8, activeType) {
+export function searchDestinations(query, limit = 8, activeType, visibility) {
   const q = query.trim().toLowerCase();
   if (!q) return [];
   const scored = [];
   getDestinations().forEach((row) => {
     if (!isDestinationAllowed(row, activeType)) return;
+    if (!isRowShown(row, visibility)) return;
     const title = row.title.toLowerCase();
     const subtitle = (row.subtitle || '').toLowerCase();
     let score = 0;
@@ -212,10 +231,10 @@ export function searchDestinations(query, limit = 8, activeType) {
 }
 
 // What the palette shows before anything is typed.
-export function defaultDestinations(activeType) {
+export function defaultDestinations(activeType, visibility) {
   const wanted = ['Capture Inbox', 'Knowledge Vault', 'The Workshop', 'Planner', 'Academy Classes', 'Idea Garden'];
   const all = getDestinations();
   return wanted
     .map((title) => all.find((row) => row.title === title))
-    .filter((row) => row && isDestinationAllowed(row, activeType));
+    .filter((row) => row && isDestinationAllowed(row, activeType) && isRowShown(row, visibility));
 }

@@ -310,8 +310,31 @@ export function hasScreenTutorial(routeName) {
   return !!(SCREEN_FEATURES[routeName] || SCREEN_HELP[routeName]);
 }
 
-export function buildScreenTutorial(routeName, personalization) {
-  const hand = SCREEN_FEATURES[routeName];
+// Stage 1 of the experience stages (src/data/experienceStages.js): Home is
+// three widgets and the Library a handful of tools, so the full walkthroughs
+// above would mostly describe things that aren't on screen. These say what
+// is there, and that more is coming. When stage 2 opens, AccessContext
+// clears both screens from the seen set so the full versions run next visit.
+const STARTER_FEATURES = {
+  Home: [
+    { title: 'Your first goal', body: "This card is the one thing to do right now. Each step has an Open button that takes you straight to it, and the whole goal takes a few minutes. Finish it and more of the app opens up.", id: 'home-compass' },
+    { title: 'Play', body: "PLAY drops you straight into one of the games picked for you. Every round counts toward your streak and your points.", id: 'home-study-play' },
+  ],
+  LibraryScreen: [
+    {
+      title: 'Life Areas',
+      body: "Eight sides of a life, each with a ring showing how it's tracking. Tap one to check in and get a small thing to do about it.",
+      id: 'library-life-areas',
+      librarySubTab: 'domains',
+    },
+    { title: 'Capture', body: "Capture, top-right. Get a thought out of your head now and decide where it belongs later.", id: 'library-capture', librarySubTab: 'domains' },
+    { title: 'More on the way', body: "The Library starts with the tools that fit your profile. Finish goals and the rest of it opens up here." },
+  ],
+};
+
+// `stage` is the experience stage; omitted means the full walkthroughs.
+export function buildScreenTutorial(routeName, personalization, { stage } = {}) {
+  const hand = (stage === 1 && STARTER_FEATURES[routeName]) || SCREEN_FEATURES[routeName];
   const info = SCREEN_HELP[routeName];
 
   let steps;

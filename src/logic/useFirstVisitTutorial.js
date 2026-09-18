@@ -66,6 +66,20 @@ export async function resetSeenScreens() {
   try { await AsyncStorage.removeItem(SEEN_KEY); } catch { /* nothing to do */ }
 }
 
+// Lets a screen teach itself once more — used when a new experience stage
+// opens (context/AccessContext.js), because Home and the Library genuinely
+// have more on them than when their tutorial last ran. The running hook
+// holds the seen set in memory, so it's told directly as well as the store.
+const forgetListeners = new Set();
+export async function forgetSeenScreens(routeNames = []) {
+  forgetListeners.forEach(fn => fn(routeNames));
+  try {
+    const set = await loadSeenScreens();
+    routeNames.forEach(n => set.delete(n));
+    await AsyncStorage.setItem(SEEN_KEY, JSON.stringify([...set]));
+  } catch { /* the next launch just won't re-teach; not worth surfacing */ }
+}
+
 /**
  * Returns a function to call with the current route name on every route
  * change. Safe to call repeatedly with the same name — it only ever acts
@@ -83,7 +97,12 @@ export default function useFirstVisitTutorial({ tourActive, startScreenTour }) {
 
   useEffect(() => {
     loadSeenScreens().then(set => { seen.current = set; });
-    return () => { if (pending.current) clearTimeout(pending.current); };
+    const forget = (names) => names.forEach(n => seen.current?.delete(n));
+    forgetListeners.add(forget);
+    return () => {
+      forgetListeners.delete(forget);
+      if (pending.current) clearTimeout(pending.current);
+    };
   }, []);
 
   // A tour starting for any reason (the Getting Started card, Settings'

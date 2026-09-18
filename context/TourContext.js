@@ -29,6 +29,7 @@ import React, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TOUR_STEPS } from '../src/logic/tourSteps';
 import { buildScreenTutorial } from '../src/logic/screenTutorials';
+import { useAccess } from './AccessContext';
 
 const TourContext = createContext(null);
 const SEEN_KEY = '@cth_setting_tourSeen';
@@ -61,6 +62,9 @@ function buildSteps(personalization) {
 }
 
 export function TourProvider({ children }) {
+  // Screen tutorials are written for what the experience stage shows —
+  // stage 1 gets short ones (see STARTER_FEATURES in screenTutorials.js).
+  const { stage } = useAccess();
   const [active, setActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [targets, setTargets] = useState({});
@@ -139,10 +143,10 @@ export function TourProvider({ children }) {
     // which is why real content steps silently fell back to an
     // unspotlighted card while only the synthetic Navigation step (which
     // doesn't read the registry at all) ever lit up.
-    setScopedSteps(buildScreenTutorial(routeName, personalization));
+    setScopedSteps(buildScreenTutorial(routeName, personalization, { stage }));
     setActive(true);
     setStepIndex(0);
-  }, [personalization]);
+  }, [personalization, stage]);
 
   const finish = useCallback(() => {
     setActive(false);

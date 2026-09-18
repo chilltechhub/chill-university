@@ -134,9 +134,12 @@ export function getPurpose(key) {
 /* ─── Objectives ──────────────────────────────────────────────────────────── */
 //
 // step.auto — a stat the app already counts, so the step ticks itself:
-//   { stat: 'streak' | 'level' | 'points' | 'missions', value: n }
-// 'missions' is daily missions completed today; the rest are lifetime
-// figures straight off the profile. See stepSatisfied() in
+//   { stat: 'streak' | 'level' | 'points' | 'missions' | 'played', value: n }
+// 'missions' is daily missions completed today — which only completes when
+// one of the day's randomly picked missions does, so it's the wrong counter
+// for "play a game". 'played' is lifetime activities answered in any game
+// (subject_progress), which ticks after one round of anything. The rest are
+// lifetime figures straight off the profile. See stepSatisfied() in
 // src/logic/featureAccess.js, which is the only thing that reads this.
 //
 // step.screen — a route name, so the step card can offer "Open" instead of
@@ -246,6 +249,84 @@ export const OBJECTIVES = [
     next: 'show-your-work',
   },
 
+  /* ── First goals — one per profile type, started for you ─────────────────
+     The first thing a brand-new account is handed (src/data/experienceStages.js
+     names which type gets which). Three steps, one sitting, and every step
+     points at a screen that type can already see at stage 1. They open no
+     feature of their own: finishing one is what opens stage 2, which is a
+     much bigger reward than any single tool. `intro` keeps them out of the
+     general objective picker once they've done their job. */
+
+  {
+    id: 'first-steps',
+    purpose: 'habits',
+    intro: true,
+    label: 'First Steps',
+    promise: 'Three small things, today, to see how the app works for you.',
+    why: 'Every habit starts with a day where you showed up once. This is that day.',
+    estimate: 'About 10 minutes',
+    // Not "set a focus": the focus widget isn't on a first-day Home. Every
+    // step here has to be doable with what stage 1 shows.
+    steps: [
+      { id: 'area',  label: 'Rate one life area',          hint: 'Check in on one from Home or the Library, honestly. Nobody else sees it.', screen: 'LibraryScreen' },
+      { id: 'habit', label: 'Put one small habit in the Planner', hint: 'Something you could do most days. A glass of water counts.', screen: 'PlannerScreen' },
+      { id: 'drill', label: 'Play one training game',      hint: 'Ticks itself when you finish a round.', screen: 'Training', auto: { stat: 'played', value: 1 } },
+    ],
+    unlocks: [],
+    next: 'hold-the-line',
+  },
+
+  {
+    id: 'first-study-session',
+    purpose: 'learn',
+    intro: true,
+    label: 'First Study Session',
+    promise: 'Open a class, play one game and put one study block on the calendar.',
+    why: 'Studying gets easier once it has a time and a place. This sets both.',
+    estimate: 'About 15 minutes',
+    steps: [
+      { id: 'class', label: 'Open a class and pick a topic',     hint: 'Any subject. You can switch any time.', screen: 'ClassesStack' },
+      { id: 'drill', label: 'Play one training game',            hint: 'Ticks itself when you finish a round.', screen: 'Training', auto: { stat: 'played', value: 1 } },
+      { id: 'block', label: 'Put one study block in the Planner', hint: 'Twenty minutes on a real day counts.', screen: 'PlannerScreen' },
+    ],
+    unlocks: [],
+    next: 'learn-one-skill',
+  },
+
+  {
+    id: 'first-ops-check',
+    purpose: 'career',
+    intro: true,
+    label: 'First Ops Check',
+    promise: 'Get what you are juggling out of your head and give one routine a home.',
+    why: 'Running things well starts with seeing all of it in one place.',
+    estimate: 'About 15 minutes',
+    steps: [
+      { id: 'capture', label: 'Capture what is on your plate',     hint: 'The three biggest things this week. Speed over tidiness.', screen: 'CaptureInbox' },
+      { id: 'routine', label: 'Put one weekly routine in the Planner', hint: 'Payroll, a restock, a report: something that repeats.', screen: 'PlannerScreen' },
+      { id: 'drill',   label: 'Play one training game',            hint: 'Register Ready or Shift Manager is a good start. Ticks itself.', screen: 'Training', auto: { stat: 'played', value: 1 } },
+    ],
+    unlocks: [],
+    next: 'hold-the-line',
+  },
+
+  {
+    id: 'first-founder-step',
+    purpose: 'build',
+    intro: true,
+    label: 'First Founder Step',
+    promise: 'Write the idea down, give it a project and try one money game.',
+    why: 'An idea you have written down is one you can actually work on.',
+    estimate: 'About 15 minutes',
+    steps: [
+      { id: 'seed',    label: 'Plant your idea in the Idea Garden', hint: 'One line on the problem it solves. Rough is fine.', screen: 'IdeaGardenScreen' },
+      { id: 'project', label: 'Start it as a project in the Workshop', hint: 'Give it a name you would say out loud.', screen: 'ProjectsScreen' },
+      { id: 'drill',   label: 'Play one training game',            hint: 'Budget Balance or Survive the Month. Ticks itself.', screen: 'Training', auto: { stat: 'played', value: 1 } },
+    ],
+    unlocks: [],
+    next: 'ship-first-build',
+  },
+
   /* ── Follow-ons — not starter objectives, offered once you have one done ── */
 
   {
@@ -310,10 +391,13 @@ export function getObjective(id) {
 // first, then anything else tagged to that purpose, then everything else.
 // Ordered rather than filtered: someone whose purpose is 'money' is still
 // allowed to go and ship a build.
+//
+// The first goals (`intro`) are left out: each belongs to one profile type
+// and is handed over at the start, not picked from a list of fifteen.
 export function objectivesForPurpose(purposeKey) {
   const purpose = getPurpose(purposeKey);
   const starter = purpose?.starterObjective;
-  return [...OBJECTIVES].sort((a, b) => score(b) - score(a));
+  return OBJECTIVES.filter(o => !o.intro).sort((a, b) => score(b) - score(a));
 
   function score(o) {
     if (o.id === starter) return 3;

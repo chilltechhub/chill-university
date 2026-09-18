@@ -17,6 +17,7 @@
 
 import { getObjective, getPurpose } from '../data/objectives';
 import { getTest } from '../data/competencyTests';
+import { featureShownAtStage } from './experienceStage';
 
 /* ─── Plan ────────────────────────────────────────────────────────────────── */
 
@@ -39,7 +40,7 @@ export function experimentalOptedIn(profile) {
 // UserProgressContext. Anything a step can auto-tick has to come from here,
 // because a step that asks you to self-report a number the app is already
 // counting is either busywork or an invitation to fudge it.
-//   { streakDays, level, points, missionsToday }
+//   { streakDays, level, points, missionsToday, played }
 export function stepSatisfied(step, checked = {}, stats = {}) {
   if (checked[step.id]) return true;
   if (!step.auto) return false;
@@ -50,6 +51,7 @@ export function stepSatisfied(step, checked = {}, stats = {}) {
     level:    stats.level         || 0,
     points:   stats.points        || 0,
     missions: stats.missionsToday || 0,
+    played:   stats.played        || 0,
   }[stat];
 
   return have != null && have >= value;
@@ -101,11 +103,22 @@ export function objectiveProgress(objectiveId, record = null, stats = {}) {
 //   unlocks      { [featureId]: { method, unlocked_at } }
 //   attempts     { [featureId]: { passed, score, total, attempted_at } }
 //   objectives   { [objectiveId]: { status, steps } }
-//   stats        { streakDays, level, points, missionsToday }
+//   stats        { streakDays, level, points, missionsToday, played }
+//   experience   { stage, persona } — see src/logic/experienceStage.js.
+//                Only ever adds `hidden`; it never changes `available`.
+//                Omitted means "show everything", the behaviour from
+//                before stages existed.
 //
 // Returns a single object the UI can render without asking any follow-up
 // questions.
 export function evaluateAccess(feature, ctx = {}) {
+  const access = evaluateGate(feature, ctx);
+  if (!feature || !ctx.experience) return access;
+  const shown = featureShownAtStage(feature, access, ctx.experience);
+  return shown ? access : { ...access, hidden: true };
+}
+
+function evaluateGate(feature, ctx = {}) {
   const { profile, unlocks = {}, attempts = {}, objectives = {}, stats = {} } = ctx;
 
   if (!feature) {

@@ -12,6 +12,12 @@
 //                 curriculum track, and which life areas step 2 pre-selects.
 //   2. Sectors  — exactly what the Library tab's life-area grid shows.
 //
+// The persona step also asks how much of the app to start with. Starting
+// simple (the default) means Home opens on one first goal picked for the
+// type, with a handful of tools and six games; more opens as goals get
+// finished — see src/data/experienceStages.js. finish() starts that goal,
+// so nobody lands on Home without one thing to do.
+//
 // Everything else (character, planner starters, interests, goals, theme
 // and layout) moved to the Getting Started card on Home, where the user
 // can see what each answer changes as they make it. Same components, same
@@ -49,6 +55,7 @@ import { startParentVerification, getVerificationStatus } from '../api/kwsVerifi
 import { DEFAULT_PERSONA, personasFor, defaultPersonaFor, getPersona } from '../data/personas';
 import { ageCategoryFromDob, isMinorBand } from '../logic/profileResolver';
 import { useProfiles } from '../../context/ProfileAccountsContext';
+import { useAccess } from '../../context/AccessContext';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import {
   PersonaStep, SectorsStep, LookStep, PERSONA_AREA_DEFAULTS, pickFocusHub, buildRecommendations,
@@ -82,7 +89,7 @@ const COUNTRY_CHOICES = [
 const STEPS = [
   { component: PersonaStep, title: 'Profile', subtitle: 'Your account type' },
   { component: SectorsStep, title: 'Sectors', subtitle: 'Your focus areas' },
-  { component: LookStep,    title: 'Look',    subtitle: 'Theme & layout' },
+  { component: LookStep,    title: 'Look',    subtitle: 'How it looks' },
 ];
 
 export default function MultiStepOnboarding() {
@@ -99,6 +106,7 @@ export default function MultiStepOnboarding() {
   // Started card on Home instead (and from Settings, as it always was).
   const { setPersonalization } = useTour();
   const { createMasterProfile } = useProfiles();
+  const { setExperienceMode, startFirstGoal } = useAccess();
   const { refreshProfile } = useUserProgress();
   // Written by the Look step. Device-local, same key Settings' own "Library
   // Sections" editor reads and writes.
@@ -142,6 +150,9 @@ export default function MultiStepOnboarding() {
     // "I'm not sure yet" on the persona step. Not a column — it rides in the
     // local draft and lands as the Wayfinder intent flag in finish().
     exploring:         false,
+    // 'auto' = start simple and grow; 'full' = show everything now. Not a
+    // column — device-local via AccessContext, like the Wayfinder intent.
+    experience_mode:   'auto',
     persona_baseline:  {},
     display_name:      '',
     active_life_areas: PERSONA_AREA_DEFAULTS[DEFAULT_PERSONA],
@@ -217,6 +228,7 @@ export default function MultiStepOnboarding() {
         ...prev,
         active_persona:   draft.active_persona || prev.active_persona,
         exploring:        typeof draft.exploring === 'boolean' ? draft.exploring : prev.exploring,
+        experience_mode:  draft.experience_mode === 'full' ? 'full' : prev.experience_mode,
         persona_baseline: draft.persona_baseline || prev.persona_baseline,
         theme:            draft.theme || prev.theme,
         hidden_sections:  draft.hidden_sections || prev.hidden_sections,
@@ -373,6 +385,7 @@ export default function MultiStepOnboarding() {
       step: nextStep,
       active_persona: data.active_persona,
       exploring: !!data.exploring,
+      experience_mode: data.experience_mode,
       persona_baseline: data.persona_baseline,
       theme: data.theme,
       hidden_sections: data.hidden_sections,
@@ -448,6 +461,9 @@ export default function MultiStepOnboarding() {
     // Local and can't throw — and Home reads it when it first lays out the
     // dashboard, so it has to be down before Home mounts.
     await setWayfinderIntent(!!data.exploring);
+    // Same reason: Home, the Library and Training all read the stage on
+    // their first render.
+    await setExperienceMode(data.experience_mode);
 
     // ── Out of the wizard, immediately ───────────────────────────────────
     // Saved is saved. Nothing below is worth holding someone on this
@@ -480,6 +496,15 @@ export default function MultiStepOnboarding() {
         `We couldn't set your account type to ${getPersona(data.active_persona || DEFAULT_PERSONA).short}. `
         + 'Everything else saved fine. You can set it from the profile switcher at the top of the screen.',
       );
+    }
+
+    // The first goal, for anyone starting simple — Home's Compass card
+    // would offer it anyway, but landing with it already running means the
+    // first thing on screen is a next step rather than a Start button.
+    // Someone who asked for everything gets the ordinary Compass instead.
+    if (data.experience_mode !== 'full') {
+      try { await startFirstGoal(data.active_persona || DEFAULT_PERSONA); }
+      catch (e) { console.warn('onboarding first goal', e?.message); }
     }
 
     // UserProgressContext loaded `profile` once at login and has no reason
