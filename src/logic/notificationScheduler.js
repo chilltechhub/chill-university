@@ -161,3 +161,34 @@ export async function cancelAllReminders() {
   await cancelKind('dailyTasks');
   await cancelKind('streak');
 }
+
+// One-off reminder behind a Life Area action ("Set a wind-down reminder for
+// tonight"). Fires at the next HH:MM — tonight, or tomorrow if that has
+// passed — and re-setting the same action replaces it rather than stacking.
+// Resolves to the Date it will fire, or null where a notification can't be
+// scheduled (web, or permission refused), so the caller can fall back to
+// something that does work there.
+export async function scheduleActionReminder({ key, title, body, time }) {
+  if (!Notifications || Platform.OS === 'web') return null;
+  const [h, m] = String(time || '').split(':').map(Number);
+  if (!(h >= 0 && h < 24 && m >= 0 && m < 60)) return null;
+  if (!(await ensureNotificationPermission())) return null;
+  await ensureAndroidChannel();
+  const at = new Date();
+  at.setHours(h, m, 0, 0);
+  if (at <= new Date()) at.setDate(at.getDate() + 1);
+  const identifier = `area-action-${key}`;
+  await cancel(identifier);
+  try {
+    await Notifications.scheduleNotificationAsync({
+      identifier,
+      content: { title, body: body || undefined, sound: true },
+      trigger: Notifications.SchedulableTriggerInputTypes
+        ? { type: Notifications.SchedulableTriggerInputTypes.DATE, date: at }
+        : at,
+    });
+    return at;
+  } catch {
+    return null;
+  }
+}

@@ -8,6 +8,10 @@ import { useUIPrefs } from '../../../../context/UIPrefsContext';
 import { supabase } from '../../../api/profileScopedClient';
 import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../../api/offlineCache';
 import { AREA_COLORS } from '../../../data/areaColors';
+import useAreaActions from '../../../logic/useAreaActions';
+import ActionPanel from '../../../components/lifeareas/ActionPanel';
+import ActionEditSheet from '../../../components/lifeareas/ActionEditSheet';
+import GoDeeperList from '../../../components/lifeareas/GoDeeperList';
 import RelatedLinks, { EXCLUDE_LINK_FILTER } from '../RelatedLinks';
 
 const TYPES = [
@@ -17,8 +21,18 @@ const TYPES = [
   { key: 'mentor',   label: 'Mentor',   emoji: '🧠', icon: 'bulb',         color: '#b07be0' },
 ];
 
+// Relationships rows carry this tag. The screen used to read every Social
+// note, so Communication and Social Health logs — and, once Network &
+// Community moved into Social, its contacts — showed up as relationship
+// cards. 20260918120000_life_area_action_fixes.sql tags the old rows.
+const TAG = '[RelationshipsScreen]';
+
 export default function RelationshipsScreen() {
   const navigation = useNavigation();
+  // The Life Area action panel. Logged actions stay out of this screen's own
+  // list (they're area_notes rows too, marked by action_key).
+  const aa = useAreaActions({ screenTag: 'RelationshipsScreen', areaId: 'social', navigation });
+  const [editOpen, setEditOpen] = useState(false);
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   const { showEmojis, showSubtext } = useUIPrefs();
   const [entries, setEntries] = useState([]);
@@ -40,12 +54,12 @@ export default function RelationshipsScreen() {
 
   const load = async (uid) => {
     setLoading(true);
-    const cacheKey = `relationships_${uid}`;
+    const cacheKey = `relationships_v2_${uid}`;
     const cached = await cacheRead(cacheKey);
     if (cached) setEntries(cached);
 
     if (await isOnline()) {
-      const { data } = await EXCLUDE_LINK_FILTER(supabase.from('area_notes').select('*').eq('user_id', uid).eq('area_id', 'social'))
+      const { data } = await EXCLUDE_LINK_FILTER(supabase.from('area_notes').select('*').eq('user_id', uid).eq('area_id', 'social').ilike('content', `${TAG}%`).is('action_key', null))
         .order('created_at', { ascending: false }).limit(50);
       if (data) { setEntries(data); cacheWrite(cacheKey, data); }
     }
@@ -54,7 +68,7 @@ export default function RelationshipsScreen() {
 
   const add = async () => {
     if (!name.trim()) return;
-    const content = JSON.stringify({ name: name.trim(), note: note.trim(), type });
+    const content = `${TAG} ${JSON.stringify({ name: name.trim(), note: note.trim(), type })}`;
     const { row: data } = await offlineWrite(supabase, 'area_notes', { user_id: userId, area_id: 'social', content, created_at: new Date().toISOString() });
     if (data) setEntries(prev => [data, ...prev]);
     setName(''); setNote(''); setType('friend'); setShowAdd(false);
@@ -66,10 +80,11 @@ export default function RelationshipsScreen() {
   };
 
   const parseEntry = (entry) => {
-    try { return JSON.parse(entry.content); } catch { return { name: entry.content, note: '', type: 'friend' }; }
+    const raw = (entry.content || '').startsWith(TAG) ? entry.content.slice(TAG.length).trim() : entry.content;
+    try { return JSON.parse(raw); } catch { return { name: raw, note: '', type: 'friend' }; }
   };
 
-  const filtered = filter === 'all' ? entries : entries.filter(e => { try { return JSON.parse(e.content).type === filter; } catch { return true; } });
+  const filtered = filter === 'all' ? entries : entries.filter(e => parseEntry(e).type === filter);
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg0 }}>
@@ -91,51 +106,60 @@ export default function RelationshipsScreen() {
         </ScrollView>
       </View>
 
-      <TouchableOpacity onPress={() => setShowAdd(true)}
-        style={{ margin: s.lg, flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: color + '18', borderRadius: r.md, padding: s.md, borderWidth: 1, borderColor: color + '33', borderStyle: 'dashed' }}>
-        <Ionicons name="person-add-outline" size={18} color={color} />
-        <Text style={{ color, fontWeight: '600', fontSize: t.sm }}>Add a relationship</Text>
-      </TouchableOpacity>
+      <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }}>
+        <ActionPanel aa={aa} color={color} onEdit={() => setEditOpen(true)} />
 
-      {loading ? <ActivityIndicator color={color} style={{ marginTop: 40 }} /> : (
-        <ScrollView contentContainerStyle={{ paddingHorizontal: s.lg, paddingBottom: 60 }}>
-          {filtered.map(entry => {
-            const p = parseEntry(entry);
-            const tp = TYPES.find(x => x.key === p.type) || TYPES[2];
-            return (
-              <View key={entry.id} style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, marginBottom: s.md, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: tp.color }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, marginBottom: p.note ? s.sm : 0 }}>
-                  <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: tp.color + '22', borderWidth: 1.5, borderColor: tp.color, alignItems: 'center', justifyContent: 'center' }}>
-                    {showEmojis ? <Text style={{ fontSize: 20 }}>{tp.emoji}</Text> : <Ionicons name={tp.icon} size={18} color={tp.color} />}
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>{p.name}</Text>
-                    <View style={{ backgroundColor: tp.color + '22', borderRadius: r.full, paddingHorizontal: 7, paddingVertical: 2, alignSelf: 'flex-start', marginTop: 3 }}>
-                      <Text style={{ fontSize: 9, color: tp.color, fontWeight: t.bold, textTransform: 'uppercase' }}>{tp.label}</Text>
+        <TouchableOpacity onPress={() => setShowAdd(true)}
+          style={{ marginTop: s.xl, marginBottom: s.lg, flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: color + '18', borderRadius: r.md, padding: s.md, borderWidth: 1, borderColor: color + '33', borderStyle: 'dashed' }}>
+          <Ionicons name="person-add-outline" size={18} color={color} />
+          <Text style={{ color, fontWeight: '600', fontSize: t.sm }}>Add a relationship</Text>
+        </TouchableOpacity>
+
+        {loading ? <ActivityIndicator color={color} style={{ marginTop: 20 }} /> : (
+          <>
+            {filtered.map(entry => {
+              const p = parseEntry(entry);
+              const tp = TYPES.find(x => x.key === p.type) || TYPES[2];
+              return (
+                <View key={entry.id} style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, marginBottom: s.md, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: tp.color }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, marginBottom: p.note ? s.sm : 0 }}>
+                    <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: tp.color + '22', borderWidth: 1.5, borderColor: tp.color, alignItems: 'center', justifyContent: 'center' }}>
+                      {showEmojis ? <Text style={{ fontSize: 20 }}>{tp.emoji}</Text> : <Ionicons name={tp.icon} size={18} color={tp.color} />}
                     </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>{p.name}</Text>
+                      <View style={{ backgroundColor: tp.color + '22', borderRadius: r.full, paddingHorizontal: 7, paddingVertical: 2, alignSelf: 'flex-start', marginTop: 3 }}>
+                        <Text style={{ fontSize: 9, color: tp.color, fontWeight: t.bold, textTransform: 'uppercase' }}>{tp.label}</Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity onPress={() => del(entry.id)}>
+                      <Ionicons name="close" size={16} color={c.text4} />
+                    </TouchableOpacity>
                   </View>
-                  <TouchableOpacity onPress={() => del(entry.id)}>
-                    <Ionicons name="close" size={16} color={c.text4} />
-                  </TouchableOpacity>
+                  {p.note ? <Text style={{ fontSize: t.sm, color: c.text3, lineHeight: 19 }}>{p.note}</Text> : null}
                 </View>
-                {p.note ? <Text style={{ fontSize: t.sm, color: c.text3, lineHeight: 19 }}>{p.note}</Text> : null}
+              );
+            })}
+            {filtered.length === 0 && (
+              <View style={{ alignItems: 'center', paddingVertical: 60 }}>
+                {showEmojis ? <Text style={{ fontSize: 48, marginBottom: s.lg }}>❤️</Text> : <Ionicons name="heart-outline" size={44} color={color} style={{ marginBottom: s.lg }} />}
+                <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.sm }}>No relationships logged</Text>
+                <Text style={{ fontSize: t.sm, color: c.text3, textAlign: 'center' }}>Add the people who matter most to you.</Text>
               </View>
-            );
-          })}
-          {filtered.length === 0 && (
-            <View style={{ alignItems: 'center', paddingVertical: 60 }}>
-              {showEmojis ? <Text style={{ fontSize: 48, marginBottom: s.lg }}>❤️</Text> : <Ionicons name="heart-outline" size={44} color={color} style={{ marginBottom: s.lg }} />}
-              <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.sm }}>No relationships logged</Text>
-              <Text style={{ fontSize: t.sm, color: c.text3, textAlign: 'center' }}>Add the people who matter most to you.</Text>
-            </View>
-          )}
+            )}
+          </>
+        )}
 
-          <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginTop: s.lg, marginBottom: s.md }}>
-            {showEmojis ? '🔗 ' : ''}Related
-          </Text>
-          <RelatedLinks areaId="social" color={color} c={c} t={t} s={s} r={r} />
-        </ScrollView>
-      )}
+        <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginTop: s.lg, marginBottom: s.md }}>
+          Go deeper
+        </Text>
+        <GoDeeperList resources={aa.resources} color={color} />
+
+        <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginTop: s.lg, marginBottom: s.md }}>
+          {showEmojis ? '🔗 ' : ''}Related
+        </Text>
+        <RelatedLinks areaId="social" color={color} c={c} t={t} s={s} r={r} />
+      </ScrollView>
 
       <Modal visible={showAdd} transparent animationType="slide">
         <KeyboardAvoidingView style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}
@@ -167,6 +191,7 @@ export default function RelationshipsScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+      <ActionEditSheet visible={editOpen} onClose={() => setEditOpen(false)} aa={aa} color={color} title="Relationships" />
     </View>
   );
 }
