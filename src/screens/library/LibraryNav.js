@@ -154,7 +154,7 @@ export default function LibraryNavigator() {
           picker, life-area sections, item cross-links, the guided tour) keeps
           working and just lands on the matching type filter. */}
       <Stack.Screen name="NotesScreen"          component={KnowledgeScreen} options={{ title: 'Notes' }}               initialParams={{ initialType: 'note' }} />
-      <Stack.Screen name="ResearchScreen"       component={KnowledgeScreen} options={{ title: 'Research' }}            initialParams={{ initialType: 'all' }} />
+      <Stack.Screen name="ResearchScreen"       component={KnowledgeScreen} options={{ title: 'Skills & Learning' }}   initialParams={{ initialType: 'all', initialArea: 'professional' }} />
       <Stack.Screen name="ResourcesToolsScreen" component={KnowledgeScreen} options={{ title: 'Resources & Tools' }}   initialParams={{ initialType: 'tool' }} />
         
       {/* Classes */}
@@ -183,9 +183,9 @@ export default function LibraryNavigator() {
 <Stack.Screen name="ToolsSystemsScreen"      component={AreaSectionScreen} options={{ title: 'Tools & Systems' }} />
       {/* Wellness */}
       <Stack.Screen name="NutritionScreen" component={NutritionScreen} options={{ title: 'Nutrition' }} />
-      <Stack.Screen name="ExerciseScreen"  component={ExerciseScreen}  options={{ title: 'Exercise' }} />
-      <Stack.Screen name="WellbeingScreen" component={WellbeingScreen} options={{ title: 'Well-being' }} />
-      <Stack.Screen name="SelfCareScreen"  component={SelfCareScreen}  options={{ title: 'Self-care' }} />
+      <Stack.Screen name="ExerciseScreen"  component={ExerciseScreen}  options={{ title: 'Fitness & Movement' }} />
+      <Stack.Screen name="WellbeingScreen" component={WellbeingScreen} options={{ title: 'Emotional Well-being' }} />
+      <Stack.Screen name="SelfCareScreen"  component={SelfCareScreen}  options={{ title: 'Mindfulness' }} />
       <Stack.Screen name="HobbiesScreen"   component={HobbiesScreen}   options={{ title: 'Hobbies & Interests' }} />
 
       {/* Connections */}

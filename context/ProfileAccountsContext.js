@@ -14,7 +14,7 @@
 // its own context: name, targets, widget layout, curriculum track, vault.
 //
 // Must be mounted INSIDE UserProgressProvider — it reads `user` and `profile`
-// (is_minor, active_profile_id) from there.
+// (date_of_birth, active_profile_id) from there.
 
 import React, {
   createContext, useContext, useState, useEffect, useMemo, useCallback, useRef,
@@ -22,7 +22,9 @@ import React, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUserProgress } from './UserProgressContext';
 import { setActiveProfileId } from '../src/logic/activeProfile';
-import { getPersona, isPersonaAllowed, personasFor, DEFAULT_PERSONA } from '../src/data/personas';
+import { getPersona, isPersonaAllowed, personasFor, defaultPersonaFor, DEFAULT_PERSONA } from '../src/data/personas';
+import { communityAccess } from '../src/logic/accountAccess';
+import { ageBandFor } from '../src/logic/profileResolver';
 import {
   listProfiles, createProfile, renameProfile, archiveProfile, updateProfile,
   setActiveProfile as persistActiveProfile, reorderProfiles,
@@ -47,9 +49,17 @@ export function ProfileAccountsProvider({ children }) {
   // resets straight into MainTabs, skipping onboarding and its birth-date
   // step. Unknown age has to read as restricted, or a kid tapping guest lands
   // in a profile full of business-credit content.
+  //
+  // Restricted = under 18 by birth date, or age unknown — the same test the
+  // database's is_restricted_account() makes. NOT profile.is_minor on its
+  // own: that's the digital-consent flag (under 13 in the US), so reading it
+  // as "minor" let a 15-year-old add a Business profile.
   const ageUnknown = !user;
-  const restricted = profile?.is_minor === true || ageUnknown;
-  const allowedTypes = useMemo(() => personasFor({ isMinor: restricted }), [restricted]);
+  const access = communityAccess(user ? profile : null);
+  const restricted = access.restricted;
+  const ageBand = user ? ageBandFor(profile) : 'teen';
+  const personaCtx = useMemo(() => ({ isMinor: restricted, ageBand }), [restricted, ageBand]);
+  const allowedTypes = useMemo(() => personasFor(personaCtx), [personaCtx]);
 
   // ── Load ───────────────────────────────────────────────────────────────────
   const refresh = useCallback(async () => {
@@ -115,10 +125,13 @@ export function ProfileAccountsProvider({ children }) {
     if (backfilledFor.current === user.id) return;
     backfilledFor.current = user.id;
     (async () => {
+      // A kid's master profile is Student, not Personal — same rule as the
+      // onboarding step, so a missed finish() doesn't land them elsewhere.
+      const type = defaultPersonaFor(personaCtx);
       try {
         await createProfile(user.id, {
-          type: DEFAULT_PERSONA,
-          name: getPersona(DEFAULT_PERSONA).short,
+          type,
+          name: getPersona(type).short,
           isMaster: true,
         });
       } catch (e) {
@@ -130,7 +143,7 @@ export function ProfileAccountsProvider({ children }) {
       }
       await refresh();
     })();
-  }, [user, loading, profiles.length, profile?.onboarding_completed, refresh]);
+  }, [user, loading, profiles.length, profile?.onboarding_completed, refresh, personaCtx]);
 
   // The account row is the cross-device answer for which profile is active.
   useEffect(() => {
@@ -205,8 +218,10 @@ export function ProfileAccountsProvider({ children }) {
   // Create button worked.
   const addProfile = useCallback(async ({ type, name, emoji, baseline, activate = true }) => {
     if (!user) throw new Error('Sign in to add a profile');
-    if (!isPersonaAllowed(type, { isMinor: restricted })) {
-      throw new Error('That profile type requires an adult account.');
+    if (!isPersonaAllowed(type, personaCtx)) {
+      throw new Error(ageBand === 'kid'
+        ? 'Student is the profile type for your age.'
+        : 'That profile type requires an adult account.');
     }
     const row = await createProfile(user.id, { type, name, emoji, baseline });
     await refresh();
@@ -217,13 +232,13 @@ export function ProfileAccountsProvider({ children }) {
       catch (e) { console.warn('[profiles] persist active', e?.message); }
     }
     return row;
-  }, [user, restricted, refresh]);
+  }, [user, personaCtx, ageBand, refresh]);
 
   // Creates the signup profile. Called once from onboarding — it's the master,
   // and it's what every fallback in this file resolves to.
   const createMasterProfile = useCallback(async ({ type, name, emoji, baseline }) => {
     if (!user) throw new Error('Not signed in');
-    const safeType = isPersonaAllowed(type, { isMinor: restricted }) ? type : DEFAULT_PERSONA;
+    const safeType = isPersonaAllowed(type, personaCtx) ? type : defaultPersonaFor(personaCtx);
     const row = await createProfile(user.id, { type: safeType, name, emoji, baseline, isMaster: true });
     const rows = await refresh();
     if (row?.id) {
@@ -232,7 +247,7 @@ export function ProfileAccountsProvider({ children }) {
       try { await persistActiveProfile(user.id, row.id); } catch { /* non-fatal */ }
     }
     return row || rows[0];
-  }, [user, restricted, refresh]);
+  }, [user, personaCtx, refresh]);
 
   const rename = useCallback(async (profileId, name) => {
     await renameProfile(profileId, name);
@@ -291,8 +306,11 @@ export function ProfileAccountsProvider({ children }) {
     // data
     profiles, visible, signedOut, active, master, loading,
     activeType, activeDef, isMasterActive,
-    allowedTypes, restricted,
-    restrictedReason: ageUnknown ? 'guest' : (restricted ? 'minor' : null),
+    allowedTypes, restricted, ageBand,
+    restrictedReason: ageUnknown ? 'guest'
+      : ageBand === 'kid' ? 'kid'
+      : access.reason === 'unknown-age' ? 'unknown'
+      : (restricted ? 'minor' : null),
     // actions
     refresh, switchProfile, addProfile, createMasterProfile,
     rename, patch, archive, reorder,
@@ -300,7 +318,7 @@ export function ProfileAccountsProvider({ children }) {
     hasPin, setPin, clearPin, verifyPin,
   }), [
     profiles, visible, signedOut, active, master, loading,
-    activeType, activeDef, isMasterActive, allowedTypes, restricted, ageUnknown,
+    activeType, activeDef, isMasterActive, allowedTypes, restricted, ageUnknown, ageBand, access.reason,
     refresh, switchProfile, addProfile, createMasterProfile,
     rename, patch, archive, reorder, signOut, signIn, signInAll,
   ]);

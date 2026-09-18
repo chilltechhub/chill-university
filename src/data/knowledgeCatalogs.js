@@ -61,6 +61,54 @@ export const RESEARCH_CATALOG = [
   { id: 'd4', catId: 'data', emoji: '🏛️', title: 'U.S. Census Bureau', url: 'https://www.census.gov', desc: 'Official U.S. demographic data' },
 ];
 
+// Who each Discover resource is for, by the id the fallback entries use —
+// which is also meta.legacy_id on the app_content rows. Nothing here filtered
+// by age before, so a ten-year-old was shown Bumble BFF, Meetup and
+// BetterHelp.
+//
+//   18+   the service's own terms require an adult, or it's adult by nature
+//         (therapy for adults, credit monitoring, calorie tracking)
+//   13+   an account, public posting, strangers, or a job board
+//
+// A row's meta.age_bands in Supabase wins over this map, so a dashboard edit
+// can change any of them without an app update; this is the floor for the
+// bundled fallback and for any row not tagged yet. Bands match
+// profileResolver.AGE_BANDS.
+const ADULT = ['young_adult', 'adult', 'professional'];
+const TEEN_UP = ['teen', 'young_adult', 'adult', 'professional'];
+export const DISCOVER_AGE_BANDS = {
+  g11: ADULT,   // Claude
+  p1:  ADULT,   // MyFitnessPal
+  m3:  ADULT,   // BetterHelp (its under-18 service is a separate site)
+  s1:  ADULT,   // Meetup
+  s2:  ADULT,   // Nextdoor
+  s4:  ADULT,   // Bumble BFF
+  s5:  ADULT,   // InterNations
+  f4:  ADULT,   // Credit Karma
+  g13: TEEN_UP, // YouTube
+  p2:  TEEN_UP, // Strava
+  m6:  TEEN_UP, // 7 Cups
+  s3:  TEEN_UP, // Eventbrite
+  c2:  TEEN_UP, // Behance
+  c5:  TEEN_UP, // Pinterest
+  c6:  TEEN_UP, // SoundCloud
+  pr1: TEEN_UP, // LinkedIn
+  pr2: TEEN_UP, // LinkedIn Learning
+  pr3: TEEN_UP, // Glassdoor
+  pr4: TEEN_UP, // Indeed
+  pr6: TEEN_UP, // The Muse
+};
+
+// Same idea for the Research Tools list, which is bundled only. Its own map
+// because the two lists reuse ids ('c2' is Mendeley there, Behance above).
+export const RESEARCH_AGE_BANDS = {
+  a1: ADULT,    // Claude
+  a2: TEEN_UP,  // ChatGPT
+  a3: TEEN_UP,  // Perplexity
+  a4: TEEN_UP,  // Elicit
+  a5: TEEN_UP,  // Consensus
+};
+
 export const RESOURCE_CATALOG = [
   // General & reference
   { id: 'g1', areaId: 'general', emoji: '🌐', title: 'Wikipedia', url: 'https://www.wikipedia.org', desc: 'The free encyclopedia' },
@@ -83,7 +131,7 @@ export const RESOURCE_CATALOG = [
   { id: 'p2', areaId: 'physical', emoji: '🏃', title: 'Strava', url: 'https://www.strava.com', desc: 'Track runs, rides & workouts' },
   { id: 'p3', areaId: 'physical', emoji: '🩺', title: 'Mayo Clinic', url: 'https://www.mayoclinic.org', desc: 'Trusted medical information' },
   { id: 'p4', areaId: 'physical', emoji: '😴', title: 'Sleep Foundation', url: 'https://www.sleepfoundation.org', desc: 'Sleep science & better rest' },
-  { id: 'p5', areaId: 'physical', emoji: '🏋️', title: 'CDC: Physical Activity', url: 'https://www.cdc.gov/physical-activity/index.html', desc: 'Exercise guidelines & health tips' },
+  { id: 'p5', areaId: 'physical', emoji: '🏋️', title: 'CDC: Physical Activity', url: 'https://www.cdc.gov/physical-activity-basics/guidelines/index.html', desc: 'Exercise guidelines & health tips' },
   { id: 'p6', areaId: 'physical', emoji: '💊', title: 'WebMD', url: 'https://www.webmd.com', desc: 'Symptoms, conditions & health news' },
 
   // Mental

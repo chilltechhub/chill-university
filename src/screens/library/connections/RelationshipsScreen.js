@@ -7,6 +7,7 @@ import { useTheme } from '../../../../context/ThemeContext';
 import { useUIPrefs } from '../../../../context/UIPrefsContext';
 import { supabase } from '../../../api/profileScopedClient';
 import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../../api/offlineCache';
+import { AREA_COLORS } from '../../../data/areaColors';
 import RelatedLinks, { EXCLUDE_LINK_FILTER } from '../RelatedLinks';
 
 const TYPES = [
@@ -28,7 +29,7 @@ export default function RelationshipsScreen() {
   const [name,    setName]    = useState('');
   const [note,    setNote]    = useState('');
   const [type,    setType]    = useState('friend');
-  const color = '#e05858';
+  const color = AREA_COLORS.social;
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {

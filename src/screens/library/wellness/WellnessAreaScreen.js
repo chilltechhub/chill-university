@@ -14,14 +14,17 @@ import { useUIPrefs } from '../../../../context/UIPrefsContext';
 import { supabase } from '../../../api/profileScopedClient';
 import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../../api/offlineCache';
 import RelatedLinks, { EXCLUDE_LINK_FILTER } from '../RelatedLinks';
+import { AREA_COLORS } from '../../../data/areaColors';
 
 export default function WellnessAreaScreen({
-  title, emoji, icon = 'ellipse-outline', areaId, categories, accentColor,
+  title, emoji, icon = 'ellipse-outline', areaId, categories, accentColor: accentFallback,
   description, entryPlaceholder, presets, screenTag,
 }) {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   const { showEmojis, showSubtext } = useUIPrefs();
+  // A sub-section wears its area's colour — see src/data/areaColors.js.
+  const accentColor = AREA_COLORS[areaId] || accentFallback;
 
   const [entries,  setEntries]  = useState([]);
   const [input,    setInput]    = useState('');

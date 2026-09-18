@@ -7,6 +7,7 @@ import { useTheme } from '../../../../context/ThemeContext';
 import { useUIPrefs } from '../../../../context/UIPrefsContext';
 import { supabase } from '../../../api/profileScopedClient';
 import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../../api/offlineCache';
+import { AREA_COLORS } from '../../../data/areaColors';
 import RelatedLinks from '../RelatedLinks';
 
 const TIPS = [
@@ -30,7 +31,7 @@ export default function SecurityScreen() {
   const [userId,  setUserId]  = useState(null);
   const [showAdd, setShowAdd] = useState(false);
   const [input,   setInput]   = useState('');
-  const color = '#00E676';
+  const color = AREA_COLORS.digital;
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {

@@ -33,7 +33,9 @@ import { fetchContentPool } from '../../api/remoteConfigService';
 import { useTheme } from '../../../context/ThemeContext';
 import { useUIPrefs } from '../../../context/UIPrefsContext';
 import { LIFE_AREAS } from './LifeAreaScreen';
-import { RESEARCH_CATEGORIES, RESEARCH_CATALOG, RESOURCE_CATALOG } from '../../data/knowledgeCatalogs';
+import { RESEARCH_CATEGORIES, RESEARCH_CATALOG, RESOURCE_CATALOG, DISCOVER_AGE_BANDS, RESEARCH_AGE_BANDS } from '../../data/knowledgeCatalogs';
+import { useUserProgress } from '../../../context/UserProgressContext';
+import { ageBandFor, bandAllows } from '../../logic/profileResolver';
 import { notesToMarkdown, notesToCSV } from '../../logic/exportUtils';
 import useFolders from '../../logic/useFolders';
 import FolderRow from '../../components/FolderRow';
@@ -597,6 +599,8 @@ function DetailModal({ item, folders, onClose, onSave, onDelete, onAssignFolder,
 export default function KnowledgeScreen() {
   const navigation = useNavigation();
   const route = useRoute();
+  const { profile } = useUserProgress();
+  const band = ageBandFor(profile);
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   const { showEmojis, showSubtext } = useUIPrefs();
   const styles = makeStyles(c);
@@ -614,7 +618,10 @@ export default function KnowledgeScreen() {
   const [kindFilter, setKindFilter] = useState(route.params?.initialType || 'all');
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('recent');
-  const [areaFilter, setAreaFilter] = useState(null);
+  // Set when opened from a Life Area sub-section (Skills & Learning passes
+  // 'professional'), so it lands on that area's items rather than the whole
+  // Vault. Clearable like any other filter.
+  const [areaFilter, setAreaFilter] = useState(route.params?.initialArea || null);
   const [catFilter, setCatFilter] = useState(null);
   const [selectedTag, setSelectedTag] = useState(null);
   const [folderFilter, setFolderFilter] = useState(null);
@@ -639,6 +646,10 @@ export default function KnowledgeScreen() {
   useEffect(() => {
     if (route.params?.initialType) setKindFilter(route.params.initialType);
   }, [route.params?.initialType]);
+
+  useEffect(() => {
+    if (route.params?.initialArea) setAreaFilter(route.params.initialArea);
+  }, [route.params?.initialArea]);
 
   // focusId — the command palette (and anything else linking to one saved
   // item) lands here and opens that item's detail sheet directly, rather
@@ -667,6 +678,7 @@ export default function KnowledgeScreen() {
       if (rows.length) {
         setCatalog(rows.map((row) => ({
           id: row.id, areaId: row.key, emoji: row.meta?.emoji, title: row.title, url: row.meta?.url, desc: row.body,
+          legacyId: row.meta?.legacy_id, ageBands: row.meta?.age_bands,
         })));
       }
     });
@@ -965,19 +977,22 @@ export default function KnowledgeScreen() {
       const q = search.trim().toLowerCase();
       const matchCat = !catFilter || item.catId === catFilter;
       const matchSearch = !q || item.title.toLowerCase().includes(q) || (item.desc || '').toLowerCase().includes(q);
-      return matchCat && matchSearch;
+      const matchAge = bandAllows(RESEARCH_AGE_BANDS[item.id], band);
+      return matchCat && matchSearch && matchAge;
     })
-  ), [search, catFilter]);
+  ), [search, catFilter, band]);
 
   const resourceDiscover = useMemo(() => withAreaHeaders(
     catalog.filter((item) => {
       const q = search.trim().toLowerCase();
       const matchArea = !areaFilter || item.areaId === areaFilter;
       const matchSearch = !q || item.title.toLowerCase().includes(q) || (item.desc || '').toLowerCase().includes(q);
-      return matchArea && matchSearch;
+      // Age: the row's own tag if it has one, else the bundled floor.
+      const matchAge = bandAllows(item.ageBands || DISCOVER_AGE_BANDS[item.legacyId || item.id], band);
+      return matchArea && matchSearch && matchAge;
     }),
     (item) => item.areaId
-  ), [catalog, search, areaFilter]);
+  ), [catalog, search, areaFilter, band]);
 
   const data = tab === 'vault'
     ? filtered

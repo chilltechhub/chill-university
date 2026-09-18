@@ -16,13 +16,16 @@ import { supabase } from '../../api/profileScopedClient';
 import { fetchContentPool } from '../../api/remoteConfigService';
 import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../api/offlineCache';
 import RelatedLinks from './RelatedLinks';
+import { useUserProgress } from '../../../context/UserProgressContext';
+import { AREA_COLORS } from '../../data/areaColors';
+import { ageBandFor, bandAllows } from '../../logic/profileResolver';
 
 // ─── Section configs — all 18 missing sub-sections ───────────────────────────
 export const SECTION_CONFIGS = {
 
   // ── PHYSICAL ──────────────────────────────────────────────────────────────
   SleepRecoveryScreen: {
-    title: 'Sleep & Recovery', emoji: '🌙', areaId: 'physical', color: '#7eb8e0',
+    title: 'Sleep & Recovery', emoji: '🌙', areaId: 'physical',
     description: 'Good sleep is the foundation of everything. Log your rest and recovery habits.',
     categories: ['Sleep', 'Rest Day', 'Recovery', 'Nap', 'Wind-down'],
     habits: ['Went to bed before midnight', 'Got 7-9 hours of sleep', 'No screens 1hr before bed', 'Took a rest day from exercise', 'Used a sleep routine'],
@@ -31,11 +34,11 @@ export const SECTION_CONFIGS = {
       { key: 'quality', label: 'Sleep quality (1-5)', type: 'rating' },
       { key: 'note', label: 'Notes', type: 'text', placeholder: 'e.g. Woke up twice, felt groggy...' },
     ],
-    tips: ['Aim for 7-9 hours consistently', 'Keep the same wake time even on weekends', 'Cool, dark room improves sleep quality', 'Avoid caffeine after 2pm'],
+    tips: ['Aim for the sleep your age needs: 9–12 hours for kids, 8–10 for teens, 7 or more for adults', 'Keep the same wake time even on weekends', 'Cool, dark room improves sleep quality', 'Avoid caffeine after 2pm'],
   },
 
   EnergyVitalityScreen: {
-    title: 'Energy & Vitality', emoji: '⚡', areaId: 'physical', color: '#f5a623',
+    title: 'Energy & Vitality', emoji: '⚡', areaId: 'physical',
     description: 'Track your daily energy, stress on your body, and health checkups.',
     categories: ['Energy Check', 'Health Checkup', 'Stress', 'Supplements', 'Doctor Visit'],
     habits: ['Checked in on my energy levels', 'Scheduled a health checkup', 'Managed physical stress', 'Took vitamins/supplements', 'Practiced breathwork'],
@@ -48,7 +51,7 @@ export const SECTION_CONFIGS = {
 
   // ── MENTAL ────────────────────────────────────────────────────────────────
   StressAnxietyScreen: {
-    title: 'Stress & Anxiety', emoji: '🫁', areaId: 'mental', color: '#e05858',
+    title: 'Stress & Anxiety', emoji: '🫁', areaId: 'mental',
     description: 'Understand your stress patterns and build coping strategies.',
     categories: ['Stress Log', 'Anxiety', 'Coping', 'Breathing', 'Trigger'],
     habits: ['Identified a stress trigger', 'Practiced breathing or grounding', 'Took a break when overwhelmed', 'Journaled about anxiety', 'Reached out for support'],
@@ -62,7 +65,7 @@ export const SECTION_CONFIGS = {
   },
 
   TherapySupportScreen: {
-    title: 'Therapy & Support', emoji: '🫂', areaId: 'mental', color: '#b07be0',
+    title: 'Therapy & Support', emoji: '🫂', areaId: 'mental',
     description: 'Track therapy sessions, support resources, and mental health goals.',
     categories: ['Therapy Session', 'Support Group', 'Self-Help', 'Crisis Resources', 'Goals'],
     habits: ['Attended therapy or counseling', 'Practiced a therapy technique', 'Read a mental health resource', 'Checked in with a support person', 'Reviewed mental health goals'],
@@ -76,7 +79,7 @@ export const SECTION_CONFIGS = {
 
   // ── SOCIAL ────────────────────────────────────────────────────────────────
   CommunicationScreen: {
-    title: 'Communication', emoji: '💬', areaId: 'social', color: '#b07be0',
+    title: 'Communication', emoji: '💬', areaId: 'social',
     description: 'Build better relationships through clearer communication and healthier boundaries.',
     categories: ['Boundary', 'Conflict', 'Listening', 'Feedback', 'Conversation'],
     habits: ['Set or maintained a boundary', 'Resolved a conflict', 'Practiced active listening', 'Asked for or gave feedback', 'Had a meaningful conversation'],
@@ -88,7 +91,7 @@ export const SECTION_CONFIGS = {
   },
 
   SocialHealthScreen: {
-    title: 'Social Health', emoji: '👥', areaId: 'social', color: '#4caf7d',
+    title: 'Social Health', emoji: '👥', areaId: 'social',
     description: 'Monitor the quality and balance of your social life.',
     categories: ['Quality Time', 'Loneliness Check', 'New Connection', 'Social Energy', 'Community'],
     habits: ['Had quality time with someone', 'Checked in on a friend', 'Did something social', 'Reflected on loneliness', 'Joined or participated in a community'],
@@ -101,7 +104,7 @@ export const SECTION_CONFIGS = {
 
   // ── FINANCIAL ─────────────────────────────────────────────────────────────
   IncomeEarningsScreen: {
-    title: 'Income & Earnings', emoji: '📈', areaId: 'financial', color: '#4caf7d',
+    title: 'Income & Earnings', emoji: '📈', areaId: 'financial',
     description: 'Track your income streams, earnings goals, and revenue growth.',
     categories: ['Salary', 'Side Income', 'Freelance', 'Passive Income', 'Goal'],
     habits: ['Tracked income this week', 'Worked on a side income stream', 'Reviewed income goals', 'Invoiced a client', 'Found a new income opportunity'],
@@ -114,7 +117,7 @@ export const SECTION_CONFIGS = {
   },
 
   BudgetSpendingScreen: {
-    title: 'Budget & Spending', emoji: '💳', areaId: 'financial', color: '#c9a84c',
+    title: 'Budget & Spending', emoji: '💳', areaId: 'financial',
     description: 'Track your spending, manage your budget, and review subscriptions.',
     categories: ['Expense', 'Budget Review', 'Subscription', 'Impulse Buy', 'Savings Win'],
     habits: ['Logged an expense', 'Reviewed monthly budget', 'Cancelled an unused subscription', 'Avoided an impulse purchase', 'Stayed on budget today'],
@@ -123,11 +126,11 @@ export const SECTION_CONFIGS = {
       { key: 'amount', label: 'Amount (optional)', type: 'text', placeholder: 'e.g. $45' },
       { key: 'note', label: 'Notes', type: 'text', placeholder: 'e.g. Ate out three times, review this...' },
     ],
-    tips: ['50/30/20 rule: 50% needs, 30% wants, 20% savings', 'Review subscriptions every 3 months — cancel unused ones', 'Track spending for one week to find surprises'],
+    tips: ['50/30/20 is a common starting split: 50% needs, 30% wants, 20% savings (reviewed 2026)', 'Review subscriptions every 3 months — cancel unused ones', 'Track spending for one week to find surprises'],
   },
 
   SavingsInvestingScreen: {
-    title: 'Savings & Investing', emoji: '🏦', areaId: 'financial', color: '#2bb5a0',
+    title: 'Savings & Investing', emoji: '🏦', areaId: 'financial',
     description: 'Build your emergency fund, track investments, and plan for the future.',
     categories: ['Emergency Fund', 'Investment', 'Retirement', 'Goal Progress', 'Research'],
     habits: ['Added to savings today', 'Reviewed investment portfolio', 'Contributed to retirement account', 'Researched an investment', 'Set a new savings goal'],
@@ -136,12 +139,12 @@ export const SECTION_CONFIGS = {
       { key: 'amount', label: 'Amount saved (optional)', type: 'text', placeholder: 'e.g. $100' },
       { key: 'note', label: 'Notes', type: 'text', placeholder: 'e.g. Researched index funds today...' },
     ],
-    tips: ['Emergency fund target: 3-6 months of expenses', 'Invest consistently — time in market beats timing the market', 'Start with low-cost index funds if unsure where to begin'],
+    tips: ['Many guides suggest an emergency fund of 3–6 months of essential expenses (reviewed 2026)', 'Time in the market tends to beat timing it — missing a few strong days can cost years of gains', 'An index fund holds hundreds of companies, so one failing barely moves the total'],
     resources: [{ label: 'Investopedia (Free Education)', link: 'https://investopedia.com' }],
   },
 
   DebtCreditScreen: {
-    title: 'Debt & Credit', emoji: '🧾', areaId: 'financial', color: '#e05858',
+    title: 'Debt & Credit', emoji: '🧾', areaId: 'financial',
     description: 'Track debt payoff progress, monitor credit score, and build a payoff strategy.',
     categories: ['Debt Payment', 'Credit Score', 'Payoff Strategy', 'Progress', 'Refinance'],
     habits: ['Made a debt payment', 'Checked my credit score', 'Reviewed debt balances', 'Researched refinancing options', 'Followed payoff strategy'],
@@ -150,12 +153,12 @@ export const SECTION_CONFIGS = {
       { key: 'amount', label: 'Payment amount (optional)', type: 'text', placeholder: 'e.g. $200' },
       { key: 'note', label: 'Notes', type: 'text', placeholder: 'e.g. Extra payment on card with highest rate...' },
     ],
-    tips: ['Avalanche method: pay highest interest first (saves most money)', 'Snowball method: pay smallest balance first (builds momentum)', 'Check your credit score free at Credit Karma or your bank app'],
+    tips: ['Avalanche method: pay highest interest first (saves most money)', 'Snowball method: pay smallest balance first (builds momentum)', 'Check your credit report free at AnnualCreditReport.com — the official site'],
   },
 
   // ── CREATIVE ─────────────────────────────────────────────────────────────
   ArtMusicScreen: {
-    title: 'Art & Music', emoji: '🎵', areaId: 'creative', color: '#f5a623',
+    title: 'Art & Music', emoji: '🎵', areaId: 'creative',
     description: 'Log your creative practice — music, visual art, writing, performance.',
     categories: ['Music', 'Visual Art', 'Writing', 'Performance', 'Practice'],
     habits: ['Practiced an instrument', 'Created visual art', 'Wrote something', 'Performed or rehearsed', 'Listened deeply to music'],
@@ -168,20 +171,20 @@ export const SECTION_CONFIGS = {
   },
 
   ContentMediaScreen: {
-    title: 'Content & Media', emoji: '📸', areaId: 'creative', color: '#e05858',
+    title: 'Content & Media', emoji: '📸', areaId: 'creative',
     description: 'Track content creation, photography, video, podcasting and social media.',
     categories: ['Content Created', 'Photo/Video', 'Social Post', 'Podcast', 'Strategy'],
     habits: ['Created content today', 'Took photos or video', 'Posted to social media', 'Worked on a podcast', 'Reviewed content strategy'],
     logFields: [
       { key: 'type', label: 'Content type', type: 'text', placeholder: 'e.g. Instagram post, YouTube video, blog...' },
       { key: 'platform', label: 'Platform', type: 'text', placeholder: 'e.g. Instagram, YouTube, TikTok...' },
-      { key: 'note', label: 'Notes', type: 'text', placeholder: 'e.g. Posted reel about CTH, got 200 views...' },
+      { key: 'note', label: 'Notes', type: 'text', placeholder: 'e.g. Posted a short video, got 200 views...' },
     ],
     tips: ['Batch content creation — record multiple things in one session', 'Post consistently rather than perfectly', 'Repurpose content across platforms to save time'],
   },
 
   LearningCuriosityScreen: {
-    title: 'Learning & Curiosity', emoji: '📖', areaId: 'creative', color: '#7eb8e0',
+    title: 'Learning & Curiosity', emoji: '📖', areaId: 'creative',
     description: 'Log books, courses, documentaries, and deep dives into topics you love.',
     categories: ['Book', 'Course', 'Documentary', 'Article', 'Deep Dive'],
     habits: ['Read for 20+ minutes', 'Watched a documentary', 'Completed a course module', 'Explored a new topic', 'Took notes on what I learned'],
@@ -195,12 +198,12 @@ export const SECTION_CONFIGS = {
 
   // ── PROFESSIONAL ─────────────────────────────────────────────────────────
   BusinessVenturesScreen: {
-    title: 'Business & Ventures', emoji: '🏗️', areaId: 'professional', color: '#c9a84c',
-    description: 'Log progress on CTH, side ventures, ideas pipeline, and business goals.',
-    categories: ['CTH', 'CTH Recovery', 'Side Venture', 'Idea', 'Strategy', 'Client'],
-    habits: ['Worked on ChillTech Hub', 'Moved a business task forward', 'Developed a business idea', 'Connected with a potential client', 'Reviewed business strategy'],
+    title: 'Business & Ventures', emoji: '🏗️', areaId: 'professional',
+    description: 'Log progress on your ventures, ideas pipeline, and business goals.',
+    categories: ['Main Venture', 'Side Venture', 'Idea', 'Strategy', 'Client'],
+    habits: ['Worked on my main venture', 'Moved a business task forward', 'Developed a business idea', 'Connected with a potential client', 'Reviewed business strategy'],
     logFields: [
-      { key: 'venture', label: 'Which venture?', type: 'text', placeholder: 'e.g. CT App, CTH Recovery, new idea...' },
+      { key: 'venture', label: 'Which venture?', type: 'text', placeholder: 'e.g. My shop, a freelance service, a new idea...' },
       { key: 'task', label: 'What you worked on', type: 'text', placeholder: 'e.g. Built the Projects screen, onboarded client...' },
       { key: 'note', label: 'Progress notes', type: 'text', placeholder: 'e.g. Milestone reached, blocker encountered...' },
     ],
@@ -209,7 +212,7 @@ export const SECTION_CONFIGS = {
 
   // ── SPIRITUAL ────────────────────────────────────────────────────────────
   PurposeValuesScreen: {
-    title: 'Purpose & Values', emoji: '🧭', areaId: 'spiritual', color: '#c084e0',
+    title: 'Purpose & Values', emoji: '🧭', areaId: 'spiritual',
     description: 'Clarify your core values, life mission, and what drives you every day.',
     categories: ['Values', 'Purpose', 'Mission', 'Reflection', 'Alignment'],
     habits: ['Reflected on my core values today', 'Made a decision aligned with my values', 'Wrote about my life mission', 'Felt a sense of purpose', 'Reviewed what drives me'],
@@ -221,7 +224,7 @@ export const SECTION_CONFIGS = {
   },
 
   ReflectionPrayerScreen: {
-    title: 'Reflection & Prayer', emoji: '🌅', areaId: 'spiritual', color: '#f5a623',
+    title: 'Reflection & Prayer', emoji: '🌅', areaId: 'spiritual',
     description: 'Log daily reflections, prayer, meditation, and gratitude practices.',
     categories: ['Prayer', 'Meditation', 'Reflection', 'Gratitude', 'Scripture'],
     habits: ['Prayed or meditated today', 'Wrote a gratitude list', 'Reflected on the day', 'Read scripture or spiritual text', 'Had a moment of stillness'],
@@ -234,7 +237,7 @@ export const SECTION_CONFIGS = {
   },
 
   PhilosophyWisdomScreen: {
-    title: 'Philosophy & Wisdom', emoji: '📚', areaId: 'spiritual', color: '#7eb8e0',
+    title: 'Philosophy & Wisdom', emoji: '📚', areaId: 'spiritual',
     description: 'Explore philosophy, personal beliefs, wisdom from books and teachings.',
     categories: ['Philosophy', 'Book', 'Teaching', 'Belief', 'Growth Mindset'],
     habits: ['Read a philosophy or wisdom text', 'Applied a philosophical principle', 'Reflected on a teaching or belief', 'Challenged a limiting belief', 'Practiced stoicism or mindfulness'],
@@ -246,7 +249,7 @@ export const SECTION_CONFIGS = {
   },
 
   CommunityFaithScreen: {
-    title: 'Community & Faith', emoji: '⛪', areaId: 'spiritual', color: '#4caf7d',
+    title: 'Community & Faith', emoji: '⛪', areaId: 'spiritual',
     description: 'Log participation in faith community, service, giving, and shared beliefs.',
     categories: ['Faith Community', 'Service', 'Giving', 'Worship', 'Fellowship'],
     habits: ['Attended a faith gathering', 'Volunteered or gave back', 'Prayed with others', 'Supported someone in my community', 'Gave financially or materially'],
@@ -259,7 +262,7 @@ export const SECTION_CONFIGS = {
 
   // ── DIGITAL ──────────────────────────────────────────────────────────────
   ScreenTimeFocusScreen: {
-    title: 'Screen Time & Focus', emoji: '📱', areaId: 'digital', color: '#64b5f6',
+    title: 'Screen Time & Focus', emoji: '📱', areaId: 'digital',
     description: 'Track app usage, set limits, and protect your attention from distractions.',
     categories: ['Screen Time', 'Focus Block', 'Social Media', 'Digital Detox', 'Productivity'],
     habits: ['Stayed within screen time limits', 'Did a focus block without phone', 'Deleted or muted a distracting app', 'Took a social media break', 'Used phone in grayscale mode'],
@@ -272,13 +275,13 @@ export const SECTION_CONFIGS = {
   },
 
   ToolsSystemsScreen: {
-    title: 'Tools & Systems', emoji: '⚙️', areaId: 'digital', color: '#c9a84c',
+    title: 'Tools & Systems', emoji: '⚙️', areaId: 'digital',
     description: 'Build your productivity stack — task management, notes, automation, and workflows.',
     categories: ['Productivity', 'Automation', 'Notes System', 'Task System', 'Review'],
     habits: ['Reviewed and updated my task system', 'Set up or improved an automation', 'Organized digital notes', 'Cleared email or messages inbox', 'Reviewed my weekly system'],
     logFields: [
       { key: 'tool', label: 'Tool or system', type: 'text', placeholder: 'e.g. Notion, CT App, Zapier, n8n...' },
-      { key: 'what', label: 'What you did with it', type: 'text', placeholder: 'e.g. Set up automation for CTH Recovery leads...' },
+      { key: 'what', label: 'What you did with it', type: 'text', placeholder: 'e.g. Set up an automation for new leads...' },
       { key: 'note', label: 'Notes', type: 'text', placeholder: 'e.g. Saved 30min/week with this...' },
     ],
     tips: ['A system you use is better than a perfect one you don\'t', 'Automate anything you do the same way 3+ times', 'Weekly review is the glue that holds any system together'],
@@ -312,6 +315,8 @@ export default function AreaSectionScreen() {
   // Determine which config to use — passed via route params OR via screenName
   const screenName = route.params?.screenName || route.name;
   const config = SECTION_CONFIGS[screenName];
+  const { profile } = useUserProgress();
+  const band = ageBandFor(profile);
 
   const [entries,  setEntries]  = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -328,15 +333,18 @@ export default function AreaSectionScreen() {
   // no empty flash before the fetch resolves and no regression if it fails.
   const [tips, setTips] = useState(config?.tips || []);
 
+  // meta.age_bands on a tip limits who sees it (a debt-payoff method isn't
+  // for a ten-year-old). No bands means everyone.
   useEffect(() => {
     if (!screenName) return;
     fetchContentPool('area_tip', screenName).then((rows) => {
-      if (rows.length) setTips(rows.map((r) => r.body));
+      const mine = rows.filter((r) => bandAllows(r.meta?.age_bands, band));
+      if (mine.length) setTips(mine.map((r) => r.body));
     });
-  }, [screenName]);
+  }, [screenName, band]);
 
   if (!config) return null;
-  const color = config.color;
+  const color = AREA_COLORS[config.areaId];
 
   useEffect(() => {
     setCategory(config.categories[0]);
