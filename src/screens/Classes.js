@@ -1,6 +1,6 @@
 // src/screens/Classes.js
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { ScrollView, TouchableOpacity, Text, View, StyleSheet, Alert } from 'react-native';
+import { ScrollView, TouchableOpacity, Text, View, StyleSheet, Alert, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -149,7 +149,17 @@ export default function Classes() {
 
   const goToChild = (label) => {
     const screen = screenMap[label];
-    if (!screen) return;
+    if (!screen) {
+      // A topic with no screen used to be a tap that did nothing.
+      // scripts/check-wiring.mjs catches this before it ships; this is the
+      // fallback if one slips through.
+      if (__DEV__) console.warn(`[Classes] "${label}" has no screen. Add it to CLASS_SCREEN_MAP in src/data/classCatalog.js.`);
+      const msg = "This topic isn't ready yet. Check back soon.";
+      // eslint-disable-next-line no-alert
+      if (Platform.OS === 'web') window.alert(msg);
+      else Alert.alert('Not ready yet', msg);
+      return;
+    }
     // Opening a topic is what ticks "open a class and pick a topic" on a
     // first goal.
     signalAction('class-opened');
