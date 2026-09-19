@@ -114,10 +114,10 @@ export const PATHS = {
     },
     {
       key: 'games',
-      label: 'Three more games',
-      blurb: 'Budget Balance, People Skills and Snack Catch, plus your streak on Home.',
+      label: 'Three more games and your first quest',
+      blurb: 'Budget Balance, People Skills and Snack Catch, your streak on Home, and quests: an idea, your own research, one real thing to do.',
       games: ['budget', 'people', 'snackcatch'],
-      widgets: ['habitRings', 'streak'],
+      widgets: ['quests', 'habitRings', 'streak'],
     },
     {
       key: 'wayfinder',
@@ -143,10 +143,10 @@ export const PATHS = {
     { ...VAULT, widgets: ['classProgress'], fab: ['note'] },
     {
       key: 'games',
-      label: 'Three more games',
-      blurb: 'World Explorer, Word Scramble and Memory Match, plus your streak on Home.',
+      label: 'Three more games and your first quest',
+      blurb: 'World Explorer, Word Scramble and Memory Match, your streak on Home, and quests: an idea, your own research, one real thing to do.',
       games: ['world', 'scramble', 'memory'],
-      widgets: ['dailyDrills', 'streak'],
+      widgets: ['quests', 'dailyDrills', 'streak'],
     },
     {
       key: 'capture',
@@ -186,10 +186,10 @@ export const PATHS = {
     },
     {
       key: 'games',
-      label: 'Three more games',
-      blurb: 'Career Compass, Budget Balance and Survive the Month, plus a systems check.',
+      label: 'Three more games and your first quest',
+      blurb: 'Career Compass, Budget Balance and Survive the Month, a systems check, and quests: an idea, your own research, one real thing to do.',
       games: ['career', 'budget', 'survivemonth'],
-      widgets: ['systemsCheck', 'streak'],
+      widgets: ['quests', 'systemsCheck', 'streak'],
     },
     {
       key: 'classes',
@@ -229,10 +229,10 @@ export const PATHS = {
     },
     {
       key: 'games',
-      label: 'Three more games',
-      blurb: 'Career Compass, People Skills and Code Breaker, plus the Vault on Home.',
+      label: 'Three more games and your first quest',
+      blurb: 'Career Compass, People Skills and Code Breaker, the Vault on Home, and quests: an idea, your own research, one real thing to do.',
       games: ['career', 'people', 'codebreaker'],
-      widgets: ['vaultStatus', 'streak'],
+      widgets: ['quests', 'vaultStatus', 'streak'],
     },
     {
       key: 'classes',

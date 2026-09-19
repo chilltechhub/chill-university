@@ -10,6 +10,9 @@ import Classes from './Classes';  // your expandable list
 import LessonBuilder from './LessonBuilder';
 import MyLessonPlans from './MyLessonPlans';
 
+// Quests: the short learn-research-do lessons (src/data/quests.js).
+import QuestScreen from './QuestScreen';
+
 // Math
 import NumbersAndOperations from './classes/mathClass/numbersandoperations';
 import AlgebraAndFunctions from './classes/mathClass/algebraandfunctions';
@@ -97,6 +100,7 @@ export default function ClassesStack() {
       {/* Classroom Day Lesson Plan Builder */}
       <Stack.Screen name="LessonBuilder" component={LessonBuilder} />
       <Stack.Screen name="MyLessonPlans" component={MyLessonPlans} />
+      <Stack.Screen name="Quest" component={QuestScreen} />
 
       {/* Math */}
       <Stack.Screen name="NumbersAndOperations" component={NumbersAndOperations} />

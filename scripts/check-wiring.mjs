@@ -87,6 +87,33 @@ for (const [type, stages] of Object.entries(PATHS)) {
   });
 }
 
+// ── Home widgets named by stages and account types ──────────────────────────
+// A key Home doesn't render is silently dropped from the dashboard, so a
+// stage that "opens" it opens nothing.
+const home = stripComments(await text('src/screens/HomeScreen.js'));
+const defsBody = home.match(/const WIDGET_DEFS = \[([\s\S]*?)\];/)?.[1] || '';
+const widgetKeys = new Set([...defsBody.matchAll(/key:\s*'(\w+)'/g)].map(m => m[1]));
+if (!widgetKeys.size) problems.push('HomeScreen.js: could not read WIDGET_DEFS');
+const rendered = new Set([...home.matchAll(/key:\s*'(\w+)',\s*title:[^\n]*\n\s*render:/g)].map(m => m[1]));
+for (const key of widgetKeys) {
+  if (!rendered.has(key)) {
+    problems.push(`HomeScreen.js: widget '${key}' is in WIDGET_DEFS but has no render entry`);
+  }
+}
+for (const [type, stages] of Object.entries(PATHS)) {
+  stages.forEach((stage, i) => {
+    for (const key of stage.widgets || []) {
+      if (!widgetKeys.has(key)) problems.push(`experienceStages.js: ${type} stage ${i + 1} (${stage.key}) adds unknown widget '${key}'`);
+    }
+  });
+}
+const { PERSONAS } = await load('src/data/personas.js');
+for (const p of PERSONAS) {
+  for (const key of p.defaultWidgets || []) {
+    if (!widgetKeys.has(key)) problems.push(`personas.js: ${p.key} defaultWidgets has unknown widget '${key}'`);
+  }
+}
+
 // ── Lesson links ────────────────────────────────────────────────────────────
 // skillLinks.js imports the registry, so read its LINKS table as text.
 const links = stripComments(await text('src/data/skillLinks.js'));

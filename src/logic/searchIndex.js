@@ -13,6 +13,7 @@ import { LIBRARY_HUBS } from '../screens/library/LibraryScreen';
 import { LIFE_AREAS } from '../screens/library/LifeAreaScreen';
 import { CLASS_SUBJECTS, CLASS_SCREEN_MAP } from '../data/classCatalog';
 import { GAMES_MASTER } from '../screens/GamesScreen';
+import { QUESTS } from '../data/quests';
 
 // ─── Route descriptors ─────────────────────────────────────────────────────
 // The palette renders above the navigator, not inside a screen, so every
@@ -141,6 +142,16 @@ export function getDestinations() {
       });
     });
   });
+
+  // Quests open inside Classes, so they follow Classes' visibility
+  // (isRowShown checks the ClassesStack route).
+  QUESTS.forEach((quest) => push('Classes', {
+    title: quest.title,
+    subtitle: `Quest · ${quest.subjectLabel} · ${quest.minutes} min`,
+    icon: quest.icon,
+    color: quest.color,
+    route: library('ClassesStack', { screen: 'Quest', params: { questId: quest.id } }),
+  }));
 
   GAMES_MASTER.forEach((game) => push('Games', {
     title: game.title,

@@ -7,7 +7,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "test:agent": "node scripts/library-suite.mjs",
-    "check": "node scripts/check-wiring.mjs && node scripts/check-tour-spots.mjs"
+    "check": "node scripts/check-wiring.mjs && node scripts/check-quests.mjs && node scripts/check-tour-spots.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/jetbrains-mono": "^0.4.1",

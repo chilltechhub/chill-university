@@ -17,6 +17,8 @@ import { CLASS_SUBJECTS, CLASS_SCREEN_MAP } from '../data/classCatalog';
 import { lessonsForGame } from '../data/skillLinks';
 import { getWeakGames } from '../logic/skillStats';
 import { getGame } from '../services/gameRegistry';
+import { questsInOrder } from '../data/quests';
+import { useQuestProgress } from '../logic/questProgress';
 
 const GRADE_BAND_KEY = '@cth_academy_grade_band';
 const BANDS = ['All', 'K-2', '3-5', '6-8', '9-12'];
@@ -176,6 +178,12 @@ export default function Classes() {
 
   const recTopics = useMemo(() => pickRecommendedTopics(mergedSubjects, band, 3), [band, mergedSubjects]);
   const recGames  = useMemo(() => pickRecommendedGames(band, 2), [band]);
+  // This account type's order, with anything unfinished ahead of what's done.
+  const questState = useQuestProgress();
+  const quests = useMemo(() => {
+    const ordered = questsInOrder(activeType);
+    return [...ordered.filter(q => !questState.finished.has(q.id)), ...ordered.filter(q => questState.finished.has(q.id))];
+  }, [activeType, questState.finished]);
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -209,6 +217,40 @@ export default function Classes() {
           </TouchableOpacity>
         </View>
         )}
+      </View>
+
+      {/* Quests: learn an idea, research it, check it, do something with
+          it. Not tied to a grade band, so they sit above the band picker. */}
+      <View style={styles.recSection}>
+        <Text style={styles.recTitle}>Quests</Text>
+        {showSubtext && (
+          <Text style={styles.fromGamesSub}>
+            Ten minutes each: an idea, your own research, a quick check, and one real thing to do.
+          </Text>
+        )}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recRow}>
+          {quests.map(q => {
+            const done = questState.finished.has(q.id);
+            const inProgress = !done && questState.byId[q.id]?.step && questState.byId[q.id].step !== 'spark';
+            return (
+              <TouchableOpacity
+                key={'quest-' + q.id}
+                style={[styles.recCard, { width: 150, borderTopColor: q.color }]}
+                onPress={() => navigation.navigate('Quest', { questId: q.id })}
+                activeOpacity={0.85}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Ionicons name={q.icon} size={18} color={q.color} />
+                  {done && <Ionicons name="checkmark-circle" size={16} color={c.success} />}
+                </View>
+                <Text style={styles.recCardSubject}>
+                  {done ? 'Done' : inProgress ? 'In progress' : `${q.subjectLabel} · ${q.minutes} min`}
+                </Text>
+                <Text style={styles.recCardLabel} numberOfLines={2}>{q.title}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
       {/* Grade band selector */}

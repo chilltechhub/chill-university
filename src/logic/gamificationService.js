@@ -2,6 +2,7 @@
 import { supabase } from '../api/supabaseClient';
 import { getRank } from './rankUtils';
 import { todayStr, daysBetween, addDays } from './dateUtils';
+import { QUEST_XP } from '../data/quests';
 
 /* ─── Profile + missions loaders ─────────────────────────────────────────── */
 
@@ -183,6 +184,9 @@ function calculateRewards({ type, correct, difficulty }) {
     case 'STREAK_BONUS':      return { xp: 20,               points: 10 };
     case 'BONUS_REWARD_CLAIMED': return { xp: 10,            points: 15 };
     case 'COIN_COLLECTED':    return { xp: 1,                points: 1 };
+    // A finished quest (src/data/quests.js). Sent once per quest, the first
+    // time it's finished; see src/logic/questProgress.js.
+    case 'QUEST_COMPLETED':   return { xp: QUEST_XP,         points: QUEST_XP / 2 };
     default:                  return { xp: 0,                points: 0 };
   }
 }

@@ -33,6 +33,7 @@ import { StudyBlocksWidget, ClassProgressWidget } from '../components/widgets/St
 import { OrgSnapshotWidget, SystemsCheckWidget, RecurringOpsWidget } from '../components/widgets/BusinessWidgets';
 import { VaultStatusWidget, FounderQuestWidget, TargetsReadinessWidget } from '../components/widgets/EntrepreneurWidgets';
 import { WayfinderWidget } from '../components/widgets/WayfinderWidget';
+import QuestWidget from '../components/widgets/QuestWidget';
 import CompassCard from '../components/CompassCard';
 import { getWayfinderIntent } from '../api/wayfinderService';
 import { useAccess } from '../../context/AccessContext';
@@ -149,6 +150,9 @@ const WIDGET_DEFS = [
   { key: 'vaultStatus',      title: 'The Vault' },
   { key: 'founderQuest',     title: 'Founder Quest' },
   { key: 'targetsReadiness', title: 'Targets & Readiness' },
+  // Every type: the next quest (src/data/quests.js). Joins Home at each
+  // type's third stage, alongside the next three games.
+  { key: 'quests',           title: 'Quests' },
 ];
 const WIDGET_KEYS = WIDGET_DEFS.map(w => w.key);
 
@@ -1913,6 +1917,16 @@ export default function HomeScreen() {
                   userId={userId} profile={activeProfile}
                   onOpenProfiles={() => navigation.navigate('AllProfiles')}
                   onOpenClasses={() => goToLibraryScreen('ClassesStack')}
+                />
+              ),
+            },
+            {
+              key: 'quests', title: 'Quests',
+              render: () => (
+                <QuestWidget
+                  type={activeType}
+                  onOpenQuest={(questId) => goToLibraryScreen('ClassesStack', { screen: 'Quest', params: { questId } })}
+                  onOpenAll={() => goToLibraryScreen('ClassesStack')}
                 />
               ),
             },
