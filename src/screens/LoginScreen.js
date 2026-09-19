@@ -5,13 +5,14 @@ import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, Alert,
   ActivityIndicator, StyleSheet, KeyboardAvoidingView,
-  Platform, Animated,
+  Platform, Animated, Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../api/supabaseClient';
 import { useNavigation } from '@react-navigation/native';
 import { redeemOrgInviteCode } from '../api/organizationService';
+import { PRIVACY_POLICY_URL, TERMS_URL } from '../config/legal';
 
 // If a signup happens before email confirmation, there's no session yet to
 // redeem the code against — stash it here and retry the next time a
@@ -314,6 +315,21 @@ export default function LoginScreen({ onSuccess, onClose }) {
             }
           </TouchableOpacity>
 
+          {/* What signing up agrees to. Terms only appear once TERMS_URL is
+              set in src/config/legal.js, so this never links to nothing. */}
+          {mode === 'signup' && (
+            <Text style={s.legalText}>
+              By creating an account you agree to our{' '}
+              {TERMS_URL ? (
+                <>
+                  <Text style={s.legalLink} onPress={() => Linking.openURL(TERMS_URL)}>Terms</Text>
+                  {' and '}
+                </>
+              ) : null}
+              <Text style={s.legalLink} onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>Privacy Policy</Text>.
+            </Text>
+          )}
+
           {/* Switch mode */}
           {mode === 'reset' ? (
             <TouchableOpacity style={s.switchRow} onPress={() => setMode('login')}>
@@ -378,6 +394,8 @@ const s = StyleSheet.create({
   btn:         { backgroundColor: '#2bb5a0', borderRadius: 14, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 8 },
   btnText:     { color: '#fff', fontWeight: '700', fontSize: 16 },
   btnEmoji:    { fontSize: 16 },
+  legalText:   { marginTop: 14, fontSize: 12, lineHeight: 17, color: 'rgba(255,255,255,0.4)', textAlign: 'center' },
+  legalLink:   { color: '#2bb5a0', textDecorationLine: 'underline' },
   switchRow:   { marginTop: 18, alignItems: 'center' },
   switchText:  { fontSize: 13, color: 'rgba(255,255,255,0.4)' },
   switchLink:  { color: '#2bb5a0', fontWeight: '600' },

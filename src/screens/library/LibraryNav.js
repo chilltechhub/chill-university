@@ -5,7 +5,6 @@ import { useTheme } from '../../../context/ThemeContext';
 
 // Main screens
 import LibraryScreen   from './LibraryScreen';
-import OnboardingScreen from '../OnboardingScreen';
 import LifeAreaScreen  from './LifeAreaScreen';
 import CaptureInbox    from '../CaptureInbox';
 import ImportScreen    from '../ImportScreen';
@@ -108,7 +107,6 @@ export default function LibraryNavigator() {
     >
       {/* Main — no header, has its own */}
       <Stack.Screen name="LibraryScreen"   component={LibraryScreen}   options={{ headerShown: false }} />
-      <Stack.Screen name="OnboardingScreen" component={OnboardingScreen} options={{ headerShown: false }} />
 
       {/* Life area */}
       <Stack.Screen name="LifeAreaScreen" component={LifeAreaScreen}

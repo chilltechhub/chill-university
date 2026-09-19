@@ -33,6 +33,10 @@ __MACOSX/
 *.pem
 
 # local env files
+# .env itself is committed ON PURPOSE: it holds only EXPO_PUBLIC_SUPABASE_URL
+# and the anon key, which ship inside the app bundle anyway, and EAS builds
+# read it (eas.json sets no env). Never put a real secret in .env — use
+# .env.local (ignored below) or `supabase secrets set` for server keys.
 .env*.local
 
 # typescript

@@ -34,7 +34,6 @@ import LibraryNav    from './src/screens/library/LibraryNav';
 import LoginScreen        from './src/screens/LoginScreen';
 import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
 import MultiStepOnboarding from './src/screens/MultiStepOnboarding';
-import Onboarding      from './src/screens/OnboardingScreen';
 import ProfileScreen   from './src/screens/ProfileScreen';
 import SettingsScreen  from './src/screens/SettingsScreen';
 import PlayScreen      from './src/screens/PlayScreen';
@@ -69,10 +68,9 @@ const GatedStats        = gatedScreen('insights', StatsScreen);
 const GatedOrganization = gatedScreen('organization', OrganizationScreen);
 
 
-// NOTE: OnboardingScreen.js (life-areas / commandCenterService) and ProfileQuickSetup.js
-// are retired by this rebuild — OnboardingScreen.js was already orphaned (unreferenced),
-// and ProfileQuickSetup's fields now live in Onboarding.js / SettingsScreen.js under one
-// consistent `profiles` schema. Parent/child linking is back — see FamilyScreen.js /
+// NOTE: the old OnboardingScreen.js and ProfileQuickSetup.js now live in
+// archive/src/screens/ — MultiStepOnboarding.js and SettingsScreen.js replaced
+// them under one consistent `profiles` schema. Parent/child linking is back — see FamilyScreen.js /
 // ChildProgressScreen.js (rebuilt from scratch; the old ParentHome/ChildDashboard/
 // AddChildByCode/ChildInviteCode prototype in archive/src/screens/ referenced a
 // `profiles` schema — role, grade, goals_completed — that never existed).
@@ -85,6 +83,30 @@ const TAB_ICONS = {
   Training: { active: 'barbell', inactive: 'barbell-outline' },
   Library:  { active: 'book',    inactive: 'book-outline' },
 };
+
+// bottom-tabs' own 'shift' interpolator parks every inactive tab at opacity 0
+// AND translateX ±50. On web (no react-native-screens) inactive tabs stay laid
+// out inside the shared scene container, which is overflow: hidden — so the
+// tab to the right of the current one pokes 50px past the right edge (a
+// 1024px viewport gets a 1074px scrollWidth), and any focus or scrollIntoView
+// near the right edge of ANY tab scrolls that container sideways, shoving the
+// visible screen 50px left. Same fade + slide while switching, but a tab at
+// rest (progress exactly ±1) sits at 0 — the snap between 0 and ±49.5 happens
+// at 1% opacity, so it can't be seen.
+const forShiftWeb = ({ current }) => ({
+  sceneStyle: {
+    opacity: current.progress.interpolate({
+      inputRange:  [-1, 0, 1],
+      outputRange: [0, 1, 0],
+    }),
+    transform: [{
+      translateX: current.progress.interpolate({
+        inputRange:  [-1, -0.99, 0, 0.99, 1],
+        outputRange: [0, -49.5, 0, 49.5, 0],
+      }),
+    }],
+  },
+});
 
 function MainTabs() {
   const { colors: c } = useTheme();
@@ -99,6 +121,7 @@ function MainTabs() {
         // slight horizontal offset, same motion modern iOS/Android tab
         // bars use natively.
         animation: 'shift',
+        ...(Platform.OS === 'web' && { sceneStyleInterpolator: forShiftWeb }),
         tabBarStyle: {
           backgroundColor: c.tabBar,
           borderTopWidth: 0.5,
@@ -325,7 +348,6 @@ function AppInner() {
           </Stack.Screen>
           <Stack.Screen name="MultiStepOnboarding" component={MultiStepOnboarding} />
           <Stack.Screen name="MainTabs"            component={MainTabs} />
-          <Stack.Screen name="Onboarding"          component={Onboarding} />
           <Stack.Screen name="Profile"             component={ProfileScreen} />
           <Stack.Screen name="Settings"            component={SettingsScreen} />
           <Stack.Screen name="Play"                component={PlayScreen} />
