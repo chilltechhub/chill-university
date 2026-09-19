@@ -11,10 +11,11 @@
 //
 // The rosters are ranked against the purpose (rankForPurpose in
 // src/logic/featureAccess.js), never filtered by it. What they leave out is
-// the experience stage's call (src/data/experienceStages.js): a new account
-// sees the tools picked for its profile type and one first goal, and the
-// locked, experimental and Plus sections arrive at stage 3. Somebody who'd
-// rather see it all has one switch, here and in Settings.
+// the stage's call (src/data/experienceStages.js): a new account sees the
+// tools its profile type has opened so far and one first goal; locked tools
+// arrive with the last stage ('doors'), except the ones the goal in flight
+// opens, which always show. Labs sits there too, and Plus once it's on sale.
+// Somebody who'd rather see it all has one switch, here and in Settings.
 
 import React, { useState, useMemo } from 'react';
 import {
@@ -25,6 +26,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useUIPrefs } from '../../context/UIPrefsContext';
 import { useAccess } from '../../context/AccessContext';
+import { useProfiles } from '../../context/ProfileAccountsContext';
 import { PURPOSES, objectivesForPurpose, getPurpose, getObjective } from '../data/objectives';
 import { stageMeta } from '../logic/experienceStage';
 import { MAX_STAGE } from '../data/experienceStages';
@@ -44,9 +46,11 @@ export default function CompassScreen() {
     activeObjective, completedObjectiveIds, startObjective, toggleStep,
     completeActiveObjective, abandonActiveObjective,
     accessFor, rankedFeatures, experimentalOn, setExperimental, isPlus,
-    stage, nextStage, firstGoalId, experienceMode, setExperienceMode,
+    stage, nextStage, firstGoalId, experienceMode, setExperienceMode, can, plusOnSale,
   } = useAccess();
-  const showAll = stage >= MAX_STAGE;
+  const { activeType } = useProfiles();
+  // Locked tools, Labs and Plus are the last stage's to show ('doors').
+  const showAll = can('doors');
 
   const [pickingPurpose, setPickingPurpose] = useState(false);
   const [pickingObjective, setPickingObjective] = useState(false);
@@ -80,13 +84,14 @@ export default function CompassScreen() {
     [accessFor]
   );
 
-  // Stage 1 offers the profile type's first goal and nothing else — the
-  // full list of fifteen is exactly the wall this stage exists to avoid.
+  // Until a first goal is done, it's the only one offered — the full list
+  // of fifteen is exactly the wall starting simple exists to avoid.
+  const introDone = completedObjectiveIds.some(id => getObjective(id)?.intro);
   const objectiveChoices = useMemo(() => {
     const first = getObjective(firstGoalId);
-    if (stage <= 1 && first) return [first];
+    if (!introDone && first) return [first];
     return objectivesForPurpose(purposeKey);
-  }, [purposeKey, stage, firstGoalId]);
+  }, [purposeKey, introDone, firstGoalId]);
 
   /* ── Handlers ─────────────────────────────────────────────────────────── */
 
@@ -150,12 +155,12 @@ export default function CompassScreen() {
 
         {/* ── Where you are — so a short list reads as "not yet", not "that's all" ── */}
         <View style={s.stageCard}>
-          <Text style={s.stageKicker}>Stage {stage} of {MAX_STAGE} · {stageMeta(stage).label}</Text>
+          <Text style={s.stageKicker}>Stage {stage} of {MAX_STAGE} · {stageMeta(stage, activeType).label}</Text>
           <Text style={s.stageText}>
             {experienceMode === 'full'
               ? 'You chose to see everything. Switch back and the app goes by your progress again.'
               : nextStage
-                ? `${nextStage.text} to open more of the app.`
+                ? `${nextStage.text} to open the next stage: ${nextStage.label}.`
                 : 'Everything is on show.'}
           </Text>
           {(experienceMode === 'full' || !showAll) && (
@@ -282,8 +287,8 @@ export default function CompassScreen() {
                   featuresUnlockedBy(activeObjective.objective.id).length > 0
                     ? `Finishing this opens ${featuresUnlockedBy(activeObjective.objective.id).map(f => f.label).join(' and ')}.`
                     : null,
-                  !showAll && nextStage?.goalsLeft === 1
-                    ? 'Finishing this opens the next stage of the app.'
+                  nextStage
+                    ? `It also opens the next stage of the app: ${nextStage.label}.`
                     : null,
                 ].filter(Boolean).join(' ') || 'Finishing this is its own reward — nothing gated behind it.'}
               </Text>
@@ -377,7 +382,7 @@ export default function CompassScreen() {
           </>
         )}
 
-        {/* ── 5. Rough & Plus — stage 3 only ── */}
+        {/* ── 5. Rough & Plus — the last stage only ('doors') ── */}
         {showAll && (<>
         {/* ── 5a. Experimental ── */}
         <SectionHead title="Rough edges" c={c} t={t} sp={sp} />
@@ -402,7 +407,8 @@ export default function CompassScreen() {
           ))}
         </View>
 
-        {/* ── 5b. Plus ── */}
+        {/* ── 5b. Plus — only once it can actually be bought ── */}
+        {(plusOnSale || isPlus) && (<>
         <SectionHead title="Plus" c={c} t={t} sp={sp} />
         {showSubtext && (
           <Text style={s.sectionNote}>
@@ -416,6 +422,7 @@ export default function CompassScreen() {
             <FeatureRow key={entry.feature.id} entry={entry} onPress={() => openFeature(entry)} c={c} t={t} sp={sp} r={r} showSubtext={showSubtext} />
           ))}
         </View>
+        </>)}
         </>)}
       </ScrollView>
 

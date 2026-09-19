@@ -16,8 +16,8 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAccess } from '../../context/AccessContext';
 import { goToScreen } from '../logic/appRoutes';
-import { stageMeta } from '../logic/experienceStage';
 import { MAX_STAGE } from '../data/experienceStages';
+import { getFeature } from '../data/featureCatalog';
 import { FONTS } from '../theme';
 
 const VIA_COPY = {
@@ -33,32 +33,52 @@ export default function UnlockNotification() {
 
   const s = makeStyles(c, t, sp, r);
 
-  // A new experience stage goes first: it's the bigger door, and it's
-  // usually what just happened (finishing a first goal opens stage 2).
+  // A new stage goes first: it's usually what just happened (every goal
+  // finished and every level gained opens one), and it says what's new.
+  // Stages open one at a time, so this is normally one thing, not a list.
   const stageEvent = stageEvents?.[0];
   if (stageEvent) {
-    const meta = stageMeta(stageEvent.to);
+    const stages = stageEvent.stages || [];
+    const latest = stages[stages.length - 1];
+    // Somewhere to go: the first tool the newest stage put on the map.
+    const target = stages
+      .flatMap(st => st.features || [])
+      .map(id => getFeature(id))
+      .find(f => f?.screen);
+    const close = () => dismissStageEvent();
+    const show = () => {
+      dismissStageEvent();
+      if (target) goToScreen(navigation, target.screen);
+    };
     return (
-      <Modal transparent animationType="fade" visible onRequestClose={dismissStageEvent}>
+      <Modal transparent animationType="fade" visible onRequestClose={close}>
         <View style={s.overlay}>
           <View style={s.card}>
             <View style={s.iconBox}>
               <Ionicons name="sparkles-outline" size={26} color={c.teal} />
             </View>
-            <Text style={s.kicker}>Stage {meta.n} of {MAX_STAGE}</Text>
-            <Text style={s.title}>More of the app is open</Text>
-            <Text style={s.blurb}>{meta.label}. Here’s what you can see now:</Text>
-            <View style={s.list}>
-              {stageEvent.lines.map(line => (
-                <View key={line} style={s.listRow}>
-                  <Ionicons name="checkmark" size={14} color={c.teal} style={{ marginTop: 2 }} />
-                  <Text style={s.listText}>{line}</Text>
-                </View>
-              ))}
-            </View>
-            <TouchableOpacity style={s.btn} onPress={dismissStageEvent} activeOpacity={0.85}>
-              <Text style={s.btnText}>Let’s see</Text>
+            <Text style={s.kicker}>New in your app · stage {stageEvent.to} of {MAX_STAGE}</Text>
+            <Text style={s.title}>{latest?.label || 'More of the app is open'}</Text>
+            {!!latest?.blurb && <Text style={s.blurb}>{latest.blurb}</Text>}
+            {stages.length > 1 && (
+              <View style={s.list}>
+                {stages.slice(0, -1).map(st => (
+                  <View key={st.key + st.n} style={s.listRow}>
+                    <Ionicons name="checkmark" size={14} color={c.teal} style={{ marginTop: 2 }} />
+                    <Text style={s.listText}>Also open: {st.label}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+            <View style={{ height: sp.lg }} />
+            <TouchableOpacity style={s.btn} onPress={target ? show : close} activeOpacity={0.85}>
+              <Text style={s.btnText}>{target ? `Show me ${target.label}` : 'Got it'}</Text>
             </TouchableOpacity>
+            {target && (
+              <TouchableOpacity style={s.ghost} onPress={close} activeOpacity={0.7}>
+                <Text style={s.ghostText}>Later</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </Modal>

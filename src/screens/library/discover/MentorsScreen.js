@@ -24,7 +24,7 @@ import {
   getMentors, requestMentor, blockUser,
   COMMUNITY_NOT_CONFIGURED, MINORS_CANNOT_REQUEST,
 } from '../../../api/communityService';
-import { communityAccess, restrictionMessage } from '../../../logic/accountAccess';
+import { communityAccess, restrictionMessage } from '../../../logic/allowed';
 
 export default function MentorsScreen() {
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();

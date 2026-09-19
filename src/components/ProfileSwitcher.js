@@ -32,7 +32,7 @@ export default function ProfileSwitcher() {
     activeDef, isMasterActive, allowedTypes, restrictedReason,
     switchProfile, addProfile, archive, signOut, signIn, hasPin, setPin, clearPin,
   } = useProfiles();
-  const { stage } = useAccess();
+  const { can } = useAccess();
 
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState('list');       // 'list' | 'add' | 'pin'
@@ -281,9 +281,10 @@ export default function ProfileSwitcher() {
                   )}
                 </ScrollView>
 
-                {/* A second profile is a stage 2 idea (src/data/experienceStages.js):
-                    on a first day, one profile is plenty to learn. */}
-                {stage > 1 && (
+                {/* A second profile opens with 'all-tools' (src/data/experienceStages.js):
+                    on a first day, one profile is plenty to learn. Profiles
+                    that already exist are always listed above. */}
+                {can('all-tools') && (
                 <TouchableOpacity
                   style={[st.addBtn, { borderColor: c.teal }]}
                   onPress={() => { setNewType(allowedTypes[0]?.key || 'PERSONAL'); setMode('add'); }}

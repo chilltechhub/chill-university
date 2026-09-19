@@ -1,135 +1,275 @@
 // src/data/experienceStages.js
-// How much of the app someone sees, and when they see more.
+// How much of the app someone sees, and what opens next.
 //
-// The app does a great many things. A new account used to get all of them
-// at once: ten widgets on Home, thirty-two games behind two rows of filter
-// chips, three Library views, and a Compass listing everything still locked.
-// Now it grows with you, in three stages:
+// This is question 3 of the four in docs/access-system.md, "Shown now?".
+// It decides what is on the map, never what can be opened: a hidden tool is
+// still reachable from a goal's "Open" button or a link. The doors
+// (src/data/featureCatalog.js) and the age rules (src/logic/allowed.js) are
+// separate questions, asked before this one, and a stage never overrides
+// either.
 //
-//   1  Getting started   one simple goal, the handful of tools that fit your
-//                        profile type, and six games picked for it
-//   2  Finding your feet your type's full dashboard, every open tool, every
-//                        game. Locked tools stay out of sight until earned.
-//   3  Everything        the lot, including the locked tools and how to open
-//                        them, experimental work and Plus
-//
-// This is visibility, NOT a gate. A hidden tool is still open — a step's
-// "Open" button, a link from another screen, or a Settings switch all still
-// reach it. The gates (src/data/featureCatalog.js) are a separate question,
-// and a stage never overrides one.
+// The app opens a little at a time. Each account type walks its own path of
+// ten small stages, and each goal finished or level gained opens the next
+// one. A stage adds a tool, a few games or a widget or two, never the whole
+// app at once. Account type decides WHICH things come first; progress
+// decides HOW MANY are open.
 //
 // Nothing here is stored. The stage is worked out from progress the app
-// already keeps honestly — finished objectives and level — so it survives a
-// reinstall and a new device without a column of its own. The one stored
-// thing is the "show me everything" choice (see AccessContext).
+// already keeps honestly (finished goals and level), so it survives a
+// reinstall without a column of its own. "Show everything" is the one
+// stored choice (see AccessContext).
 //
 // No imports on purpose, same as featureCatalog.js and objectives.js: plain
 // data a script can load without the React Native graph.
 
-export const STAGES = [
+// ─── What a stage can add ───────────────────────────────────────────────────
+//
+//   features  featureCatalog ids of OPEN tools now on the map
+//   screens   routes outside the catalog now on the map (see STAGED_SCREENS)
+//   widgets   Home widgets added to the fixed dashboard, in order
+//   games     training games now listed, by gameRegistry id
+//   fab       quick actions now on the + button
+//   caps      the four bigger openings, one per stage at most:
+//               'all-games'  every game, plus Training's filters and Progress tab
+//               'dashboard'  your type's full dashboard, the widget editor,
+//                            every quick action, the Getting Started card
+//               'all-tools'  every open tool, other types' classes, extra
+//                            profiles, the leaderboard
+//               'doors'      locked tools and the keys that open them, Labs,
+//                            Plus once it is on sale, every widget
+//   reteach   screens that have noticeably more on them now, so their
+//             first-visit tutorial runs again
+//
+// Every step of a type's first goal (objectives.js, `intro: true`) must point
+// at something its stage 1 shows. The guide walks people through that goal,
+// so a step that leads somewhere hidden would teach them the app hides things.
+
+export const CAPS = ['all-games', 'dashboard', 'all-tools', 'doors'];
+
+// The last five stages are the same shape for everyone; only the eighth
+// differs, because it is whichever core tool that type hasn't met yet.
+const tail = (eighth) => [
   {
-    n: 1,
-    key: 'starter',
-    label: 'Getting started',
-    blurb: 'One goal, a few tools and six games picked for your profile type.',
+    key: 'all-games',
+    label: 'Every training game',
+    blurb: 'All the games, with subject and type filters, and your Progress tab.',
+    caps: ['all-games'],
   },
   {
-    n: 2,
-    key: 'growing',
-    label: 'Finding your feet',
-    blurb: 'Your full dashboard, every open tool and every game.',
+    key: 'dashboard',
+    label: 'Your dashboard, your way',
+    blurb: 'Rearrange Home, every quick action on the +, and the rest of setup.',
+    caps: ['dashboard'],
+    reteach: ['Home'],
+  },
+  eighth,
+  {
+    key: 'all-tools',
+    label: 'Every open tool',
+    blurb: 'The rest of the Library, other tracks in Classes, the leaderboard and extra profiles.',
+    caps: ['all-tools'],
+    reteach: ['LibraryScreen'],
   },
   {
-    n: 3,
-    key: 'full',
-    label: 'Everything',
-    blurb: 'All of it, including locked tools and how to open them.',
+    key: 'doors',
+    label: 'Locked tools and Labs',
+    blurb: 'Deeper tools and what opens each one, experimental features, and every widget.',
+    caps: ['doors'],
   },
 ];
 
-export const MAX_STAGE = 3;
-
-// What moves you up. Either counts — objectives are the intended route,
-// level is there so somebody who mostly plays games isn't held back by a
-// checklist they never opened.
-export const STAGE_RULES = {
-  2: { objectives: 1, level: 3 },
-  3: { objectives: 3, level: 6 },
+const BUILD = {
+  key: 'build',
+  label: 'The Workshop and Idea Garden',
+  blurb: 'Somewhere to grow ideas and build them into projects.',
+  features: ['workshop', 'idea-garden'],
 };
 
-// ─── The starting app, per profile type ─────────────────────────────────────
-//
-//   features    featureCatalog ids shown at stage 1. Everything else in the
-//               catalog appears at stage 2 (open) or 3 (locked, Plus).
-//   screens     routes that aren't in the catalog but should still show at
-//               stage 1 (the Wayfinder, which is ungated on purpose).
-//   widgets     the three Home widgets stage 1 shows, in order.
-//   games       the six starter games, by gameRegistry id.
-//   fab         the quick-action keys the + button offers at stage 1.
-//   firstObjective  the simple goal started for you at the end of onboarding.
-//   purpose     the purpose set alongside it, so the Compass has one without
-//               asking a brand-new account "what are you here for?".
-//
-// Every step of each firstObjective points at a screen in its own
-// `features` list — a first goal whose "Open" button leads somewhere the
-// person can't otherwise find would teach them the app is hiding things.
-
-const BASE_FEATURES = ['home-desk', 'training', 'compass', 'life-areas', 'planner', 'capture'];
-
-export const STARTER_PLANS = {
-  PERSONAL: {
-    features: [...BASE_FEATURES],
-    screens: ['WayfinderScreen'],
-    widgets: ['hq', 'compass', 'lifeAreas'],
-    games: ['mindgym', 'exercise', 'budget', 'people', 'memory', 'snackcatch'],
-    fab: ['reminder', 'note', 'inbox'],
-    firstObjective: 'first-steps',
-    purpose: 'habits',
-  },
-  STUDENT: {
-    features: [...BASE_FEATURES, 'classes', 'knowledge-vault'],
-    screens: ['WayfinderScreen'],
-    widgets: ['hq', 'compass', 'studyBlocks'],
-    games: ['factor', 'word', 'classify', 'world', 'scramble', 'memory'],
-    fab: ['calendar', 'note', 'inbox'],
-    firstObjective: 'first-study-session',
-    purpose: 'learn',
-  },
-  BUSINESS: {
-    features: [...BASE_FEATURES, 'workshop', 'classes'],
-    screens: [],
-    widgets: ['hq', 'compass', 'recurringOps'],
-    games: ['registerready', 'shiftmanager', 'people', 'career', 'budget', 'survivemonth'],
-    fab: ['project', 'reminder', 'inbox'],
-    firstObjective: 'first-ops-check',
-    purpose: 'career',
-  },
-  ENTREPRENEUR: {
-    features: [...BASE_FEATURES, 'idea-garden', 'workshop', 'classes'],
-    screens: [],
-    widgets: ['hq', 'compass', 'founderQuest'],
-    games: ['budget', 'trail', 'survivemonth', 'career', 'people', 'codebreaker'],
-    fab: ['project', 'note', 'inbox'],
-    firstObjective: 'first-founder-step',
-    purpose: 'build',
-  },
+const VAULT = {
+  key: 'vault',
+  label: 'The Knowledge Vault',
+  blurb: 'Notes, links, papers and tools, all in one searchable place.',
+  features: ['knowledge-vault'],
 };
 
-// Onboarding's "I'm not sure yet". Whatever type that landed on, the one
-// widget built for not knowing yet leads, and the Wayfinder is reachable.
-export const EXPLORING_WIDGETS = ['hq', 'compass', 'wayfinder'];
+export const PATHS = {
+  PERSONAL: [
+    {
+      key: 'start',
+      label: 'Getting started',
+      blurb: 'Home, your first goal, Life Areas, the Planner and three games.',
+      features: ['home-desk', 'compass', 'training', 'life-areas', 'planner'],
+      screens: ['WayfinderScreen'],
+      widgets: ['hq', 'compass', 'lifeAreas'],
+      games: ['mindgym', 'exercise', 'memory'],
+      fab: ['reminder'],
+    },
+    {
+      key: 'capture',
+      label: 'The Capture Inbox',
+      blurb: 'Get a thought out of your head now, decide where it goes later.',
+      features: ['capture'],
+      widgets: ['focus'],
+      fab: ['note', 'inbox'],
+    },
+    {
+      key: 'games',
+      label: 'Three more games',
+      blurb: 'Budget Balance, People Skills and Snack Catch, plus your streak on Home.',
+      games: ['budget', 'people', 'snackcatch'],
+      widgets: ['habitRings', 'streak'],
+    },
+    {
+      key: 'wayfinder',
+      label: 'The Wayfinder on Home',
+      blurb: 'Work out what you want, and today’s drills on your dashboard.',
+      widgets: ['wayfinder', 'dailyDrills'],
+    },
+    { ...VAULT, widgets: ['desk', 'wisdom'] },
+    ...tail(BUILD),
+  ],
 
-// Routes outside the feature catalog that still belong to a stage. Anything
-// not listed here and not in the catalog is always visible — the Life Area
+  STUDENT: [
+    {
+      key: 'start',
+      label: 'Getting started',
+      blurb: 'Home, your first goal, Classes, the Planner and three games.',
+      features: ['home-desk', 'compass', 'training', 'classes', 'planner'],
+      screens: ['WayfinderScreen'],
+      widgets: ['hq', 'compass', 'studyBlocks'],
+      games: ['factor', 'word', 'classify'],
+      fab: ['calendar'],
+    },
+    { ...VAULT, widgets: ['classProgress'], fab: ['note'] },
+    {
+      key: 'games',
+      label: 'Three more games',
+      blurb: 'World Explorer, Word Scramble and Memory Match, plus your streak on Home.',
+      games: ['world', 'scramble', 'memory'],
+      widgets: ['dailyDrills', 'streak'],
+    },
+    {
+      key: 'capture',
+      label: 'The Capture Inbox',
+      blurb: 'Get a thought out of your head now, decide where it goes later.',
+      features: ['capture'],
+      widgets: ['focus', 'activities'],
+      fab: ['inbox'],
+    },
+    {
+      key: 'areas',
+      label: 'Life Areas',
+      blurb: 'Eight sides of a life, each with a rating you set and one small thing to do.',
+      features: ['life-areas'],
+      widgets: ['wayfinder', 'desk'],
+    },
+    ...tail(BUILD),
+  ],
+
+  BUSINESS: [
+    {
+      key: 'start',
+      label: 'Getting started',
+      blurb: 'Home, your first goal, the Capture Inbox, the Planner and three games.',
+      features: ['home-desk', 'compass', 'training', 'capture', 'planner'],
+      widgets: ['hq', 'compass', 'recurringOps'],
+      games: ['registerready', 'shiftmanager', 'people'],
+      fab: ['reminder'],
+    },
+    {
+      key: 'workshop',
+      label: 'The Workshop',
+      blurb: 'Every project in one place, from blueprint to shipped.',
+      features: ['workshop'],
+      widgets: ['builds'],
+      fab: ['project'],
+    },
+    {
+      key: 'games',
+      label: 'Three more games',
+      blurb: 'Career Compass, Budget Balance and Survive the Month, plus a systems check.',
+      games: ['career', 'budget', 'survivemonth'],
+      widgets: ['systemsCheck', 'streak'],
+    },
+    {
+      key: 'classes',
+      label: 'Academy Classes',
+      blurb: 'The business operations and compliance tracks.',
+      features: ['classes'],
+      widgets: ['focus'],
+    },
+    {
+      key: 'areas',
+      label: 'Life Areas',
+      blurb: 'Eight sides of a life, each with a rating you set and one small thing to do.',
+      features: ['life-areas'],
+      widgets: ['desk', 'orgSnapshot'],
+      fab: ['note', 'inbox'],
+    },
+    ...tail({ ...VAULT, features: ['knowledge-vault', 'idea-garden'], label: 'The Knowledge Vault and Idea Garden' }),
+  ],
+
+  ENTREPRENEUR: [
+    {
+      key: 'start',
+      label: 'Getting started',
+      blurb: 'Home, your first goal, the Idea Garden, the Workshop and three games.',
+      features: ['home-desk', 'compass', 'training', 'idea-garden', 'workshop'],
+      widgets: ['hq', 'compass', 'founderQuest'],
+      games: ['budget', 'survivemonth', 'trail'],
+      fab: ['project'],
+    },
+    {
+      key: 'capture',
+      label: 'The Capture Inbox',
+      blurb: 'Get a thought out of your head now, decide where it goes later.',
+      features: ['capture'],
+      widgets: ['ideas'],
+      fab: ['note', 'inbox'],
+    },
+    {
+      key: 'games',
+      label: 'Three more games',
+      blurb: 'Career Compass, People Skills and Code Breaker, plus the Vault on Home.',
+      games: ['career', 'people', 'codebreaker'],
+      widgets: ['vaultStatus', 'streak'],
+    },
+    {
+      key: 'classes',
+      label: 'Academy Classes',
+      blurb: 'The entity, credit and funding tracks.',
+      features: ['classes'],
+      widgets: ['targetsReadiness'],
+    },
+    {
+      key: 'planner',
+      label: 'The Planner and Life Areas',
+      blurb: 'Your agenda, and eight sides of a life to keep an eye on.',
+      features: ['planner', 'life-areas'],
+      widgets: ['builds', 'desk'],
+      fab: ['calendar', 'reminder'],
+    },
+    ...tail(VAULT),
+  ],
+};
+
+export const MAX_STAGE = PATHS.PERSONAL.length;
+
+// Onboarding's "I'm not sure yet". Whatever type that landed on, the widget
+// built for not knowing yet joins stage 1, straight under the Compass.
+export const EXPLORING_WIDGET = 'wayfinder';
+
+// Routes outside the feature catalog that still belong to the map. Anything
+// not listed here and not in the catalog is always shown — the Life Area
 // sub-sections, Profile, Settings, Help and the rest. Failing open is the
 // point: a screen nobody classified should never quietly vanish.
 //
-// A value is either the stage number it appears at, or a catalog feature id
-// it follows (an alias route onto the same screen).
+// `true` means "shown once a stage lists it, or from 'all-tools'". A string
+// is a catalog feature id the route follows (an alias onto the same tool).
 export const STAGED_SCREENS = {
-  WayfinderScreen:         2, // stage 1 only where a plan lists it
-  Leaderboard:             2,
-  AllProfiles:             2,
+  WayfinderScreen:         true,
+  Leaderboard:             true,
+  AllProfiles:             true,
   ProjectDetail:           'workshop',
   NotesScreen:             'knowledge-vault',
   ResearchScreen:          'knowledge-vault',
@@ -140,20 +280,13 @@ export const STAGED_SCREENS = {
   ModerationQueueScreen:   'discover',
 };
 
-// The lines the "more of the app is open" notice shows on the way up. Kept
-// short and concrete — what you can now see, not a feature list.
-export const STAGE_OPENS = {
-  2: [
-    'Your full dashboard, plus the widget editor',
-    'Every training game, with subject and type filters',
-    'Every open tool in the Library',
-    'All the quick actions on the + button',
-    'The Getting Started card, to finish setting up',
-  ],
-  3: [
-    'Locked tools, and the objective or test that opens each',
-    'Experimental features, if you want them',
-    'The Plus tier',
-    'Every widget in the dashboard editor',
-  ],
+// The simple goal each type is handed at the end of onboarding, and the
+// purpose set alongside it so the Compass has one without asking a
+// brand-new account "what are you here for?". The guide walks people
+// through it step by step (src/logic/useGuidedFirstGoal.js).
+export const FIRST_GOALS = {
+  PERSONAL:     { objective: 'first-steps',         purpose: 'habits' },
+  STUDENT:      { objective: 'first-study-session', purpose: 'learn' },
+  BUSINESS:     { objective: 'first-ops-check',     purpose: 'career' },
+  ENTREPRENEUR: { objective: 'first-founder-step',  purpose: 'build' },
 };

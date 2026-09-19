@@ -58,6 +58,8 @@ import CohortRosterScreen from './src/screens/organization/CohortRosterScreen';
 import { useUserProgress } from './context/UserProgressContext';
 import { supabase } from './src/api/supabaseClient';
 import useFirstVisitTutorial from './src/logic/useFirstVisitTutorial';
+import useGuidedFirstGoal from './src/logic/useGuidedFirstGoal';
+import { goToScreen } from './src/logic/appRoutes';
 
 // Compass-gated root routes. Built at module scope so the navigator gets a
 // stable component reference (an inline wrapper would remount the screen on
@@ -191,7 +193,10 @@ function AppInner() {
   // here: useSetting is built on useFocusEffect, and AppInner sits ABOVE
   // NavigationContainer, where there is no navigation context to focus.
   const { registerNavigator, startScreenTour, active: tourActive } = useTour();
-  const maybeTeachScreen = useFirstVisitTutorial({ tourActive, startScreenTour });
+  // The guide walks a new account through its first goal, and while it
+  // does, screens don't also teach themselves (src/logic/useGuidedFirstGoal.js).
+  const { guiding } = useGuidedFirstGoal(currentRouteName);
+  const maybeTeachScreen = useFirstVisitTutorial({ tourActive, startScreenTour, paused: guiding });
 
   // Pulls in any admin-added pets/backgrounds from Supabase Storage (see
   // supabase/migrations/20260828_remote_art_storage.sql) once per app
@@ -316,7 +321,10 @@ function AppInner() {
         const name = navigationRef.current?.getCurrentRoute()?.name;
         setShowTopBar(!NO_TOPBAR_ROUTES.has(name));
         setCurrentRouteName(name);
-        registerNavigator((routeName, params) => navigationRef.current?.navigate(routeName, params));
+        registerNavigator(
+          (routeName, params) => navigationRef.current?.navigate(routeName, params),
+          (screen, params) => goToScreen(navigationRef.current, screen, params),
+        );
         maybeTeachScreen(name);
       }}
       onStateChange={() => {

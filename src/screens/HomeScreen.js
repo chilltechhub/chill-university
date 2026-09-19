@@ -42,7 +42,6 @@ import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import { RANK_LABELS, FONTS } from '../theme';
 import { GAMES_MASTER } from './GamesScreen';
 import { LIFE_AREAS } from './library/LifeAreaScreen';
-import { useConfigValue } from '../../context/RemoteConfigContext';
 
 function daysSince(iso) {
   if (!iso) return null;
@@ -770,18 +769,19 @@ export default function HomeScreen() {
   // layout, and `active` is what the entrepreneur widgets scope their vault
   // documents and baseline to.
   const { activeType, active: activeProfile, refresh: refreshProfiles } = useProfiles();
-  // How much of the app is on show (src/data/experienceStages.js). Stage 1
-  // is a fixed three-widget Home; stage 2 is this type's dashboard with an
-  // editor that only offers this type's widgets; stage 3 is all twenty.
-  const { stage, isScreenVisible, isGameVisible } = useAccess();
+  // How much of the app is on show (src/data/experienceStages.js). Until the
+  // 'dashboard' stage, Home is the widgets this type's path has opened so
+  // far, a couple at a time, with no editor. 'dashboard' brings this type's
+  // own layout and an editor offering this type's widgets; 'doors' offers
+  // all twenty.
+  const { can, opened, isScreenVisible, isGameVisible } = useAccess();
   const { background: playerBackground } = useCharacterLoadout({ level, points, rank, streakDays });
   // Set from Settings → Appearance, not on this screen itself.
   const [bgMode] = useSetting(SETTING_KEYS.HOME_BACKGROUND, 'plain');
-  // Admin-side kill switch — see the matching comment in GamesScreen.js.
-  const disabledGameIds = useConfigValue('disabled_games', []);
+  // The remote kill switch and the stage, both — see isGameVisible.
   const GAMES = useMemo(
-    () => GAMES_MASTER.filter(g => !disabledGameIds.includes(g.key) && isGameVisible(g.key)),
-    [disabledGameIds, isGameVisible]
+    () => GAMES_MASTER.filter(g => isGameVisible(g.key)),
+    [isGameVisible]
   );
   // STUDY picks among these, so it can only land somewhere this stage shows.
   // A Personal account's first day has none of them — the button steps
@@ -968,31 +968,27 @@ export default function HomeScreen() {
   }, [activeProfile?.id, activeProfile?.type, activeProfile?.user_id]);
 
   // What the board actually shows, per stage. Derived, never written back:
-  // widgetLayout above stays the one saved layout, and stage 1's fixed
-  // three are no more a saved layout than the persona default is. So an
-  // arranged dashboard is still exactly as it was the day stage 2 opens.
-  const [exploringIntent, setExploringIntent] = useState(false);
-  useEffect(() => {
-    getWayfinderIntent().then(v => setExploringIntent(!!v)).catch(() => {});
-  }, []);
+  // widgetLayout above stays the one saved layout, and the fixed layout
+  // before 'dashboard' is no more a saved layout than the persona default
+  // is. So an arranged dashboard is exactly as it was the day it reopens.
   const boardLayout = useMemo(() => {
-    if (stage <= 1) return starterWidgetLayout(activeType, WIDGET_KEYS, { exploring: exploringIntent });
-    if (stage === 2) {
+    if (!can('dashboard')) return starterWidgetLayout(opened, WIDGET_KEYS);
+    if (!can('doors')) {
       // The editor's tray offers this type's own widgets, not all twenty.
       const offer = new Set(getPersona(activeType)?.defaultWidgets || []);
       return widgetLayout.filter(l => !l.hidden || offer.has(l.key));
     }
     return widgetLayout;
-  }, [stage, activeType, exploringIntent, widgetLayout]);
+  }, [can, opened, activeType, widgetLayout]);
   // The board only ever sees boardLayout, so what it hands back is missing
-  // whatever stage 2 left out of the tray. Put those back, as they were.
+  // whatever the tray left out. Put those back, as they were.
   const changeBoardLayout = useCallback((next) => {
     setWidgetLayout(prev => {
       const inNext = new Set(next.map(l => l.key));
       return [...next, ...prev.filter(l => !inNext.has(l.key))];
     });
   }, []);
-  const canEditWidgets = stage > 1;
+  const canEditWidgets = can('dashboard');
 
   // Applies a previously-cached (or freshly-fetched) desk snapshot to state.
   // Same shape either way, so a cold offline launch and a live load render
@@ -1567,10 +1563,10 @@ export default function HomeScreen() {
              in a layout the user reorders and persists. Hidden entirely
              while widgets are being edited, so it can't be mistaken for
              one. ── */}
-        {/* Not on a first day: the first goal on the Compass card is the
-            one thing to do, and a setup checklist beside it would be a
-            second. It arrives with stage 2, when there's more to set up. */}
-        {!editingWidgets && stage > 1 && <GettingStartedCard onNavigate={goToTarget} />}
+        {/* Not early on: the goal on the Compass card is the one thing to
+            do, and a setup checklist beside it would be a second. It
+            arrives with the 'dashboard' stage, when there's more to set up. */}
+        {!editingWidgets && can('dashboard') && <GettingStartedCard onNavigate={goToTarget} />}
 
         {/* ── Dashboard widgets — order/visibility from widgetLayout, drag
              handles + jiggle only live while editingWidgets. See

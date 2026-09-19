@@ -16,11 +16,13 @@
 //                   account opts in (profiles.experimental_opt_in), because
 //                   stumbling into rough work you never asked for reads as a
 //                   broken app, not an early look.
-//   'paid'          Needs an active plan (profiles.plan = 'plus').
+//   'paid'          Needs an active plan (profiles.plan = 'plus'). Kept out of
+//                   sight entirely until Plus is on sale (app_config row
+//                   'plus_on_sale'): a door with no key is noise.
 //
 // A gate is a front door, not a security boundary. Anything that genuinely
 // must not happen — publishing as a minor, reading another account's rows —
-// is enforced in SQL (see accountAccess.js's note on the same split) and
+// is enforced in SQL (see src/logic/allowed.js) and
 // stays enforced whatever this file says.
 //
 // ─── the rest of the fields ─────────────────────────────────────────────────
@@ -34,6 +36,9 @@
 //               with for someone brand new versus what it holds back.
 //   unlockedBy  objective ids; finishing ANY of them opens it.
 //   testable    offer the test-out route (src/data/competencyTests.js).
+//   settingKey  a Settings switch that is also a key to this door (Educator
+//               Mode for the Lesson Builder). One more way in, and the lock
+//               knows about it — not a side door around the lock.
 //   why         shown on the lock — what you get, in plain words.
 
 export const FEATURES = [
@@ -228,8 +233,9 @@ export const FEATURES = [
     purposes: ['learn', 'career'],
     unlockedBy: ['run-one-lesson'],
     testable: true,
+    settingKey: 'educatorMode',
     blurb: 'Build and save classroom-day lesson plans for other people.',
-    why: 'An authoring tool in a learner’s hands is clutter. Show you teach, or prove you know how, and it appears. If you already teach, Settings → Educator Mode switches it on directly — this route is for everyone who was never going to go looking in Settings.',
+    why: 'An authoring tool in a learner’s hands is clutter. Show you teach, or prove you know how, and it appears. If you already teach, Educator Mode in Settings opens it straight away.',
   },
   {
     id: 'savings-investing',

@@ -17,6 +17,7 @@ import RelatedLinks, { EXCLUDE_LINK_FILTER } from './RelatedLinks';
 import TourSpot from '../../components/TourSpot';
 import LockBadge from '../../components/LockBadge';
 import { useFeatureGate } from '../../components/FeatureGate';
+import { useAccess } from '../../../context/AccessContext';
 import { featureForScreen } from '../../data/featureCatalog';
 import { unlockHint } from '../../logic/featureAccess';
 import { todayStr } from '../../logic/dateUtils';
@@ -254,6 +255,7 @@ export default function LifeAreaScreen() {
   // sense once you've looked at your own numbers). Everything else comes
   // back as null from featureForScreen and behaves exactly as before.
   const { accessFor, gatedNavigate, sheet: unlockSheet } = useFeatureGate();
+  const { signalAction } = useAccess();
 
   const [notes,       setNotes]       = useState([]);
   const [loading,     setLoading]     = useState(true);
@@ -264,6 +266,11 @@ export default function LifeAreaScreen() {
   const [weekModal,   setWeekModal]   = useState(false);
   const [rating,      setRating]      = useState(0);
   const [saving,      setSaving]      = useState(false);
+  // The log entry the last tap wrote, so a note typed afterwards joins that
+  // entry instead of floating in the feed as a separate, unexplained line.
+  const [ratingEntry, setRatingEntry] = useState(null);
+  const [ratingNote,  setRatingNote]  = useState('');
+  const [ratingNoteSaved, setRatingNoteSaved] = useState(false);
 
   // Each sub-section's next action, and one focus for the area. Reads and
   // timers open their sheet here; everything else runs in place.
@@ -341,26 +348,60 @@ export default function LifeAreaScreen() {
   const saveRating = async (val) => {
     const prev = rating;
     setRating(val);
-    if (!userId || val === prev) return;
-    try {
-      // Not offlineWrite here — this upserts on the (user_id, label) unique
-      // pair, not on id, so offlineWrite's id-based conflict target would
-      // create a duplicate row instead of updating this one. The rating
-      // note below (which IS a plain insert, no such constraint) is what
-      // actually shows in the feed either way, so a failed/offline upsert
-      // here just means the summary card is a beat behind, not lost data.
-      await supabase.from('life_areas').upsert({ user_id: userId, label: area.label, progress: val, last_check_date: todayStr() }, { onConflict: 'user_id,label' });
-    } catch (e) { console.warn('LifeAreaScreen saveRating', e); }
-    // Log the change itself so rating history is visible in the feed below,
-    // not just the current value.
+    if (val === prev) return;
+    setRatingNote('');
+    setRatingNoteSaved(false);
+    // Rating is how the guided first goal knows the step is done.
+    signalAction('area-rated', { area: area.id });
     const stars = '★'.repeat(val) + '☆'.repeat(5 - val);
     const entry = {
       user_id: userId, area_id: area.id,
       content: `[Rating] ${stars} — rated ${val}/5${prev ? ` (was ${prev}/5)` : ''}`,
       created_at: new Date().toISOString(),
     };
+    // A guest's rating lives on this screen only, like a guest's notes do.
+    if (!userId) {
+      const local = { ...entry, id: `local-${Date.now()}` };
+      setNotes(p => [local, ...p]);
+      setRatingEntry(local);
+      return;
+    }
+    try {
+      // Find-then-write, not an upsert. The upsert this used to be named
+      // (user_id, label) as its conflict target, but the live table has no
+      // unique constraint on that pair, so every rating failed with 42P10
+      // and never reached life_areas — the Library rings, Home's Life Areas
+      // widget and the check-in-due list never saw a single one. Only the
+      // log entry below ever landed.
+      const fields = { progress: val, last_check_date: todayStr() };
+      const { data: rows } = await supabase.from('life_areas')
+        .select('id').eq('user_id', userId).eq('label', area.label).limit(1);
+      const { error } = rows?.[0]
+        ? await supabase.from('life_areas').update(fields).eq('id', rows[0].id)
+        : await supabase.from('life_areas').insert({ user_id: userId, label: area.label, ...fields });
+      if (error) throw error;
+    } catch (e) { console.warn('LifeAreaScreen saveRating', e?.message || e); }
+    // Log the change itself so rating history is visible in the feed below,
+    // not just the current value.
     const { row: data } = await offlineWrite(supabase, 'area_notes', entry);
-    if (data) setNotes(p => [data, ...p]);
+    if (data) {
+      setNotes(p => [data, ...p]);
+      setRatingEntry(data);
+    }
+  };
+
+  // Optional "why this number". Rewrites the rating's own log entry (same
+  // id, so an upsert) rather than adding a second one — the number and the
+  // reason for it belong on one line of history.
+  const saveRatingNote = async () => {
+    const text = ratingNote.trim();
+    if (!text || !ratingEntry) return;
+    const base = ratingEntry.content.split('\n')[0];
+    const updated = { ...ratingEntry, content: `${base}\n${text}` };
+    setNotes(p => p.map(n => (n.id === updated.id ? updated : n)));
+    setRatingEntry(updated);
+    setRatingNoteSaved(true);
+    if (userId) await offlineWrite(supabase, 'area_notes', updated, { type: 'UPSERT' });
   };
 
   const saveWeeklyReflection = async () => {
@@ -408,6 +449,21 @@ export default function LifeAreaScreen() {
                 </TouchableOpacity>
               ))}
             </View>
+            {ratingEntry && (ratingNoteSaved ? (
+              <Text style={{ fontSize: t.xs, color: c.text3, marginTop: s.sm }}>Note saved with this rating.</Text>
+            ) : (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginTop: s.sm }}>
+                <TextInput
+                  style={{ flex: 1, backgroundColor: c.bg0, borderRadius: r.md, paddingHorizontal: s.md, paddingVertical: 8, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: color + '44' }}
+                  value={ratingNote} onChangeText={setRatingNote}
+                  placeholder="Add a note: why this number? (optional)" placeholderTextColor={c.text4}
+                  returnKeyType="done" onSubmitEditing={saveRatingNote} />
+                <TouchableOpacity onPress={saveRatingNote} disabled={!ratingNote.trim()}
+                  style={{ paddingHorizontal: s.md, paddingVertical: 8, borderRadius: r.md, backgroundColor: color, opacity: ratingNote.trim() ? 1 : 0.5 }}>
+                  <Text style={{ color: '#fff', fontWeight: t.bold, fontSize: t.sm }}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
           </View>
           </TourSpot>
         </View>
@@ -463,7 +519,8 @@ export default function LifeAreaScreen() {
           {area.sections.map((sec, i) => {
             const feature = sec.screen ? featureForScreen(sec.screen) : null;
             // A locked sub-section (Savings & Investing, Debt & Credit)
-            // stays out of sight until stage 3 or until it's earned — see
+            // stays out of sight until the last stage, until the goal in
+            // flight opens it, or until it's earned — see
             // src/data/experienceStages.js. Earned, it shows like any other.
             if (feature && accessFor(feature.id).hidden) return null;
             return (

@@ -11,9 +11,15 @@
 // `navigation.navigate('ClassesStack', { screen })` — should read
 // CLASS_SCREEN_MAP here rather than keeping its own copy.
 
-// `personas` — which profile types see this subject. Omit it and the subject
-// shows everywhere; that's the default so a newly added subject is never
-// invisible by accident.
+// `personas` — which profile types this subject is FOR. It decides what's on
+// the map (question 3 in docs/access-system.md): a type's own subjects show
+// from the start, everyone else's appear under "Other tracks" once the
+// 'all-tools' stage opens. Omit it and the subject belongs to every type.
+//
+// `adult` — 18+ only (question 1, src/logic/allowed.js). The business-
+// ownership and startup tracks cover credit, funding, tax and entity law.
+// This used to be enforced only by the fact that minors can't pick Business;
+// it's an age rule now, so it holds whatever type someone is on.
 //
 // The split: school subjects belong to PERSONAL and STUDENT profiles, not to
 // someone's night job or their startup. The business-ownership track is the
@@ -140,6 +146,7 @@ export const CLASS_SUBJECTS = [
   // src/data/ownershipCurriculum.js.
   {
     title: 'Business Foundations',
+    adult: true,
     icon: 'library',
     color: '#3AC860',
     description: 'Shared groundwork for both paths',
@@ -152,6 +159,7 @@ export const CLASS_SUBJECTS = [
   },
   {
     title: 'Acquisition & Ownership',
+    adult: true,
     icon: 'business',
     color: '#E0A830',
     description: 'Buy or grow a cash-flow business, and the property under it',
@@ -164,6 +172,7 @@ export const CLASS_SUBJECTS = [
   },
   {
     title: 'Startup & Venture',
+    adult: true,
     icon: 'rocket',
     color: '#8B4FC4',
     description: 'Validate, build, grow, and raise',
@@ -185,6 +194,7 @@ export const CLASS_SUBJECTS = [
   // see completion per employee.
   {
     title: 'Operations & Compliance',
+    adult: true,
     icon: 'shield-checkmark',
     color: '#C0392B',
     description: 'Run the business, train the team, stay compliant',

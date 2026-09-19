@@ -30,9 +30,8 @@ import { useUIPrefs } from '../../context/UIPrefsContext';
 import { useCommandPalette } from '../../context/CommandPaletteContext';
 import { supabase } from '../api/supabaseClient';
 import { cacheRead, cacheWrite } from '../api/offlineCache';
-import { searchDestinations, defaultDestinations, navigateTo, isDestinationAllowed, isRowShown } from '../logic/searchIndex';
+import { searchDestinations, defaultDestinations, navigateTo, isRowShown } from '../logic/searchIndex';
 import { useAccess } from '../../context/AccessContext';
-import { useProfiles } from '../../context/ProfileAccountsContext';
 import { searchContent } from '../logic/globalSearch';
 import { KINDS, rowKind } from '../screens/library/knowledge';
 
@@ -78,12 +77,13 @@ export default function CommandPalette() {
   const [searching, setSearching] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [recents, setRecents] = useState([]);
-  // Same profile-type rule the Academy screen applies — see
-  // isDestinationAllowed in searchIndex.js for why search needs it too.
-  const { activeType } = useProfiles();
-  // And the experience stage's rule — see isRowShown in searchIndex.js.
-  const { isScreenVisible, isGameVisible } = useAccess();
-  const visibility = useMemo(() => ({ isScreenVisible, isGameVisible }), [isScreenVisible, isGameVisible]);
+  // The same age and stage rules every screen applies — see isRowShown in
+  // searchIndex.js for why search needs them too.
+  const { isScreenVisible, isGameVisible, isSubjectVisible } = useAccess();
+  const visibility = useMemo(
+    () => ({ isScreenVisible, isGameVisible, isSubjectVisible }),
+    [isScreenVisible, isGameVisible, isSubjectVisible]
+  );
   const inputRef = useRef(null);
   const requestId = useRef(0);
   const handled = useRef(false);
@@ -123,8 +123,8 @@ export default function CommandPalette() {
   }, [query, userId, open]);
 
   const destinations = useMemo(
-    () => (query.trim() ? searchDestinations(query, 8, activeType, visibility) : []),
-    [query, activeType, visibility]
+    () => (query.trim() ? searchDestinations(query, 8, visibility) : []),
+    [query, visibility]
   );
 
   // Flattened, in the order they're rendered — this is what the arrow keys
@@ -133,9 +133,9 @@ export default function CommandPalette() {
     const q = query.trim();
     if (!q) {
       const out = [];
-      const allowedRecents = recents.filter((row) => isDestinationAllowed(row, activeType) && isRowShown(row, visibility));
+      const allowedRecents = recents.filter((row) => isRowShown(row, visibility));
       if (allowedRecents.length) out.push({ title: 'Recent', rows: allowedRecents });
-      out.push({ title: 'Jump to', rows: defaultDestinations(activeType, visibility) });
+      out.push({ title: 'Jump to', rows: defaultDestinations(visibility) });
       return out;
     }
     const out = [];
@@ -173,7 +173,7 @@ export default function CommandPalette() {
       });
     }
     return out;
-  }, [query, destinations, content, recents, c, activeType, visibility]);
+  }, [query, destinations, content, recents, c, visibility]);
 
   const flat = useMemo(() => sections.flatMap((section) => section.rows), [sections]);
 

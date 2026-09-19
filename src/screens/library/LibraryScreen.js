@@ -604,10 +604,11 @@ export default function LibraryScreen() {
     const accent = c[hub.accentKey] || c.teal;
     // Each entry is looked up in the feature catalog and ordered so anything
     // still shut sinks below what's open. What's removed is whatever
-    // access.hidden says: experimental work until it's asked for, and —
-    // since the experience stages — anything this stage doesn't show yet,
-    // locked tools included until stage 3. Entries outside the catalog (the
-    // Wayfinder) go by isScreenVisible, which applies the same stage.
+    // access.hidden says: experimental work until it's asked for, and
+    // anything the current stage doesn't show yet — locked tools included,
+    // until the last stage ('doors') or until the goal in flight opens one.
+    // Entries outside the catalog (the Wayfinder) go by isScreenVisible,
+    // which applies the same stage.
     const visibleItems = hub.items
       .filter(item => !hiddenSections.includes(item.screen))
       .map(item => {

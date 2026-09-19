@@ -4,7 +4,7 @@
 // be used right now, and if not, what are the ways in?
 //
 // Client-side mirror of the 20260915 wayfinder_feature_gating migration, in the same spirit
-// as src/logic/accountAccess.js: the database is the real gate
+// as src/logic/allowed.js: the database is the real gate
 // (unlock_feature() and record_test_attempt() re-check everything and
 // raise), and this exists so the UI can say WHY something is shut and offer
 // the route through, instead of letting someone tap a locked screen and
@@ -98,28 +98,36 @@ export function objectiveProgress(objectiveId, record = null, stats = {}) {
 
 /* ─── The gate ────────────────────────────────────────────────────────────── */
 
+// This is question 2 of the four in docs/access-system.md, "Which door?",
+// with question 3 ("Shown now?") applied on top by evaluateAccess.
+//
 // ctx:
 //   profile      the profiles row
 //   unlocks      { [featureId]: { method, unlocked_at } }
 //   attempts     { [featureId]: { passed, score, total, attempted_at } }
 //   objectives   { [objectiveId]: { status, steps } }
 //   stats        { streakDays, level, points, missionsToday, played }
-//   experience   { stage, persona } — see src/logic/experienceStage.js.
+//   settings     { educatorMode } — switches that are keys to a door
+//                (a feature's `settingKey`)
+//   plusOnSale   whether Plus can actually be bought yet. Until it can, a
+//                Plus door is kept out of sight: there is no key for it.
+//   experience   { opened, goalUnlocks } — see src/logic/experienceStage.js.
 //                Only ever adds `hidden`; it never changes `available`.
-//                Omitted means "show everything", the behaviour from
-//                before stages existed.
+//                Omitted means "show everything".
 //
 // Returns a single object the UI can render without asking any follow-up
 // questions.
 export function evaluateAccess(feature, ctx = {}) {
   const access = evaluateGate(feature, ctx);
-  if (!feature || !ctx.experience) return access;
+  // A door with no key hides itself (Labs switched off, Plus not on sale),
+  // whatever the stage says.
+  if (!feature || !ctx.experience || access.hidden) return access;
   const shown = featureShownAtStage(feature, access, ctx.experience);
   return shown ? access : { ...access, hidden: true };
 }
 
 function evaluateGate(feature, ctx = {}) {
-  const { profile, unlocks = {}, attempts = {}, objectives = {}, stats = {} } = ctx;
+  const { profile, unlocks = {}, attempts = {}, objectives = {}, stats = {}, settings = {} } = ctx;
 
   if (!feature) {
     return {
@@ -159,6 +167,9 @@ function evaluateGate(feature, ctx = {}) {
 
   if (feature.gate === 'paid') {
     const active = planActive(profile);
+    // Plus with nothing to buy it with is a lock without a key. Nobody can
+    // open it, so nobody is shown it.
+    const buyable = ctx.plusOnSale === true;
     return {
       feature,
       gate: 'paid',
@@ -169,8 +180,8 @@ function evaluateGate(feature, ctx = {}) {
       reason: active
         ? 'Part of your plan.'
         : feature.why || 'Part of the Plus plan.',
-      hidden: false,
-      routes: { objectives: [], test: null, plan: !active, optIn: false },
+      hidden: !active && !buyable,
+      routes: { objectives: [], test: null, plan: !active && buyable, optIn: false },
     };
   }
 
@@ -192,6 +203,25 @@ function evaluateGate(feature, ctx = {}) {
   }
 
   /* gate === 'locked' */
+
+  // A Settings switch that is one of this door's keys (Educator Mode for the
+  // Lesson Builder). It opens the door the same way an objective does, and
+  // switching it off closes it again — nothing was earned, so nothing is
+  // kept.
+  const settingOn = !!feature.settingKey && settings[feature.settingKey] === true;
+  if (settingOn) {
+    return {
+      feature,
+      gate: feature.gate,
+      status: 'earned',
+      available: true,
+      method: 'setting',
+      headline: earnedHeadline('setting'),
+      reason: earnedReason('setting', feature),
+      hidden: false,
+      routes: { objectives: [], test: null, plan: false, optIn: false, setting: null },
+    };
+  }
 
   const routeObjectives = (feature.unlockedBy || []).map(id => {
     const progress = objectiveProgress(id, objectives[id], stats);
@@ -237,14 +267,20 @@ function evaluateGate(feature, ctx = {}) {
         : null,
       plan: false,
       optIn: false,
+      setting: feature.settingKey ? { key: feature.settingKey, label: SETTING_KEY_LABELS[feature.settingKey] || 'a Settings switch' } : null,
     },
   };
 }
+
+const SETTING_KEY_LABELS = {
+  educatorMode: 'Educator Mode',
+};
 
 function earnedHeadline(method) {
   if (method === 'test') return 'Tested out';
   if (method === 'objective') return 'Earned';
   if (method === 'granted') return 'Granted';
+  if (method === 'setting') return 'Switched on';
   if (method === 'experimental') return 'Experimental';
   return 'Unlocked';
 }
@@ -253,6 +289,7 @@ function earnedReason(method, feature) {
   if (method === 'test') return `You passed the ${feature.label} check first time.`;
   if (method === 'objective') return `Opened by finishing an objective.`;
   if (method === 'granted') return 'Switched on for your account.';
+  if (method === 'setting') return `Opened by ${SETTING_KEY_LABELS[feature.settingKey] || 'a switch'} in Settings.`;
   return 'Unlocked.';
 }
 
@@ -335,6 +372,9 @@ export function unlockHint(access) {
       : objectives.length > 1
         ? 'Finish an objective'
         : null;
+
+  const setting = access.routes.setting;
+  if (!named && !test && setting) return `Switch on ${setting.label} in Settings`;
 
   if (test?.available) return named ? `${named} — or test out` : 'Test out of it';
   if (test?.closed)    return named ? `${named} — the test is spent` : 'The test is spent';

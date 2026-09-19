@@ -80,6 +80,19 @@ export async function forgetSeenScreens(routeNames = []) {
   } catch { /* the next launch just won't re-teach; not worth surfacing */ }
 }
 
+// The opposite: a screen that has just been taught some other way (the
+// guided first goal teaches Home's goal card) shouldn't then run its own
+// tutorial saying the same thing.
+const seenListeners = new Set();
+export async function markScreensSeen(routeNames = []) {
+  seenListeners.forEach(fn => fn(routeNames));
+  try {
+    const set = await loadSeenScreens();
+    routeNames.forEach(n => set.add(n));
+    await AsyncStorage.setItem(SEEN_KEY, JSON.stringify([...set]));
+  } catch { /* worst case the screen teaches itself once; not worth surfacing */ }
+}
+
 /**
  * Returns a function to call with the current route name on every route
  * change. Safe to call repeatedly with the same name — it only ever acts
@@ -87,8 +100,12 @@ export async function forgetSeenScreens(routeNames = []) {
  *
  * @param tourActive true while any tour/tutorial is already running
  * @param startScreenTour  from useTour()
+ * @param paused     true while the guide is walking someone through their
+ *                   first goal (src/logic/useGuidedFirstGoal.js). Screens
+ *                   visited meanwhile aren't marked seen, so they still
+ *                   teach themselves on a later visit.
  */
-export default function useFirstVisitTutorial({ tourActive, startScreenTour }) {
+export default function useFirstVisitTutorial({ tourActive, startScreenTour, paused = false }) {
   const seen = useRef(null);          // Set, once loaded
   const pending = useRef(null);       // timer handle
   // Route we're currently counting down to teach. Lets a fast navigation
@@ -98,23 +115,26 @@ export default function useFirstVisitTutorial({ tourActive, startScreenTour }) {
   useEffect(() => {
     loadSeenScreens().then(set => { seen.current = set; });
     const forget = (names) => names.forEach(n => seen.current?.delete(n));
+    const mark = (names) => names.forEach(n => seen.current?.add(n));
     forgetListeners.add(forget);
+    seenListeners.add(mark);
     return () => {
       forgetListeners.delete(forget);
+      seenListeners.delete(mark);
       if (pending.current) clearTimeout(pending.current);
     };
   }, []);
 
   // A tour starting for any reason (the Getting Started card, Settings'
-  // replay, the FAB) cancels a pending auto-tutorial — two overlays fighting
-  // over the same screen is worse than missing one.
+  // replay, the FAB, the guide) cancels a pending auto-tutorial — two
+  // overlays fighting over the same screen is worse than missing one.
   useEffect(() => {
-    if (tourActive && pending.current) {
+    if ((tourActive || paused) && pending.current) {
       clearTimeout(pending.current);
       pending.current = null;
       armedFor.current = null;
     }
-  }, [tourActive]);
+  }, [tourActive, paused]);
 
   const markSeen = useCallback(async (routeName) => {
     const set = seen.current || new Set();
@@ -130,7 +150,7 @@ export default function useFirstVisitTutorial({ tourActive, startScreenTour }) {
   return useCallback((routeName) => {
     if (!routeName) return;
     if (NEVER.has(routeName)) return;
-    if (tourActive) return;
+    if (tourActive || paused) return;
     // Still loading the seen set. Skipping is the right call: showing a
     // tutorial someone already dismissed is more annoying than showing it
     // one screen visit later.
@@ -152,5 +172,5 @@ export default function useFirstVisitTutorial({ tourActive, startScreenTour }) {
       markSeen(routeName);
       startScreenTour(routeName);
     }, SETTLE_MS);
-  }, [tourActive, startScreenTour, markSeen]);
+  }, [tourActive, paused, startScreenTour, markSeen]);
 }

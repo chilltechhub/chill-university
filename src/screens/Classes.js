@@ -1,5 +1,5 @@
 // src/screens/Classes.js
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ScrollView, TouchableOpacity, Text, View, StyleSheet, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,7 +10,6 @@ import { useProfiles } from '../../context/ProfileAccountsContext';
 import { supabase } from '../api/supabaseClient';
 import { fetchContentPool } from '../api/remoteConfigService';
 import { listLessonPlans } from '../api/lessonBuilderService';
-import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import { useAccess } from '../../context/AccessContext';
 import { pickRecommendedTopics, pickRecommendedGames } from '../logic/classRecommendations';
 import TourSpot from '../components/TourSpot';
@@ -37,15 +36,16 @@ export default function Classes() {
   // learner's: grade bands, topic readings, practice quizzes. The Classroom
   // Day Lesson Plan Builder is an authoring tool, so its entry points only
   // appear for whoever has said they're teaching.
-  const [educatorMode, setEducatorMode, educatorReady] = useSetting(SETTING_KEYS.EDUCATOR_MODE, null);
-  // The Compass's 'lesson-builder' feature is a SECOND way in, never a
-  // second lock: someone who found the builder through Settings' Educator
-  // Mode keeps it exactly as they had it, and someone who never went looking
-  // in Settings can instead finish "Teach It Once" (or pass its check) and
-  // have the authoring entry points appear. Either satisfies this; neither
-  // takes anything away.
-  const { isOpen } = useAccess();
-  const showAuthoring = educatorMode === true || isOpen('lesson-builder');
+  //
+  // Educator Mode is one of the keys to the 'lesson-builder' door
+  // (featureCatalog's `settingKey`), next to finishing "Teach It Once" or
+  // passing its check. The door knows about all three, so asking it is the
+  // whole question — there's no second way round it.
+  const { isOpen, doorSettings, setDoorSetting, isSubjectVisible, signalAction } = useAccess();
+  const educatorReady = doorSettings && 'educatorMode' in doorSettings;
+  const educatorMode = doorSettings?.educatorMode ?? null;
+  const setEducatorMode = useCallback((on) => setDoorSetting('educatorMode', on), [setDoorSetting]);
+  const showAuthoring = isOpen('lesson-builder');
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   const { showEmojis, showSubtext } = useUIPrefs();
@@ -129,23 +129,31 @@ export default function Classes() {
   // Catalog lives in src/data/classCatalog.js — shared with the Planner's
   // "Link to a class" picker (PlannerScreen.js) so both read one list
   // instead of keeping their own copies that can drift out of sync.
-  // A subject carrying `personaOnly` only appears in those persona modes. The
-  // adult business-ownership track uses it: its content (business credit, SBA
-  // packaging, entity formation) has no business rendering on a child's
-  // account, and BUSINESS/ENTREPRENEUR profiles are already gated to adults
-  // both in the UI (src/data/personas.js) and by the enforce_profile_limits()
-  // trigger on persona_profiles. This filter is the third layer — a minor
-  // cannot create such a profile, and even a mis-typed one cannot surface the
-  // subject.
-  const subjects = useMemo(
-    () => CLASS_SUBJECTS.filter(s => !s.personas || s.personas.includes(activeType)),
-    [activeType],
+  // Two questions decide which subjects show (docs/access-system.md):
+  //   Allowed?    `adult` subjects (business credit, SBA packaging, entity
+  //               formation) never show to anyone under 18 or of unknown age.
+  //   Shown now?  a subject for this profile type shows from the start;
+  //               other types' subjects join under "Other tracks" once the
+  //               'all-tools' stage opens.
+  // isSubjectVisible asks both. This profile type's own subjects come first.
+  const subjects = useMemo(() => {
+    const visible = CLASS_SUBJECTS.filter(isSubjectVisible);
+    const own = (subj) => !subj.personas || (activeType && subj.personas.includes(activeType));
+    return [...visible.filter(own), ...visible.filter(subj => !own(subj))];
+  }, [activeType, isSubjectVisible]);
+  const firstOtherIndex = useMemo(
+    () => subjects.findIndex(subj => subj.personas && !(activeType && subj.personas.includes(activeType))),
+    [subjects, activeType],
   );
   const screenMap = CLASS_SCREEN_MAP;
 
   const goToChild = (label) => {
     const screen = screenMap[label];
-    if (screen) navigation.navigate(screen);
+    if (!screen) return;
+    // Opening a topic is what ticks "open a class and pick a topic" on a
+    // first goal.
+    signalAction('class-opened');
+    navigation.navigate(screen);
   };
 
   // Overlay Supabase's class_subject rows onto the hardcoded list — remote
@@ -282,7 +290,11 @@ export default function Classes() {
           : null;
 
         return (
-          <View key={index} style={styles.cardWrapper}>
+          <React.Fragment key={index}>
+          {index === firstOtherIndex && (
+            <Text style={[styles.recTitle, { marginHorizontal: s.lg, marginTop: s.md, marginBottom: s.sm }]}>Other tracks</Text>
+          )}
+          <View style={styles.cardWrapper}>
             <TouchableOpacity
               style={[styles.category, { borderTopColor: item.color }]}
               onPress={() => {
@@ -360,6 +372,7 @@ export default function Classes() {
               </View>
             )}
           </View>
+          </React.Fragment>
         );
       })}
 

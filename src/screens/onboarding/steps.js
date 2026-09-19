@@ -43,7 +43,7 @@ import CharacterWalker from '../../components/CharacterWalker';
 import PlayerCharacter from '../../components/PlayerCharacter';
 import { OUTFITS } from '../../data/characterOptions';
 import { personasFor, defaultPersonaFor, getPersona } from '../../data/personas';
-import { starterPlanFor } from '../../logic/experienceStage';
+import { firstGoalFor } from '../../logic/experienceStage';
 import { getObjective } from '../../data/objectives';
 
 const { width: SW } = Dimensions.get('window');
@@ -363,7 +363,7 @@ export function PersonaStep({ data, set, theme, isMinor, ageBand }) {
           ))}
           <Text style={{ fontSize: 11, color: c.text4, marginTop: 4, lineHeight: 16 }}>
             {data.experience_mode !== 'full'
-              ? 'Starting simple, the dashboard fills in as you finish your first goal. '
+              ? 'Starting simple, the dashboard fills in a widget or two at a time as you go. '
               : ''}
             You can change type later, add more profiles for other parts of your life, and rearrange
             any of it — your level, points and streak are shared across all of them.
@@ -373,7 +373,8 @@ export function PersonaStep({ data, set, theme, isMinor, ageBand }) {
 
       {/* How much of the app to start with — src/data/experienceStages.js.
           Simple is the default and the recommendation: one goal, the tools
-          that fit this type, six games, and more as goals get finished.
+          that fit this type, three games, and a little more with every goal
+          finished and level gained.
           "Everything" is for someone who already knows apps like this and
           would find a short list patronising. Either is one switch in
           Settings later, so this never has to be the right answer forever. */}
@@ -386,8 +387,8 @@ export function PersonaStep({ data, set, theme, isMinor, ageBand }) {
             title="Start simple"
             tag="Recommended"
             body={(() => {
-              const first = getObjective(starterPlanFor(data.active_persona).firstObjective);
-              return `One goal to start${first ? ` (${first.label})` : ''}, a few tools and six games picked for ${exploring ? 'you' : chosen.short}. More opens as you finish goals.`;
+              const first = getObjective(firstGoalFor(data.active_persona).objective);
+              return `One goal to start${first ? ` (${first.label})` : ''}, with your guide showing you each step. A few tools and three games picked for ${exploring ? 'you' : chosen.short}, and a little more opens with every goal you finish.`;
             })()}
             onPress={() => set('experience_mode', 'auto')}
             theme={theme}

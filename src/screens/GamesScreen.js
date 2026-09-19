@@ -20,7 +20,7 @@ import useCharacterLoadout from '../logic/useCharacterLoadout';
 import useBonusRewards from '../logic/useBonusRewards';
 import useCoinRewards from '../logic/useCoinRewards';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
-import { useFeatureFlag, useConfigValue } from '../../context/RemoteConfigContext';
+import { useFeatureFlag } from '../../context/RemoteConfigContext';
 import TourSpot from '../components/TourSpot';
 import LandscapeBackground from '../components/LandscapeBackground';
 import CharacterWalker from '../components/CharacterWalker';
@@ -86,22 +86,22 @@ export default function GamesScreen() {
   // to hide this for everyone with no app update. Defaults on if the row
   // doesn't exist yet.
   const showLeaderboard = useFeatureFlag('show_leaderboard', true);
-  // Admin-side kill switch — an array of game ids in app_config's
-  // 'disabled_games' row (Supabase → Table Editor, no build/redeploy
-  // needed) — e.g. hide a game that shipped broken until it's fixed.
-  const disabledGameIds = useConfigValue('disabled_games', []);
-  // Stage 1 shows the profile type's six starter games; stage 2 onwards,
-  // every game. The rest aren't locked — just not on the shelf yet.
-  const { stage, isGameVisible } = useAccess();
-  const starter = stage <= 1;
+  // isGameVisible answers both questions that apply to a game: the remote
+  // kill switch (app_config's 'disabled_games' row, question 1) and whether
+  // this account's path has put it on the shelf yet (question 3). Games
+  // opened so far are listed, three or so at a time; the rest aren't
+  // locked, just not on the shelf yet. The 'all-games' stage lists every
+  // one and adds the filters and the Progress tab.
+  const { can, isGameVisible } = useAccess();
+  const starter = !can('all-games');
   const tabs = starter ? STARTER_TABS : TABS;
   const GAMES = useMemo(
-    () => GAMES_MASTER.filter(g => !disabledGameIds.includes(g.key) && isGameVisible(g.key)),
-    [disabledGameIds, isGameVisible]
+    () => GAMES_MASTER.filter(g => isGameVisible(g.key)),
+    [isGameVisible]
   );
   const [activeTab, setActiveTab] = useState('Overview');
-  // Dropping back to stage 1 (switching "show me everything" off) while on
-  // a tab stage 1 doesn't have.
+  // Dropping back (switching "show me everything" off) while on a tab the
+  // current stage doesn't have.
   useEffect(() => {
     if (!tabs.includes(activeTab)) setActiveTab('Overview');
   }, [tabs, activeTab]);

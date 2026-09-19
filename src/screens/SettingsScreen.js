@@ -28,6 +28,7 @@ import { LIFE_AREAS } from './library/LifeAreaScreen';
 import { LIBRARY_HUBS } from './library/LibraryScreen';
 import { CREST_COLORS, ROLE_BADGES } from '../data/crestOptions';
 import { useAccess } from '../../context/AccessContext';
+import { useProfiles } from '../../context/ProfileAccountsContext';
 import { FEATURES } from '../data/featureCatalog';
 import { stageMeta } from '../logic/experienceStage';
 import { MAX_STAGE } from '../data/experienceStages';
@@ -61,8 +62,14 @@ function SettingRow({ icon, iconColor, label, subtitle, right, onPress, c, t, s,
 // here would rebuild the wall of options in the one screen people already
 // open when they feel lost.
 function UnlockSummary({ accessFor, c, t, s, r, onPress }) {
-  const gated = FEATURES.filter(f => f.gate !== 'open');
-  const open = gated.filter(f => accessFor(f.id).available).length;
+  // Counts only doors that are on show. A Plus door before Plus is on sale
+  // is hidden (it has no key), so counting it would be a tally of things
+  // nobody can see or open.
+  const gated = FEATURES
+    .filter(f => f.gate !== 'open')
+    .map(f => accessFor(f.id))
+    .filter(a => a.available || !a.hidden || a.gate === 'experimental');
+  const open = gated.filter(a => a.available).length;
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
@@ -75,7 +82,7 @@ function UnlockSummary({ accessFor, c, t, s, r, onPress }) {
           <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>
             {open === gated.length
               ? 'Everything is open.'
-              : 'The Compass lists what each one needs — an objective, a check, or a plan.'}
+              : 'The Compass lists what each one needs: an objective, a check, or a switch.'}
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={16} color={c.text4} />
@@ -531,12 +538,18 @@ export default function SettingsScreen() {
   // X", so the same switches the Compass offers live here too.
   const {
     purpose, activeObjective, accessFor, experimentalOn, setExperimental, isPlus,
-    stage, nextStage, experienceMode, setExperienceMode,
+    stage, nextStage, experienceMode, setExperienceMode, can, plusOnSale,
+    doorSettings, setDoorSetting,
   } = useAccess();
-  const showAll = stage >= MAX_STAGE;
-  // null = never decided (see SETTING_KEYS.EDUCATOR_MODE); the Switch below
-  // treats that as off, and flipping it writes an explicit true/false.
-  const [educatorMode, setEducatorMode] = useSetting(SETTING_KEYS.EDUCATOR_MODE, null);
+  // Labs, Plus and the unlock tally arrive with the last stage ('doors').
+  const showAll = can('doors');
+  const { activeType } = useProfiles();
+  // Educator Mode is a key to the Lesson Builder's door (featureCatalog's
+  // `settingKey`), so it lives with the doors in AccessContext rather than
+  // in a setting of its own the lock wouldn't know about. null = never
+  // decided; the Switch treats that as off.
+  const educatorMode = doorSettings?.educatorMode ?? null;
+  const setEducatorMode = (on) => setDoorSetting('educatorMode', on);
   const [userId, setUserId] = useState(null);
   const [showCrestModal, setShowCrestModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -851,17 +864,17 @@ export default function SettingsScreen() {
         <FabPositionPicker value={fabPosition} onChange={setFabPosition} c={c} t={t} s={s} r={r} />
 
         {/* App experience — how much of the app is on show. First, because
-            it's the answer to "where did X go?" for anyone below stage 3.
-            See src/data/experienceStages.js. */}
+            it's the answer to "where did X go?" for anyone not at the last
+            stage. See src/data/experienceStages.js. */}
         <SectionLabel label="App experience" c={c} t={t} s={s} />
         <SettingRow
           icon="layers-outline"
           iconColor={c.teal}
-          label={`Stage ${stage} of ${MAX_STAGE} · ${stageMeta(stage).label}`}
+          label={`Stage ${stage} of ${MAX_STAGE} · ${stageMeta(stage, activeType).label}`}
           subtitle={experienceMode === 'full'
             ? 'Everything is on show because you asked for it. Turn the switch below off and the app goes by your progress again.'
             : nextStage
-              ? `The app starts simple and adds more as you go. ${nextStage.text} to open the next stage.`
+              ? `The app opens a little at a time. ${nextStage.text} to open the next stage: ${nextStage.label}.`
               : 'Everything is on show.'}
           alwaysShowSubtitle
           c={c} t={t} s={s} r={r}
@@ -899,8 +912,9 @@ export default function SettingsScreen() {
           onPress={() => navigation.navigate('Compass')}
           c={c} t={t} s={s} r={r}
         />
-        {/* Experimental, Plus and the unlock tally are stage 3 things — below
-            that, none of what they talk about is on show. */}
+        {/* Labs, Plus and the unlock tally belong to the last stage — before
+            that, none of what they talk about is on show. Plus only once it
+            can be bought: a plan row with nothing to buy is noise. */}
         {showAll && (<>
         <SettingRow
           icon="flask-outline"
@@ -918,7 +932,7 @@ export default function SettingsScreen() {
           }
           c={c} t={t} s={s} r={r}
         />
-        <SettingRow
+        {(plusOnSale || isPlus) && <SettingRow
           icon={isPlus ? 'star' : 'star-outline'}
           iconColor={c.gold}
           label={isPlus ? 'Plus' : 'Free plan'}
@@ -929,7 +943,7 @@ export default function SettingsScreen() {
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
           onPress={() => navigation.navigate('Compass')}
           c={c} t={t} s={s} r={r}
-        />
+        />}
         <UnlockSummary accessFor={accessFor} c={c} t={t} s={s} r={r} onPress={() => navigation.navigate('Compass')} />
         </>)}
 

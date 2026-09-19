@@ -58,6 +58,14 @@ for (const f of [join(SRC, 'logic', 'screenTutorials.js'), join(SRC, 'logic', 't
     if (!referenced.has(m[1])) referenced.set(m[1], relative(ROOT, f));
   }
 }
+// The guided first goal names its spots as `spot:` rather than `id:`.
+{
+  const f = join(SRC, 'data', 'firstGoalGuide.js');
+  const src = decomment(readFileSync(f, 'utf8'));
+  for (const m of src.matchAll(/\bspot:\s*['"]([^'"]+)['"]/g)) {
+    if (!referenced.has(m[1])) referenced.set(m[1], relative(ROOT, f));
+  }
+}
 
 const missing = [...referenced.entries()].filter(
   ([id]) => !literal.has(id) && !prefixes.some(p => p && id.startsWith(p)),

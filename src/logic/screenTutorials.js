@@ -310,14 +310,15 @@ export function hasScreenTutorial(routeName) {
   return !!(SCREEN_FEATURES[routeName] || SCREEN_HELP[routeName]);
 }
 
-// Stage 1 of the experience stages (src/data/experienceStages.js): Home is
-// three widgets and the Library a handful of tools, so the full walkthroughs
-// above would mostly describe things that aren't on screen. These say what
-// is there, and that more is coming. When stage 2 opens, AccessContext
-// clears both screens from the seen set so the full versions run next visit.
+// Early stages (src/data/experienceStages.js): until 'dashboard' Home is a
+// few widgets, and until 'all-tools' the Library is a handful of tools, so
+// the full walkthroughs above would mostly describe things that aren't on
+// screen. These say what is there, and that more is coming. When those
+// stages open, AccessContext clears the screen from the seen set so the
+// full version runs next visit (`reteach` in experienceStages.js).
 const STARTER_FEATURES = {
   Home: [
-    { title: 'Your first goal', body: "This card is the one thing to do right now. Each step has an Open button that takes you straight to it, and the whole goal takes a few minutes. Finish it and more of the app opens up.", id: 'home-compass' },
+    { title: 'Your first goal', body: "This card is the one thing to do right now. Each step has an Open button that takes you straight to it, and the whole goal takes a few minutes. Every goal you finish opens a little more of the app.", id: 'home-compass' },
     { title: 'Play', body: "PLAY drops you straight into one of the games picked for you. Every round counts toward your streak and your points.", id: 'home-study-play' },
   ],
   LibraryScreen: [
@@ -328,13 +329,17 @@ const STARTER_FEATURES = {
       librarySubTab: 'domains',
     },
     { title: 'Capture', body: "Capture, top-right. Get a thought out of your head now and decide where it belongs later.", id: 'library-capture', librarySubTab: 'domains' },
-    { title: 'More on the way', body: "The Library starts with the tools that fit your profile. Finish goals and the rest of it opens up here." },
+    { title: 'More on the way', body: "The Library starts with the tools that fit your profile. Each goal you finish and each level you gain opens a little more, here and across the app." },
   ],
 };
 
-// `stage` is the experience stage; omitted means the full walkthroughs.
-export function buildScreenTutorial(routeName, personalization, { stage } = {}) {
-  const hand = (stage === 1 && STARTER_FEATURES[routeName]) || SCREEN_FEATURES[routeName];
+// Which stage opens the full walkthrough for a screen with a starter one.
+const FULL_TUTORIAL_AT = { Home: 'dashboard', LibraryScreen: 'all-tools' };
+
+// `can` is AccessContext's stage check; omitted means the full walkthroughs.
+export function buildScreenTutorial(routeName, personalization, { can } = {}) {
+  const starter = !!can && !!FULL_TUTORIAL_AT[routeName] && !can(FULL_TUTORIAL_AT[routeName]);
+  const hand = (starter && STARTER_FEATURES[routeName]) || SCREEN_FEATURES[routeName];
   const info = SCREEN_HELP[routeName];
 
   let steps;

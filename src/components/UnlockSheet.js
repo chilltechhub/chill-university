@@ -34,7 +34,7 @@ export default function UnlockSheet({ visible, featureId, onClose, onUnlocked })
   const { colors: c, typography: t, spacing: sp, radius: r } = useTheme();
   const {
     accessFor, activeObjectiveId, startObjective, setExperimental,
-    experimentalOn, isPlus, claimPlanFeature,
+    experimentalOn, isPlus, claimPlanFeature, doorSettings, setDoorSetting,
   } = useAccess();
 
   const [testOpen, setTestOpen] = useState(false);
@@ -157,6 +157,27 @@ export default function UnlockSheet({ visible, featureId, onClose, onUnlocked })
                         : 'Already passed.'}
                     </Text>
                   )}
+                </View>
+              )}
+
+              {/* ── A Settings switch that is also a key ── */}
+              {access.status === 'locked' && access.routes.setting && (
+                <View style={s.panel}>
+                  <View style={s.switchRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.panelHead}>{access.routes.setting.label}</Text>
+                      <Text style={s.testBody}>
+                        Already doing this for real? Switch it on and {feature.label} opens now. It's
+                        the same switch in Settings, and turning it off closes it again.
+                      </Text>
+                    </View>
+                    <Switch
+                      value={doorSettings?.[access.routes.setting.key] === true}
+                      onValueChange={(on) => { setDoorSetting(access.routes.setting.key, on); if (on) onUnlocked?.(featureId); }}
+                      trackColor={{ false: c.bg3, true: c.teal }}
+                      thumbColor="#fff"
+                    />
+                  </View>
                 </View>
               )}
 
