@@ -142,9 +142,55 @@ for (const subj of CLASS_SUBJECTS) {
   }
 }
 
+// ── Topic catalog links ─────────────────────────────────────────────────────
+// A catalog entry marked built/related has to lead somewhere real: a class
+// screen that is registered and has that topic key, or a quest that exists.
+const importPath = new Map([...stack.matchAll(/^import (\w+) from '(\.\/classes\/[^']+)';/gm)].map(m => [m[1], m[2]]));
+const screenFile = new Map([...stack.matchAll(/name="(\w+)"\s+component=\{(\w+)\}/g)]
+  .filter(m => importPath.has(m[2]))
+  .map(m => [m[1], `src/screens/${importPath.get(m[2]).slice(2).replace(/\.js$/, '')}.js`]));
+const topicKeysCache = new Map();
+async function topicKeysFor(screen) {
+  if (!topicKeysCache.has(screen)) {
+    const file = screenFile.get(screen);
+    const src = file ? await text(file).catch(() => '') : '';
+    topicKeysCache.set(screen, new Set([...src.matchAll(/^\s{4,6}key:\s*'(\w+)'/gm)].map(m => m[1])));
+  }
+  return topicKeysCache.get(screen);
+}
+const { TOPIC_CATALOG } = await load('src/data/topicCatalog.js');
+const questSrc = await text('src/data/quests.js');
+const questIds = new Set([...questSrc.matchAll(/^\s{4}id:\s*'([\w-]+)'/gm)].map(m => m[1]));
+const subjectTitles = new Set(CLASS_SUBJECTS.map(sj => sj.title));
+const catalogIds = new Set();
+let catalogTopics = 0;
+for (const entry of TOPIC_CATALOG) {
+  if (!subjectTitles.has(entry.subject)) problems.push(`topicCatalog.js: subject '${entry.subject}' is not in CLASS_SUBJECTS`);
+  for (const group of entry.groups) {
+    for (const tp of group.topics) {
+      catalogTopics += 1;
+      if (catalogIds.has(tp.id)) problems.push(`topicCatalog.js: duplicate id '${tp.id}'`);
+      catalogIds.add(tp.id);
+      if (![1, 2, 3].includes(tp.level)) problems.push(`topicCatalog.js: ${tp.id} level must be 1, 2 or 3`);
+      if (!tp.title || !tp.hook || !tp.summary) problems.push(`topicCatalog.js: ${tp.id} needs a title, hook and summary`);
+      for (const kind of ['built', 'related']) {
+        const link = tp[kind];
+        if (!link) continue;
+        if (link.quest) {
+          if (!questIds.has(link.quest)) problems.push(`topicCatalog.js: ${tp.id} ${kind} quest '${link.quest}' doesn't exist`);
+        } else if (!screenFile.has(link.screen)) {
+          problems.push(`topicCatalog.js: ${tp.id} ${kind} screen '${link.screen}' isn't a registered class screen`);
+        } else if (!(await topicKeysFor(link.screen)).has(link.topicKey)) {
+          problems.push(`topicCatalog.js: ${tp.id} ${kind} topic '${link.topicKey}' isn't in ${link.screen}`);
+        }
+      }
+    }
+  }
+}
+
 if (problems.length) {
   console.error(`Wiring: ${problems.length} problem${problems.length === 1 ? '' : 's'}\n`);
   for (const p of problems) console.error('  ✗ ' + p);
   process.exit(1);
 }
-console.log(`Wiring OK: ${Object.keys(GAME_REGISTRY).length} games, all in the feed; every stage and lesson link resolves; ${topics} class topics, all with a screen.`);
+console.log(`Wiring OK: ${Object.keys(GAME_REGISTRY).length} games, all in the feed; every stage and lesson link resolves; ${topics} class topics, all with a screen; ${catalogTopics} catalog topics, every built/related link real.`);

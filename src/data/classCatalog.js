@@ -33,6 +33,9 @@ export const CLASS_SUBJECTS = [
     color: '#4A90E2',
     description: 'Numbers, algebra, geometry & more',
     children: [
+      // The practical one first: money, kitchen, workshop, data. See
+      // src/screens/classes/mathClass/everydaymath.js.
+      { label: 'Everyday Math', grade: '6-8' },
       { label: 'Numbers & Operations', grade: 'K-2' },
       { label: 'Algebra & Functions', grade: '3-5' },
       { label: 'Geometry & Spatial Reasoning', grade: '3-5' },
@@ -221,6 +224,7 @@ export function subjectSlug(title) {
 // screen name that doesn't exist yet — Classes.js never calls goToChild for
 // those (it shows a "coming soon" alert instead), so it's harmless here too.
 export const CLASS_SCREEN_MAP = {
+  'Everyday Math': 'EverydayMath',
   'Numbers & Operations': 'NumbersAndOperations',
   'Algebra & Functions': 'AlgebraAndFunctions',
   'Geometry & Spatial Reasoning': 'GeometrySpatialReasoning',

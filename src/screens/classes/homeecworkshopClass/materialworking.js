@@ -98,8 +98,8 @@ const topics = [
             url: 'https://kneesengineering.co.uk/news/what-are-the-different-types-of-welding-used-in-metal-fabrication/',
           },
           {
-            title: '4 Common Welding Techniques',
-            url: 'https://msistructuralsteel.com/4-common-welding-techniques-metal-fabrication/',
+            title: 'What is welding? (TWI)',
+            url: 'https://www.twi-global.com/technical-knowledge/faqs/what-is-welding',
           },
           {
             title: 'Comprehensive Guide to Soldering',

@@ -55,8 +55,10 @@ async function load(profileId) {
 
   const finished = new Set(Object.keys(byId).filter(id => byId[id]?.completedAt));
   try {
-    const { data: auth } = await supabase.auth.getUser();
-    const uid = auth?.user?.id;
+    // getSession reads the stored session (refreshing it if it has expired)
+    // rather than asking the auth server, which getUser does on every call.
+    const { data: auth } = await supabase.auth.getSession();
+    const uid = auth?.session?.user?.id;
     if (uid) {
       const { data } = await supabase
         .from('activity_log')

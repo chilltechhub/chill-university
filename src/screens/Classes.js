@@ -18,6 +18,7 @@ import { lessonsForGame } from '../data/skillLinks';
 import { getWeakGames } from '../logic/skillStats';
 import { getGame } from '../services/gameRegistry';
 import { questsInOrder } from '../data/quests';
+import { catalogCounts } from '../data/topicCatalog';
 import { useQuestProgress } from '../logic/questProgress';
 
 const GRADE_BAND_KEY = '@cth_academy_grade_band';
@@ -421,6 +422,7 @@ export default function Classes() {
                     </TouchableOpacity>
                   ))
                 )}
+                <ComingRow subject={item.title} color={item.color} navigation={navigation} styles={styles} c={c} />
               </View>
             )}
           </View>
@@ -428,8 +430,55 @@ export default function Classes() {
         );
       })}
 
+      {/* The whole roadmap: every planned topic, built or not
+          (src/data/topicCatalog.js). */}
+      <View style={styles.cardWrapper}>
+        <TouchableOpacity
+          style={[styles.category, { borderTopColor: c.teal }]}
+          onPress={() => navigation.navigate('TopicCatalog')}
+          activeOpacity={0.8}
+        >
+          <View style={styles.categoryHeader}>
+            <View style={[styles.iconContainer, { backgroundColor: c.teal + '22' }]}>
+              <Ionicons name="map-outline" size={26} color={c.teal} />
+            </View>
+            <View style={styles.categoryTextContainer}>
+              <Text style={styles.categoryText}>Topic map</Text>
+              {showSubtext && (
+                <Text style={styles.categoryDescription}>
+                  Every topic, ready now or on the way: {catalogCounts().built} ready, {catalogCounts().total - catalogCounts().built} coming.
+                </Text>
+              )}
+            </View>
+            <Ionicons name="chevron-forward" size={22} color={c.text4} style={styles.chevron} />
+          </View>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.footer} />
     </ScrollView>
+  );
+}
+
+// Under a subject's own topics: how many more are planned for it, leading to
+// that subject's page of the Topic map. Nothing for subjects with no catalog
+// entry (the adult business tracks).
+function ComingRow({ subject, color, navigation, styles, c }) {
+  const { total, built } = catalogCounts(subject);
+  if (!total) return null;
+  const coming = total - built;
+  return (
+    <TouchableOpacity
+      style={styles.subItemContainer}
+      onPress={() => navigation.navigate('TopicCatalog', { subject })}
+      activeOpacity={0.7}
+    >
+      <Ionicons name="map-outline" size={14} color={color} style={{ marginRight: 8 }} />
+      <Text style={[styles.subItem, { color }]}>
+        {coming > 0 ? `What's coming: ${coming} more topic${coming === 1 ? '' : 's'}` : 'Every planned topic'}
+      </Text>
+      <Ionicons name="chevron-forward" size={18} color={c.text4} />
+    </TouchableOpacity>
   );
 }
 

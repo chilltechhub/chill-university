@@ -12,6 +12,8 @@ import MyLessonPlans from './MyLessonPlans';
 
 // Quests: the short learn-research-do lessons (src/data/quests.js).
 import QuestScreen from './QuestScreen';
+// Topic map: every planned topic, built or not (src/data/topicCatalog.js).
+import TopicCatalogScreen from './TopicCatalogScreen';
 
 // Math
 import NumbersAndOperations from './classes/mathClass/numbersandoperations';
@@ -20,6 +22,7 @@ import GeometrySpatialReasoning from './classes/mathClass/geometryspatialreasoni
 import Measurement from './classes/mathClass/measurement';
 import DataStatisticsProbability from './classes/mathClass/datastatisticsprobability';
 import AdvancedMath from './classes/mathClass/advancedmath';
+import EverydayMath from './classes/mathClass/everydaymath';
 
 // Language Arts (folder: languageartClass)
 import Reading from './classes/languageartClass/reading';
@@ -101,6 +104,7 @@ export default function ClassesStack() {
       <Stack.Screen name="LessonBuilder" component={LessonBuilder} />
       <Stack.Screen name="MyLessonPlans" component={MyLessonPlans} />
       <Stack.Screen name="Quest" component={QuestScreen} />
+      <Stack.Screen name="TopicCatalog" component={TopicCatalogScreen} />
 
       {/* Math */}
       <Stack.Screen name="NumbersAndOperations" component={NumbersAndOperations} />
@@ -109,6 +113,7 @@ export default function ClassesStack() {
       <Stack.Screen name="Measurement" component={Measurement} />
       <Stack.Screen name="DataStatisticsProbability" component={DataStatisticsProbability} />
       <Stack.Screen name="AdvancedMath" component={AdvancedMath} />
+      <Stack.Screen name="EverydayMath" component={EverydayMath} />
 
       {/* Language Arts */}
       <Stack.Screen name="Reading" component={Reading} />

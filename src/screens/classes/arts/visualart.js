@@ -31,7 +31,7 @@ const topics = [
         readings: [
           { title: 'The complete guide to shading techniques', url: 'https://www.gathered.how/arts-crafts/art/shading-techniques' },
           { title: 'How to Draw Perspective - A Simple Guide', url: 'https://www.youtube.com/watch?v=vs9f9shBpNI' },
-          { title: 'Observation Drawing For Beginners', url: 'https://ccmonstersart.com/observation-drawing-for-beginners-101/' },
+          { title: 'Contour drawing (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Contour_drawing' },
         ],
       },
     },
