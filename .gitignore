@@ -47,3 +47,6 @@ supabase/.temp/
 
 # local secrets (contains live API keys)
 .env.test
+
+# planning/review PDFs handed in from outside (not project source)
+/*.pdf
