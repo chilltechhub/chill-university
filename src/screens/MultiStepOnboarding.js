@@ -56,7 +56,7 @@ import { DEFAULT_PERSONA, personasFor, defaultPersonaFor, getPersona } from '../
 import { ageCategoryFromDob, isMinorBand } from '../logic/profileResolver';
 import { useProfiles } from '../../context/ProfileAccountsContext';
 import { useAccess } from '../../context/AccessContext';
-import { useFeatureFlag } from '../../context/RemoteConfigContext';
+import { useFeatureFlag, useRemoteConfig } from '../../context/RemoteConfigContext';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import {
   PersonaStep, SectorsStep, LookStep, PERSONA_AREA_DEFAULTS, pickFocusHub, buildRecommendations,
@@ -131,6 +131,13 @@ export default function MultiStepOnboarding() {
   // `kids_accounts` is switched on, which turns the parent flow back on
   // without a new build. No row, or config not loaded yet, means off.
   const kidsAccountsEnabled = useFeatureFlag('kids_accounts', false);
+  // useFeatureFlag can't tell "the row says off" from "the fetch hasn't
+  // landed yet" — both read false. That difference matters here, because
+  // the kids_closed screen's one button deletes the account, so it must
+  // never be shown on a guess. Until the config is in, a minor gets the
+  // parent flow; being shown that a moment too long costs nothing.
+  const { ready: configReady } = useRemoteConfig();
+  const kidsClosed = configReady && !kidsAccountsEnabled;
   const [birthMonth, setBirthMonth] = useState('');
   const [birthDay, setBirthDay] = useState('');
   const [birthYear, setBirthYear] = useState('');
@@ -280,7 +287,7 @@ export default function MultiStepOnboarding() {
         id: userId, date_of_birth: dateOfBirth, country_code: countryCode, is_minor: isMinor,
       });
       if (error) throw error;
-      setPhase(isMinor ? (kidsAccountsEnabled ? 'parent_email' : 'kids_closed') : 'main');
+      setPhase(isMinor ? (kidsClosed ? 'kids_closed' : 'parent_email') : 'main');
     } catch (e) {
       Alert.alert('Save error', e.message || 'Could not save your birth date.');
     } finally {
@@ -293,9 +300,9 @@ export default function MultiStepOnboarding() {
   // loaded). This keeps whatever phase we're in consistent with it.
   useEffect(() => {
     const parentFlow = ['parent_email', 'waiting_parent', 'consent'];
-    if (!kidsAccountsEnabled && parentFlow.includes(phase)) setPhase('kids_closed');
-    else if (kidsAccountsEnabled && phase === 'kids_closed') setPhase('parent_email');
-  }, [kidsAccountsEnabled, phase]);
+    if (kidsClosed && parentFlow.includes(phase)) setPhase('kids_closed');
+    else if (!kidsClosed && phase === 'kids_closed') setPhase('parent_email');
+  }, [kidsClosed, phase]);
 
   // Under the consent age with kids' accounts off: nothing of theirs should
   // stay behind, so closing deletes the account (email and birth date

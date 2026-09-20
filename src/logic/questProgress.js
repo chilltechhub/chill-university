@@ -45,8 +45,17 @@ let state = { profileId: undefined, byId: {}, finished: new Set(), ready: false 
 const listeners = new Set();
 const emit = () => listeners.forEach(fn => { try { fn(state); } catch { /* listener's problem */ } });
 let loading = null;
+// Bumped every time a load is started. A load compares the token it was
+// started with against this before touching `state`, so a read overtaken by
+// a profile switch lands nowhere. A counter rather than the profile id: ids
+// are undefined for a guest, and undefined has to be tellable from "no load
+// in flight".
+let loadToken = 0;
+// The profile the in-flight load is for, so a repeat call for the SAME
+// profile reuses it instead of starting a second read.
+let loadingProfileId;
 
-async function load(profileId) {
+async function load(profileId, token) {
   let byId = {};
   try {
     const raw = await AsyncStorage.getItem(storageKey(profileId));
@@ -69,6 +78,9 @@ async function load(profileId) {
     }
   } catch { /* offline: the device copy stands */ }
 
+  // Overtaken by a switch to another profile while this was in flight —
+  // whoever replaced it owns `state` now.
+  if (token !== loadToken) return;
   state = { profileId, byId, finished, ready: true };
   emit();
 }
@@ -76,7 +88,19 @@ async function load(profileId) {
 function ensureLoaded() {
   const profileId = getActiveProfileId();
   if (state.ready && state.profileId === profileId) return Promise.resolve();
-  if (!loading) loading = load(profileId).finally(() => { loading = null; });
+  // A load already running for a DIFFERENT profile is no use here, and
+  // worse than useless: it finishes by writing that profile's quests into
+  // `state`, which is then persisted under its key. Switching profiles
+  // while the first load is still waiting on activity_log is enough to hit
+  // it. Start the one we actually want; the stale one lands nowhere.
+  if (loading && loadingProfileId !== profileId) loading = null;
+  if (!loading) {
+    const token = ++loadToken;
+    loadingProfileId = profileId;
+    loading = load(profileId, token).finally(() => {
+      if (token === loadToken) loading = null;
+    });
+  }
   return loading;
 }
 
@@ -149,16 +173,29 @@ export async function addQuestTask(userId, quest) {
 /** "Go further": the quest's resources, as bookmarks in the Knowledge Vault. */
 export async function saveQuestResources(userId, quest) {
   if (!userId) throw new Error('Sign in to save these to your Vault.');
-  for (const r of quest.resources) {
-    await addCapture(userId, {
-      type: 'link',
-      title: `${r.title} (${r.who})`,
-      url: r.url,
-      tags: ['quest', quest.id],
-      source: 'manual',
+  // Remember each one as it lands. addCapture doesn't dedupe, so without
+  // this a failure on the third resource would leave the first two saved,
+  // the quest unmarked, and the retry the button still offers would file
+  // them in the Vault a second time.
+  const saved = new Set(state.byId[quest.id]?.savedResourceUrls || []);
+  try {
+    for (const r of quest.resources) {
+      if (saved.has(r.url)) continue;
+      await addCapture(userId, {
+        type: 'link',
+        title: `${r.title} (${r.who})`,
+        url: r.url,
+        tags: ['quest', quest.id],
+        source: 'manual',
+      });
+      saved.add(r.url);
+    }
+  } finally {
+    updateQuest(quest.id, {
+      savedResourceUrls: [...saved],
+      resourcesSaved: saved.size === quest.resources.length,
     });
   }
-  updateQuest(quest.id, { resourcesSaved: true });
 }
 
 function noteBody(quest, progress) {

@@ -1520,6 +1520,11 @@ export default function HomeScreen() {
   };
 
   const goPlay = () => {
+    // Same reason goStudy checks: GAMES is what this stage shows minus the
+    // remote kill switch, so a handful of ids in 'disabled_games' can empty
+    // it on a first-day account. The button steps aside rather than picking
+    // out of nothing.
+    if (!GAMES.length) return;
     const pick = GAMES[Math.floor(Math.random() * GAMES.length)];
     navigation.navigate('Play', { gameId: pick.key });
   };
