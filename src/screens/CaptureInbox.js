@@ -17,6 +17,7 @@ import { RETENTION_DAYS, getRecentlyDeleted, restoreItem, permanentlyDelete, pur
 import TourSpot from '../components/TourSpot';
 import FloatingCard from '../components/FloatingCard';
 import { useTour } from '../../context/TourContext';
+import { useAccess } from '../../context/AccessContext';
 import { todayStr } from '../logic/dateUtils';
 
 // supabase-js resolves { data, error } instead of throwing on a failed
@@ -1104,6 +1105,8 @@ export default function CaptureInbox() {
   // A tutorial can hand this screen a worked capture to open with, and wants
   // to know when the user actually taps + rather than a Next arrow.
   const { prefill: tourPrefill, completeAction } = useTour();
+  // A capture is what ticks "capture what's on your plate" on a first goal.
+  const { signalAction } = useAccess();
   // Snapshotted at tap time — see the matching note in library/projects.js.
   // completeAction() ends the tour in the same tick, so reading the live
   // prefill when the sheet renders gets null.
@@ -1419,7 +1422,7 @@ export default function CaptureInbox() {
 
       <QuickCaptureModal
         visible={showAdd} userId={userId} prefill={pendingPrefill}
-        onSaved={(item) => { setCaptures(prev => [item, ...prev]); setShowAdd(false); }}
+        onSaved={(item) => { setCaptures(prev => [item, ...prev]); setShowAdd(false); signalAction('inbox-captured'); }}
         onClose={() => { setShowAdd(false); setPendingPrefill(null); }}
         c={c} t={t} s={s} r={r} />
 

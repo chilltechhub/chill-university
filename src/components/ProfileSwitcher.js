@@ -19,6 +19,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useUIPrefs } from '../../context/UIPrefsContext';
 import { useProfiles } from '../../context/ProfileAccountsContext';
+import { useAccess } from '../../context/AccessContext';
 import { getPersona } from '../data/personas';
 import { FONTS } from '../theme';
 
@@ -31,6 +32,7 @@ export default function ProfileSwitcher() {
     activeDef, isMasterActive, allowedTypes, restrictedReason,
     switchProfile, addProfile, archive, signOut, signIn, hasPin, setPin, clearPin,
   } = useProfiles();
+  const { can } = useAccess();
 
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState('list');       // 'list' | 'add' | 'pin'
@@ -279,6 +281,10 @@ export default function ProfileSwitcher() {
                   )}
                 </ScrollView>
 
+                {/* A second profile opens with 'all-tools' (src/data/experienceStages.js):
+                    on a first day, one profile is plenty to learn. Profiles
+                    that already exist are always listed above. */}
+                {can('all-tools') && (
                 <TouchableOpacity
                   style={[st.addBtn, { borderColor: c.teal }]}
                   onPress={() => { setNewType(allowedTypes[0]?.key || 'PERSONAL'); setMode('add'); }}
@@ -286,6 +292,7 @@ export default function ProfileSwitcher() {
                   <Ionicons name="add" size={16} color={c.teal} />
                   <Text style={[st.addBtnText, { color: c.teal }]}>Add a profile</Text>
                 </TouchableOpacity>
+                )}
 
                 {/* The master's cross-profile overview — what "the first one
                     controls all" actually gets you. */}

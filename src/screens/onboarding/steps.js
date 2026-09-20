@@ -43,6 +43,8 @@ import CharacterWalker from '../../components/CharacterWalker';
 import PlayerCharacter from '../../components/PlayerCharacter';
 import { OUTFITS } from '../../data/characterOptions';
 import { personasFor, defaultPersonaFor, getPersona } from '../../data/personas';
+import { firstGoalFor } from '../../logic/experienceStage';
+import { getObjective } from '../../data/objectives';
 
 const { width: SW } = Dimensions.get('window');
 
@@ -360,9 +362,45 @@ export function PersonaStep({ data, set, theme, isMinor, ageBand }) {
             </View>
           ))}
           <Text style={{ fontSize: 11, color: c.text4, marginTop: 4, lineHeight: 16 }}>
+            {data.experience_mode !== 'full'
+              ? 'Starting simple, the dashboard fills in a widget or two at a time as you go. '
+              : ''}
             You can change type later, add more profiles for other parts of your life, and rearrange
             any of it — your level, points and streak are shared across all of them.
           </Text>
+        </View>
+      )}
+
+      {/* How much of the app to start with — src/data/experienceStages.js.
+          Simple is the default and the recommendation: one goal, the tools
+          that fit this type, three games, and a little more with every goal
+          finished and level gained.
+          "Everything" is for someone who already knows apps like this and
+          would find a short list patronising. Either is one switch in
+          Settings later, so this never has to be the right answer forever. */}
+      {chosen && (
+        <View style={{ marginTop: 16 }}>
+          <SectionLabel label="How much do you want to see at first?" theme={theme} />
+          <ExperienceChoice
+            selected={data.experience_mode !== 'full'}
+            emoji="🌱"
+            title="Start simple"
+            tag="Recommended"
+            body={(() => {
+              const first = getObjective(firstGoalFor(data.active_persona).objective);
+              return `One goal to start${first ? ` (${first.label})` : ''}, with your guide showing you each step. A few tools and three games picked for ${exploring ? 'you' : chosen.short}, and a little more opens with every goal you finish.`;
+            })()}
+            onPress={() => set('experience_mode', 'auto')}
+            theme={theme}
+          />
+          <ExperienceChoice
+            selected={data.experience_mode === 'full'}
+            emoji="🗺️"
+            title="Show me everything"
+            body="Every tool, game and widget from day one. For people who know their way around apps like this."
+            onPress={() => set('experience_mode', 'full')}
+            theme={theme}
+          />
         </View>
       )}
 
@@ -403,6 +441,27 @@ export function PersonaStep({ data, set, theme, isMinor, ageBand }) {
         </View>
       )}
     </View>
+  );
+}
+
+function ExperienceChoice({ selected, emoji, title, tag, body, onPress, theme }) {
+  const { c } = theme;
+  return (
+    <TouchableOpacity onPress={onPress}
+      accessibilityRole="radio" accessibilityState={{ checked: selected }}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: selected ? c.teal + '18' : c.bg0, borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: selected ? c.teal : c.border }}>
+      <Text style={{ fontSize: 22 }}>{emoji}</Text>
+      <View style={{ flex: 1 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: selected ? c.teal : c.text1 }}>{title}</Text>
+          {tag && <Text style={{ fontSize: 10, color: c.teal, fontFamily: FONTS.mono, textTransform: 'uppercase', letterSpacing: 0.8 }}>{tag}</Text>}
+        </View>
+        <Text style={{ fontSize: 12, color: c.text3, lineHeight: 17 }}>{body}</Text>
+      </View>
+      <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: selected ? c.teal : c.border, backgroundColor: selected ? c.teal : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
+        {selected && <Ionicons name="checkmark" size={13} color="#fff" />}
+      </View>
+    </TouchableOpacity>
   );
 }
 
@@ -822,11 +881,19 @@ export function LookStep({ data, set, theme, onThemeChange }) {
     set('hidden_sections', cur.includes(screen) ? cur.filter(x => x !== screen) : [...cur, screen]);
   };
   const pickTheme = (name) => { set('theme', name); onThemeChange(name); };
+  // Starting simple, the Library opens with a handful of tools picked for
+  // the profile type — asking which of twelve sections to hide, before
+  // any of them are on show, would be a question about nothing.
+  const simple = data.experience_mode !== 'full';
 
   return (
     <View style={st.stepContent}>
-      <Text style={st.stepTitle}>Look & Layout</Text>
-      <Text style={st.stepSubtitle}>Pick your theme, and choose which Library sections show up. Everything here is changeable any time from Settings.</Text>
+      <Text style={st.stepTitle}>{simple ? 'Look' : 'Look & Layout'}</Text>
+      <Text style={st.stepSubtitle}>
+        {simple
+          ? 'Pick your theme. Everything here is changeable any time from Settings.'
+          : 'Pick your theme, and choose which Library sections show up. Everything here is changeable any time from Settings.'}
+      </Text>
 
       <SectionLabel label="Theme — tap to preview live" theme={theme} />
       <View style={{ gap: 12, marginBottom: 20 }}>
@@ -867,6 +934,15 @@ export function LookStep({ data, set, theme, onThemeChange }) {
         </Text>
       </View>
 
+      {simple ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: c.bg1, borderRadius: 12, padding: 14, marginBottom: 20, borderWidth: 0.5, borderColor: c.border }}>
+          <Ionicons name="leaf-outline" size={20} color={c.teal} />
+          <Text style={{ flex: 1, fontSize: 12, color: c.text3, lineHeight: 17 }}>
+            Your Library starts with the few tools that fit your profile, and grows as you finish goals.
+            Once it has more in it, Settings lets you hide any section you don't use.
+          </Text>
+        </View>
+      ) : (<>
       <SectionLabel label="Library sections" theme={theme} />
       <Text style={{ fontSize: 12, color: c.text4, marginTop: -6, marginBottom: 10 }}>All on by default — tap to hide any you don't need. Bring them back any time from Settings.</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
@@ -881,6 +957,7 @@ export function LookStep({ data, set, theme, onThemeChange }) {
           );
         })}
       </View>
+      </>)}
 
     </View>
   );

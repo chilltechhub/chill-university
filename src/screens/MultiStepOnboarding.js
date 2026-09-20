@@ -12,6 +12,12 @@
 //                 curriculum track, and which life areas step 2 pre-selects.
 //   2. Sectors  — exactly what the Library tab's life-area grid shows.
 //
+// The persona step also asks how much of the app to start with. Starting
+// simple (the default) means Home opens on one first goal picked for the
+// type, with a handful of tools and six games; more opens as goals get
+// finished — see src/data/experienceStages.js. finish() starts that goal,
+// so nobody lands on Home without one thing to do.
+//
 // Everything else (character, planner starters, interests, goals, theme
 // and layout) moved to the Getting Started card on Home, where the user
 // can see what each answer changes as they make it. Same components, same
@@ -49,6 +55,8 @@ import { startParentVerification, getVerificationStatus } from '../api/kwsVerifi
 import { DEFAULT_PERSONA, personasFor, defaultPersonaFor, getPersona } from '../data/personas';
 import { ageCategoryFromDob, isMinorBand } from '../logic/profileResolver';
 import { useProfiles } from '../../context/ProfileAccountsContext';
+import { useAccess } from '../../context/AccessContext';
+import { useFeatureFlag, useRemoteConfig } from '../../context/RemoteConfigContext';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import {
   PersonaStep, SectorsStep, LookStep, PERSONA_AREA_DEFAULTS, pickFocusHub, buildRecommendations,
@@ -82,7 +90,7 @@ const COUNTRY_CHOICES = [
 const STEPS = [
   { component: PersonaStep, title: 'Profile', subtitle: 'Your account type' },
   { component: SectorsStep, title: 'Sectors', subtitle: 'Your focus areas' },
-  { component: LookStep,    title: 'Look',    subtitle: 'Theme & layout' },
+  { component: LookStep,    title: 'Look',    subtitle: 'How it looks' },
 ];
 
 export default function MultiStepOnboarding() {
@@ -99,6 +107,7 @@ export default function MultiStepOnboarding() {
   // Started card on Home instead (and from Settings, as it always was).
   const { setPersonalization } = useTour();
   const { createMasterProfile } = useProfiles();
+  const { setExperienceMode, startFirstGoal } = useAccess();
   const { refreshProfile } = useUserProgress();
   // Written by the Look step. Device-local, same key Settings' own "Library
   // Sections" editor reads and writes.
@@ -117,6 +126,18 @@ export default function MultiStepOnboarding() {
   // 'waiting_parent' -> 'consent' -> 'main'. A non-minor (or a minor who
   // already has parent_consent_given) skips straight to 'main'.
   const [phase, setPhase] = useState('age_gate');
+  // v1 is for 13 and up (kids are v2). Anyone who'd need a parent's consent
+  // gets 'kids_closed' instead of the KWS flow above — until an app_config row
+  // `kids_accounts` is switched on, which turns the parent flow back on
+  // without a new build. No row, or config not loaded yet, means off.
+  const kidsAccountsEnabled = useFeatureFlag('kids_accounts', false);
+  // useFeatureFlag can't tell "the row says off" from "the fetch hasn't
+  // landed yet" — both read false. That difference matters here, because
+  // the kids_closed screen's one button deletes the account, so it must
+  // never be shown on a guess. Until the config is in, a minor gets the
+  // parent flow; being shown that a moment too long costs nothing.
+  const { ready: configReady } = useRemoteConfig();
+  const kidsClosed = configReady && !kidsAccountsEnabled;
   const [birthMonth, setBirthMonth] = useState('');
   const [birthDay, setBirthDay] = useState('');
   const [birthYear, setBirthYear] = useState('');
@@ -142,6 +163,9 @@ export default function MultiStepOnboarding() {
     // "I'm not sure yet" on the persona step. Not a column — it rides in the
     // local draft and lands as the Wayfinder intent flag in finish().
     exploring:         false,
+    // 'auto' = start simple and grow; 'full' = show everything now. Not a
+    // column — device-local via AccessContext, like the Wayfinder intent.
+    experience_mode:   'auto',
     persona_baseline:  {},
     display_name:      '',
     active_life_areas: PERSONA_AREA_DEFAULTS[DEFAULT_PERSONA],
@@ -217,6 +241,7 @@ export default function MultiStepOnboarding() {
         ...prev,
         active_persona:   draft.active_persona || prev.active_persona,
         exploring:        typeof draft.exploring === 'boolean' ? draft.exploring : prev.exploring,
+        experience_mode:  draft.experience_mode === 'full' ? 'full' : prev.experience_mode,
         persona_baseline: draft.persona_baseline || prev.persona_baseline,
         theme:            draft.theme || prev.theme,
         hidden_sections:  draft.hidden_sections || prev.hidden_sections,
@@ -262,12 +287,44 @@ export default function MultiStepOnboarding() {
         id: userId, date_of_birth: dateOfBirth, country_code: countryCode, is_minor: isMinor,
       });
       if (error) throw error;
-      setPhase(isMinor ? 'parent_email' : 'main');
+      setPhase(isMinor ? (kidsClosed ? 'kids_closed' : 'parent_email') : 'main');
     } catch (e) {
       Alert.alert('Save error', e.message || 'Could not save your birth date.');
     } finally {
       setGateBusy(false);
     }
+  };
+
+  // The resume effect above picks a parent-flow phase from the profile
+  // without knowing the flag (it runs once, before remote config may have
+  // loaded). This keeps whatever phase we're in consistent with it.
+  useEffect(() => {
+    const parentFlow = ['parent_email', 'waiting_parent', 'consent'];
+    if (kidsClosed && parentFlow.includes(phase)) setPhase('kids_closed');
+    else if (!kidsClosed && phase === 'kids_closed') setPhase('parent_email');
+  }, [kidsClosed, phase]);
+
+  // Under the consent age with kids' accounts off: nothing of theirs should
+  // stay behind, so closing deletes the account (email and birth date
+  // included) rather than just signing out.
+  const closeKidAccount = async () => {
+    setGateBusy(true);
+    let deleted = false;
+    try {
+      const { error } = await supabase.rpc('delete_my_account');
+      deleted = !error;
+      if (error) console.warn('close under-age account', error);
+    } catch (e) { console.warn('close under-age account', e); }
+    clearOnboardingDraft();
+    await supabase.auth.signOut();
+    setGateBusy(false);
+    if (!deleted) {
+      Alert.alert(
+        "We couldn't finish closing it",
+        'You are signed out. A parent or guardian can email help@chilltechhub.com and we will delete the account.',
+      );
+    }
+    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
   };
 
   const submitParentEmail = async () => {
@@ -373,6 +430,7 @@ export default function MultiStepOnboarding() {
       step: nextStep,
       active_persona: data.active_persona,
       exploring: !!data.exploring,
+      experience_mode: data.experience_mode,
       persona_baseline: data.persona_baseline,
       theme: data.theme,
       hidden_sections: data.hidden_sections,
@@ -448,6 +506,9 @@ export default function MultiStepOnboarding() {
     // Local and can't throw — and Home reads it when it first lays out the
     // dashboard, so it has to be down before Home mounts.
     await setWayfinderIntent(!!data.exploring);
+    // Same reason: Home, the Library and Training all read the stage on
+    // their first render.
+    await setExperienceMode(data.experience_mode);
 
     // ── Out of the wizard, immediately ───────────────────────────────────
     // Saved is saved. Nothing below is worth holding someone on this
@@ -480,6 +541,15 @@ export default function MultiStepOnboarding() {
         `We couldn't set your account type to ${getPersona(data.active_persona || DEFAULT_PERSONA).short}. `
         + 'Everything else saved fine. You can set it from the profile switcher at the top of the screen.',
       );
+    }
+
+    // The first goal, for anyone starting simple — Home's Compass card
+    // would offer it anyway, but landing with it already running means the
+    // first thing on screen is a next step rather than a Start button.
+    // Someone who asked for everything gets the ordinary Compass instead.
+    if (data.experience_mode !== 'full') {
+      try { await startFirstGoal(data.active_persona || DEFAULT_PERSONA); }
+      catch (e) { console.warn('onboarding first goal', e?.message); }
     }
 
     // UserProgressContext loaded `profile` once at login and has no reason
@@ -535,7 +605,7 @@ export default function MultiStepOnboarding() {
         <View style={cs.bg}>
           <ScrollView contentContainerStyle={gs.body} showsVerticalScrollIndicator={false}>
             <Text style={gs.title}>First, when's{'\n'}your birthday?</Text>
-            <Text style={gs.subtitle}>We ask everyone this — it's how we know whether to bring a parent or guardian into the loop.</Text>
+            <Text style={gs.subtitle}>We ask everyone this. It decides which parts of the app fit your age.</Text>
             <View style={gs.dobRow}>
               <TextInput style={[gs.input, gs.dobInput]} placeholder="MM" placeholderTextColor={c.text4}
                 value={birthMonth} onChangeText={setBirthMonth} keyboardType="number-pad" maxLength={2} />
@@ -562,6 +632,26 @@ export default function MultiStepOnboarding() {
           </View>
         </View>
       </KeyboardAvoidingView>
+    );
+  }
+
+  if (phase === 'kids_closed') {
+    return (
+      <View style={cs.bg}>
+        <View style={[gs.body, { flex: 1, justifyContent: 'center' }]}>
+          <Text style={gs.title}>We can't set up{'\n'}your account yet</Text>
+          <Text style={gs.subtitle}>
+            Where you live, someone your age needs a parent or guardian's OK to use an app like this.
+            We're still building that, so for now we can't keep an account for you.
+          </Text>
+          <Text style={gs.consentBody}>
+            Closing it deletes everything, including your email and birthday. You're welcome back once parent sign-up is ready.
+          </Text>
+          <TouchableOpacity onPress={closeKidAccount} disabled={gateBusy} style={cs.nextBtn}>
+            {gateBusy ? <ActivityIndicator color="#fff" size="small" /> : <Text style={cs.nextBtnText}>Close my account</Text>}
+          </TouchableOpacity>
+        </View>
+      </View>
     );
   }
 

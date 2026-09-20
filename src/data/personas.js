@@ -46,7 +46,7 @@ export const PERSONAS = [
       'Sectors start as Physical, Mental and Social',
     ],
     adultOnly: false,
-    defaultWidgets: ['hq', 'compass', 'habitRings', 'lifeAreas', 'dailyDrills', 'wayfinder', 'focus', 'desk', 'streak', 'wisdom'],
+    defaultWidgets: ['hq', 'compass', 'habitRings', 'lifeAreas', 'dailyDrills', 'quests', 'wayfinder', 'focus', 'desk', 'streak', 'wisdom'],
   },
   {
     key: 'STUDENT',
@@ -62,7 +62,7 @@ export const PERSONAS = [
       'Sectors start as Mental, Professional and Social',
     ],
     adultOnly: false,
-    defaultWidgets: ['hq', 'compass', 'studyBlocks', 'classProgress', 'dailyDrills', 'wayfinder', 'activities', 'focus', 'desk', 'streak'],
+    defaultWidgets: ['hq', 'compass', 'studyBlocks', 'classProgress', 'dailyDrills', 'quests', 'wayfinder', 'activities', 'focus', 'desk', 'streak'],
   },
   {
     key: 'BUSINESS',
@@ -78,7 +78,7 @@ export const PERSONAS = [
       'Sectors start as Professional, Financial and Digital',
     ],
     adultOnly: true,
-    defaultWidgets: ['hq', 'compass', 'recurringOps', 'systemsCheck', 'orgSnapshot', 'desk', 'builds', 'focus', 'streak'],
+    defaultWidgets: ['hq', 'compass', 'recurringOps', 'systemsCheck', 'orgSnapshot', 'quests', 'desk', 'builds', 'focus', 'streak'],
   },
   {
     key: 'ENTREPRENEUR',
@@ -94,7 +94,7 @@ export const PERSONAS = [
       'Sectors start as Financial, Professional and Creative',
     ],
     adultOnly: true,
-    defaultWidgets: ['hq', 'compass', 'founderQuest', 'vaultStatus', 'targetsReadiness', 'builds', 'desk', 'ideas', 'streak'],
+    defaultWidgets: ['hq', 'compass', 'founderQuest', 'vaultStatus', 'targetsReadiness', 'quests', 'builds', 'desk', 'ideas', 'streak'],
   },
 ];
 

@@ -19,6 +19,7 @@ import { useUIPrefs } from '../../../context/UIPrefsContext';
 import { useBlueprint, CornerTicks, Stamp, RulerBar } from './blueprint';
 import TourSpot from '../../components/TourSpot';
 import { useTour } from '../../../context/TourContext';
+import { useAccess } from '../../../context/AccessContext';
 import { todayStr } from '../../logic/dateUtils';
 
 // ─── Graph-paper backdrop ───────────────────────────────────────────────────
@@ -374,6 +375,8 @@ export default function ProjectsScreen() {
   // Build sheet with, and wants to know when the user actually taps the
   // button rather than a Next arrow. See src/logic/screenTutorials.js.
   const { prefill: tourPrefill, completeAction } = useTour();
+  // A new build is what ticks "start it as a project" on a first goal.
+  const { signalAction } = useAccess();
   // Snapshotted at tap time, NOT read live when the sheet renders. Tapping
   // the button also completes the passthrough step, which ends the tour in
   // the same tick — so by the time the sheet is visible, useTour().prefill
@@ -657,6 +660,7 @@ export default function ProjectsScreen() {
         onCreated={(proj) => {
           setProjects(prev => [{ ...proj, tasks: null }, ...prev]);
           setShowNew(false);
+          signalAction('project-started');
           navigation.navigate('ProjectDetail', { project: proj });
         }}
         onClose={() => { setShowNew(false); setPendingPrefill(null); }}

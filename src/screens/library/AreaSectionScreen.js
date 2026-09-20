@@ -7,7 +7,6 @@ import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   Modal, KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
 } from 'react-native';
-import { Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../../context/ThemeContext';
@@ -19,6 +18,11 @@ import RelatedLinks from './RelatedLinks';
 import { useUserProgress } from '../../../context/UserProgressContext';
 import { AREA_COLORS } from '../../data/areaColors';
 import { ageBandFor, bandAllows } from '../../logic/profileResolver';
+import useAreaActions from '../../logic/useAreaActions';
+import ActionPanel from '../../components/lifeareas/ActionPanel';
+import ActionEditSheet from '../../components/lifeareas/ActionEditSheet';
+import DetailsDrawer from '../../components/lifeareas/DetailsDrawer';
+import GoDeeperList from '../../components/lifeareas/GoDeeperList';
 
 // ─── Section configs — all 18 missing sub-sections ───────────────────────────
 export const SECTION_CONFIGS = {
@@ -326,7 +330,7 @@ export default function AreaSectionScreen() {
   const [category, setCategory] = useState('');
   const [fields,   setFields]   = useState({});
   const [saving,   setSaving]   = useState(false);
-  const [activeTab,setActiveTab]= useState('log'); // log | habits | tips
+  const [editOpen, setEditOpen] = useState(false);
 
   // Tips — remote pool from Supabase (app_content, type='area_tip',
   // key=screenName), seeded with this section's hardcoded tips so there's
@@ -342,6 +346,15 @@ export default function AreaSectionScreen() {
       if (mine.length) setTips(mine.map((r) => r.body));
     });
   }, [screenName, band]);
+
+  // The action panel. Completions it logs go straight into this screen's
+  // history, so the Log tab shows them without a refetch.
+  const aa = useAreaActions({
+    screenTag: screenName,
+    areaId: config?.areaId,
+    navigation,
+    onLogged: row => setEntries(prev => [row, ...prev]),
+  });
 
   if (!config) return null;
   const color = AREA_COLORS[config.areaId];
@@ -417,6 +430,159 @@ export default function AreaSectionScreen() {
     return acc;
   }, {});
 
+  // The old tabs, unchanged, now inside the Details & history drawer.
+  const renderLog = () => (
+    <>
+      {/* Category filter */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: s.md }}>
+        <View style={{ flexDirection: 'row', gap: s.sm }}>
+          {config.categories.map(cat => (
+            <TouchableOpacity key={cat} onPress={() => setCategory(cat)}
+              style={{ paddingHorizontal: s.md, paddingVertical: 6, borderRadius: r.full, borderWidth: 1, borderColor: category === cat ? color : c.border, backgroundColor: category === cat ? color + '22' : 'transparent' }}>
+              <Text style={{ fontSize: t.xs, color: category === cat ? color : c.text3, fontWeight: category === cat ? t.bold : t.regular }}>{cat}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
+
+      {/* Add entry button */}
+      <TouchableOpacity onPress={() => setShowAdd(!showAdd)}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: color + '18', borderRadius: r.md, padding: s.md, borderWidth: 1, borderColor: color + '33', borderStyle: 'dashed', marginBottom: s.md }}>
+        <Ionicons name="add-circle" size={18} color={color} />
+        <Text style={{ color, fontWeight: '600', fontSize: t.sm }}>Add {category} entry</Text>
+      </TouchableOpacity>
+
+      {/* Add form */}
+      {showAdd && (
+        <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, marginBottom: s.md, borderWidth: 1, borderColor: color + '44' }}>
+          {config.logFields.map(field => (
+            <View key={field.key} style={{ marginBottom: s.md }}>
+              {field.type === 'rating' ? (
+                <RatingInput label={field.label} value={fields[field.key] || 0}
+                  onChange={v => setFields(prev => ({ ...prev, [field.key]: v }))}
+                  color={color} c={c} t={t} s={s} />
+              ) : (
+                <>
+                  <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: 6 }}>{field.label}</Text>
+                  <TextInput
+                    style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: c.border, minHeight: field.type === 'text' ? 50 : 44, textAlignVertical: field.type === 'text' ? 'top' : 'center' }}
+                    value={fields[field.key] || ''}
+                    onChangeText={v => setFields(prev => ({ ...prev, [field.key]: v }))}
+                    placeholder={field.placeholder}
+                    placeholderTextColor={c.text4}
+                    multiline={field.type === 'text'}
+                    keyboardType={field.type === 'number' ? 'decimal-pad' : 'default'}
+                  />
+                </>
+              )}
+            </View>
+          ))}
+          <View style={{ flexDirection: 'row', gap: s.sm }}>
+            <TouchableOpacity onPress={() => { setShowAdd(false); setFields({}); }}
+              style={{ flex: 1, padding: s.md, alignItems: 'center', backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border }}>
+              <Text style={{ color: c.text3 }}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={saveEntry} disabled={saving}
+              style={{ flex: 2, padding: s.md, alignItems: 'center', backgroundColor: color, borderRadius: r.md, opacity: saving ? 0.6 : 1 }}>
+              {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontWeight: t.bold }}>Save Entry</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* Entries feed */}
+      {loading ? <ActivityIndicator color={color} style={{ marginTop: 20 }} /> : (
+        Object.keys(grouped).length === 0 ? (
+          <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+            {showEmojis ? <Text style={{ fontSize: 44, marginBottom: s.sm }}>{config.emoji}</Text> : <Ionicons name="list-outline" size={40} color={color} style={{ marginBottom: s.sm }} />}
+            <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1, marginBottom: s.xs }}>No entries yet</Text>
+            <Text style={{ fontSize: t.sm, color: c.text3, textAlign: 'center' }}>Tap above to start logging your {config.title.toLowerCase()}.</Text>
+          </View>
+        ) : (
+          Object.entries(grouped).map(([date, dayEntries]) => (
+            <View key={date} style={{ marginBottom: s.lg }}>
+              <Text style={{ fontSize: t.xs, color, fontWeight: t.bold, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: s.sm }}>{date}</Text>
+              {dayEntries.map(entry => (
+                <View key={entry.id} style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: color }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <View style={{ backgroundColor: color + '22', borderRadius: r.full, paddingHorizontal: 8, paddingVertical: 2 }}>
+                      <Text style={{ fontSize: 10, color, fontWeight: t.bold }}>{getCategory(entry.content)}</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => del(entry.id)}>
+                      <Ionicons name="close" size={14} color={c.text4} />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={{ fontSize: t.sm, color: c.text2, lineHeight: 20 }}>{parseEntry(entry.content)}</Text>
+                  <Text style={{ fontSize: 10, color: c.text4, marginTop: 4 }}>
+                    {new Date(entry.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ))
+        )
+      )}
+    </>
+  );
+
+  const renderHabits = () => (
+    <>
+      <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.md }}>
+        Tap to log a habit completion
+      </Text>
+      {config.habits.map((habit, i) => (
+        <TouchableOpacity key={i} onPress={() => logHabit(habit)}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, backgroundColor: c.bg1, borderRadius: r.md, padding: s.lg, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border }}>
+          <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: color + '22', borderWidth: 1.5, borderColor: color, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="add" size={16} color={color} />
+          </View>
+          <Text style={{ flex: 1, fontSize: t.sm, color: c.text1 }}>{habit}</Text>
+          <Ionicons name="chevron-forward" size={14} color={c.text4} />
+        </TouchableOpacity>
+      ))}
+
+      {/* Recent habit completions */}
+      {entries.filter(e => e.content.includes('[Habit]')).length > 0 && (
+        <>
+          <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginTop: s.lg, marginBottom: s.sm }}>Recent</Text>
+          {entries.filter(e => e.content.includes('[Habit]')).slice(0, 5).map(entry => (
+            <View key={entry.id} style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border }}>
+              <Ionicons name="checkmark-circle" size={18} color={color} />
+              <Text style={{ flex: 1, fontSize: t.sm, color: c.text2 }}>{entry.content.replace(/\[[^\]]+\]/g, '').replace('✅', '').trim()}</Text>
+              <Text style={{ fontSize: 10, color: c.text4 }}>
+                {new Date(entry.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </Text>
+            </View>
+          ))}
+        </>
+      )}
+    </>
+  );
+
+  const renderTips = () => (
+    <>
+      <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.md }}>
+        {showEmojis ? '💡 ' : ''}Tips for {config.title}
+      </Text>
+      {tips.map((tip, i) => (
+        <View key={i} style={{ flexDirection: 'row', gap: s.md, backgroundColor: c.bg1, borderRadius: r.md, padding: s.lg, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: color }}>
+          <Text style={{ fontSize: t.md, color }}>{i + 1}</Text>
+          <Text style={{ flex: 1, fontSize: t.sm, color: c.text2, lineHeight: 22 }}>{tip}</Text>
+        </View>
+      ))}
+    </>
+  );
+
+  const renderDeeper = () => (
+    <>
+      <GoDeeperList resources={aa.resources} extra={config.resources || []} color={color} />
+      <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginTop: s.xl, marginBottom: s.md }}>
+        Linked in the app
+      </Text>
+      <RelatedLinks areaId={config.areaId} color={color} c={c} t={t} s={s} r={r} />
+    </>
+  );
+
   return (
     <View style={{ flex: 1, backgroundColor: c.bg0 }}>
       {/* Header */}
@@ -434,197 +600,25 @@ export default function AreaSectionScreen() {
               {showSubtext && <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>{config.description}</Text>}
             </View>
           </View>
-
-          {/* Tabs */}
-          <View style={{ flexDirection: 'row', gap: 6 }}>
-            {['log','habits','related','tips'].map(tab => (
-              <TouchableOpacity key={tab} onPress={() => setActiveTab(tab)}
-                style={{ flex: 1, paddingVertical: 8, borderRadius: r.md, backgroundColor: activeTab === tab ? color : c.bg2, alignItems: 'center' }}>
-                <Text style={{ fontSize: 10, fontWeight: t.bold, color: activeTab === tab ? '#fff' : c.text3, textTransform: 'capitalize' }}>
-                  {!showEmojis ? '' : tab === 'log' ? '📝 ' : tab === 'habits' ? '✅ ' : tab === 'related' ? '🔗 ' : '💡 '}
-                  {tab === 'log' ? 'Log' : tab === 'habits' ? 'Habits' : tab === 'related' ? 'Related' : 'Tips'}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
         </View>
       </View>
 
-      {/* Tab content */}
-      <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
-
-        {/* ── LOG TAB ── */}
-        {activeTab === 'log' && (
-          <>
-            {/* Category filter */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: s.md }}>
-              <View style={{ flexDirection: 'row', gap: s.sm }}>
-                {config.categories.map(cat => (
-                  <TouchableOpacity key={cat} onPress={() => setCategory(cat)}
-                    style={{ paddingHorizontal: s.md, paddingVertical: 6, borderRadius: r.full, borderWidth: 1, borderColor: category === cat ? color : c.border, backgroundColor: category === cat ? color + '22' : 'transparent' }}>
-                    <Text style={{ fontSize: t.xs, color: category === cat ? color : c.text3, fontWeight: category === cat ? t.bold : t.regular }}>{cat}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
-
-            {/* Add entry button */}
-            <TouchableOpacity onPress={() => setShowAdd(!showAdd)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: color + '18', borderRadius: r.md, padding: s.md, borderWidth: 1, borderColor: color + '33', borderStyle: 'dashed', marginBottom: s.md }}>
-              <Ionicons name="add-circle" size={18} color={color} />
-              <Text style={{ color, fontWeight: '600', fontSize: t.sm }}>Add {category} entry</Text>
-            </TouchableOpacity>
-
-            {/* Add form */}
-            {showAdd && (
-              <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, marginBottom: s.md, borderWidth: 1, borderColor: color + '44' }}>
-                {config.logFields.map(field => (
-                  <View key={field.key} style={{ marginBottom: s.md }}>
-                    {field.type === 'rating' ? (
-                      <RatingInput label={field.label} value={fields[field.key] || 0}
-                        onChange={v => setFields(prev => ({ ...prev, [field.key]: v }))}
-                        color={color} c={c} t={t} s={s} />
-                    ) : (
-                      <>
-                        <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: 6 }}>{field.label}</Text>
-                        <TextInput
-                          style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: c.border, minHeight: field.type === 'text' ? 50 : 44, textAlignVertical: field.type === 'text' ? 'top' : 'center' }}
-                          value={fields[field.key] || ''}
-                          onChangeText={v => setFields(prev => ({ ...prev, [field.key]: v }))}
-                          placeholder={field.placeholder}
-                          placeholderTextColor={c.text4}
-                          multiline={field.type === 'text'}
-                          keyboardType={field.type === 'number' ? 'decimal-pad' : 'default'}
-                        />
-                      </>
-                    )}
-                  </View>
-                ))}
-                <View style={{ flexDirection: 'row', gap: s.sm }}>
-                  <TouchableOpacity onPress={() => { setShowAdd(false); setFields({}); }}
-                    style={{ flex: 1, padding: s.md, alignItems: 'center', backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border }}>
-                    <Text style={{ color: c.text3 }}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={saveEntry} disabled={saving}
-                    style={{ flex: 2, padding: s.md, alignItems: 'center', backgroundColor: color, borderRadius: r.md, opacity: saving ? 0.6 : 1 }}>
-                    {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontWeight: t.bold }}>Save Entry</Text>}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-
-            {/* Entries feed */}
-            {loading ? <ActivityIndicator color={color} style={{ marginTop: 20 }} /> : (
-              Object.keys(grouped).length === 0 ? (
-                <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-                  {showEmojis ? <Text style={{ fontSize: 44, marginBottom: s.sm }}>{config.emoji}</Text> : <Ionicons name="list-outline" size={40} color={color} style={{ marginBottom: s.sm }} />}
-                  <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1, marginBottom: s.xs }}>No entries yet</Text>
-                  <Text style={{ fontSize: t.sm, color: c.text3, textAlign: 'center' }}>Tap above to start logging your {config.title.toLowerCase()}.</Text>
-                </View>
-              ) : (
-                Object.entries(grouped).map(([date, dayEntries]) => (
-                  <View key={date} style={{ marginBottom: s.lg }}>
-                    <Text style={{ fontSize: t.xs, color, fontWeight: t.bold, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: s.sm }}>{date}</Text>
-                    {dayEntries.map(entry => (
-                      <View key={entry.id} style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: color }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                          <View style={{ backgroundColor: color + '22', borderRadius: r.full, paddingHorizontal: 8, paddingVertical: 2 }}>
-                            <Text style={{ fontSize: 10, color, fontWeight: t.bold }}>{getCategory(entry.content)}</Text>
-                          </View>
-                          <TouchableOpacity onPress={() => del(entry.id)}>
-                            <Ionicons name="close" size={14} color={c.text4} />
-                          </TouchableOpacity>
-                        </View>
-                        <Text style={{ fontSize: t.sm, color: c.text2, lineHeight: 20 }}>{parseEntry(entry.content)}</Text>
-                        <Text style={{ fontSize: 10, color: c.text4, marginTop: 4 }}>
-                          {new Date(entry.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                ))
-              )
-            )}
-          </>
-        )}
-
-        {/* ── HABITS TAB ── */}
-        {activeTab === 'habits' && (
-          <>
-            <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.md }}>
-              Tap to log a habit completion
-            </Text>
-            {config.habits.map((habit, i) => (
-              <TouchableOpacity key={i} onPress={() => logHabit(habit)}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, backgroundColor: c.bg1, borderRadius: r.md, padding: s.lg, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border }}>
-                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: color + '22', borderWidth: 1.5, borderColor: color, alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name="add" size={16} color={color} />
-                </View>
-                <Text style={{ flex: 1, fontSize: t.sm, color: c.text1 }}>{habit}</Text>
-                <Ionicons name="chevron-forward" size={14} color={c.text4} />
-              </TouchableOpacity>
-            ))}
-
-            {/* Recent habit completions */}
-            {entries.filter(e => e.content.includes('[Habit]')).length > 0 && (
-              <>
-                <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginTop: s.lg, marginBottom: s.sm }}>Recent</Text>
-                {entries.filter(e => e.content.includes('[Habit]')).slice(0, 5).map(entry => (
-                  <View key={entry.id} style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border }}>
-                    <Ionicons name="checkmark-circle" size={18} color={color} />
-                    <Text style={{ flex: 1, fontSize: t.sm, color: c.text2 }}>{entry.content.replace(/\[[^\]]+\]/g, '').replace('✅', '').trim()}</Text>
-                    <Text style={{ fontSize: 10, color: c.text4 }}>
-                      {new Date(entry.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </Text>
-                  </View>
-                ))}
-              </>
-            )}
-          </>
-        )}
-
-        {/* ── RELATED TAB ── */}
-        {activeTab === 'related' && (
-          <>
-            <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.md }}>
-              {showEmojis ? '🔗 ' : ''}Linked notes, projects & resources
-            </Text>
-            <RelatedLinks areaId={config.areaId} color={color} c={c} t={t} s={s} r={r} />
-          </>
-        )}
-
-        {/* ── TIPS TAB ── */}
-        {activeTab === 'tips' && (
-          <>
-            <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.md }}>
-              {showEmojis ? '💡 ' : ''}Tips for {config.title}
-            </Text>
-            {tips.map((tip, i) => (
-              <View key={i} style={{ flexDirection: 'row', gap: s.md, backgroundColor: c.bg1, borderRadius: r.md, padding: s.lg, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: color }}>
-                <Text style={{ fontSize: t.md, color }}>{i + 1}</Text>
-                <Text style={{ flex: 1, fontSize: t.sm, color: c.text2, lineHeight: 22 }}>{tip}</Text>
-              </View>
-            ))}
-
-            {/* Resources */}
-            {(config.resources || []).length > 0 && (
-              <>
-                <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginTop: s.lg, marginBottom: s.sm }}>
-                  {showEmojis ? '🔗 ' : ''}Resources
-                </Text>
-                {config.resources.map((res, i) => (
-                  <TouchableOpacity key={i} onPress={() => Linking.openURL(res.link)}
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, backgroundColor: c.bg1, borderRadius: r.md, padding: s.lg, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border }}>
-                    <Ionicons name="open-outline" size={18} color={color} />
-                    <Text style={{ flex: 1, fontSize: t.sm, color, fontWeight: '600' }}>{res.label}</Text>
-                    <Ionicons name="chevron-forward" size={14} color={c.text4} />
-                  </TouchableOpacity>
-                ))}
-              </>
-            )}
-          </>
-        )}
+      <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 60, gap: s.xl }} showsVerticalScrollIndicator={false}>
+        <ActionPanel aa={aa} color={color} onEdit={() => setEditOpen(true)} />
+        <DetailsDrawer
+          color={color}
+          summary="Links for going deeper, tips, your log and habits"
+          initialTab="deeper"
+          tabs={[
+            { key: 'deeper', label: 'Go deeper', render: renderDeeper },
+            { key: 'tips', label: 'Tips', render: renderTips },
+            { key: 'log', label: 'Log', render: renderLog },
+            { key: 'habits', label: 'Habits', render: renderHabits },
+          ]}
+        />
       </ScrollView>
+
+      <ActionEditSheet visible={editOpen} onClose={() => setEditOpen(false)} aa={aa} color={color} title={config.title} />
     </View>
   );
 }

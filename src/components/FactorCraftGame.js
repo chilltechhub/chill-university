@@ -198,7 +198,7 @@ export default function FactorCraftGame({ onGameEnd }) {
     }
 
     const isCorrect = result === round.target;
-    const pts = game.answer(isCorrect, { speedBonus: combo > 2 ? 5 : 0 });
+    const { isOut } = game.answer(isCorrect, { speedBonus: combo > 2 ? 5 : 0 });
 
     if (isCorrect) {
       const newCombo = combo + 1;
@@ -214,7 +214,7 @@ export default function FactorCraftGame({ onGameEnd }) {
         Animated.timing(shakeAnim, { toValue: 8,  duration: 50, useNativeDriver: true }),
         Animated.timing(shakeAnim, { toValue: 0,  duration: 50, useNativeDriver: true }),
       ]).start();
-      const outOfLives = game.lives - 1 <= 0;
+      const outOfLives = isOut;
       setFeedback({ isCorrect: false, msg: outOfLives ? `Out of lives! It needed ${round.target}.` : `Got ${result}, need ${round.target} · ${OP_TIPS[round.operation]}` });
       if (outOfLives) {
         hasEnded.current = true;

@@ -28,7 +28,13 @@ import { LIFE_AREAS } from './library/LifeAreaScreen';
 import { LIBRARY_HUBS } from './library/LibraryScreen';
 import { CREST_COLORS, ROLE_BADGES } from '../data/crestOptions';
 import { useAccess } from '../../context/AccessContext';
+import { useProfiles } from '../../context/ProfileAccountsContext';
 import { FEATURES } from '../data/featureCatalog';
+import { stageMeta } from '../logic/experienceStage';
+import { MAX_STAGE } from '../data/experienceStages';
+import { PRIVACY_POLICY_URL, TERMS_URL } from '../config/legal';
+import { shareMyDataExport } from '../api/dataExport';
+import { isMinorRequiringConsent } from '../logic/ageOfConsent';
 
 // `alwaysShowSubtitle` is for the Show Emojis / Show Subtitles rows
 // themselves — hiding the explanation of what "show subtitles" does the
@@ -56,8 +62,14 @@ function SettingRow({ icon, iconColor, label, subtitle, right, onPress, c, t, s,
 // here would rebuild the wall of options in the one screen people already
 // open when they feel lost.
 function UnlockSummary({ accessFor, c, t, s, r, onPress }) {
-  const gated = FEATURES.filter(f => f.gate !== 'open');
-  const open = gated.filter(f => accessFor(f.id).available).length;
+  // Counts only doors that are on show. A Plus door before Plus is on sale
+  // is hidden (it has no key), so counting it would be a tally of things
+  // nobody can see or open.
+  const gated = FEATURES
+    .filter(f => f.gate !== 'open')
+    .map(f => accessFor(f.id))
+    .filter(a => a.available || !a.hidden || a.gate === 'experimental');
+  const open = gated.filter(a => a.available).length;
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
@@ -70,7 +82,7 @@ function UnlockSummary({ accessFor, c, t, s, r, onPress }) {
           <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>
             {open === gated.length
               ? 'Everything is open.'
-              : 'The Compass lists what each one needs — an objective, a check, or a plan.'}
+              : 'The Compass lists what each one needs: an objective, a check, or a switch.'}
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={16} color={c.text4} />
@@ -384,6 +396,45 @@ function DeleteAccountModal({ visible, onClose, onConfirm, deleting, c, t, s, r 
 // Bring-your-own Anthropic key for the Import Hub's AI parsing. Stored on
 // this device only (SecureStore/Keychain on iOS+Android, AsyncStorage on
 // web) — never sent anywhere but api.anthropic.com from your own device.
+// One-time birth date for accounts made before onboarding asked for it. The
+// Discover screens send people here ("add it in Settings"), so this row
+// exists only while the date is missing — once saved it isn't editable in the
+// app, since it decides what an account can see.
+function BirthDateModal({ visible, onClose, onSave, saving, c, t, s, r }) {
+  const [mm, setMm] = useState('');
+  const [dd, setDd] = useState('');
+  const [yyyy, setYyyy] = useState('');
+  useEffect(() => { if (visible) { setMm(''); setDd(''); setYyyy(''); } }, [visible]);
+  const input = { fontSize: t.md, color: c.text1, backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 1, borderColor: c.border, padding: s.md, textAlign: 'center' };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: r.xl, borderTopRightRadius: r.xl, padding: s.xl, paddingBottom: 40 }}>
+          <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: s.sm }}>
+            <Text style={{ fontSize: t.lg, fontWeight: '800', color: c.text1 }}>Your birth date</Text>
+            <TouchableOpacity onPress={onClose}><Ionicons name="close" size={22} color={c.text3} /></TouchableOpacity>
+          </View>
+          <Text style={{ fontSize: t.sm, color: c.text3, lineHeight: 20, marginBottom: s.lg }}>
+            It decides which parts of the app fit your age. You can add it once; after that it can't be changed here.
+          </Text>
+          <View style={{ flexDirection: 'row', gap: s.sm, marginBottom: s.lg }}>
+            <TextInput style={[input, { flex: 1 }]} placeholder="MM" placeholderTextColor={c.text4} value={mm} onChangeText={setMm} keyboardType="number-pad" maxLength={2} />
+            <TextInput style={[input, { flex: 1 }]} placeholder="DD" placeholderTextColor={c.text4} value={dd} onChangeText={setDd} keyboardType="number-pad" maxLength={2} />
+            <TextInput style={[input, { flex: 1.6 }]} placeholder="YYYY" placeholderTextColor={c.text4} value={yyyy} onChangeText={setYyyy} keyboardType="number-pad" maxLength={4} />
+          </View>
+          <TouchableOpacity onPress={() => onSave({ mm, dd, yyyy })} disabled={saving}
+            style={{ backgroundColor: c.teal, borderRadius: r.md, padding: s.md, alignItems: 'center' }}>
+            {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontWeight: t.bold, fontSize: t.sm }}>Save</Text>}
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
 function AIKeyCard({ c, t, s, r }) {
   const [savedKey, setSavedKey] = useState(null); // null = loading, '' = none saved
   const [draft, setDraft] = useState('');
@@ -487,15 +538,26 @@ export default function SettingsScreen() {
   // X", so the same switches the Compass offers live here too.
   const {
     purpose, activeObjective, accessFor, experimentalOn, setExperimental, isPlus,
+    stage, nextStage, experienceMode, setExperienceMode, can, plusOnSale,
+    doorSettings, setDoorSetting,
   } = useAccess();
-  // null = never decided (see SETTING_KEYS.EDUCATOR_MODE); the Switch below
-  // treats that as off, and flipping it writes an explicit true/false.
-  const [educatorMode, setEducatorMode] = useSetting(SETTING_KEYS.EDUCATOR_MODE, null);
+  // Labs, Plus and the unlock tally arrive with the last stage ('doors').
+  const showAll = can('doors');
+  const { activeType } = useProfiles();
+  // Educator Mode is a key to the Lesson Builder's door (featureCatalog's
+  // `settingKey`), so it lives with the doors in AccessContext rather than
+  // in a setting of its own the lock wouldn't know about. null = never
+  // decided; the Switch treats that as off.
+  const educatorMode = doorSettings?.educatorMode ?? null;
+  const setEducatorMode = (on) => setDoorSetting('educatorMode', on);
   const [userId, setUserId] = useState(null);
   const [showCrestModal, setShowCrestModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
-  const { dailyMissions, profile: liveProfile, streakDays } = useUserProgress();
+  const { dailyMissions, profile: liveProfile, streakDays, refreshProfile } = useUserProgress();
+  const [showDobModal, setShowDobModal] = useState(false);
+  const [savingDob, setSavingDob] = useState(false);
+  const [exportingData, setExportingData] = useState(false);
   const { startTour } = useTour();
   // Shared live context, not useSetting — the FAB itself (not a Screen, so
   // it never gets focus events) also needs to see this change immediately.
@@ -571,6 +633,46 @@ export default function SettingsScreen() {
         navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
       }},
     ]);
+  };
+
+  const exportData = async () => {
+    setExportingData(true);
+    try {
+      await shareMyDataExport();
+    } catch (e) {
+      console.warn('exportData', e);
+      Alert.alert("Couldn't export your data", e.message || 'Something went wrong — try again.');
+    } finally {
+      setExportingData(false);
+    }
+  };
+
+  const saveBirthDate = async ({ mm, dd, yyyy }) => {
+    const m = parseInt(mm, 10), d = parseInt(dd, 10), y = parseInt(yyyy, 10);
+    const dob = new Date(y, (m || 1) - 1, d || 1);
+    const valid = y > 1900 && m >= 1 && m <= 12 && d >= 1 && d <= 31
+      && dob <= new Date() && (new Date().getFullYear() - y) < 120;
+    if (!valid) { Alert.alert('Check your birth date', 'Enter a valid month, day, and year.'); return; }
+    const dateOfBirth = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const isMinor = isMinorRequiringConsent(dateOfBirth, liveProfile?.country_code || 'US');
+
+    setSavingDob(true);
+    try {
+      // Needs parental consent: send them back through onboarding's age gate,
+      // the one place that handles it, rather than a second copy of that flow.
+      const { error } = await supabase.from('profiles')
+        .update({ date_of_birth: dateOfBirth, is_minor: isMinor, ...(isMinor && { onboarding_completed: false }) })
+        .eq('id', userId)
+        .is('date_of_birth', null);
+      if (error) throw error;
+      setShowDobModal(false);
+      await refreshProfile?.();
+      if (isMinor) navigation.reset({ index: 0, routes: [{ name: 'MultiStepOnboarding' }] });
+    } catch (e) {
+      Alert.alert('Save error', e.message || 'Could not save your birth date.');
+    } finally {
+      setSavingDob(false);
+    }
   };
 
   // supabase/migrations/20260906150000_delete_account.sql's delete_my_account()
@@ -761,6 +863,39 @@ export default function SettingsScreen() {
         />
         <FabPositionPicker value={fabPosition} onChange={setFabPosition} c={c} t={t} s={s} r={r} />
 
+        {/* App experience — how much of the app is on show. First, because
+            it's the answer to "where did X go?" for anyone not at the last
+            stage. See src/data/experienceStages.js. */}
+        <SectionLabel label="App experience" c={c} t={t} s={s} />
+        <SettingRow
+          icon="layers-outline"
+          iconColor={c.teal}
+          label={`Stage ${stage} of ${MAX_STAGE} · ${stageMeta(stage, activeType).label}`}
+          subtitle={experienceMode === 'full'
+            ? 'Everything is on show because you asked for it. Turn the switch below off and the app goes by your progress again.'
+            : nextStage
+              ? `The app opens a little at a time. ${nextStage.text} to open the next stage: ${nextStage.label}.`
+              : 'Everything is on show.'}
+          alwaysShowSubtitle
+          c={c} t={t} s={s} r={r}
+        />
+        <SettingRow
+          icon="eye-outline"
+          iconColor={c.teal}
+          label="Show everything now"
+          subtitle="Every tool, game and widget from today, including locked tools and how to open them. For people who know their way around apps like this."
+          alwaysShowSubtitle
+          right={
+            <Switch
+              value={experienceMode === 'full'}
+              onValueChange={(on) => setExperienceMode(on ? 'full' : 'auto')}
+              trackColor={{ false: c.bg2, true: c.teal + '88' }}
+              thumbColor={experienceMode === 'full' ? c.teal : c.text4}
+            />
+          }
+          c={c} t={t} s={s} r={r}
+        />
+
         {/* Compass — the purpose/objective/gating layer. First under
             Personalization because it's the setting that changes most of
             what the rest of the app shows you. */}
@@ -777,6 +912,10 @@ export default function SettingsScreen() {
           onPress={() => navigation.navigate('Compass')}
           c={c} t={t} s={s} r={r}
         />
+        {/* Labs, Plus and the unlock tally belong to the last stage — before
+            that, none of what they talk about is on show. Plus only once it
+            can be bought: a plan row with nothing to buy is noise. */}
+        {showAll && (<>
         <SettingRow
           icon="flask-outline"
           iconColor={c.purple}
@@ -793,7 +932,7 @@ export default function SettingsScreen() {
           }
           c={c} t={t} s={s} r={r}
         />
-        <SettingRow
+        {(plusOnSale || isPlus) && <SettingRow
           icon={isPlus ? 'star' : 'star-outline'}
           iconColor={c.gold}
           label={isPlus ? 'Plus' : 'Free plan'}
@@ -804,8 +943,9 @@ export default function SettingsScreen() {
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
           onPress={() => navigation.navigate('Compass')}
           c={c} t={t} s={s} r={r}
-        />
+        />}
         <UnlockSummary accessFor={accessFor} c={c} t={t} s={s} r={r} onPress={() => navigation.navigate('Compass')} />
+        </>)}
 
         {/* Personalization — same fields onboarding's Sectors / Look &
             Layout / Character steps set, editable here without re-running
@@ -893,13 +1033,25 @@ export default function SettingsScreen() {
 
         {/* Data */}
         <SectionLabel label="Data & Privacy" c={c} t={t} s={s} />
-        <SettingRow icon="shield-checkmark-outline" iconColor="#64b5f6" label="Privacy Settings" subtitle="Manage your data and privacy"
+        {userId && !liveProfile?.date_of_birth && (
+          <SettingRow icon="calendar-outline" iconColor="#e0a830" label="Birth Date" subtitle="Not added yet. Some features need it"
+            alwaysShowSubtitle
+            right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
+            onPress={() => setShowDobModal(true)}
+            c={c} t={t} s={s} r={r} />
+        )}
+        {/* Opens the Digital life area's privacy checklist — tips for your own
+            online privacy, not settings for this app — so it's labelled that way. */}
+        <SettingRow icon="shield-checkmark-outline" iconColor="#64b5f6" label="Privacy Checkup" subtitle="Your digital-privacy checklist"
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
           onPress={() => navigation.navigate('MainTabs', { screen: 'Library', params: { screen: 'PrivacyScreen' } })}
           c={c} t={t} s={s} r={r} />
-        <SettingRow icon="download-outline" iconColor={c.gold} label="Export My Data" subtitle="Download a copy of all your data"
-          right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
-          c={c} t={t} s={s} r={r} />
+        {userId && (
+          <SettingRow icon="download-outline" iconColor={c.gold} label="Export My Data" subtitle="A copy of everything this account has stored"
+            right={exportingData ? <ActivityIndicator color={c.text4} size="small" /> : <Ionicons name="share-outline" size={16} color={c.text4} />}
+            onPress={exportingData ? undefined : exportData}
+            c={c} t={t} s={s} r={r} />
+        )}
 
         {/* About */}
         <SectionLabel label="About" c={c} t={t} s={s} />
@@ -946,7 +1098,14 @@ export default function SettingsScreen() {
           c={c} t={t} s={s} r={r} />
         <SettingRow icon="globe-outline" iconColor="#64b5f6" label="Privacy Policy"
           right={<Ionicons name="open-outline" size={16} color={c.text4} />}
+          onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
           c={c} t={t} s={s} r={r} />
+        {TERMS_URL ? (
+          <SettingRow icon="document-text-outline" iconColor="#64b5f6" label="Terms of Service"
+            right={<Ionicons name="open-outline" size={16} color={c.text4} />}
+            onPress={() => Linking.openURL(TERMS_URL)}
+            c={c} t={t} s={s} r={r} />
+        ) : null}
 
         {/* Sign out */}
         <SectionLabel label="Account" c={c} t={t} s={s} />
@@ -983,6 +1142,13 @@ export default function SettingsScreen() {
         onClose={() => setShowDeleteModal(false)}
         onConfirm={deleteAccount}
         deleting={deletingAccount}
+        c={c} t={t} s={s} r={r}
+      />
+      <BirthDateModal
+        visible={showDobModal}
+        onClose={() => setShowDobModal(false)}
+        onSave={saveBirthDate}
+        saving={savingDob}
         c={c} t={t} s={s} r={r}
       />
     </KeyboardAvoidingView>

@@ -17,6 +17,15 @@
 //   asks the server, because a tick on a checklist should not wait on a
 //   round-trip.
 //
+// It also answers the other questions in docs/access-system.md, in order:
+//   1. Allowed?     age and remote switches (src/logic/allowed.js)
+//   2. Which door?  open, earn, Plus or Labs (src/logic/featureAccess.js)
+//   3. Shown now?   the stage on this account type's path
+//                   (src/data/experienceStages.js)
+// Same reason it lives here — the Library, Training, Home, search and the +
+// button all have to agree. Question 4, "Kept?", is the person's own hide
+// switches, and each surface keeps those itself.
+//
 // Every write goes through src/api/accessService.js, which never grants
 // anything itself — the RPCs re-check each gate server-side. If this file
 // and the database ever disagree, the database is right.
@@ -25,23 +34,82 @@ import React, {
   createContext, useContext, useState, useEffect, useMemo, useCallback, useRef,
 } from 'react';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUserProgress } from './UserProgressContext';
+import { useProfiles } from './ProfileAccountsContext';
 import {
   fetchAccessState, startObjective as startObjectiveApi, saveObjectiveSteps,
   completeObjective as completeObjectiveApi, abandonObjective as abandonObjectiveApi,
   unlockFeature as unlockFeatureApi, recordTestAttempt, setPurpose as setPurposeApi,
-  setExperimentalOptIn, EMPTY_ACCESS,
+  setExperimentalOptIn, setShowEverything, EMPTY_ACCESS,
 } from '../src/api/accessService';
+import { useConfigValue, useFeatureFlag } from './RemoteConfigContext';
+import { getWayfinderIntent } from '../src/api/wayfinderService';
+import { ageStatus, contentAllowed, gameAllowed } from '../src/logic/allowed';
 import { cacheWrite } from '../src/api/offlineCache';
-import { FEATURES, getFeature } from '../src/data/featureCatalog';
+import { FEATURES, getFeature, featureForScreen, featuresUnlockedBy } from '../src/data/featureCatalog';
 import { getObjective, getPurpose, suggestPurpose } from '../src/data/objectives';
 import { gradeTest } from '../src/data/competencyTests';
 import { evaluateAccess, objectiveProgress, planActive as planIsActive, rankForPurpose } from '../src/logic/featureAccess';
+import {
+  stageFromProgress, resolveStage, openedAt, screenShownAtStage, visibleGameIdsFor,
+  fabActionsFor, nextStageNeeds, stagesBetween, reteachBetween, firstGoalFor,
+} from '../src/logic/experienceStage';
+import { forgetSeenScreens } from '../src/logic/useFirstVisitTutorial';
 
 const AccessContext = createContext(null);
 
+// Device-local, per account. The stage itself is derived from progress that
+// lives on the server, so the only thing a reinstall loses is an explicit
+// "show me everything" — which is one switch in Settings to get back.
+const modeKey = (userId) => `@cth_experience_mode_${userId || 'guest'}`;
+// v2: stages went from three big ones to ten small ones, so a number saved
+// under the old scheme means something else. A fresh key makes the first
+// load record a baseline instead of celebrating stages nobody just reached.
+const seenStageKey = (userId) => `@cth_experience_stage_seen_v2_${userId}`;
+// Settings switches that are also keys to a door (featureCatalog's
+// `settingKey`). Same storage key useSetting() writes, read here directly
+// because this provider sits above the navigator useSetting needs.
+const DOOR_SETTING_KEYS = ['educatorMode'];
+const doorSettingKey = (key) => `@cth_setting_${key}`;
+
 export function AccessProvider({ children }) {
-  const { user, profile, level, points, streakDays, dailyMissions, refreshProfile } = useUserProgress();
+  const { user, profile, level, points, streakDays, dailyMissions, gameplayStats, refreshProfile } = useUserProgress();
+  // Which profile type is active decides WHICH path the stages walk.
+  // Account-level progress decides HOW FAR along it — level and objectives
+  // are shared across an account's profiles, so the stage is too.
+  const { activeType } = useProfiles();
+  const userId = user?.id || null;
+
+  /* ── 1. Allowed? ───────────────────────────────────────────────────────
+     Age and remote switches. Nothing further down can override these. */
+  const age = useMemo(() => ageStatus(user ? profile : null), [user, profile]);
+  const disabledGames = useConfigValue('disabled_games', []);
+  const isContentAllowed = useCallback((item) => contentAllowed(item, age), [age]);
+  const isGameAllowed = useCallback((gameId) => gameAllowed(gameId, disabledGames), [disabledGames]);
+
+  /* ── 2. Which door? — the inputs that aren't server state ──────────────
+     Plus can't be bought yet (no payment SDK), so its doors stay out of
+     sight until the 'plus_on_sale' app_config row says otherwise. */
+  const plusOnSale = useFeatureFlag('plus_on_sale', false);
+  const [doorSettings, setDoorSettings] = useState({});
+  useEffect(() => {
+    let alive = true;
+    Promise.all(DOOR_SETTING_KEYS.map(k => AsyncStorage.getItem(doorSettingKey(k)).catch(() => null)))
+      .then(raws => {
+        if (!alive) return;
+        const next = {};
+        raws.forEach((raw, i) => {
+          try { next[DOOR_SETTING_KEYS[i]] = raw === null ? null : JSON.parse(raw); } catch { next[DOOR_SETTING_KEYS[i]] = null; }
+        });
+        setDoorSettings(next);
+      });
+    return () => { alive = false; };
+  }, [userId]);
+  const setDoorSetting = useCallback((key, on) => {
+    setDoorSettings(prev => ({ ...prev, [key]: !!on }));
+    AsyncStorage.setItem(doorSettingKey(key), JSON.stringify(!!on)).catch(() => {});
+  }, []);
 
   const [state, setState] = useState(EMPTY_ACCESS);
   const [loading, setLoading] = useState(true);
@@ -57,8 +125,6 @@ export function AccessProvider({ children }) {
   // Weekly Review and Work Mode).
   const [unlockEvents, setUnlockEvents] = useState([]);
   const knownUnlocksRef = useRef(null); // null until the first real load
-
-  const userId = user?.id || null;
 
   /* ── Load ──────────────────────────────────────────────────────────────── */
 
@@ -132,10 +198,127 @@ export function AccessProvider({ children }) {
     [dailyMissions]
   );
 
+  // Lifetime activities answered in any game — the counter behind "play one
+  // training game", which has to tick after one round of anything.
+  const played = gameplayStats?.totalProblemsAttempted || 0;
+
   const stats = useMemo(
-    () => ({ streakDays, level, points, missionsToday }),
-    [streakDays, level, points, missionsToday]
+    () => ({ streakDays, level, points, missionsToday, played }),
+    [streakDays, level, points, missionsToday, played]
   );
+
+  /* ── 3. Shown now? ─────────────────────────────────────────────────────
+     See src/data/experienceStages.js. Each account type walks a path of
+     small stages; each finished goal and each level gained opens the next.
+     Worked out from progress, so there's nothing to keep in sync. */
+
+  const [deviceMode, setDeviceMode] = useState('auto');
+  const [stageEvents, setStageEvents] = useState([]);
+  // The highest stage this account has been seen at, read back at launch.
+  // Progress (objectives, level) arrives a beat after first render, and
+  // without this a far-along account would flash the first-day app every
+  // time it opened. Stages only ever go up, so the last one seen is a safe
+  // stand-in until the real numbers land.
+  const [cachedStage, setCachedStage] = useState(null);
+  const [prefsReady, setPrefsReady] = useState(false);
+  // Onboarding's "I'm not sure yet": the Wayfinder joins stage 1.
+  const [exploring, setExploring] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    setDeviceMode('auto');
+    setCachedStage(null);
+    setPrefsReady(false);
+    Promise.all([
+      AsyncStorage.getItem(modeKey(userId)),
+      userId ? AsyncStorage.getItem(seenStageKey(userId)) : Promise.resolve(null),
+      getWayfinderIntent(),
+    ])
+      .then(([rawMode, rawSeen, intent]) => {
+        if (!alive) return;
+        if (rawMode === 'full') setDeviceMode('full');
+        const n = parseInt(rawSeen, 10);
+        if (Number.isFinite(n)) setCachedStage(n);
+        setExploring(!!intent);
+      })
+      .catch(() => {})
+      .finally(() => { if (alive) setPrefsReady(true); });
+    return () => { alive = false; };
+  }, [userId]);
+
+  // "Show everything" lives on the account (profiles.show_everything) so it
+  // follows someone to a new phone. The device copy covers the time before
+  // that column exists, and guests, who have no account to put it on.
+  const [modeOverride, setModeOverride] = useState(null);
+  useEffect(() => { setModeOverride(null); }, [userId]);
+  const experienceMode = modeOverride
+    ?? (profile?.show_everything === true || deviceMode === 'full' ? 'full' : 'auto');
+
+  const setExperienceMode = useCallback(async (mode) => {
+    const next = mode === 'full' ? 'full' : 'auto';
+    setModeOverride(next);
+    setDeviceMode(next);
+    try { await AsyncStorage.setItem(modeKey(userId), next); } catch { /* local pref */ }
+    if (userId) {
+      await setShowEverything(userId, next === 'full');
+      refreshProfile?.();
+    }
+  }, [userId, refreshProfile]);
+
+  const completedCount = useMemo(
+    () => Object.values(state.objectives || {}).filter(row => row.status === 'completed').length,
+    [state.objectives]
+  );
+  const progressReady = !!state.ready && (!userId || !!profile);
+  const liveStage = stageFromProgress({ completedObjectives: completedCount, level });
+  const derivedStage = progressReady ? liveStage : Math.max(liveStage, cachedStage || 1);
+  const stage = resolveStage({ derived: derivedStage, mode: experienceMode });
+  const persona = activeType || null;
+  const opened = useMemo(() => openedAt(persona, stage, { exploring }), [persona, stage, exploring]);
+  const can = useCallback((cap) => opened.caps.has(cap), [opened]);
+
+  // "More of the app is open" — only for stages reached by progress. A
+  // stage you switched on yourself isn't news. The first real load records
+  // a baseline instead of celebrating, for the same reason knownUnlocksRef
+  // does: an account that's been far along for months shouldn't be
+  // congratulated on a new phone.
+  useEffect(() => {
+    if (!userId || !progressReady || !prefsReady) return;
+    let alive = true;
+    (async () => {
+      let seen = null;
+      try { seen = parseInt(await AsyncStorage.getItem(seenStageKey(userId)), 10); } catch {}
+      if (!alive) return;
+      if (Number.isFinite(seen) && derivedStage > seen && experienceMode !== 'full') {
+        setStageEvents(q => [...q, {
+          from: seen, to: derivedStage, stages: stagesBetween(persona, seen, derivedStage),
+        }]);
+        // Screens with noticeably more on them teach themselves again.
+        const again = reteachBetween(persona, seen, derivedStage);
+        if (again.length) forgetSeenScreens(again);
+      }
+      if (!Number.isFinite(seen) || derivedStage > seen) {
+        try { await AsyncStorage.setItem(seenStageKey(userId), String(derivedStage)); } catch {}
+      }
+    })();
+    return () => { alive = false; };
+  }, [userId, progressReady, prefsReady, derivedStage, experienceMode, persona]);
+
+  const dismissStageEvent = useCallback(() => setStageEvents(q => q.slice(1)), []);
+
+  // What the goal in flight opens is always on the map: the Compass says
+  // "this opens the Weekly Review", so the Weekly Review has to be somewhere
+  // you can see it, lock and all.
+  const activeGoalId = useMemo(() => {
+    const row = Object.entries(state.objectives || {}).find(([, r]) => r.status === 'active');
+    return row ? row[0] : null;
+  }, [state.objectives]);
+  const goalUnlocks = useMemo(
+    () => new Set(activeGoalId ? featuresUnlockedBy(activeGoalId).map(f => f.id) : []),
+    [activeGoalId]
+  );
+
+  const experience = useMemo(() => ({ opened, goalUnlocks }), [opened, goalUnlocks]);
 
   // The context handed to evaluateAccess. Built from the local profile echoes
   // rather than the raw row, so a just-flipped toggle is reflected everywhere
@@ -148,7 +331,10 @@ export function AccessProvider({ children }) {
     attempts: state.attempts || {},
     objectives: state.objectives || {},
     stats,
-  }), [profile, experimentalOn, purposeKey, state, stats]);
+    settings: doorSettings,
+    plusOnSale,
+    experience,
+  }), [profile, experimentalOn, purposeKey, state, stats, doorSettings, plusOnSale, experience]);
 
   const accessFor = useCallback(
     (featureId) => evaluateAccess(getFeature(featureId), gateCtx),
@@ -164,11 +350,48 @@ export function AccessProvider({ children }) {
     return evaluateAccess(feature, gateCtx).available;
   }, [gateCtx]);
 
-  const activeObjectiveId = useMemo(() => {
-    const rows = Object.entries(state.objectives || {});
-    const active = rows.find(([, row]) => row.status === 'active');
-    return active ? active[0] : null;
-  }, [state.objectives]);
+  // Whether a route's entry points should show at this stage. A catalog
+  // feature answers through its access (so a lock, an opt-in and the stage
+  // all agree); anything else goes by STAGED_SCREENS and otherwise shows.
+  // Like isOpen, an unknown screen is shown, never swallowed.
+  const isFeatureShown = useCallback(
+    (featureId) => {
+      const feature = getFeature(featureId);
+      return !feature || !evaluateAccess(feature, gateCtx).hidden;
+    },
+    [gateCtx]
+  );
+
+  const isScreenVisible = useCallback((screen) => {
+    if (!screen) return true;
+    const feature = featureForScreen(screen);
+    if (feature) return !evaluateAccess(feature, gateCtx).hidden;
+    return screenShownAtStage(screen, { opened, featureShown: isFeatureShown });
+  }, [gateCtx, opened, isFeatureShown]);
+
+  // Null = every game the remote switches allow. Before 'all-games' it's
+  // the ones this path has opened.
+  const visibleGameIds = useMemo(() => visibleGameIdsFor(opened), [opened]);
+  const isGameVisible = useCallback(
+    (gameId) => isGameAllowed(gameId) && (!visibleGameIds || visibleGameIds.has(gameId)),
+    [visibleGameIds, isGameAllowed]
+  );
+  const visibleFabActions = useMemo(() => fabActionsFor(opened), [opened]);
+
+  // Class subjects: an adult track is an age question (1); another type's
+  // track is a map question (3) that 'all-tools' answers.
+  const isSubjectVisible = useCallback((subject) => {
+    if (!isContentAllowed(subject)) return false;
+    if (!subject?.personas || (persona && subject.personas.includes(persona))) return true;
+    return can('all-tools');
+  }, [isContentAllowed, persona, can]);
+
+  const nextStage = useMemo(
+    () => (experienceMode === 'full' ? null : nextStageNeeds({ stage: derivedStage, persona })),
+    [derivedStage, persona, experienceMode]
+  );
+
+  const activeObjectiveId = activeGoalId;
 
   const activeObjective = useMemo(() => {
     if (!activeObjectiveId) return null;
@@ -230,6 +453,21 @@ export function AccessProvider({ children }) {
     return startObjectiveApi(userId, objectiveId);
   }, [userId, applyLocal]);
 
+  // The profile type's simple first goal, with a purpose to go with it if
+  // there isn't one yet — a brand-new account is handed one thing to do
+  // rather than asked what it's here for (it can still change the purpose on
+  // the Compass). Called by onboarding and by Home's Compass card.
+  //
+  // Onboarding passes the type it just picked: it calls this before the
+  // master profile exists, when activeType is still whatever the context
+  // had (usually nothing), and the plan has to be the chosen type's.
+  const firstGoal = useMemo(() => firstGoalFor(persona), [persona]);
+  const startFirstGoal = useCallback(async (forPersona) => {
+    const goal = forPersona ? firstGoalFor(forPersona) : firstGoal;
+    if (!purposeKey && goal.purpose) await choosePurpose(goal.purpose);
+    return startObjective(goal.objective);
+  }, [purposeKey, firstGoal, choosePurpose, startObjective]);
+
   const abandonActiveObjective = useCallback(async () => {
     if (!activeObjectiveId) return {};
     const id = activeObjectiveId;
@@ -263,6 +501,30 @@ export function AccessProvider({ children }) {
 
     if (userId) await saveObjectiveSteps(userId, activeObjectiveId, steps);
   }, [activeObjectiveId, state, stats, userId, applyLocal]);
+
+  // "The person just did X." Ticks any step of the goal in flight that says
+  // doing X is what finishes it (objectives.js `signal`), so a step gets done
+  // by doing the thing rather than by remembering to tick a box afterwards.
+  // `detail` narrows it: 'area-rated' with { area: 'financial' } also
+  // matches a step whose signal is 'area-rated:financial'.
+  const signalAction = useCallback(async (name, detail = {}) => {
+    if (!activeObjectiveId || !name) return;
+    const objective = getObjective(activeObjectiveId);
+    const names = new Set([name, ...Object.values(detail).map(v => `${name}:${v}`)]);
+    const current = state.objectives[activeObjectiveId]?.steps || {};
+    const hits = (objective?.steps || []).filter(step => step.signal && names.has(step.signal) && !current[step.id]);
+    if (!hits.length) return;
+    const steps = { ...current };
+    hits.forEach(step => { steps[step.id] = true; });
+    applyLocal(prev => ({
+      ...prev,
+      objectives: {
+        ...prev.objectives,
+        [activeObjectiveId]: { ...prev.objectives[activeObjectiveId], steps },
+      },
+    }));
+    if (userId) await saveObjectiveSteps(userId, activeObjectiveId, steps);
+  }, [activeObjectiveId, state.objectives, userId, applyLocal]);
 
   const completeActiveObjective = useCallback(async () => {
     if (!activeObjectiveId) return { error: new Error('Nothing active') };
@@ -382,6 +644,36 @@ export function AccessProvider({ children }) {
     unlockEvents,
     dismissUnlockEvent,
 
+    // 1. allowed
+    age,
+    isContentAllowed,
+    isGameAllowed,
+
+    // 2. doors that aren't server state
+    doorSettings,
+    setDoorSetting,
+    plusOnSale,
+
+    // 3. shown now
+    stage,
+    derivedStage,
+    nextStage,
+    experienceMode,
+    setExperienceMode,
+    opened,
+    can,
+    firstGoalId: firstGoal.objective,
+    startFirstGoal,
+    isFeatureShown,
+    isScreenVisible,
+    isGameVisible,
+    isSubjectVisible,
+    visibleGameIds,
+    visibleFabActions,
+    stageEvents,
+    dismissStageEvent,
+    signalAction,
+
     refresh,
     stats,
   }), [
@@ -389,7 +681,13 @@ export function AccessProvider({ children }) {
     isPlus, experimentalOn, setExperimental, accessFor, isOpen, rankedFeatures,
     activeObjective, activeObjectiveId, completedObjectiveIds, startObjective,
     toggleStep, completeActiveObjective, abandonActiveObjective, submitTest,
-    claimPlanFeature, unlockEvents, dismissUnlockEvent, refresh, stats,
+    claimPlanFeature, unlockEvents, dismissUnlockEvent,
+    age, isContentAllowed, isGameAllowed, doorSettings, setDoorSetting, plusOnSale,
+    stage, derivedStage, nextStage, experienceMode, setExperienceMode, opened, can,
+    firstGoal, startFirstGoal, isFeatureShown, isScreenVisible, isGameVisible,
+    isSubjectVisible, visibleGameIds, visibleFabActions, stageEvents, dismissStageEvent,
+    signalAction,
+    refresh, stats,
   ]);
 
   return <AccessContext.Provider value={value}>{children}</AccessContext.Provider>;

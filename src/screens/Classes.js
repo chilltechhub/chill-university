@@ -1,6 +1,6 @@
 // src/screens/Classes.js
-import React, { useState, useEffect, useMemo } from 'react';
-import { ScrollView, TouchableOpacity, Text, View, StyleSheet, Alert } from 'react-native';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { ScrollView, TouchableOpacity, Text, View, StyleSheet, Alert, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -10,7 +10,6 @@ import { useProfiles } from '../../context/ProfileAccountsContext';
 import { supabase } from '../api/supabaseClient';
 import { fetchContentPool } from '../api/remoteConfigService';
 import { listLessonPlans } from '../api/lessonBuilderService';
-import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import { useAccess } from '../../context/AccessContext';
 import { pickRecommendedTopics, pickRecommendedGames } from '../logic/classRecommendations';
 import TourSpot from '../components/TourSpot';
@@ -18,6 +17,9 @@ import { CLASS_SUBJECTS, CLASS_SCREEN_MAP } from '../data/classCatalog';
 import { lessonsForGame } from '../data/skillLinks';
 import { getWeakGames } from '../logic/skillStats';
 import { getGame } from '../services/gameRegistry';
+import { questsInOrder } from '../data/quests';
+import { catalogCounts } from '../data/topicCatalog';
+import { useQuestProgress } from '../logic/questProgress';
 
 const GRADE_BAND_KEY = '@cth_academy_grade_band';
 const BANDS = ['All', 'K-2', '3-5', '6-8', '9-12'];
@@ -37,15 +39,16 @@ export default function Classes() {
   // learner's: grade bands, topic readings, practice quizzes. The Classroom
   // Day Lesson Plan Builder is an authoring tool, so its entry points only
   // appear for whoever has said they're teaching.
-  const [educatorMode, setEducatorMode, educatorReady] = useSetting(SETTING_KEYS.EDUCATOR_MODE, null);
-  // The Compass's 'lesson-builder' feature is a SECOND way in, never a
-  // second lock: someone who found the builder through Settings' Educator
-  // Mode keeps it exactly as they had it, and someone who never went looking
-  // in Settings can instead finish "Teach It Once" (or pass its check) and
-  // have the authoring entry points appear. Either satisfies this; neither
-  // takes anything away.
-  const { isOpen } = useAccess();
-  const showAuthoring = educatorMode === true || isOpen('lesson-builder');
+  //
+  // Educator Mode is one of the keys to the 'lesson-builder' door
+  // (featureCatalog's `settingKey`), next to finishing "Teach It Once" or
+  // passing its check. The door knows about all three, so asking it is the
+  // whole question — there's no second way round it.
+  const { isOpen, doorSettings, setDoorSetting, isSubjectVisible, signalAction } = useAccess();
+  const educatorReady = doorSettings && 'educatorMode' in doorSettings;
+  const educatorMode = doorSettings?.educatorMode ?? null;
+  const setEducatorMode = useCallback((on) => setDoorSetting('educatorMode', on), [setDoorSetting]);
+  const showAuthoring = isOpen('lesson-builder');
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   const { showEmojis, showSubtext } = useUIPrefs();
@@ -129,23 +132,41 @@ export default function Classes() {
   // Catalog lives in src/data/classCatalog.js — shared with the Planner's
   // "Link to a class" picker (PlannerScreen.js) so both read one list
   // instead of keeping their own copies that can drift out of sync.
-  // A subject carrying `personaOnly` only appears in those persona modes. The
-  // adult business-ownership track uses it: its content (business credit, SBA
-  // packaging, entity formation) has no business rendering on a child's
-  // account, and BUSINESS/ENTREPRENEUR profiles are already gated to adults
-  // both in the UI (src/data/personas.js) and by the enforce_profile_limits()
-  // trigger on persona_profiles. This filter is the third layer — a minor
-  // cannot create such a profile, and even a mis-typed one cannot surface the
-  // subject.
-  const subjects = useMemo(
-    () => CLASS_SUBJECTS.filter(s => !s.personas || s.personas.includes(activeType)),
-    [activeType],
+  // Two questions decide which subjects show (docs/access-system.md):
+  //   Allowed?    `adult` subjects (business credit, SBA packaging, entity
+  //               formation) never show to anyone under 18 or of unknown age.
+  //   Shown now?  a subject for this profile type shows from the start;
+  //               other types' subjects join under "Other tracks" once the
+  //               'all-tools' stage opens.
+  // isSubjectVisible asks both. This profile type's own subjects come first.
+  const subjects = useMemo(() => {
+    const visible = CLASS_SUBJECTS.filter(isSubjectVisible);
+    const own = (subj) => !subj.personas || (activeType && subj.personas.includes(activeType));
+    return [...visible.filter(own), ...visible.filter(subj => !own(subj))];
+  }, [activeType, isSubjectVisible]);
+  const firstOtherIndex = useMemo(
+    () => subjects.findIndex(subj => subj.personas && !(activeType && subj.personas.includes(activeType))),
+    [subjects, activeType],
   );
   const screenMap = CLASS_SCREEN_MAP;
 
   const goToChild = (label) => {
     const screen = screenMap[label];
-    if (screen) navigation.navigate(screen);
+    if (!screen) {
+      // A topic with no screen used to be a tap that did nothing.
+      // scripts/check-wiring.mjs catches this before it ships; this is the
+      // fallback if one slips through.
+      if (__DEV__) console.warn(`[Classes] "${label}" has no screen. Add it to CLASS_SCREEN_MAP in src/data/classCatalog.js.`);
+      const msg = "This topic isn't ready yet. Check back soon.";
+      // eslint-disable-next-line no-alert
+      if (Platform.OS === 'web') window.alert(msg);
+      else Alert.alert('Not ready yet', msg);
+      return;
+    }
+    // Opening a topic is what ticks "open a class and pick a topic" on a
+    // first goal.
+    signalAction('class-opened');
+    navigation.navigate(screen);
   };
 
   // Overlay Supabase's class_subject rows onto the hardcoded list — remote
@@ -158,6 +179,12 @@ export default function Classes() {
 
   const recTopics = useMemo(() => pickRecommendedTopics(mergedSubjects, band, 3), [band, mergedSubjects]);
   const recGames  = useMemo(() => pickRecommendedGames(band, 2), [band]);
+  // This account type's order, with anything unfinished ahead of what's done.
+  const questState = useQuestProgress();
+  const quests = useMemo(() => {
+    const ordered = questsInOrder(activeType);
+    return [...ordered.filter(q => !questState.finished.has(q.id)), ...ordered.filter(q => questState.finished.has(q.id))];
+  }, [activeType, questState.finished]);
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -191,6 +218,40 @@ export default function Classes() {
           </TouchableOpacity>
         </View>
         )}
+      </View>
+
+      {/* Quests: learn an idea, research it, check it, do something with
+          it. Not tied to a grade band, so they sit above the band picker. */}
+      <View style={styles.recSection}>
+        <Text style={styles.recTitle}>Quests</Text>
+        {showSubtext && (
+          <Text style={styles.fromGamesSub}>
+            Ten minutes each: an idea, your own research, a quick check, and one real thing to do.
+          </Text>
+        )}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recRow}>
+          {quests.map(q => {
+            const done = questState.finished.has(q.id);
+            const inProgress = !done && questState.byId[q.id]?.step && questState.byId[q.id].step !== 'spark';
+            return (
+              <TouchableOpacity
+                key={'quest-' + q.id}
+                style={[styles.recCard, { width: 150, borderTopColor: q.color }]}
+                onPress={() => navigation.navigate('Quest', { questId: q.id })}
+                activeOpacity={0.85}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Ionicons name={q.icon} size={18} color={q.color} />
+                  {done && <Ionicons name="checkmark-circle" size={16} color={c.success} />}
+                </View>
+                <Text style={styles.recCardSubject}>
+                  {done ? 'Done' : inProgress ? 'In progress' : `${q.subjectLabel} · ${q.minutes} min`}
+                </Text>
+                <Text style={styles.recCardLabel} numberOfLines={2}>{q.title}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
       {/* Grade band selector */}
@@ -282,7 +343,11 @@ export default function Classes() {
           : null;
 
         return (
-          <View key={index} style={styles.cardWrapper}>
+          <React.Fragment key={index}>
+          {index === firstOtherIndex && (
+            <Text style={[styles.recTitle, { marginHorizontal: s.lg, marginTop: s.md, marginBottom: s.sm }]}>Other tracks</Text>
+          )}
+          <View style={styles.cardWrapper}>
             <TouchableOpacity
               style={[styles.category, { borderTopColor: item.color }]}
               onPress={() => {
@@ -357,14 +422,63 @@ export default function Classes() {
                     </TouchableOpacity>
                   ))
                 )}
+                <ComingRow subject={item.title} color={item.color} navigation={navigation} styles={styles} c={c} />
               </View>
             )}
           </View>
+          </React.Fragment>
         );
       })}
 
+      {/* The whole roadmap: every planned topic, built or not
+          (src/data/topicCatalog.js). */}
+      <View style={styles.cardWrapper}>
+        <TouchableOpacity
+          style={[styles.category, { borderTopColor: c.teal }]}
+          onPress={() => navigation.navigate('TopicCatalog')}
+          activeOpacity={0.8}
+        >
+          <View style={styles.categoryHeader}>
+            <View style={[styles.iconContainer, { backgroundColor: c.teal + '22' }]}>
+              <Ionicons name="map-outline" size={26} color={c.teal} />
+            </View>
+            <View style={styles.categoryTextContainer}>
+              <Text style={styles.categoryText}>Topic map</Text>
+              {showSubtext && (
+                <Text style={styles.categoryDescription}>
+                  Every topic, ready now or on the way: {catalogCounts().built} ready, {catalogCounts().total - catalogCounts().built} coming.
+                </Text>
+              )}
+            </View>
+            <Ionicons name="chevron-forward" size={22} color={c.text4} style={styles.chevron} />
+          </View>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.footer} />
     </ScrollView>
+  );
+}
+
+// Under a subject's own topics: how many more are planned for it, leading to
+// that subject's page of the Topic map. Nothing for subjects with no catalog
+// entry (the adult business tracks).
+function ComingRow({ subject, color, navigation, styles, c }) {
+  const { total, built } = catalogCounts(subject);
+  if (!total) return null;
+  const coming = total - built;
+  return (
+    <TouchableOpacity
+      style={styles.subItemContainer}
+      onPress={() => navigation.navigate('TopicCatalog', { subject })}
+      activeOpacity={0.7}
+    >
+      <Ionicons name="map-outline" size={14} color={color} style={{ marginRight: 8 }} />
+      <Text style={[styles.subItem, { color }]}>
+        {coming > 0 ? `What's coming: ${coming} more topic${coming === 1 ? '' : 's'}` : 'Every planned topic'}
+      </Text>
+      <Ionicons name="chevron-forward" size={18} color={c.text4} />
+    </TouchableOpacity>
   );
 }
 

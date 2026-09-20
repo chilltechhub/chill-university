@@ -29,7 +29,7 @@ import {
   getFeed, getTopTalent, publishPost, deleteMyPost, reportPost, blockUser,
   COMMUNITY_NOT_CONFIGURED, MINORS_CANNOT_PUBLISH, CONTENT_BLOCKED,
 } from '../../../api/communityService';
-import { communityAccess, restrictionMessage } from '../../../logic/accountAccess';
+import { communityAccess, restrictionMessage } from '../../../logic/allowed';
 
 const CREST_COLORS = {
   teal: '#2bb5a0', gold: '#c9a84c', purple: '#8b4fc4', red: '#e05858',
@@ -84,7 +84,7 @@ export default function CommunityFeedScreen() {
   const [saving, setSaving]     = useState(false);
 
   // The RPC is the real gate; this only keeps the UI honest so nobody writes a
-  // post and is refused on submit. Same rule as the SQL — see logic/accountAccess.
+  // post and is refused on submit. Same rule as the SQL — see logic/allowed.
   const { restricted: isRestricted, reason: restrictReason } = communityAccess(profile);
   const active = TABS.find(x => x.key === tab) || TABS[0];
 

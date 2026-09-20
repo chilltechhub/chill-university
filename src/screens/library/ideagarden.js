@@ -27,6 +27,7 @@ import LinkedText from '../../components/LinkedText';
 import LinkSuggest from '../../components/LinkSuggest';
 import TourSpot from '../../components/TourSpot';
 import { useTour } from '../../../context/TourContext';
+import { useAccess } from '../../../context/AccessContext';
 
 // SW/SH/CANVAS_H are now dynamic via useWindowDimensions inside the component
 
@@ -820,6 +821,8 @@ export default function IdeaGardenScreen() {
   // A tutorial can pre-fill the new-idea sheet and wants to know when the
   // user actually taps Add rather than a Next arrow.
   const { prefill: tourPrefill, completeAction } = useTour();
+  // A new plant is what ticks "plant your idea" on a first goal.
+  const { signalAction } = useAccess();
 
   const openNewCore = () => {
     setEditingCore(null);
@@ -858,6 +861,7 @@ export default function IdeaGardenScreen() {
         : [...prev, { ...saved, garden_petals: [], garden_updates: [] }]
       );
       setCoreModal(false);
+      if (!editingCore) signalAction('idea-planted');
     } catch { Alert.alert('Error saving'); }
     setSavingCore(false);
   };

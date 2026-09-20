@@ -9,8 +9,8 @@
 // so it isn't hardcoded). Anything the bank doesn't cover yet can be typed
 // in directly per segment. Finished plans save to `teacher_lesson_plans`
 // and show up in MyLessonPlans.js.
-import React, { useState, useEffect, useMemo } from 'react';
-import { ScrollView, View, Text, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { ScrollView, View, Text, TouchableOpacity, TextInput, ActivityIndicator, Alert, Platform } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
@@ -189,6 +189,31 @@ export default function LessonBuilder() {
     return Object.values(selected).reduce((n, roleMap) => n + Object.values(roleMap).filter(Boolean).length, 0);
   }, [selected]);
 
+  // Leaving mid-build (header back, swipe back, Android back) used to drop
+  // every pick without a word. Ask first. Once the plan is saved there is
+  // nothing to lose, so the guard stands down.
+  const savedRef = useRef(false);
+  useEffect(() => { savedRef.current = false; }, [selected, customs, title]);
+  useEffect(() => {
+    return navigation.addListener('beforeRemove', (e) => {
+      if (stage !== 'build' || totalPicked === 0 || saving || savedRef.current) return;
+      e.preventDefault();
+      const leave = () => navigation.dispatch(e.data.action);
+      const msg = `You have ${totalPicked} item${totalPicked === 1 ? '' : 's'} picked that aren't saved yet.`;
+      // Alert.alert with buttons does nothing on web, which would leave
+      // someone unable to go back at all.
+      if (Platform.OS === 'web') {
+        // eslint-disable-next-line no-alert
+        if (window.confirm(`Discard this lesson plan?\n\n${msg}`)) leave();
+        return;
+      }
+      Alert.alert('Discard this lesson plan?', msg, [
+        { text: 'Keep editing', style: 'cancel' },
+        { text: 'Discard', style: 'destructive', onPress: leave },
+      ]);
+    });
+  }, [navigation, stage, totalPicked, saving]);
+
   const handleSave = async () => {
     if (!userId) {
       Alert.alert('Sign in required', 'Sign in to save a lesson plan.');
@@ -217,6 +242,7 @@ export default function LessonBuilder() {
         segments,
       };
       const { queued } = await saveLessonPlan(userId, plan);
+      savedRef.current = true;
       Alert.alert(
         queued ? 'Saved offline' : 'Lesson plan saved',
         queued ? "It'll sync to your account once you're back online." : 'Find it any time in My Lesson Plans.',

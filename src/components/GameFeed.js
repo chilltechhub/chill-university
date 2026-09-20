@@ -88,7 +88,7 @@ import SurviveMonthGame from './SurviveMonthGame';
 import RegisterReadyGame from './RegisterReadyGame';
 import ShiftManagerGame from './ShiftManagerGame';
 import { getEnabledGames } from '../services/gameRegistry';
-import { useConfigValue } from '../../context/RemoteConfigContext';
+import { useAccess } from '../../context/AccessContext';
 
 // Maps gameRegistry's `component` field to the actual component.
 const COMPONENT_MAP = {
@@ -156,15 +156,19 @@ const GAMES_MASTER = shuffle(getEnabledGames()).map(g => ({
 const GameFeed = forwardRef(({ initialGame }, ref) => {
   const scrollRef = useRef(null);
 
-  // Admin-side kill switch — an array of game ids in app_config's
-  // 'disabled_games' row (Supabase → Table Editor, no build/redeploy
-  // needed). Filtered here, reactively, rather than baked into
-  // GAMES_MASTER above, so a game hidden mid-session (config arrives
-  // after this module already evaluated) disappears without a relaunch.
-  const disabledIds = useConfigValue('disabled_games', []);
+  // Two questions from docs/access-system.md, in order. Allowed? — the
+  // admin kill switch (app_config's 'disabled_games' row); a game switched
+  // off is gone for everyone, even when asked for by name. Shown now? — the
+  // games this account's path has opened, plus one asked for by name: a
+  // specific "Start" tap came from somewhere that chose to offer it (a
+  // class's recommended game, a search result), so honouring it beats
+  // silently opening a different game. Filtered here, reactively, so a game
+  // switched off mid-session disappears without a relaunch.
+  const { isGameAllowed, isGameVisible } = useAccess();
   const GAMES = useMemo(
-    () => GAMES_MASTER.filter(g => !disabledIds.includes(g.id)),
-    [disabledIds]
+    () => GAMES_MASTER.filter(g => isGameAllowed(g.id)
+      && (isGameVisible(g.id) || g.id === initialGame)),
+    [isGameAllowed, isGameVisible, initialGame]
   );
   const indexForGame = useMemo(() => (indexOrId) => {
     if (typeof indexOrId === 'number') {

@@ -23,7 +23,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUserProgress } from './UserProgressContext';
 import { setActiveProfileId } from '../src/logic/activeProfile';
 import { getPersona, isPersonaAllowed, personasFor, defaultPersonaFor, DEFAULT_PERSONA } from '../src/data/personas';
-import { communityAccess } from '../src/logic/accountAccess';
+import { communityAccess } from '../src/logic/allowed';
 import { ageBandFor } from '../src/logic/profileResolver';
 import {
   listProfiles, createProfile, renameProfile, archiveProfile, updateProfile,

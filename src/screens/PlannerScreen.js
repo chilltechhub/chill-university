@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useUIPrefs } from '../../context/UIPrefsContext';
+import { useAccess } from '../../context/AccessContext';
 import { supabase } from '../api/profileScopedClient';
 import {
   AREAS, getInstances, getPresetComponents,
@@ -1144,6 +1145,7 @@ export default function PlannerScreen() {
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   const { showEmojis } = useUIPrefs();
   const navigation = useNavigation();
+  const { signalAction } = useAccess();
 
   const [userId,      setUserId]  = useState(null);
   const [view,        setView]    = useState('Daily');
@@ -1352,7 +1354,13 @@ export default function PlannerScreen() {
         instance={editInst}
         userId={userId}
         date={modalDate}
-        onSave={(saved) => { setShowModal(false); setRefresh(k => k + 1); }}
+        onSave={(saved) => {
+          setShowModal(false);
+          setRefresh(k => k + 1);
+          // A new plan is what ticks "put one habit / study block / routine
+          // in the Planner" on a first goal. Edits don't count.
+          if (!editInst) signalAction('planner-item-added', { area: saved?.area });
+        }}
         onDelete={() => { setShowModal(false); setRefresh(k => k + 1); }}
         onClose={() => setShowModal(false)}
         c={c} t={t} s={s} r={r}

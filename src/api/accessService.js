@@ -223,6 +223,22 @@ export async function setExperimentalOptIn(userId, on) {
   return { error, missingSchema: isMissingSchema(error) };
 }
 
+/**
+ * "Show everything" belongs to the account, not the phone, so a reinstall
+ * doesn't quietly drop someone back to their earned stage. Needs
+ * 20260919140000_show_everything.sql; until that runs, the device copy in
+ * AccessContext is all there is and this fails quietly.
+ */
+export async function setShowEverything(userId, on) {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ show_everything: !!on })
+    .eq('id', userId);
+
+  warn('setShowEverything', error);
+  return { error, missingSchema: isMissingSchema(error) };
+}
+
 /** Drops the cached snapshot — used on sign-out so the next account starts clean. */
 export async function clearAccessCache(userId) {
   if (!userId) return;

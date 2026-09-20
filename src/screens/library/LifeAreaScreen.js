@@ -17,10 +17,15 @@ import RelatedLinks, { EXCLUDE_LINK_FILTER } from './RelatedLinks';
 import TourSpot from '../../components/TourSpot';
 import LockBadge from '../../components/LockBadge';
 import { useFeatureGate } from '../../components/FeatureGate';
+import { useAccess } from '../../../context/AccessContext';
 import { featureForScreen } from '../../data/featureCatalog';
 import { unlockHint } from '../../logic/featureAccess';
 import { todayStr } from '../../logic/dateUtils';
 import { AREA_COLORS } from '../../data/areaColors';
+import { FONTS } from '../../theme';
+import useAreaHubActions from '../../logic/useAreaHubActions';
+import { ReadSheet, TimerSheet } from '../../components/lifeareas/ActionSheets';
+import { INK, tierLabel, tierColor, buttonLabel, buttonIcon } from '../../components/lifeareas/actionUi';
 
 // ─── Life area config ─────────────────────────────────────────────────────────
 export const LIFE_AREAS = [
@@ -159,47 +164,63 @@ function QuickLogChips({ options, onLog, color, c, t, s }) {
 // knowing your own numbers first), and null for the great majority that
 // aren't gated at all. A gated card still navigates; it just lands on the
 // unlock sheet rather than the screen.
-function SectionCard({ section, color, access, onPress, c, t, s, r }) {
+function SectionCard({ section, color, access, onPress, next, doneHere, band, busy, onDo, c, t, s, r }) {
   const isNavigable = !!section.screen;
   const open = access ? access.available : true;
   const accent = open ? color : c.text4;
+  const nextAccent = next ? tierColor(next.tier, c, color) : color;
   return (
-    <TouchableOpacity
-      onPress={isNavigable ? onPress : undefined}
-      activeOpacity={isNavigable ? 0.8 : 1}
-      style={{
-        backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg,
-        marginBottom: s.md, borderWidth: 0.5,
-        borderColor: isNavigable ? accent + '44' : c.border,
-        borderLeftWidth: isNavigable ? 3 : 0.5,
-        borderLeftColor: isNavigable ? accent : c.border,
-      }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: s.sm }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, flex: 1 }}>
-          <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: accent + '22', alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name={section.icon} size={16} color={accent} />
+    <View style={{
+      backgroundColor: c.bg1, borderRadius: r.lg, marginBottom: s.md, borderWidth: 0.5,
+      borderColor: isNavigable ? accent + '44' : c.border,
+      borderLeftWidth: isNavigable ? 3 : 0.5,
+      borderLeftColor: isNavigable ? accent : c.border,
+    }}>
+      <TouchableOpacity
+        onPress={isNavigable ? onPress : undefined}
+        activeOpacity={isNavigable ? 0.8 : 1}
+        accessibilityRole={isNavigable ? 'button' : undefined}
+        accessibilityLabel={isNavigable ? `Open ${section.title}` : undefined}
+        style={{ padding: s.lg, paddingBottom: open && (next || doneHere > 0) ? s.sm : s.lg }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, flex: 1 }}>
+            <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: accent + '22', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name={section.icon} size={16} color={accent} />
+            </View>
+            <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: open ? c.text1 : c.text3 }}>{section.title}</Text>
+            {access && !open && <LockBadge access={access} size="xs" showLabel={false} />}
           </View>
-          <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: open ? c.text1 : c.text3 }}>{section.title}</Text>
-          {access && !open && <LockBadge access={access} size="xs" showLabel={false} />}
+          {isNavigable && <Ionicons name={open ? 'chevron-forward' : 'information-circle-outline'} size={16} color={accent} />}
         </View>
-        {isNavigable && <Ionicons name={open ? 'chevron-forward' : 'information-circle-outline'} size={16} color={accent} />}
-      </View>
-      {access && !open && (
-        <Text style={{ fontSize: t.xs, color: c.text4, fontStyle: 'italic', marginBottom: s.sm }}>
-          {unlockHint(access)}
-        </Text>
-      )}
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-        {section.items.map((item, i) => (
-          <View key={i} style={{ backgroundColor: c.bg2, borderRadius: r.full, paddingHorizontal: 8, paddingVertical: 3 }}>
-            <Text style={{ fontSize: 10, color: c.text3 }}>{item}</Text>
+        {access && !open && (
+          <Text style={{ fontSize: t.xs, color: c.text4, fontStyle: 'italic', marginTop: s.sm }}>
+            {unlockHint(access)}
+          </Text>
+        )}
+      </TouchableOpacity>
+
+      {/* The next thing to do here, doable without opening the screen. */}
+      {open && next && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, paddingHorizontal: s.lg, paddingBottom: s.lg }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontFamily: FONTS.mono, fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: nextAccent }}>
+              {tierLabel(next.tier, band)}
+            </Text>
+            <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1, marginTop: 2, lineHeight: 19 }}>{next.title}</Text>
           </View>
-        ))}
-      </View>
-      {isNavigable && (
-        <Text style={{ fontSize: 10, color, marginTop: s.sm, fontWeight: '600' }}>Tap to open →</Text>
+          <TouchableOpacity onPress={onDo} disabled={busy} accessibilityRole="button" accessibilityLabel={`Do it: ${next.title}`}
+            style={{ minHeight: 40, minWidth: 64, paddingHorizontal: 14, borderRadius: r.md, backgroundColor: color + '22', borderWidth: 1, borderColor: color + '66', alignItems: 'center', justifyContent: 'center' }}>
+            {busy ? <ActivityIndicator color={color} size="small" /> : <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: c.text1 }}>Do it</Text>}
+          </TouchableOpacity>
+        </View>
       )}
-    </TouchableOpacity>
+      {open && !next && doneHere > 0 && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: s.lg, paddingBottom: s.lg }}>
+          <Ionicons name="checkmark-circle" size={16} color={c.teal} />
+          <Text style={{ fontSize: t.xs, color: c.teal, fontWeight: t.semibold }}>All done here today</Text>
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -234,6 +255,7 @@ export default function LifeAreaScreen() {
   // sense once you've looked at your own numbers). Everything else comes
   // back as null from featureForScreen and behaves exactly as before.
   const { accessFor, gatedNavigate, sheet: unlockSheet } = useFeatureGate();
+  const { signalAction } = useAccess();
 
   const [notes,       setNotes]       = useState([]);
   const [loading,     setLoading]     = useState(true);
@@ -244,6 +266,32 @@ export default function LifeAreaScreen() {
   const [weekModal,   setWeekModal]   = useState(false);
   const [rating,      setRating]      = useState(0);
   const [saving,      setSaving]      = useState(false);
+  // The log entry the last tap wrote, so a note typed afterwards joins that
+  // entry instead of floating in the feed as a separate, unexplained line.
+  const [ratingEntry, setRatingEntry] = useState(null);
+  const [ratingNote,  setRatingNote]  = useState('');
+  const [ratingNoteSaved, setRatingNoteSaved] = useState(false);
+
+  // Each sub-section's next action, and one focus for the area. Reads and
+  // timers open their sheet here; everything else runs in place.
+  const hub = useAreaHubActions({
+    areaId: area?.id,
+    screenTags: (area?.sections || []).map(x => x.screen).filter(Boolean),
+    navigation,
+  });
+  const [reading, setReading] = useState(null);
+  const [timing, setTiming] = useState(null);
+  const [busyKey, setBusyKey] = useState(null);
+  const [hubNote, setHubNote] = useState(null);
+  const actOnHub = async (action) => {
+    if (action.handler === 'read') return setReading(action);
+    if (action.handler === 'timer') return setTiming(action);
+    setBusyKey(action.key);
+    const res = await hub.run(action);
+    setBusyKey(null);
+    setHubNote(res.ok ? (res.message || 'Done — logged for you.') : res.message);
+    setTimeout(() => setHubNote(null), 4000);
+  };
 
   if (!area) return null;
   const color = area.color;
@@ -300,26 +348,60 @@ export default function LifeAreaScreen() {
   const saveRating = async (val) => {
     const prev = rating;
     setRating(val);
-    if (!userId || val === prev) return;
-    try {
-      // Not offlineWrite here — this upserts on the (user_id, label) unique
-      // pair, not on id, so offlineWrite's id-based conflict target would
-      // create a duplicate row instead of updating this one. The rating
-      // note below (which IS a plain insert, no such constraint) is what
-      // actually shows in the feed either way, so a failed/offline upsert
-      // here just means the summary card is a beat behind, not lost data.
-      await supabase.from('life_areas').upsert({ user_id: userId, label: area.label, progress: val, last_check_date: todayStr() }, { onConflict: 'user_id,label' });
-    } catch (e) { console.warn('LifeAreaScreen saveRating', e); }
-    // Log the change itself so rating history is visible in the feed below,
-    // not just the current value.
+    if (val === prev) return;
+    setRatingNote('');
+    setRatingNoteSaved(false);
+    // Rating is how the guided first goal knows the step is done.
+    signalAction('area-rated', { area: area.id });
     const stars = '★'.repeat(val) + '☆'.repeat(5 - val);
     const entry = {
       user_id: userId, area_id: area.id,
       content: `[Rating] ${stars} — rated ${val}/5${prev ? ` (was ${prev}/5)` : ''}`,
       created_at: new Date().toISOString(),
     };
+    // A guest's rating lives on this screen only, like a guest's notes do.
+    if (!userId) {
+      const local = { ...entry, id: `local-${Date.now()}` };
+      setNotes(p => [local, ...p]);
+      setRatingEntry(local);
+      return;
+    }
+    try {
+      // Find-then-write, not an upsert. The upsert this used to be named
+      // (user_id, label) as its conflict target, but the live table has no
+      // unique constraint on that pair, so every rating failed with 42P10
+      // and never reached life_areas — the Library rings, Home's Life Areas
+      // widget and the check-in-due list never saw a single one. Only the
+      // log entry below ever landed.
+      const fields = { progress: val, last_check_date: todayStr() };
+      const { data: rows } = await supabase.from('life_areas')
+        .select('id').eq('user_id', userId).eq('label', area.label).limit(1);
+      const { error } = rows?.[0]
+        ? await supabase.from('life_areas').update(fields).eq('id', rows[0].id)
+        : await supabase.from('life_areas').insert({ user_id: userId, label: area.label, ...fields });
+      if (error) throw error;
+    } catch (e) { console.warn('LifeAreaScreen saveRating', e?.message || e); }
+    // Log the change itself so rating history is visible in the feed below,
+    // not just the current value.
     const { row: data } = await offlineWrite(supabase, 'area_notes', entry);
-    if (data) setNotes(p => [data, ...p]);
+    if (data) {
+      setNotes(p => [data, ...p]);
+      setRatingEntry(data);
+    }
+  };
+
+  // Optional "why this number". Rewrites the rating's own log entry (same
+  // id, so an upsert) rather than adding a second one — the number and the
+  // reason for it belong on one line of history.
+  const saveRatingNote = async () => {
+    const text = ratingNote.trim();
+    if (!text || !ratingEntry) return;
+    const base = ratingEntry.content.split('\n')[0];
+    const updated = { ...ratingEntry, content: `${base}\n${text}` };
+    setNotes(p => p.map(n => (n.id === updated.id ? updated : n)));
+    setRatingEntry(updated);
+    setRatingNoteSaved(true);
+    if (userId) await offlineWrite(supabase, 'area_notes', updated, { type: 'UPSERT' });
   };
 
   const saveWeeklyReflection = async () => {
@@ -367,11 +449,60 @@ export default function LifeAreaScreen() {
                 </TouchableOpacity>
               ))}
             </View>
+            {ratingEntry && (ratingNoteSaved ? (
+              <Text style={{ fontSize: t.xs, color: c.text3, marginTop: s.sm }}>Note saved with this rating.</Text>
+            ) : (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginTop: s.sm }}>
+                <TextInput
+                  style={{ flex: 1, backgroundColor: c.bg0, borderRadius: r.md, paddingHorizontal: s.md, paddingVertical: 8, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: color + '44' }}
+                  value={ratingNote} onChangeText={setRatingNote}
+                  placeholder="Add a note: why this number? (optional)" placeholderTextColor={c.text4}
+                  returnKeyType="done" onSubmitEditing={saveRatingNote} />
+                <TouchableOpacity onPress={saveRatingNote} disabled={!ratingNote.trim()}
+                  style={{ paddingHorizontal: s.md, paddingVertical: 8, borderRadius: r.md, backgroundColor: color, opacity: ratingNote.trim() ? 1 : 0.5 }}>
+                  <Text style={{ color: '#fff', fontWeight: t.bold, fontSize: t.sm }}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
           </View>
           </TourSpot>
         </View>
 
         <View style={{ padding: s.lg }}>
+          {/* ── Today's focus: one action across the whole area ── */}
+          {hub.focus && (() => {
+            const f = hub.focus;
+            const from = area.sections.find(x => x.screen === f.screen_tag)?.title;
+            return (
+              <View style={{ marginBottom: s.xl }}>
+                <Text style={{ fontFamily: FONTS.mono, fontSize: 11, letterSpacing: 1.3, textTransform: 'uppercase', color: c.text3, marginBottom: 10 }}>
+                  {hub.band === 'kid' ? 'Do this today' : 'Today’s focus'}
+                </Text>
+                <View style={{ backgroundColor: color + '1a', borderWidth: 1, borderColor: color + '66', borderRadius: r.xl, padding: 18 }}>
+                  {!!from && <Text style={{ fontFamily: FONTS.mono, fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: c.text3 }}>{from}</Text>}
+                  <Text style={{ fontSize: t.xl, fontWeight: t.bold, color: c.text1, lineHeight: 26, marginTop: 4 }}>{f.title}</Text>
+                  {!!f.why && <Text style={{ fontSize: t.sm, color: c.text2, lineHeight: 20, marginTop: 8 }}>{f.why}</Text>}
+                  <TouchableOpacity onPress={() => actOnHub(f)} disabled={busyKey === f.key} accessibilityRole="button"
+                    accessibilityLabel={`${buttonLabel(f, hub.band)}: ${f.title}`}
+                    style={{ marginTop: 16, minHeight: 52, borderRadius: r.lg, backgroundColor: color, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, paddingHorizontal: 14 }}>
+                    {busyKey === f.key ? <ActivityIndicator color={INK} /> : (
+                      <>
+                        <Ionicons name={buttonIcon(f)} size={18} color={INK} />
+                        <Text style={{ fontSize: t.md, fontWeight: t.bold, color: INK }}>{buttonLabel(f, hub.band)}</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+                {!!hubNote && (
+                  <View accessibilityLiveRegion="polite" style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: r.md, backgroundColor: c.teal + '1a' }}>
+                    <Ionicons name="checkmark-circle" size={18} color={c.teal} />
+                    <Text style={{ flex: 1, fontSize: t.sm, color: c.text1 }}>{hubNote}</Text>
+                  </View>
+                )}
+              </View>
+            );
+          })()}
+
           {/* ── Quick log ── */}
           <Text style={{ fontSize: t.xs, color: color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.sm }}>
             {showEmojis ? '⚡ ' : ''}Quick Log
@@ -387,9 +518,19 @@ export default function LifeAreaScreen() {
           <TourSpot id="lifearea-sections">
           {area.sections.map((sec, i) => {
             const feature = sec.screen ? featureForScreen(sec.screen) : null;
+            // A locked sub-section (Savings & Investing, Debt & Credit)
+            // stays out of sight until the last stage, until the goal in
+            // flight opens it, or until it's earned — see
+            // src/data/experienceStages.js. Earned, it shows like any other.
+            if (feature && accessFor(feature.id).hidden) return null;
             return (
               <SectionCard key={i} section={sec} color={color}
                 access={feature ? accessFor(feature.id) : null}
+                next={hub.bySection[sec.screen]?.next}
+                doneHere={hub.bySection[sec.screen]?.doneHere || 0}
+                band={hub.band}
+                busy={!!busyKey && busyKey === hub.bySection[sec.screen]?.next?.key}
+                onDo={() => hub.bySection[sec.screen]?.next && actOnHub(hub.bySection[sec.screen].next)}
                 onPress={() => (feature
                   ? gatedNavigate(feature.id, () => navigateTo(sec.screen))
                   : navigateTo(sec.screen))}
@@ -502,6 +643,11 @@ export default function LifeAreaScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      <ReadSheet action={reading} color={color} band={hub.band} onClose={() => setReading(null)}
+        onDone={async (a) => { await hub.complete(a); }} />
+      <TimerSheet action={timing} color={color} onClose={() => setTiming(null)}
+        onDone={async (a, opts) => { await hub.complete(a, opts); }} />
 
       {unlockSheet}
     </View>

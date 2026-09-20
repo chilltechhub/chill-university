@@ -8,6 +8,10 @@ import { useUIPrefs } from '../../../../context/UIPrefsContext';
 import { supabase } from '../../../api/profileScopedClient';
 import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../../api/offlineCache';
 import { AREA_COLORS } from '../../../data/areaColors';
+import useAreaActions from '../../../logic/useAreaActions';
+import ActionPanel from '../../../components/lifeareas/ActionPanel';
+import ActionEditSheet from '../../../components/lifeareas/ActionEditSheet';
+import GoDeeperList from '../../../components/lifeareas/GoDeeperList';
 import RelatedLinks from '../RelatedLinks';
 
 const CHECKLIST = [
@@ -27,6 +31,10 @@ const SCREEN_TAG = '[Privacy]';
 
 export default function PrivacyScreen() {
   const navigation = useNavigation();
+  // The Life Area action panel. Logged actions are tagged [PrivacyScreen], so
+  // they stay out of this screen's own log, which reads its own tag.
+  const aa = useAreaActions({ screenTag: 'PrivacyScreen', areaId: 'digital', navigation });
+  const [editOpen, setEditOpen] = useState(false);
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   const { showEmojis, showSubtext } = useUIPrefs();
   const [checked,  setChecked]  = useState({});
@@ -105,6 +113,9 @@ export default function PrivacyScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }}>
+        <ActionPanel aa={aa} color={color} onEdit={() => setEditOpen(true)} />
+        <View style={{ height: s.xl }} />
+
         {/* Progress */}
         <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, marginBottom: s.lg, borderWidth: 0.5, borderColor: c.border }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: s.sm }}>
@@ -189,12 +200,18 @@ export default function PrivacyScreen() {
           </View>
         ))}
 
+        <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginTop: s.lg, marginBottom: s.md }}>
+          Go deeper
+        </Text>
+        <GoDeeperList resources={aa.resources} color={color} />
+
         {/* ── Related ── */}
         <Text style={{ fontSize: t.xs, color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginTop: s.lg, marginBottom: s.md }}>
           {showEmojis ? '🔗 ' : ''}Related
         </Text>
         <RelatedLinks areaId="digital" color={color} c={c} t={t} s={s} r={r} />
       </ScrollView>
+      <ActionEditSheet visible={editOpen} onClose={() => setEditOpen(false)} aa={aa} color={color} title="Privacy & Security" />
     </KeyboardAvoidingView>
   );
 }

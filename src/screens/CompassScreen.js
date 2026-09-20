@@ -10,10 +10,12 @@
 //                     kept honest — neither is dressed up as a reward
 //
 // The rosters are ranked against the purpose (rankForPurpose in
-// src/logic/featureAccess.js), never filtered by it. Ordering is help;
-// hiding things somebody might want is the same wall in a different shape.
-// The one exception is experimental work, which stays out of ambient lists
-// until asked for — and this screen is where you ask.
+// src/logic/featureAccess.js), never filtered by it. What they leave out is
+// the stage's call (src/data/experienceStages.js): a new account sees the
+// tools its profile type has opened so far and one first goal; locked tools
+// arrive with the last stage ('doors'), except the ones the goal in flight
+// opens, which always show. Labs sits there too, and Plus once it's on sale.
+// Somebody who'd rather see it all has one switch, here and in Settings.
 
 import React, { useState, useMemo } from 'react';
 import {
@@ -24,7 +26,10 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useUIPrefs } from '../../context/UIPrefsContext';
 import { useAccess } from '../../context/AccessContext';
-import { PURPOSES, objectivesForPurpose, getPurpose } from '../data/objectives';
+import { useProfiles } from '../../context/ProfileAccountsContext';
+import { PURPOSES, objectivesForPurpose, getPurpose, getObjective } from '../data/objectives';
+import { stageMeta } from '../logic/experienceStage';
+import { MAX_STAGE } from '../data/experienceStages';
 import { FEATURES, featuresUnlockedBy } from '../data/featureCatalog';
 import { unlockHint } from '../logic/featureAccess';
 import { goToScreen } from '../logic/appRoutes';
@@ -41,7 +46,11 @@ export default function CompassScreen() {
     activeObjective, completedObjectiveIds, startObjective, toggleStep,
     completeActiveObjective, abandonActiveObjective,
     accessFor, rankedFeatures, experimentalOn, setExperimental, isPlus,
+    stage, nextStage, firstGoalId, experienceMode, setExperienceMode, can, plusOnSale,
   } = useAccess();
+  const { activeType } = useProfiles();
+  // Locked tools, Labs and Plus are the last stage's to show ('doors').
+  const showAll = can('doors');
 
   const [pickingPurpose, setPickingPurpose] = useState(false);
   const [pickingObjective, setPickingObjective] = useState(false);
@@ -75,7 +84,14 @@ export default function CompassScreen() {
     [accessFor]
   );
 
-  const objectiveChoices = useMemo(() => objectivesForPurpose(purposeKey), [purposeKey]);
+  // Until a first goal is done, it's the only one offered — the full list
+  // of fifteen is exactly the wall starting simple exists to avoid.
+  const introDone = completedObjectiveIds.some(id => getObjective(id)?.intro);
+  const objectiveChoices = useMemo(() => {
+    const first = getObjective(firstGoalId);
+    if (!introDone && first) return [first];
+    return objectivesForPurpose(purposeKey);
+  }, [purposeKey, introDone, firstGoalId]);
 
   /* ── Handlers ─────────────────────────────────────────────────────────── */
 
@@ -135,6 +151,25 @@ export default function CompassScreen() {
         <View style={s.header}>
           <Text style={s.headerTitle}>Compass</Text>
           {showSubtext && <Text style={s.headerSub}>One purpose, one objective, and what each one opens.</Text>}
+        </View>
+
+        {/* ── Where you are — so a short list reads as "not yet", not "that's all" ── */}
+        <View style={s.stageCard}>
+          <Text style={s.stageKicker}>Stage {stage} of {MAX_STAGE} · {stageMeta(stage, activeType).label}</Text>
+          <Text style={s.stageText}>
+            {experienceMode === 'full'
+              ? 'You chose to see everything. Switch back and the app goes by your progress again.'
+              : nextStage
+                ? `${nextStage.text} to open the next stage: ${nextStage.label}.`
+                : 'Everything is on show.'}
+          </Text>
+          {(experienceMode === 'full' || !showAll) && (
+            <TouchableOpacity onPress={() => setExperienceMode(experienceMode === 'full' ? 'auto' : 'full')} activeOpacity={0.7}>
+              <Text style={[s.inlineAction, { color: c.teal, marginTop: sp.sm }]}>
+                {experienceMode === 'full' ? 'Go by my progress' : 'Show me everything now'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* ── 1. Purpose ── */}
@@ -248,9 +283,14 @@ export default function CompassScreen() {
             <View style={s.unlockNote}>
               <Ionicons name="lock-open-outline" size={13} color={c.text3} />
               <Text style={s.unlockNoteText}>
-                {featuresUnlockedBy(activeObjective.objective.id).length > 0
-                  ? `Finishing this opens ${featuresUnlockedBy(activeObjective.objective.id).map(f => f.label).join(' and ')}.`
-                  : 'Finishing this is its own reward — nothing gated behind it.'}
+                {[
+                  featuresUnlockedBy(activeObjective.objective.id).length > 0
+                    ? `Finishing this opens ${featuresUnlockedBy(activeObjective.objective.id).map(f => f.label).join(' and ')}.`
+                    : null,
+                  nextStage
+                    ? `It also opens the next stage of the app: ${nextStage.label}.`
+                    : null,
+                ].filter(Boolean).join(' ') || 'Finishing this is its own reward — nothing gated behind it.'}
               </Text>
             </View>
 
@@ -342,6 +382,8 @@ export default function CompassScreen() {
           </>
         )}
 
+        {/* ── 5. Rough & Plus — the last stage only ('doors') ── */}
+        {showAll && (<>
         {/* ── 5a. Experimental ── */}
         <SectionHead title="Rough edges" c={c} t={t} sp={sp} />
         <View style={s.toggleCard}>
@@ -365,7 +407,8 @@ export default function CompassScreen() {
           ))}
         </View>
 
-        {/* ── 5b. Plus ── */}
+        {/* ── 5b. Plus — only once it can actually be bought ── */}
+        {(plusOnSale || isPlus) && (<>
         <SectionHead title="Plus" c={c} t={t} sp={sp} />
         {showSubtext && (
           <Text style={s.sectionNote}>
@@ -379,6 +422,8 @@ export default function CompassScreen() {
             <FeatureRow key={entry.feature.id} entry={entry} onPress={() => openFeature(entry)} c={c} t={t} sp={sp} r={r} showSubtext={showSubtext} />
           ))}
         </View>
+        </>)}
+        </>)}
       </ScrollView>
 
       <UnlockSheet
@@ -453,6 +498,10 @@ const makeStyles = (c, t, sp, r) => StyleSheet.create({
   header:      { paddingHorizontal: sp.xl, marginBottom: sp.lg },
   headerTitle: { fontSize: t.xxxl, fontFamily: FONTS.display, fontWeight: '800', color: c.text1 },
   headerSub:   { fontSize: t.xs, color: c.text3, marginTop: 4, lineHeight: 18 },
+
+  stageCard:   { marginHorizontal: sp.xl, marginBottom: sp.lg, backgroundColor: c.bg1, borderRadius: r.lg, borderWidth: 0.5, borderColor: c.border, padding: sp.md },
+  stageKicker: { fontSize: 10, color: c.teal, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: '800', marginBottom: 4 },
+  stageText:   { fontSize: t.xs, color: c.text2, lineHeight: 18 },
 
   section:      { backgroundColor: c.bg1, marginHorizontal: sp.xl, borderRadius: r.lg, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, padding: sp.lg },
   sectionKicker:{ fontSize: 10, color: c.text4, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: '800', marginBottom: 6 },

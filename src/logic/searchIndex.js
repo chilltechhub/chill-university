@@ -13,6 +13,7 @@ import { LIBRARY_HUBS } from '../screens/library/LibraryScreen';
 import { LIFE_AREAS } from '../screens/library/LifeAreaScreen';
 import { CLASS_SUBJECTS, CLASS_SCREEN_MAP } from '../data/classCatalog';
 import { GAMES_MASTER } from '../screens/GamesScreen';
+import { QUESTS } from '../data/quests';
 
 // ─── Route descriptors ─────────────────────────────────────────────────────
 // The palette renders above the navigator, not inside a screen, so every
@@ -126,7 +127,7 @@ export function getDestinations() {
       icon: subject.icon,
       color: subject.color,
       route: classes('ClassesMain'),
-      personas: subject.personas,
+      subject,
     });
     (subject.children || []).forEach((child) => {
       const screen = CLASS_SCREEN_MAP[child.label];
@@ -137,10 +138,20 @@ export function getDestinations() {
         icon: subject.icon,
         color: subject.color,
         route: classes(screen),
-        personas: subject.personas,
+        subject,
       });
     });
   });
+
+  // Quests open inside Classes, so they follow Classes' visibility
+  // (isRowShown checks the ClassesStack route).
+  QUESTS.forEach((quest) => push('Classes', {
+    title: quest.title,
+    subtitle: `Quest · ${quest.subjectLabel} · ${quest.minutes} min`,
+    icon: quest.icon,
+    color: quest.color,
+    route: library('ClassesStack', { screen: 'Quest', params: { questId: quest.id } }),
+  }));
 
   GAMES_MASTER.forEach((game) => push('Games', {
     title: game.title,
@@ -155,47 +166,60 @@ export function getDestinations() {
   return out;
 }
 
-// ─── Profile-type gating ────────────────────────────────────────────────────
-// Class subjects carry `personas` — school subjects for PERSONAL/STUDENT, the
-// business-ownership tracks for BUSINESS/ENTREPRENEUR (see classCatalog.js).
-// Classes.js has always filtered on it; this index didn't, which meant a
-// guest or a minor's profile could type "Capital & Funding" into the palette
-// and land straight in adult financial content the Academy screen hides from
-// them. Search now applies the same rule.
+// ─── Which rows show ────────────────────────────────────────────────────────
+// Search is an entry point like any other, so it asks the same questions the
+// screens do (docs/access-system.md), through AccessContext:
 //
-// Checked by destination screen as well as by row, because recents are
-// stored without the tag — an adult-track visit saved before switching to a
-// Personal profile must not resurface under "Recent".
-let gatedScreens = null;
-function gatedScreenMap() {
-  if (gatedScreens) return gatedScreens;
-  gatedScreens = {};
-  CLASS_SUBJECTS.forEach((subject) => {
-    if (!subject.personas) return;
-    (subject.children || []).forEach((child) => {
-      const screen = CLASS_SCREEN_MAP[child.label];
-      if (screen) gatedScreens[screen] = subject.personas;
+//   Allowed?    an `adult` class subject never turns up for anyone under 18
+//               or of unknown age. This used to be done by account type —
+//               a guest or a minor's profile could type "Capital & Funding"
+//               and land in adult financial content — and is an age rule now.
+//   Shown now?  only what the current stage shows. A first-day account
+//               typing "portfolio" shouldn't turn up the one thing the
+//               Library is keeping out of sight. Another type's class
+//               subjects appear once 'all-tools' opens, same as in Classes.
+//
+// Class rows are checked by destination screen as well as by row, because
+// recents are stored without the subject — an adult-track visit saved on one
+// profile must not resurface under "Recent" on another.
+let subjectScreens = null;
+function subjectForScreen(screen) {
+  if (!subjectScreens) {
+    subjectScreens = {};
+    CLASS_SUBJECTS.forEach((subject) => {
+      (subject.children || []).forEach((child) => {
+        const target = CLASS_SCREEN_MAP[child.label];
+        if (target) subjectScreens[target] = subject;
+      });
     });
-  });
-  return gatedScreens;
+  }
+  return subjectScreens[screen] || null;
 }
 
-// Fails closed: a gated destination with no active profile type is hidden,
-// the same way Classes.js treats an unknown type.
-export function isDestinationAllowed(row, activeType) {
-  const personas = row?.personas || gatedScreenMap()[row?.route?.params?.screen];
-  return !personas || (!!activeType && personas.includes(activeType));
+// `visibility` is { isScreenVisible, isGameVisible, isSubjectVisible } from
+// AccessContext. Without it nothing is filtered, which only a script should
+// ever rely on.
+export function isRowShown(row, { isScreenVisible, isGameVisible, isSubjectVisible } = {}) {
+  const route = row?.route;
+  const subject = row?.subject || subjectForScreen(route?.params?.screen);
+  if (subject && isSubjectVisible && !isSubjectVisible(subject)) return false;
+  if (!route || !isScreenVisible) return true;
+  if (route.type === 'root') {
+    if (route.screen === 'Play') return isGameVisible ? isGameVisible(route.params?.gameId) : true;
+    return isScreenVisible(route.screen);
+  }
+  return route.screen ? isScreenVisible(route.screen) : true;
 }
 
 // Rank: a title that starts with the query beats one that merely contains
 // it, which beats a subtitle-only match. Without this, typing "math" buries
 // the Math subject under every topic whose subtitle says "Math".
-export function searchDestinations(query, limit = 8, activeType) {
+export function searchDestinations(query, limit = 8, visibility) {
   const q = query.trim().toLowerCase();
   if (!q) return [];
   const scored = [];
   getDestinations().forEach((row) => {
-    if (!isDestinationAllowed(row, activeType)) return;
+    if (!isRowShown(row, visibility)) return;
     const title = row.title.toLowerCase();
     const subtitle = (row.subtitle || '').toLowerCase();
     let score = 0;
@@ -212,10 +236,10 @@ export function searchDestinations(query, limit = 8, activeType) {
 }
 
 // What the palette shows before anything is typed.
-export function defaultDestinations(activeType) {
+export function defaultDestinations(visibility) {
   const wanted = ['Capture Inbox', 'Knowledge Vault', 'The Workshop', 'Planner', 'Academy Classes', 'Idea Garden'];
   const all = getDestinations();
   return wanted
     .map((title) => all.find((row) => row.title === title))
-    .filter((row) => row && isDestinationAllowed(row, activeType));
+    .filter((row) => row && isRowShown(row, visibility));
 }

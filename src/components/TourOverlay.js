@@ -280,7 +280,7 @@ export default function TourOverlay() {
               marginTop: s.sm, paddingTop: s.sm, borderTopWidth: 0.5, borderTopColor: c.border,
             }}>
               <TouchableOpacity onPress={skipTour} accessibilityRole="button" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Text style={{ fontSize: 12, color: c.text4, fontWeight: t.bold }}>Skip</Text>
+                <Text style={{ fontSize: 12, color: c.text4, fontWeight: t.bold }}>{currentStep.skipLabel || 'Skip'}</Text>
               </TouchableOpacity>
 
               {/* Step dots — position without the arithmetic of "3 OF 5". */}

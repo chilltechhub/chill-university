@@ -42,6 +42,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { useFabPosition } from '../../context/FabPositionContext';
+import { useAccess } from '../../context/AccessContext';
 import { supabase } from '../api/supabaseClient';
 import { offlineWrite, isOnline } from '../api/offlineCache';
 import { addCapture } from '../api/captureService';
@@ -261,7 +262,11 @@ export default function FloatingActionButton({ currentScreen }) {
   // The dial grows away from the FAB — down when the FAB is on top, up when
   // it's on the bottom — so the most-reached-for actions (end of ACTIONS)
   // should always land nearest the FAB, whichever way that is.
-  const orderedActions = vSide === 'top' ? [...ACTIONS].reverse() : ACTIONS;
+  // Early stages (src/data/experienceStages.js) offer the actions this
+  // profile type's path has opened; the 'dashboard' stage brings all five.
+  const { visibleFabActions } = useAccess();
+  const stageActions = visibleFabActions ? ACTIONS.filter(a => visibleFabActions.has(a.key)) : ACTIONS;
+  const orderedActions = vSide === 'top' ? [...stageActions].reverse() : stageActions;
 
   // Move-button circle sits right beside the FAB, offset inward (away from
   // the screen edge) so it's never clipped, vertically centered on it.

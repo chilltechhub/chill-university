@@ -1,6 +1,6 @@
 // src/screens/GamesScreen.js — the Training Center hub: pick a drill, check
 // your progress, and see what's up next in your objectives.
-import React, { useState, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   ScrollView, Modal, Dimensions,
@@ -20,10 +20,11 @@ import useCharacterLoadout from '../logic/useCharacterLoadout';
 import useBonusRewards from '../logic/useBonusRewards';
 import useCoinRewards from '../logic/useCoinRewards';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
-import { useFeatureFlag, useConfigValue } from '../../context/RemoteConfigContext';
+import { useFeatureFlag } from '../../context/RemoteConfigContext';
 import TourSpot from '../components/TourSpot';
 import LandscapeBackground from '../components/LandscapeBackground';
 import CharacterWalker from '../components/CharacterWalker';
+import { useAccess } from '../../context/AccessContext';
 
 // Single source of truth: src/services/gameRegistry.js. GamesScreen and
 // GameFeed both read from it now, so a game's id/subject/icon can never
@@ -47,6 +48,10 @@ const GAME_IDS = GAMES_MASTER.map(g => g.key);
 const { width: SW } = Dimensions.get('window');
 
 const TABS = ['Overview', 'Training', 'Progress'];
+// Stage 1 (src/data/experienceStages.js) drops Progress: six games don't
+// need a per-game grade table and a leaderboard yet, and the Overview's own
+// chips already show points, streak and tier.
+const STARTER_TABS = ['Overview', 'Training'];
 
 // Order matters here — it's the order the "Type" filter chips render in.
 const MECHANIC_FILTERS = ['All', 'quiz', 'matching', 'building', 'strategy', 'thinking', 'fun', 'racing', 'puzzle', 'survival', 'cards', 'sports'];
@@ -81,15 +86,25 @@ export default function GamesScreen() {
   // to hide this for everyone with no app update. Defaults on if the row
   // doesn't exist yet.
   const showLeaderboard = useFeatureFlag('show_leaderboard', true);
-  // Admin-side kill switch — an array of game ids in app_config's
-  // 'disabled_games' row (Supabase → Table Editor, no build/redeploy
-  // needed) — e.g. hide a game that shipped broken until it's fixed.
-  const disabledGameIds = useConfigValue('disabled_games', []);
+  // isGameVisible answers both questions that apply to a game: the remote
+  // kill switch (app_config's 'disabled_games' row, question 1) and whether
+  // this account's path has put it on the shelf yet (question 3). Games
+  // opened so far are listed, three or so at a time; the rest aren't
+  // locked, just not on the shelf yet. The 'all-games' stage lists every
+  // one and adds the filters and the Progress tab.
+  const { can, isGameVisible } = useAccess();
+  const starter = !can('all-games');
+  const tabs = starter ? STARTER_TABS : TABS;
   const GAMES = useMemo(
-    () => GAMES_MASTER.filter(g => !disabledGameIds.includes(g.key)),
-    [disabledGameIds]
+    () => GAMES_MASTER.filter(g => isGameVisible(g.key)),
+    [isGameVisible]
   );
   const [activeTab, setActiveTab] = useState('Overview');
+  // Dropping back (switching "show me everything" off) while on a tab the
+  // current stage doesn't have.
+  useEffect(() => {
+    if (!tabs.includes(activeTab)) setActiveTab('Overview');
+  }, [tabs, activeTab]);
   const [showMissions, setShowMissions] = useState(false);
   const [showTasks, setShowTasks] = useState(false);
   const [gameFilter, setGameFilter] = useState('All');
@@ -124,7 +139,7 @@ export default function GamesScreen() {
         <Text style={styles.eyebrow}>TRAINING CENTER</Text>
         <Text style={styles.name}>{displayName}</Text>
         <View style={styles.tabs}>
-          {TABS.map(tab => (
+          {tabs.map(tab => (
             <TouchableOpacity
               key={tab}
               style={[styles.tab, activeTab === tab && styles.tabActive]}
@@ -222,12 +237,16 @@ export default function GamesScreen() {
           <View style={{ width: '100%' }}>
             {showSubtext && (
               <Text style={styles.sectionIntro}>
-                {trainedCount > 0
-                  ? `You've trained in ${trainedCount} of ${GAMES.length} drills. Pick one to continue.`
-                  : 'Pick a drill below and choose your grade level to begin.'}
+                {starter
+                  ? `${GAMES.length} drills picked for you to start with. The rest open up as you finish your first goal.`
+                  : trainedCount > 0
+                    ? `You've trained in ${trainedCount} of ${GAMES.length} drills. Pick one to continue.`
+                    : 'Pick a drill below and choose your grade level to begin.'}
               </Text>
             )}
 
+            {/* Filters — not worth a row of chips each for six games. */}
+            {!starter && (<>
             {/* Subject filter */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: s.sm, gap: s.sm, paddingBottom: s.sm }}>
@@ -264,13 +283,14 @@ export default function GamesScreen() {
                 );
               })}
             </ScrollView>
+            </>)}
 
             {/* Drill grid */}
             <View style={styles.gameGrid}>
-              {GAMES.filter(g =>
+              {GAMES.filter(g => starter || (
                 (gameFilter === 'All' || g.subject === gameFilter) &&
                 (mechanicFilter === 'All' || g.mechanic === mechanicFilter)
-              ).map(game => {
+              )).map(game => {
                 const savedLevel = skillLevels[game.key];
                 const levelMeta = savedLevel ? LEVEL_META[savedLevel] : null;
                 const mechMeta = MECHANIC_META[game.mechanic];

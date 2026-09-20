@@ -310,8 +310,36 @@ export function hasScreenTutorial(routeName) {
   return !!(SCREEN_FEATURES[routeName] || SCREEN_HELP[routeName]);
 }
 
-export function buildScreenTutorial(routeName, personalization) {
-  const hand = SCREEN_FEATURES[routeName];
+// Early stages (src/data/experienceStages.js): until 'dashboard' Home is a
+// few widgets, and until 'all-tools' the Library is a handful of tools, so
+// the full walkthroughs above would mostly describe things that aren't on
+// screen. These say what is there, and that more is coming. When those
+// stages open, AccessContext clears the screen from the seen set so the
+// full version runs next visit (`reteach` in experienceStages.js).
+const STARTER_FEATURES = {
+  Home: [
+    { title: 'Your first goal', body: "This card is the one thing to do right now. Each step has an Open button that takes you straight to it, and the whole goal takes a few minutes. Every goal you finish opens a little more of the app.", id: 'home-compass' },
+    { title: 'Play', body: "PLAY drops you straight into one of the games picked for you. Every round counts toward your streak and your points.", id: 'home-study-play' },
+  ],
+  LibraryScreen: [
+    {
+      title: 'Life Areas',
+      body: "Eight sides of a life, each with a ring showing how it's tracking. Tap one to check in and get a small thing to do about it.",
+      id: 'library-life-areas',
+      librarySubTab: 'domains',
+    },
+    { title: 'Capture', body: "Capture, top-right. Get a thought out of your head now and decide where it belongs later.", id: 'library-capture', librarySubTab: 'domains' },
+    { title: 'More on the way', body: "The Library starts with the tools that fit your profile. Each goal you finish and each level you gain opens a little more, here and across the app." },
+  ],
+};
+
+// Which stage opens the full walkthrough for a screen with a starter one.
+const FULL_TUTORIAL_AT = { Home: 'dashboard', LibraryScreen: 'all-tools' };
+
+// `can` is AccessContext's stage check; omitted means the full walkthroughs.
+export function buildScreenTutorial(routeName, personalization, { can } = {}) {
+  const starter = !!can && !!FULL_TUTORIAL_AT[routeName] && !can(FULL_TUTORIAL_AT[routeName]);
+  const hand = (starter && STARTER_FEATURES[routeName]) || SCREEN_FEATURES[routeName];
   const info = SCREEN_HELP[routeName];
 
   let steps;

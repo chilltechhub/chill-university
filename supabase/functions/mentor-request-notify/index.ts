@@ -81,10 +81,12 @@ async function sendEmail(to: string, replyTo: string, subject: string, text: str
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return json(405, { error: 'method not allowed' });
 
-  if (TRIGGER_SECRET) {
-    const provided = req.headers.get('x-trigger-secret');
-    if (provided !== TRIGGER_SECRET) return json(401, { error: 'bad trigger secret' });
-  }
+  // Fail closed. This is deployed with --no-verify-jwt, so the shared secret is
+  // the only thing standing between the open internet and a service-role read
+  // of two users' email addresses. An unset secret used to skip the check.
+  if (!TRIGGER_SECRET) return json(503, { error: 'MENTOR_NOTIFY_SECRET is not set' });
+  const provided = req.headers.get('x-trigger-secret');
+  if (provided !== TRIGGER_SECRET) return json(401, { error: 'bad trigger secret' });
 
   let requestId: string | undefined;
   try {

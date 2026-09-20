@@ -29,6 +29,7 @@ import React, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TOUR_STEPS } from '../src/logic/tourSteps';
 import { buildScreenTutorial } from '../src/logic/screenTutorials';
+import { useAccess } from './AccessContext';
 
 const TourContext = createContext(null);
 const SEEN_KEY = '@cth_setting_tourSeen';
@@ -61,6 +62,10 @@ function buildSteps(personalization) {
 }
 
 export function TourProvider({ children }) {
+  // Screen tutorials are written for what the current stage shows — early
+  // on, Home and the Library get short ones (see STARTER_FEATURES in
+  // screenTutorials.js).
+  const { can } = useAccess();
   const [active, setActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [targets, setTargets] = useState({});
@@ -72,6 +77,20 @@ export function TourProvider({ children }) {
   // into each other.
   const [scopedSteps, setScopedSteps] = useState(null);
   const navigateRef = useRef(null);
+  // Like navigateRef, but resolves a bare screen name wherever it lives
+  // (src/logic/appRoutes.js). Used by a step's `go`, which is how a scoped
+  // walkthrough — the guided first goal — takes someone to the next place.
+  const goToRef = useRef(null);
+  // Told how a walkthrough ended: 'done' (finished, or the thing it asked
+  // for was done), 'skip' (the person closed it), 'handoff' (whoever started
+  // it ended it, e.g. the tap it asked for opened another screen), or
+  // 'replaced' (another tour started over it). Only startLesson sets one.
+  const onEndRef = useRef(null);
+  const endWith = useCallback((reason) => {
+    const cb = onEndRef.current;
+    onEndRef.current = null;
+    cb?.(reason);
+  }, []);
 
   useEffect(() => {
     AsyncStorage.getItem(PERSONALIZATION_KEY).then(raw => {
@@ -93,7 +112,10 @@ export function TourProvider({ children }) {
     [scopedSteps, personalization]
   );
 
-  const registerNavigator = useCallback((fn) => { navigateRef.current = fn; }, []);
+  const registerNavigator = useCallback((fn, goTo) => {
+    navigateRef.current = fn;
+    if (goTo) goToRef.current = goTo;
+  }, []);
 
   const registerTarget = useCallback((id, rect) => {
     setTargets((prev) => ({ ...prev, [id]: rect }));
@@ -111,12 +133,14 @@ export function TourProvider({ children }) {
   const goToStep = useCallback((index) => {
     const step = steps[index];
     if (!step) return;
-    if (step.tab) navigateRef.current?.('MainTabs', { screen: step.tab });
+    if (step.go) goToRef.current?.(step.go, step.goParams);
+    else if (step.tab) navigateRef.current?.('MainTabs', { screen: step.tab });
     else if (step.screen) navigateRef.current?.(step.screen);
     setStepIndex(index);
   }, [steps]);
 
   const start = useCallback(() => {
+    endWith('replaced');
     setScopedSteps(null); // the main tour always wins over a scoped one
     setTargets({});
     setActive(true);
@@ -128,6 +152,7 @@ export function TourProvider({ children }) {
   // of the app-wide spine, and it never navigates (every one of its steps
   // omits `tab`/`screen`, so goToStep is a no-op on that front).
   const startScreenTour = useCallback((routeName) => {
+    endWith('replaced');
     // Deliberately NOT clearing `targets` here (unlike start(), above): the
     // main tour clears because it's about to navigate to a fresh screen,
     // whose TourSpots mount from scratch and register themselves via their
@@ -139,19 +164,26 @@ export function TourProvider({ children }) {
     // which is why real content steps silently fell back to an
     // unspotlighted card while only the synthetic Navigation step (which
     // doesn't read the registry at all) ever lit up.
-    setScopedSteps(buildScreenTutorial(routeName, personalization));
+    setScopedSteps(buildScreenTutorial(routeName, personalization, { can }));
     setActive(true);
     setStepIndex(0);
-  }, [personalization]);
+  }, [personalization, can]);
 
-  const finish = useCallback(() => {
+  const finish = useCallback((reason = 'done') => {
     setActive(false);
+    endWith(typeof reason === 'string' ? reason : 'done');
     if (scopedSteps) { setScopedSteps(null); return; }
     AsyncStorage.setItem(SEEN_KEY, 'true');
-  }, [scopedSteps]);
+  }, [scopedSteps, endWith]);
+
+  // The overlay's Skip. Wrapped so the press event never reaches finish()
+  // as a reason.
+  const skip = useCallback(() => finish('skip'), [finish]);
+  // For whoever started a walkthrough to end it themselves.
+  const endTour = useCallback((reason = 'handoff') => finish(reason), [finish]);
 
   const next = useCallback(() => {
-    if (stepIndex >= steps.length - 1) { finish(); return; }
+    if (stepIndex >= steps.length - 1) { finish('done'); return; }
     goToStep(stepIndex + 1);
   }, [stepIndex, steps.length, goToStep, finish]);
 
@@ -218,12 +250,18 @@ export function TourProvider({ children }) {
   // are built from content rather than from a screen's TourSpots. Same
   // overlay, same guide; it just never navigates and never spotlights,
   // because there is nothing on screen it is pointing at.
-  const startLesson = useCallback((lessonSteps) => {
+  //
+  // `onEnd(reason)` hears how it ended (see onEndRef). A first step with
+  // `go` navigates there before it shows, same as any later step.
+  const startLesson = useCallback((lessonSteps, { onEnd } = {}) => {
     if (!lessonSteps?.length) return;
+    endWith('replaced');
+    onEndRef.current = onEnd || null;
+    if (lessonSteps[0].go) goToRef.current?.(lessonSteps[0].go, lessonSteps[0].goParams);
     setScopedSteps(lessonSteps);
     setActive(true);
     setStepIndex(0);
-  }, []);
+  }, [endWith]);
 
   const answerQuiz = useCallback((optionIndex) => {
     setQuizAnswer(prev => (prev === null ? optionIndex : prev)); // first answer stands
@@ -237,8 +275,8 @@ export function TourProvider({ children }) {
     completeAction,
     quizAnswer, answerQuiz,
     registerNavigator, registerTarget, unregisterTarget, setPersonalization,
-    startTour: start, startScreenTour, startLesson, startIfFirstTime, nextStep: next, backStep: back, skipTour: finish,
-  }), [active, stepIndex, targets, steps, currentStep, completeAction, quizAnswer, answerQuiz, registerNavigator, registerTarget, unregisterTarget, setPersonalization, start, startScreenTour, startLesson, startIfFirstTime, next, back, finish]);
+    startTour: start, startScreenTour, startLesson, startIfFirstTime, nextStep: next, backStep: back, skipTour: skip, endTour,
+  }), [active, stepIndex, targets, steps, currentStep, completeAction, quizAnswer, answerQuiz, registerNavigator, registerTarget, unregisterTarget, setPersonalization, start, startScreenTour, startLesson, startIfFirstTime, next, back, skip, endTour]);
 
   return <TourContext.Provider value={value}>{children}</TourContext.Provider>;
 }

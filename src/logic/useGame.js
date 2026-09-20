@@ -19,6 +19,10 @@ export default function useGame({
 
   const [score,      setScore]    = useState(0);
   const [lives,      setLives]    = useState(3);
+  // The same count, kept in step synchronously. `lives` is still the
+  // pre-answer value inside the caller's handler (and inside two taps that
+  // land before a re-render), so answer() reads and returns this instead.
+  const livesRef                  = useRef(3);
   const [streak,     setStreak]   = useState(0);
   const [bestStreak, setBest]     = useState(0);
   const [correct,    setCorrect]  = useState(0);
@@ -30,6 +34,12 @@ export default function useGame({
 
   const accuracy = attempted > 0 ? Math.round((correct / attempted) * 100) : 0;
 
+  // Returns what the answer did, as of right now:
+  //   { points, livesLeft, isOut }
+  // `livesLeft`/`isOut` are the post-answer values, so a game can decide
+  // "that was the last life" from the return instead of working it out
+  // from the stale `game.lives`. Older games still do
+  // `game.lives - (isCorrect ? 0 : 1) <= 0`, which gives the same answer.
   const answer = useCallback((isCorrect, { speedBonus = 0 } = {}) => {
     // Track per-question timing
     const elapsed = Date.now() - questionStart.current;
@@ -63,9 +73,10 @@ export default function useGame({
         recordGuestEvent({ correct: true, difficulty });
       }
 
-      return pts;
+      return { points: pts, livesLeft: livesRef.current, isOut: livesRef.current <= 0 };
     } else {
-      setLives(l => l - 1);
+      livesRef.current = Math.max(0, livesRef.current - 1);
+      setLives(livesRef.current);
       setStreak(0);
 
       if (user?.id) {
@@ -81,7 +92,7 @@ export default function useGame({
         recordGuestEvent({ correct: false, difficulty });
       }
 
-      return 0;
+      return { points: 0, livesLeft: livesRef.current, isOut: livesRef.current <= 0 };
     }
   }, [streak, bestStreak, difficulty, user, subject, recordGuestEvent, skillLevel, manualScoring]);
 
@@ -138,7 +149,7 @@ export default function useGame({
   }, [score, correct, attempted, accuracy, bestStreak, user, subject, difficulty, skillLevel, onGameEnd, refreshProfile]);
 
   const reset = useCallback(() => {
-    setScore(0); setLives(3); setStreak(0);
+    setScore(0); setLives(3); livesRef.current = 3; setStreak(0);
     setBest(0); setCorrect(0); setAttempt(0); setDone(false);
     startTime.current     = Date.now();
     questionStart.current = Date.now();
