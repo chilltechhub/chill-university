@@ -17,6 +17,7 @@ import { ProfileAccountsProvider } from './context/ProfileAccountsContext';
 import { FabPositionProvider } from './context/FabPositionContext';
 import { RemoteConfigProvider, useFeatureFlag, useConfigValue } from './context/RemoteConfigContext';
 import { AccessProvider } from './context/AccessContext';
+import { PlusProvider } from './context/PlusContext';
 import { TourProvider, useTour } from './context/TourContext';
 import { CommandPaletteProvider } from './context/CommandPaletteContext';
 import { loadRemotePets } from './src/data/petOptions';
@@ -45,6 +46,7 @@ import FloatingActionButton from './src/components/FloatingActionButton';
 import CommandPalette from './src/components/CommandPalette';
 import HelpScreen       from './src/screens/HelpScreen';
 import CompassScreen  from './src/screens/CompassScreen';
+import PlusScreen     from './src/screens/PlusScreen';
 import StatsScreen      from './src/screens/StatsScreen';
 import { gatedScreen } from './src/components/FeatureGate';
 import AnnouncementBanner from './src/components/AnnouncementBanner';
@@ -163,7 +165,9 @@ function MissionsOverlay() {
 
 // Routes that own their own full-screen auth chrome — the global TopBar
 // (rank/points/sign-in) would just duplicate or clash with them.
-const NO_TOPBAR_ROUTES = new Set(['Login', 'MultiStepOnboarding', 'ResetPassword']);
+// Plus is a paywall you close with its own X; the HUD and FAB over it would
+// be buttons that lead away mid-decision.
+const NO_TOPBAR_ROUTES = new Set(['Login', 'MultiStepOnboarding', 'ResetPassword', 'Plus']);
 
 function AppInner() {
   const { colors: c } = useTheme();
@@ -373,6 +377,13 @@ function AppInner() {
               so it lives on the root stack rather than inside a tab. */}
           <Stack.Screen name="Compass"           component={CompassScreen} />
           <Stack.Screen name="Stats"               component={GatedStats} />
+          {/* The paywall / "your plan" page. Slides up rather than across,
+              because it's a detour you close, not a place you go. */}
+          <Stack.Screen
+            name="Plus"
+            component={PlusScreen}
+            options={{ ...TransitionPresets.ModalSlideFromBottomIOS }}
+          />
         </Stack.Navigator>
         <MissionsOverlay />
         <LevelUpNotification />
@@ -413,6 +424,9 @@ export default function App() {
                     access can follow the active profile rather than the
                     account. */}
                 <AccessProvider>
+                {/* Inside AccessProvider: reads the plan and the
+                    plus_on_sale switch from there. */}
+                <PlusProvider>
                 <FabPositionProvider>
                   <CommandPaletteProvider>
                   <TourProvider>
@@ -420,6 +434,7 @@ export default function App() {
                   </TourProvider>
                   </CommandPaletteProvider>
                 </FabPositionProvider>
+                </PlusProvider>
                 </AccessProvider>
               </ProfileAccountsProvider>
             </UserProgressProvider>

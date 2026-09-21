@@ -18,8 +18,15 @@
 //
 // Requires the caller to be authenticated — Supabase's function gateway
 // checks the JWT before this code runs (deploy without --no-verify-jwt).
+// That alone is not enough: the app's public anon key is itself a valid JWT,
+// so the gateway would let anyone who unpacked the app spend this key. Every
+// call is therefore looked up as a real user AND checked for an active Plus
+// plan (AI Import is a Plus feature — it's the one that costs money per use).
 
 const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
+// Supabase auto-injects these.
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 const MODEL = 'claude-sonnet-5';
 const MAX_INPUT_CHARS = 60000;
 
@@ -107,6 +114,30 @@ function buildMessage(text: string, context: any) {
   return `CONTEXT (the user's real projects and ideas — use exact ids from here, or omit match_type/match_id if nothing fits):\n${JSON.stringify(ctx)}\n\nCONTENT:\n${text}`;
 }
 
+// Mirror of public.is_plan_active(): an unexpired 'plus'. Anything else —
+// including a failed lookup — is no.
+async function callerHasPlus(req: Request): Promise<boolean> {
+  const jwt = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+  if (!jwt || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return false;
+  const headers = { authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, apikey: SUPABASE_SERVICE_ROLE_KEY };
+
+  const userResp = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: { authorization: `Bearer ${jwt}`, apikey: SUPABASE_SERVICE_ROLE_KEY },
+  });
+  if (!userResp.ok) return false;
+  const uid = (await userResp.json())?.id;
+  if (!uid) return false;
+
+  const profResp = await fetch(
+    `${SUPABASE_URL}/rest/v1/profiles?id=eq.${uid}&select=plan,plan_expires_at`,
+    { headers },
+  );
+  if (!profResp.ok) return false;
+  const [p] = await profResp.json();
+  if (!p || p.plan !== 'plus') return false;
+  return !p.plan_expires_at || Date.parse(p.plan_expires_at) > Date.now();
+}
+
 function cors(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
     status,
@@ -135,6 +166,9 @@ Deno.serve(async (req: Request) => {
   if (!text) return cors(400, { error: 'Paste something first.' });
   if (text.length > MAX_INPUT_CHARS) {
     return cors(400, { error: `That's a lot to analyze at once — paste a smaller chunk (under ${MAX_INPUT_CHARS.toLocaleString()} characters).` });
+  }
+  if (!(await callerHasPlus(req))) {
+    return cors(403, { error: 'AI Import is part of Plus. You can also add your own Anthropic key in Settings.' });
   }
   if (!ANTHROPIC_API_KEY) {
     console.error('parse-import: ANTHROPIC_API_KEY secret is not set');

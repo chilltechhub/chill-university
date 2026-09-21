@@ -224,9 +224,19 @@ export default function UnlockSheet({ visible, featureId, onClose, onUnlocked })
                       <Text style={s.outlineBtnText}>Switch it on</Text>
                     </TouchableOpacity>
                   ) : (
-                    <Text style={s.planNote}>
-                      Your account is on the free plan. Everything else in the app works the same either way.
-                    </Text>
+                    <>
+                      <TouchableOpacity
+                        style={s.outlineBtn}
+                        onPress={() => { onClose?.(); navigation.navigate('Plus', { from: 'feature' }); }}
+                        activeOpacity={0.85}
+                      >
+                        <Ionicons name="star" size={15} color={c.gold} />
+                        <Text style={s.outlineBtnText}>See Plus</Text>
+                      </TouchableOpacity>
+                      <Text style={s.planNote}>
+                        Your account is on the free plan. Everything else in the app works the same either way.
+                      </Text>
+                    </>
                   )}
                 </View>
               )}

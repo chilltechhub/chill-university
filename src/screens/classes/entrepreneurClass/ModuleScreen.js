@@ -28,6 +28,8 @@ import { useTour } from '../../../../context/TourContext';
 import VaultExercise from '../../../components/VaultExercise';
 import LessonQuiz from '../../../components/LessonQuiz';
 import { FONTS } from '../../../theme';
+import { usePlus } from '../../../../context/PlusContext';
+import { isLessonFree } from '../../../logic/plusContent';
 
 export default function ModuleScreen() {
   const { colors: c, typography: t, spacing: s, radius: r, shadows: sh } = useTheme();
@@ -51,6 +53,7 @@ export default function ModuleScreen() {
   // exists (src/data/curriculum/guideLessons.js) — a module without an entry
   // simply doesn't show the button, rather than opening an empty tour.
   const { startLesson } = useTour();
+  const { contentLocked } = usePlus();
   const guideSteps = buildGuideLessonSteps(levelId, moduleIndex, {
     moduleTitle: structural?.title?.replace(/^Module \d+:\s*/, ''),
     disclaimer: DISCLAIMER,
@@ -78,6 +81,13 @@ export default function ModuleScreen() {
     ? written.lessons.map(l => ({ ...structuralByKey[l.key], ...l }))
     : structural.lessons;
   const moduleNumber = moduleIndex + 1;
+
+  // Plus: past the level's free first lesson, lessons show their title and
+  // what they're for, but open the paywall instead of the lesson.
+  const lessonLocked = (li) => contentLocked && !isLessonFree(level.modules, moduleIndex, li);
+  const moduleLocked = lessons.every((_, li) => lessonLocked(li));
+  const anyLocked = lessons.some((_, li) => lessonLocked(li));
+  const openPlus = () => navigation.navigate('Plus', { from: 'business' });
   const totalModules = level.modules.length;
 
   const goToModule = (idx) => {
@@ -107,7 +117,7 @@ export default function ModuleScreen() {
         {/* Two minutes, guide-narrated, with a couple of checks — for
             someone who wants the shape of the module before committing to
             the full read (or who is on a bus). */}
-        {guideSteps && (
+        {guideSteps && !moduleLocked && (
           <TouchableOpacity
             onPress={() => startLesson(guideSteps)}
             accessibilityRole="button"
@@ -132,7 +142,7 @@ export default function ModuleScreen() {
       </View>
 
       {/* ── Intro ────────────────────────────────────────────────────── */}
-      {written?.intro?.length > 0 && (
+      {written?.intro?.length > 0 && !moduleLocked && (
         <View style={[st.card, { borderLeftColor: color }]}>
           {written.intro.map((para, i) => (
             <Text key={i} style={[st.bodyText, i > 0 && { marginTop: 12 }]}>{para}</Text>
@@ -142,7 +152,21 @@ export default function ModuleScreen() {
 
       {/* Modules without written content say so plainly rather than looking
           broken or half-finished. */}
-      {!written && (
+      {anyLocked && (
+        <TouchableOpacity onPress={openPlus} activeOpacity={0.85} style={[st.noticeCard, { borderLeftColor: c.gold }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="star" size={15} color={c.gold} />
+            <Text style={[st.noticeText, { flex: 1 }]}>
+              {moduleLocked
+                ? 'This module is part of Plus. The first lesson of every level is free to try.'
+                : 'This lesson is free. The rest of the level is part of Plus.'}
+            </Text>
+            <Text style={{ fontSize: 13, fontWeight: '800', color: c.gold }}>See Plus</Text>
+          </View>
+        </TouchableOpacity>
+      )}
+
+      {!written && !moduleLocked && (
         <View style={[st.noticeCard, { borderLeftColor: c.text4 }]}>
           <Text style={st.noticeText}>
             The full written guide for this module is still being written. Everything below is complete and
@@ -154,11 +178,12 @@ export default function ModuleScreen() {
 
       {/* ── Lessons ──────────────────────────────────────────────────── */}
       {lessons.map((lesson, li) => {
-        const isOpen = openLesson === li;
+        const locked = lessonLocked(li);
+        const isOpen = openLesson === li && !locked;
         return (
           <View key={lesson.key} style={[st.lessonCard, { borderTopColor: color }]}>
             <TouchableOpacity
-              onPress={() => setOpenLesson(isOpen ? -1 : li)}
+              onPress={() => (locked ? openPlus() : setOpenLesson(isOpen ? -1 : li))}
               activeOpacity={0.75}
               style={st.lessonHead}
             >
@@ -169,7 +194,9 @@ export default function ModuleScreen() {
                 <Text style={st.lessonTitle}>{lesson.title}</Text>
                 <Text style={st.lessonObjective} numberOfLines={isOpen ? 0 : 2}>{lesson.objective}</Text>
               </View>
-              <Ionicons name={isOpen ? 'chevron-up' : 'chevron-down'} size={17} color={c.text4} />
+              {locked
+                ? <Ionicons name="lock-closed" size={16} color={c.gold} accessibilityLabel="Plus" />
+                : <Ionicons name={isOpen ? 'chevron-up' : 'chevron-down'} size={17} color={c.text4} />}
             </TouchableOpacity>
 
             {isOpen && (
@@ -238,7 +265,7 @@ export default function ModuleScreen() {
       })}
 
       {/* ── Wrap-up ──────────────────────────────────────────────────── */}
-      {written?.wrapUp?.length > 0 && (
+      {written?.wrapUp?.length > 0 && !anyLocked && (
         <View style={[st.card, { borderLeftColor: color, marginTop: s.md }]}>
           <Text style={[st.sectionHeading, { color }]}>Where this leaves you</Text>
           {written.wrapUp.map((para, i) => (

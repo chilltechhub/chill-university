@@ -26,3 +26,10 @@ export const PRIVACY_POLICY_URL = 'https://chilltechhub.com/privacy-policy';
 // Set alongside the privacy policy when the marketing site has a terms page.
 // Null hides the link rather than rendering a dead one.
 export const TERMS_URL = null;
+
+// Apple requires every auto-renewing subscription screen to link to Terms of
+// Use (a EULA). Until the site has its own terms page, Apple's standard EULA
+// is the one that applies to the app anyway, so that's the honest link. The
+// same link has to go in the App Store listing's description.
+export const APPLE_STANDARD_EULA_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
+export const SUBSCRIPTION_TERMS_URL = TERMS_URL || APPLE_STANDARD_EULA_URL;

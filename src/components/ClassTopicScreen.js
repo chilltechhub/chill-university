@@ -26,7 +26,11 @@ const FONTS_MONO = FONTS.mono;
 // the curriculum levels (LevelScreen.js) to state what the level is for and
 // how many Vault deliverables it holds. Every existing caller omits it and is
 // unaffected.
-export default function ClassTopicScreen({ title, classKey, fallbackTopics, header }) {
+// `lockAfter` — optional. Topics from this index on show their title and
+// what they're about, but open the Plus screen instead of the lesson. Only
+// the two hand-written business levels (L2, R1) pass it — see
+// src/logic/plusContent.js. Every other caller omits it.
+export default function ClassTopicScreen({ title, classKey, fallbackTopics, header, lockAfter = null }) {
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   const navigation = useNavigation();
   const [openSections, setOpenSections] = useState({});
@@ -87,7 +91,9 @@ export default function ClassTopicScreen({ title, classKey, fallbackTopics, head
 
       {header}
 
-      {topics.map((topic, ti) => (
+      {topics.map((topic, ti) => {
+        const locked = lockAfter != null && ti >= lockAfter;
+        return (
         <React.Fragment key={topic.key}>
         {/* Module heading — only for topics that carry one (the curriculum
             levels). Printed when the module changes, so a 20-lesson level
@@ -118,6 +124,19 @@ export default function ClassTopicScreen({ title, classKey, fallbackTopics, head
             </View>
           </View>
 
+          {locked ? (
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Plus', { from: 'business' })}
+              activeOpacity={0.8}
+              style={{ paddingHorizontal: s.lg, paddingVertical: s.md }}
+            >
+              <Text style={{ fontSize: t.sm, lineHeight: 20, marginBottom: s.sm, color: c.text2 }}>{topic.description}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="lock-closed" size={14} color={c.gold} />
+                <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.gold }}>Part of Plus</Text>
+              </View>
+            </TouchableOpacity>
+          ) : (
           <View style={{ paddingHorizontal: s.lg, paddingVertical: s.md }}>
             <Text style={{ fontSize: t.sm, fontWeight: t.semibold, marginBottom: 4, color: c.text2 }}>What is it?</Text>
             <Text style={{ fontSize: t.sm, lineHeight: 20, marginBottom: s.md, color: c.text2 }}>{topic.description}</Text>
@@ -180,9 +199,11 @@ export default function ClassTopicScreen({ title, classKey, fallbackTopics, head
               c={c} t={t} s={s} r={r}
             />
           </View>
+          )}
         </View>
         </React.Fragment>
-      ))}
+        );
+      })}
 
       <ComingFooter classKey={classKey} navigation={navigation} c={c} t={t} s={s} r={r} />
     </ScrollView>

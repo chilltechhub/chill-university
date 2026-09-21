@@ -16,6 +16,8 @@ import { useUIPrefs } from '../../../../context/UIPrefsContext';
 import { getLevel, levelDeliverableCount, DISCLAIMER } from '../../../data/ownershipCurriculum';
 import { hasModuleContent } from '../../../data/curriculum/moduleContent';
 import { FONTS } from '../../../theme';
+import { usePlus } from '../../../../context/PlusContext';
+import { isLessonFree } from '../../../logic/plusContent';
 
 // level.track -> the header kicker text. Falls back to 'Acquisition Track'
 // for any value not listed here, same as before this map existed.
@@ -32,6 +34,7 @@ export function makeLevelScreen(levelId) {
     const { colors: c, typography: t, spacing: s, radius: r, shadows: sh } = useTheme();
     const { showSubtext } = useUIPrefs();
     const navigation = useNavigation();
+    const { contentLocked } = usePlus();
     const level = getLevel(levelId);
     const st = makeStyles(c, t, s, r, sh);
 
@@ -61,11 +64,16 @@ export function makeLevelScreen(levelId) {
 
         {level.modules.map((mod, i) => {
           const written = hasModuleContent(levelId, i);
+          // Plus: a module is open if any lesson in it is free (module 1
+          // holds the level's free first lesson). The rest go to the paywall.
+          const locked = contentLocked && !mod.lessons.some((_, li) => isLessonFree(level.modules, i, li));
           return (
             <TouchableOpacity
               key={mod.title}
               activeOpacity={0.85}
-              onPress={() => navigation.navigate('CurriculumModule', { levelId, moduleIndex: i })}
+              onPress={() => (locked
+                ? navigation.navigate('Plus', { from: 'business' })
+                : navigation.navigate('CurriculumModule', { levelId, moduleIndex: i }))}
               style={[st.moduleCard, { borderLeftColor: level.color }]}
             >
               <View style={[st.modNum, { backgroundColor: level.color + '22' }]}>
@@ -89,7 +97,9 @@ export function makeLevelScreen(levelId) {
                   )}
                 </View>
               </View>
-              <Ionicons name="chevron-forward" size={17} color={c.text4} />
+              {locked
+                ? <Ionicons name="lock-closed" size={16} color={c.gold} accessibilityLabel="Plus" />
+                : <Ionicons name="chevron-forward" size={17} color={c.text4} />}
             </TouchableOpacity>
           );
         })}
