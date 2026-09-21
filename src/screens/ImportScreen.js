@@ -326,6 +326,15 @@ export default function ImportScreen() {
             </TouchableOpacity>
           )}
 
+          <TouchableOpacity onPress={() => navigation.navigate('AIBridgeScreen', { target: 'vault' })}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.tealLight, borderRadius: r.md, padding: s.md, marginBottom: s.lg, borderWidth: 0.5, borderColor: c.teal + '55' }}>
+            <Ionicons name="sparkles-outline" size={16} color={c.teal} />
+            <Text style={{ flex: 1, fontSize: 11, color: c.teal }}>
+              Rather use your own chatbot? Fill with AI works with ChatGPT, Claude or Gemini for free, and can edit and delete too.
+            </Text>
+            <Ionicons name="chevron-forward" size={14} color={c.teal} />
+          </TouchableOpacity>
+
           {/* ── 1. Paste input ── */}
           <TourSpot id="import-paste">
           <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, borderWidth: 0.5, borderColor: c.border, marginBottom: s.lg }}>

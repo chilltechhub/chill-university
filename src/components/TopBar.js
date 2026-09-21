@@ -12,6 +12,7 @@ import { useUIPrefs } from '../../context/UIPrefsContext';
 import { useTour } from '../../context/TourContext';
 import { useCommandPalette } from '../../context/CommandPaletteContext';
 import ProfileSwitcher from './ProfileSwitcher';
+import NotificationBell from './NotificationBell';
 import { RANK_LABELS, FONTS } from '../theme';
 import LoginScreen from '../screens/LoginScreen';
 
@@ -123,6 +124,11 @@ export default function TopBar({ currentScreen }) {
               <Text style={s.signInText}>Sign In</Text>
             </TouchableOpacity>
           )}
+
+          {/* Notification Center — reminders, what needs doing, app news.
+              Signed-out people get app news there too, but the bell is for
+              an account's own stuff, so it waits for sign-in. */}
+          {user && <NotificationBell userId={user.id} />}
 
           {/* Pending rewards */}
           {user && pendingRewards?.length > 0 && (

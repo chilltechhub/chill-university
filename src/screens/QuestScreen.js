@@ -25,6 +25,7 @@ import {
   QUEST_STEPS, useQuestProgress, updateQuest, restartQuest,
   addQuestTask, finishQuest, saveQuestResources,
 } from '../logic/questProgress';
+import ReminderComposer from '../components/ReminderComposer';
 
 // Pass mark for the check: four in five. Missed questions can be retried
 // straight away; the explanations are there to learn from, not to punish.
@@ -81,6 +82,7 @@ export default function QuestScreen() {
   const { signalAction } = useAccess();
   const { byId, finished, ready } = useQuestProgress();
   const scrollRef = useRef(null);
+  const [remindOpen, setRemindOpen] = useState(false);
 
   // Opening a quest counts as opening a class topic for a goal step like
   // "Open a class and pick one topic".
@@ -119,13 +121,23 @@ export default function QuestScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <TouchableOpacity
-          onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('ClassesMain'))}
-          style={{ marginBottom: 10, alignSelf: 'flex-start' }}
-          accessibilityLabel="Back"
-        >
-          <Ionicons name="chevron-back" size={22} color={c.teal} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <TouchableOpacity
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('ClassesMain'))}
+            accessibilityLabel="Back"
+          >
+            <Ionicons name="chevron-back" size={22} color={c.teal} />
+          </TouchableOpacity>
+          {/* A reminder to come back and finish — a planner item linked to
+              this quest, so the notification opens it right here. */}
+          {step !== 'done' && !!user && (
+            <TouchableOpacity onPress={() => setRemindOpen(true)} accessibilityLabel="Remind me to finish this quest"
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: `${accent}66`, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
+              <Ionicons name="alarm-outline" size={13} color={accent} />
+              <Text style={{ fontSize: 12, fontWeight: '700', color: accent }}>Remind me</Text>
+            </TouchableOpacity>
+          )}
+        </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
           <Ionicons name={quest.icon} size={14} color={accent} />
           <Text style={{ fontSize: 11, fontWeight: '800', letterSpacing: 1, color: accent, textTransform: 'uppercase' }}>
@@ -169,6 +181,12 @@ export default function QuestScreen() {
           </>
         )}
       </ScrollView>
+      <ReminderComposer
+        visible={remindOpen}
+        userId={user?.id}
+        onClose={() => setRemindOpen(false)}
+        initial={{ title: `Finish the quest: ${quest.title}`, target: { kind: 'quest', key: quest.id }, targetLabel: quest.title, area: quest.area }}
+      />
     </KeyboardAvoidingView>
   );
 }

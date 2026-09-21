@@ -18,6 +18,7 @@ import { FONTS } from '../../theme';
 import { useUIPrefs } from '../../../context/UIPrefsContext';
 import { useBlueprint, CornerTicks, Stamp, RulerBar } from './blueprint';
 import TourSpot from '../../components/TourSpot';
+import FillWithAIButton from '../../components/FillWithAIButton';
 import { useTour } from '../../../context/TourContext';
 import { useAccess } from '../../../context/AccessContext';
 import { todayStr } from '../../logic/dateUtils';
@@ -89,7 +90,7 @@ function WorkshopGrid({ bp }) {
   );
 }
 
-const BUILD_TYPES = [
+export const BUILD_TYPES = [
   '🔬 Science',  '💻 Coding',   '🎨 Art',      '📝 Writing',
   '💰 Business', '🏗️ DIY',     '📚 Research', '🎯 Personal',
   '✈️ Travel',   '🎵 Music',   '📊 Finance',  '🌱 Other',
@@ -510,6 +511,8 @@ export default function ProjectsScreen() {
               <Text style={s.headerTitle}>The Workshop</Text>
             </View>
           </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <FillWithAIButton target="projects" color={bp.accent} />
           {/* radius matches s.newBtn's own borderRadius (4) so the spotlight
               traces the button instead of boxing it */}
           <TourSpot id="projects-add" radius={4}>
@@ -518,6 +521,7 @@ export default function ProjectsScreen() {
             <Text style={s.newBtnText}>NEW BUILD</Text>
           </TouchableOpacity>
           </TourSpot>
+          </View>
         </View>
         <View style={s.headerRuleWrap}>
           <View style={s.headerRuleThick} />

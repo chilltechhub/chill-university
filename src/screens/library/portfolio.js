@@ -15,6 +15,7 @@ import { cacheRead, cacheWrite, isOnline } from '../../api/offlineCache';
 import { useTheme } from '../../../context/ThemeContext';
 import { useUIPrefs } from '../../../context/UIPrefsContext';
 import TourSpot from '../../components/TourSpot';
+import FillWithAIButton from '../../components/FillWithAIButton';
 
 // ─── Suit/badge maps ──────────────────────────────────────────────────────────
 const SUIT_COLORS = {
@@ -389,6 +390,7 @@ export default function PortfolioScreen() {
                   <Text style={{ color: th.text1, fontSize: 22, fontWeight: 'bold' }}>Portfolio</Text>
                 </View>
               </View>
+              <FillWithAIButton target="portfolio" color={th.cyan} />
             </View>
 
             {/* ── Commander profile banner ── */}

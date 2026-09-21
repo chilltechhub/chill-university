@@ -26,12 +26,13 @@ import {
 import LinkedText from '../../components/LinkedText';
 import LinkSuggest from '../../components/LinkSuggest';
 import TourSpot from '../../components/TourSpot';
+import FillWithAIButton from '../../components/FillWithAIButton';
 import { useTour } from '../../../context/TourContext';
 import { useAccess } from '../../../context/AccessContext';
 
 // SW/SH/CANVAS_H are now dynamic via useWindowDimensions inside the component
 
-const PLANT_TYPES = [
+export const PLANT_TYPES = [
   { id: 'tree',   label: 'Tree',   emoji: '🌳', desc: 'Big project / major initiative', color: '#2e7d32', light: '#a5d6a7' },
   { id: 'flower', label: 'Flower', emoji: '🌸', desc: 'Research / creative idea',       color: '#6a1b9a', light: '#ce93d8' },
   { id: 'plant',  label: 'Plant',  emoji: '🌿', desc: 'Active developing idea',          color: '#00695c', light: '#80cbc4' },
@@ -958,6 +959,7 @@ export default function IdeaGardenScreen() {
           </View>
         </View>
         <View style={styles.topbarRight}>
+          <FillWithAIButton target="ideas" color={gc.green} />
           {/* radius 16 matches styles.connectBtn — a pill, and the spotlight
               should trace it as one */}
           <TourSpot id="garden-vine" radius={16}>

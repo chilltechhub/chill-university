@@ -23,8 +23,12 @@ import { useProfiles } from '../../context/ProfileAccountsContext';
 import { buildProfileLookup } from '../data/personas';
 import useViewScope, { SCOPE_PROFILE } from '../logic/useViewScope';
 import { schedulePlanReminder, cancelPlanReminder, hasScheduledReminder } from '../logic/planReminderActions';
+import { markManualReminder, setPlanReminder } from '../logic/hubNotifications';
+import { openTarget, targetFromInstance } from '../logic/openTarget';
+import { getQuest } from '../data/quests';
 import DailyCheckin from '../components/DailyCheckin';
 import TourSpot from '../components/TourSpot';
+import FillWithAIButton from '../components/FillWithAIButton';
 import { CLASS_SUBJECTS, CLASS_SCREEN_MAP } from '../data/classCatalog';
 import { getEnabledGames, getGame } from '../services/gameRegistry';
 import { dateStr } from '../logic/dateUtils';
@@ -170,6 +174,16 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
         setLinkLabel('');
         supabase.from('projects').select('title').eq('id', instance.link_id).maybeSingle()
           .then(({ data }) => { if (data) setLinkLabel(data.title); });
+      } else if (instance.link_type === 'quest' && instance.link_screen) {
+        // Quest, idea and vault links come from reminders set elsewhere (the
+        // Notification Center, a project, a quest); the picker has no button
+        // for them, but they show and survive an edit like any other link.
+        setLinkLabel(`Quest: ${getQuest(instance.link_screen)?.title || instance.link_screen}`);
+      } else if ((instance.link_type === 'idea' || instance.link_type === 'vault') && instance.link_id) {
+        const kind = instance.link_type === 'idea' ? 'Idea' : 'Vault';
+        setLinkLabel(kind);
+        supabase.from(instance.link_type === 'idea' ? 'garden_cores' : 'captures').select('title').eq('id', instance.link_id).maybeSingle()
+          .then(({ data }) => { if (data?.title) setLinkLabel(`${kind}: ${data.title}`); });
       } else {
         setLinkLabel('');
       }
@@ -236,8 +250,8 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
       };
       const linkFields = {
         link_type:   linkType || null,
-        link_screen: (linkType === 'class' || linkType === 'game') ? linkScreen : null,
-        link_id:     linkType === 'project' ? linkId : null,
+        link_screen: ['class', 'game', 'quest'].includes(linkType) ? linkScreen : null,
+        link_id:     ['project', 'idea', 'vault'].includes(linkType) ? linkId : null,
       };
 
       const writeRow = (payload) => isEdit
@@ -275,10 +289,14 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
       // local id map, not this row — see planReminderActions.js — so this
       // never touches (and can't clobber) whatever the user actually typed
       // in Notes above.
+      // Hand-set reminders are the person's: the Notification Center's
+      // automatic plan reminders leave them alone, and one switched off here
+      // stays off even with those on (hubNotifications.js).
       if (reminder && timeVal && saved) {
-        await schedulePlanReminder(saved, reminderMin);
+        if (await schedulePlanReminder(saved, reminderMin)) await markManualReminder(saved.id);
       } else if (saved) {
-        await cancelPlanReminder(saved.id);
+        if (await hasScheduledReminder(saved.id)) await setPlanReminder(saved, false);
+        else await cancelPlanReminder(saved.id);
       }
 
       onSave(saved);
@@ -579,6 +597,9 @@ function AgendaRow({ instance, onUpdate, onEdit, navigation, c, t, s, r }) {
         const { data, error } = await supabase.from('projects').select('*').eq('id', instance.link_id).maybeSingle();
         if (error || !data) { Alert.alert('Not found', "That project isn't there anymore."); return; }
         navigation.navigate('ProjectDetail', { project: data });
+      } else if (['quest', 'idea', 'vault'].includes(instance.link_type)) {
+        const ok = await openTarget(navigation, targetFromInstance(instance));
+        if (!ok) Alert.alert('Not found', "That isn't there anymore.");
       }
     } catch (e) {
       console.warn('openLink', e);
@@ -587,7 +608,10 @@ function AgendaRow({ instance, onUpdate, onEdit, navigation, c, t, s, r }) {
   };
   const linkLabel = instance.link_type === 'class' ? 'Open Class'
     : instance.link_type === 'project' ? 'Open Project'
-    : instance.link_type === 'game' ? 'Open Game' : null;
+    : instance.link_type === 'game' ? 'Open Game'
+    : instance.link_type === 'quest' ? 'Open Quest'
+    : instance.link_type === 'idea' ? 'Open Idea'
+    : instance.link_type === 'vault' ? 'Open in Vault' : null;
 
   return (
     <View style={{
@@ -1229,6 +1253,7 @@ export default function PlannerScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: s.lg, paddingTop: s.md, paddingBottom: s.sm }}>
           <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1, flex: 1 }}>{showEmojis ? '📓 ' : ''}Planner</Text>
           <View style={{ flexDirection: 'row', gap: s.sm }}>
+            <FillWithAIButton target="planner" />
             <TouchableOpacity
               onPress={() => navigation.navigate('WeeklyReviewScreen')}
               style={{ padding: 6, borderRadius: r.md, backgroundColor: c.bg2, borderWidth: 0.5, borderColor: c.border }}>
