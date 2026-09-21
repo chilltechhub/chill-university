@@ -47,7 +47,7 @@ export default function RegisterReadyGame({ onGameEnd }) {
   const G = useGameTheme();
   const s = makeStyles(G);
   const { showEmojis } = useUIPrefs();
-  const { level, setLevel, tier: savedTier } = useGradeLevel('registerready');
+  const { level, setLevel, tier: savedTier } = useGradeLevel('registerready', { byAge: false });
   const [started, setStarted] = useState(false);
   const [pace, setPace] = useState('relaxed');
 
