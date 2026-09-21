@@ -18,12 +18,15 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
-import { getUserSubscriptions, getCompletionRate, AREAS } from '../../api/plannerService';
+import { getUserSubscriptions, getCustomItemAreas, getCompletionRate, AREAS } from '../../api/plannerService';
 import WidgetCard, { StatRow, Bar } from './WidgetCard';
 
 // ─── Habit Rings ─────────────────────────────────────────────────────────────
 // Seven-day completion rate per life area, over the daily planner components
-// the user is actually subscribed to. getCompletionRate returns null for an
+// the user is subscribed to *and* any daily item they added themselves with
+// the Planner's "+ Add" (those live only in agenda_instances, so reading
+// subscriptions alone left this empty for exactly the users the empty
+// state's "Open Planner" was sending to the Planner). getCompletionRate returns null for an
 // area with no scheduled instances in the window, which is the difference
 // between "0% done" and "nothing was scheduled" — those are not the same
 // thing and the widget must not conflate them.
@@ -37,8 +40,14 @@ export function HabitRingsWidget({ userId, onOpenPlanner }) {
     (async () => {
       if (!userId) { setRows([]); return; }
       try {
-        const subs = await getUserSubscriptions(userId);
-        const dailyAreas = [...new Set(subs.filter(x => x.cadence === 'daily').map(x => x.area))];
+        const [subs, customAreas] = await Promise.all([
+          getUserSubscriptions(userId),
+          getCustomItemAreas(userId, 'daily', 7),
+        ]);
+        const dailyAreas = [...new Set([
+          ...subs.filter(x => x.cadence === 'daily').map(x => x.area),
+          ...customAreas,
+        ])];
         const rates = await Promise.all(
           dailyAreas.map(async area => ({ area, pct: await getCompletionRate(userId, area, 'daily', 7) })),
         );
