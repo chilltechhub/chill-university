@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
   RefreshControl,
   Modal,
+  Animated,
+  PanResponder,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -132,6 +134,14 @@ const PLANT_EMOJI = { tree: '🌳', flower: '🌸', plant: '🌿' };
 // How long a second tap on the same domain still counts as a double tap.
 const DOUBLE_TAP_MS = 260;
 
+// ─── Swiping between the three views ───────────────────────────────────────────
+// How sideways a drag has to be before it counts as "switch the view"
+// rather than a stray finger on the way down a long page.
+const SWIPE_CLAIM_DX = 18;   // take the gesture off the ScrollView past this
+const SWIPE_MIN_DX   = 55;   // ...and only commit past this on release
+const SWIPE_MIN_VX   = 0.35; // unless it was a flick
+const SWIPE_ENTER_PX = 44;   // how far the incoming view slides in from
+
 // ─── Segmented control — Domains | Build | Knowledge ───────────────────────────
 // The screen title doubles as the view switcher — the sub-view's name is
 // the heading, so there's no separate control taking up a whole row for
@@ -179,6 +189,7 @@ function TabDropdown({ tabs, active, onChange, onClose, onMove, styles, c }) {
           );
         })}
         <Text style={styles.dropdownHint}>Reorder with the arrows — the top one opens first</Text>
+        <Text style={[styles.dropdownHint, { paddingTop: 0 }]}>Or swipe the page left and right to switch</Text>
       </View>
     </>
   );
@@ -361,6 +372,57 @@ export default function LibraryScreen() {
   }, [tabOrder]);
 
   const setActiveTab = (key) => { userPickedTabRef.current = true; setActiveTabRaw(key); };
+
+  // ── Swipe left/right between the views ──
+  // These are sub-views of one screen rather than pages of a pager, so the
+  // gesture is read here and steps through `orderedTabs` — the user's own
+  // order, the same one the title dropdown lists, so the swipe direction
+  // always matches what that menu shows. Kept in a ref because the
+  // PanResponder below is built once and would otherwise close over the
+  // first render's tab forever.
+  const scrollRef = useRef(null);
+  const slide = useRef(new Animated.Value(0)).current;
+  const swipeRef = useRef(() => {});
+  swipeRef.current = (direction) => {
+    const keys = orderedTabs.map(tb => tb.key);
+    const next = keys[keys.indexOf(activeTab) + direction];
+    if (!next) {
+      // Nothing that way. A short tug in the direction of the finger, so
+      // the end of the row reads as the end rather than as a swipe that
+      // didn't register.
+      Animated.sequence([
+        Animated.timing(slide, { toValue: -direction * 0.25, duration: 90, useNativeDriver: true }),
+        Animated.timing(slide, { toValue: 0, duration: 130, useNativeDriver: true }),
+      ]).start();
+      return;
+    }
+    setActiveTab(next);
+    setTabMenuOpen(false);
+    // The three views are different lengths; keeping the old scroll offset
+    // lands you halfway down the new one, which reads as a glitch.
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+    // The view coming in slides from the side the finger came from.
+    slide.setValue(direction);
+    Animated.timing(slide, { toValue: 0, duration: 190, useNativeDriver: true }).start();
+  };
+  const slideX = slide.interpolate({ inputRange: [-1, 0, 1], outputRange: [-SWIPE_ENTER_PX, 0, SWIPE_ENTER_PX] });
+  const slideOpacity = slide.interpolate({ inputRange: [-1, 0, 1], outputRange: [0.35, 1, 0.35] });
+
+  const pan = useRef(
+    PanResponder.create({
+      // Capture, so this wins over the vertical ScrollView underneath —
+      // but only once the drag is clearly sideways, so scrolling, taps and
+      // the life-area long-press all still behave exactly as before.
+      onMoveShouldSetPanResponderCapture: (_e, g) =>
+        Math.abs(g.dx) > SWIPE_CLAIM_DX && Math.abs(g.dx) > Math.abs(g.dy) * 2,
+      onPanResponderRelease: (_e, g) => {
+        if (Math.abs(g.dx) < SWIPE_MIN_DX && Math.abs(g.vx) < SWIPE_MIN_VX) return;
+        swipeRef.current(g.dx < 0 ? 1 : -1);  // dragged left → the next view
+      },
+      // Don't hand a claimed swipe back to the ScrollView mid-gesture.
+      onPanResponderTerminationRequest: () => false,
+    })
+  ).current;
 
   // A view can stop being offered while it's open (switching "show me
   // everything" back off in Settings). Fall back rather than show a view
@@ -724,9 +786,11 @@ export default function LibraryScreen() {
   const activeDomainLabel = LIFE_AREAS.find(a => a.id === activeDomain)?.label;
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} {...pan.panHandlers}>
       {bgMode === 'player' && <PlayerMatchBackground background={playerBackground} />}
-      <ScrollView
+      <Animated.ScrollView
+        ref={scrollRef}
+        style={{ opacity: slideOpacity, transform: [{ translateX: slideX }] }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.gold} />}
         contentContainerStyle={styles.scrollContent}
@@ -1020,7 +1084,7 @@ export default function LibraryScreen() {
             )}
           </>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Sits above the ScrollView rather than inside it so it overlays the
           content the way a dropdown should, instead of pushing it down. */}
