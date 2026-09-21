@@ -15,7 +15,7 @@ import { RANK_LABELS, FONTS } from '../theme';
 import LevelRing from '../components/LevelRing';
 import MissionsScreen from './MissionsScreen';
 import { getEnabledGames, MECHANIC_META } from '../services/gameRegistry';
-import { GRADE_BANDS, getAllGradeLevels } from '../logic/useGradeLevel';
+import { getAllGradeLevels, useBandFraming } from '../logic/useGradeLevel';
 import useCharacterLoadout from '../logic/useCharacterLoadout';
 import useBonusRewards from '../logic/useBonusRewards';
 import useCoinRewards from '../logic/useCoinRewards';
@@ -59,7 +59,6 @@ const MECHANIC_FILTERS = ['All', 'quiz', 'matching', 'building', 'strategy', 'th
 const LEVEL_TINT = {
   'K-2': '#3fcf9e', '3-5': '#8fd3ff', '6-8': '#e8b34a', '9-12': '#e05858',
 };
-const LEVEL_META = Object.fromEntries(GRADE_BANDS.map(l => [l.key, l]));
 
 // Ionicon fallback for SUBJECT_CONFIG's emoji-only `icon` field, used only
 // when the emoji toggle is off — doesn't touch SUBJECT_CONFIG itself since
@@ -77,6 +76,9 @@ export default function GamesScreen() {
   const { colors: c, typography: t, spacing: s, radius: r, shadows: sh } = useTheme();
   const { showEmojis, showSubtext } = useUIPrefs();
   const navigation = useNavigation();
+  // Adults see saved bands as Starter … Advanced, not school grades.
+  const { bands, adult } = useBandFraming();
+  const LEVEL_META = useMemo(() => Object.fromEntries(bands.map(l => [l.key, l])), [bands]);
   const { outfit, pet, accessory, background } = useCharacterLoadout({ level, points, rank, streakDays });
   const bonusRewards = useBonusRewards(user?.id, refreshDailyMissions);
   const coinRewards = useCoinRewards(user?.id);
@@ -373,7 +375,7 @@ export default function GamesScreen() {
             </View>
 
             {/* Skill levels per drill */}
-            <SectionHeader title="Grade Levels" c={c} t={t} s={s} />
+            <SectionHeader title={adult ? 'Your Levels' : 'Grade Levels'} c={c} t={t} s={s} />
             <View style={styles.skillGrid}>
               {GAMES.map(game => {
                 const savedLevel = skillLevels[game.key];

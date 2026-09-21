@@ -8,7 +8,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView } fr
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useGameTheme } from './GameShell';
-import { GRADE_BANDS } from '../logic/useGradeLevel';
+import { useBandFraming } from '../logic/useGradeLevel';
 import { useUIPrefs } from '../../context/UIPrefsContext';
 
 export default function GradeSelectCard({
@@ -16,8 +16,8 @@ export default function GradeSelectCard({
   emoji = '🎮',
   subjectLabel,
   blurbs = {},
-  tierLabels = {}, // optional: relabel a band's displayed name (e.g. "Shift Lead" instead of "Grades 9-12") for games that reuse the shared K-2..9-12 bands as an experience/life-stage tier rather than a literal school grade — see surviveMonth.js and registerReady.js for the pattern this exists for
-  pickerPrompt = 'Choose your grade band', // paired with tierLabels — override when the bands aren't literally grades
+  tierLabels = {}, // optional: relabel a band's displayed name (e.g. "Shift Lead" instead of "Grades 9-12") for games that reuse the shared K-2..9-12 bands as an experience/life-stage tier rather than a literal school grade — see RegisterReadyGame.js and ShiftManagerGame.js for the pattern this exists for. Wins over the adult labels below.
+  pickerPrompt, // paired with tierLabels — override when the bands aren't literally grades. Defaults by age: grades for kids/teens/guests, levels for adults
   level,
   onSelectLevel,
   onStart,
@@ -30,6 +30,10 @@ export default function GradeSelectCard({
   const s = makeStyles(G);
   const { showEmojis } = useUIPrefs();
   const [pace, setPace] = useState('relaxed');
+  // Adults see the same four bands as Starter … Advanced instead of school
+  // grades (ADULT_TIERS in useGradeLevel.js) — no game has to opt in.
+  const { bands, adult } = useBandFraming();
+  const prompt = pickerPrompt || (adult ? 'Choose your level' : 'Choose your grade band');
 
   return (
     <SafeAreaView style={s.safe}>
@@ -42,9 +46,9 @@ export default function GradeSelectCard({
         <Text style={s.title}>{title}</Text>
         {!!subjectLabel && <Text style={s.subject}>{subjectLabel}</Text>}
 
-        <Text style={s.prompt}>{pickerPrompt}</Text>
+        <Text style={s.prompt}>{prompt}</Text>
 
-        {GRADE_BANDS.map(b => {
+        {bands.map(b => {
           const active = b.key === level;
           return (
             <TouchableOpacity

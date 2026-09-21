@@ -43,7 +43,7 @@ export default function ShiftManagerGame({ onGameEnd }) {
   const G = useGameTheme();
   const s = makeStyles(G);
   const { showEmojis } = useUIPrefs();
-  const { level, setLevel } = useGradeLevel('shiftmanager');
+  const { level, setLevel } = useGradeLevel('shiftmanager', { byAge: false });
   const [started, setStarted] = useState(false);
 
   const [bank, setBank] = useState(null);
