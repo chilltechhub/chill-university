@@ -24,7 +24,7 @@ const TAB_SCREENS = new Set(['Home', 'Training', 'Library']);
 const ROOT_SCREENS = new Set([
   'Login', 'ResetPassword', 'MultiStepOnboarding', 'MainTabs',
   'Profile', 'Settings', 'Play', 'PlayGame', 'Leaderboard', 'Family',
-  'ChildProgress', 'Organization', 'CohortRoster', 'Help', 'Compass', 'Stats',
+  'ChildProgress', 'Organization', 'CohortRoster', 'Help', 'Compass', 'Stats', 'Plus',
 ]);
 
 // The Classes stack, two levels down (Library -> ClassesStack -> screen).

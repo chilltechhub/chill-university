@@ -937,11 +937,11 @@ export default function SettingsScreen() {
           iconColor={c.gold}
           label={isPlus ? 'Plus' : 'Free plan'}
           subtitle={isPlus
-            ? 'Organizations, Deep Insights, AI Import and custom objectives are included.'
-            : 'Everything except Organizations, Deep Insights, AI Import and custom objectives works the same on the free plan.'}
+            ? 'Business courses, Deep Insights, AI Import, custom objectives and Organizations are included. Manage your plan here.'
+            : 'Get Plus for the business courses, Deep Insights, AI Import, custom objectives and Organizations. Everything else works the same on the free plan.'}
           alwaysShowSubtitle
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
-          onPress={() => navigation.navigate('Compass')}
+          onPress={() => navigation.navigate('Plus')}
           c={c} t={t} s={s} r={r}
         />}
         <UnlockSummary accessFor={accessFor} c={c} t={t} s={s} r={r} onPress={() => navigation.navigate('Compass')} />

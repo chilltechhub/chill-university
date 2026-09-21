@@ -29,6 +29,8 @@
 
 import React from 'react';
 import ClassTopicScreen from '../../../components/ClassTopicScreen';
+import { usePlus } from '../../../../context/PlusContext';
+import { FREE_LESSONS_PER_LEVEL } from '../../../logic/plusContent';
 
 export const REVIEWED_ON = '2026-09-10';
 
@@ -519,8 +521,11 @@ const topics = [
 export const L2_DELIVERABLE_COUNT = topics.filter(t => t.apply?.deliverable).length;
 
 export default function BusinessArchitecture() {
+  // Plus: the level's first lesson is free, the rest open the paywall.
+  const { contentLocked } = usePlus();
   return (
     <ClassTopicScreen
+      lockAfter={contentLocked ? FREE_LESSONS_PER_LEVEL : null}
       title="Level 2: Business Architecture"
       classKey="BusinessArchitecture"
       fallbackTopics={topics}

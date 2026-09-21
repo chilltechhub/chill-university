@@ -422,6 +422,14 @@ export default function CompassScreen() {
             <FeatureRow key={entry.feature.id} entry={entry} onPress={() => openFeature(entry)} c={c} t={t} sp={sp} r={r} showSubtext={showSubtext} />
           ))}
         </View>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Plus')}
+          activeOpacity={0.8}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: sp.lg }}
+        >
+          <Ionicons name={isPlus ? 'star' : 'star-outline'} size={15} color={c.gold} />
+          <Text style={{ fontSize: 13, fontWeight: '700', color: c.gold }}>{isPlus ? 'Your plan' : 'See Plus'}</Text>
+        </TouchableOpacity>
         </>)}
         </>)}
       </ScrollView>
