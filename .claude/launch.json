@@ -86,6 +86,20 @@
         "8499"
       ],
       "port": 8499
+    },
+    {
+      "name": "plus-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "C:\\Users\\tawhi\\chill-app\\.claude\\worktrees\\plus-subscription",
+        "run",
+        "web",
+        "--",
+        "--port",
+        "8599"
+      ],
+      "port": 8599
     }
   ]
 }
