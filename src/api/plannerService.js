@@ -292,6 +292,25 @@ export async function generateInstances(userId, component) {
 
 // ─── Completion stats ─────────────────────────────────────────────────────────
 
+// Areas holding custom items (the Planner's "+ Add", component_id null) at
+// this cadence in the last `days` days. Those rows never touch
+// user_planner_components, so getUserSubscriptions can't see them.
+export async function getCustomItemAreas(userId, cadence, days = 7) {
+  const from = new Date();
+  from.setDate(from.getDate() - days);
+
+  const { data, error } = await supabase
+    .from('agenda_instances')
+    .select('area')
+    .eq('user_id', userId)
+    .eq('cadence', cadence)
+    .is('component_id', null)
+    .gte('date', dateStr(from))
+    .lte('date', todayStr());
+  if (error) throw error;
+  return [...new Set((data || []).map(r => r.area).filter(Boolean))];
+}
+
 export async function getCompletionRate(userId, area, cadence, days = 7) {
   const from = new Date();
   from.setDate(from.getDate() - days);
@@ -302,7 +321,11 @@ export async function getCompletionRate(userId, area, cadence, days = 7) {
     .eq('user_id', userId)
     .eq('area', area)
     .eq('cadence', cadence)
-    .gte('date', dateStr(from));
+    .gte('date', dateStr(from))
+    // generateInstances writes a daily habit 30 days ahead, so without an
+    // upper bound every future (necessarily unticked) row counted against
+    // the "last N days" rate.
+    .lte('date', todayStr());
 
   if (!data?.length) return null;
   const done = data.filter(d => d.completed).length;
