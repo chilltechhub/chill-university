@@ -24,6 +24,8 @@ import { loadRemotePets } from './src/data/petOptions';
 import { loadRemoteBackgrounds } from './src/data/backgroundOptions';
 import { ensureAndroidChannel } from './src/logic/notificationScheduler';
 import { initPlanReminders } from './src/logic/planReminderActions';
+import { initHubNotifications, flushPendingTarget } from './src/logic/hubNotifications';
+import ShareIntentListener from './src/components/ShareIntentListener';
 import { flushQueue } from './src/api/offlineCache';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import TourOverlay from './src/components/TourOverlay';
@@ -37,6 +39,7 @@ import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
 import MultiStepOnboarding from './src/screens/MultiStepOnboarding';
 import ProfileScreen   from './src/screens/ProfileScreen';
 import SettingsScreen  from './src/screens/SettingsScreen';
+import NotificationCenterScreen from './src/screens/NotificationCenterScreen';
 import PlayScreen      from './src/screens/PlayScreen';
 import LeaderboardScreen from './src/screens/LeaderboardScreen';
 import AllProfilesScreen from './src/screens/AllProfilesScreen';
@@ -218,6 +221,11 @@ function AppInner() {
     // is scheduled from PlannerScreen's InstanceModal.
     initPlanReminders();
 
+    // The Notification Center's phone side: shows reminders while the app
+    // is open, and opens whatever a tapped notification points at —
+    // including a tap that cold-starts the app (flushed from onReady below).
+    initHubNotifications(() => navigationRef.current);
+
     // Replay anything stranded in the offline write queue (captures/tasks
     // saved while isOnline() thought we were offline) against Supabase now
     // that we're definitely running. Nothing drained this queue before —
@@ -330,6 +338,7 @@ function AppInner() {
           (screen, params) => goToScreen(navigationRef.current, screen, params),
         );
         maybeTeachScreen(name);
+        flushPendingTarget();
       }}
       onStateChange={() => {
         const name = navigationRef.current?.getCurrentRoute()?.name;
@@ -362,6 +371,7 @@ function AppInner() {
           <Stack.Screen name="MainTabs"            component={MainTabs} />
           <Stack.Screen name="Profile"             component={ProfileScreen} />
           <Stack.Screen name="Settings"            component={SettingsScreen} />
+          <Stack.Screen name="Notifications"       component={NotificationCenterScreen} />
           <Stack.Screen name="Play"                component={PlayScreen} />
           <Stack.Screen name="PlayGame"            component={PlayScreen} />
           <Stack.Screen name="Leaderboard"         component={LeaderboardScreen} />
@@ -396,6 +406,7 @@ function AppInner() {
         {showTopBar && <CommandPalette />}
       </SafeAreaView>
       <TourOverlay />
+      <ShareIntentListener navigationRef={navigationRef} />
     </NavigationContainer>
   );
 }

@@ -43,6 +43,7 @@ import FolderAssignSheet from '../../components/FolderAssignSheet';
 import ItemLinks from '../../components/ItemLinks';
 import LinkifiedText from '../../components/LinkifiedText';
 import TourSpot from '../../components/TourSpot';
+import FillWithAIButton from '../../components/FillWithAIButton';
 
 // ─── Item kinds ────────────────────────────────────────────────────────────
 // One row shape, four profiles layered over it. `type`/`status` are what
@@ -1163,6 +1164,7 @@ export default function KnowledgeScreen() {
             <Text style={styles.headerTitle}>Knowledge Vault</Text>
           </View>
         </View>
+        <FillWithAIButton target="vault" />
         {entries.length > 0 && (
           <>
             <TouchableOpacity onPress={() => exportAs('markdown')} style={styles.headerIconBtn}>

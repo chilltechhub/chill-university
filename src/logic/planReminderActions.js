@@ -17,6 +17,7 @@ import { Platform } from 'react-native';
 import { completeInstance, rescheduleInstance } from '../api/plannerService';
 import { cacheRead, cacheWrite } from '../api/offlineCache';
 import { dateStr } from './dateUtils';
+import { targetFromInstance } from './openTarget';
 
 let Notifications = null;
 try { Notifications = require('expo-notifications'); } catch {}
@@ -24,6 +25,11 @@ try { Notifications = require('expo-notifications'); } catch {}
 const CATEGORY = 'plan-instance';
 const MAP_KEY  = 'plan_reminder_notif_ids';
 const ACTIONS  = { done: 'done', snooze: 'snooze', reschedule: 'reschedule' };
+
+function fmt12(hhmm) {
+  const [h, m] = String(hhmm).split(':').map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+}
 
 async function getIdMap()  { return (await cacheRead(MAP_KEY)) || {}; }
 async function setIdMap(m) { await cacheWrite(MAP_KEY, m); }
@@ -51,7 +57,9 @@ export async function registerPlanReminderCategory() {
 
 // Cancels any previously-scheduled reminder for this instance (editing an
 // instance's time/reminder settings shouldn't leave the old one pending),
-// then schedules a fresh one `minutesBefore` its start_time.
+// then schedules a fresh one `minutesBefore` its start_time (0 = at it).
+// The notification carries the item's link as a target, so tapping it opens
+// the project / quest / idea it's for (hubNotifications.js handles taps).
 export async function schedulePlanReminder(instance, minutesBefore = 15) {
   if (!Notifications || !instance?.start_time || Platform.OS === 'web') return null;
   await cancelPlanReminder(instance.id);
@@ -63,13 +71,14 @@ export async function schedulePlanReminder(instance, minutesBefore = 15) {
     trigger.setHours(h, m, 0, 0);
     trigger.setMinutes(trigger.getMinutes() - minutesBefore);
     if (trigger <= new Date()) return null;
+    const time = fmt12(instance.start_time);
     const notifId = await Notifications.scheduleNotificationAsync({
       content: {
         title: '🗓️ ' + instance.title,
-        body: `Starts at ${instance.start_time}`,
+        body: minutesBefore > 0 ? `In ${minutesBefore} min · ${time}` : `Now · ${time}`,
         sound: true,
         categoryIdentifier: CATEGORY,
-        data: { instanceId: instance.id, kind: CATEGORY },
+        data: { instanceId: instance.id, kind: CATEGORY, target: targetFromInstance(instance) || { kind: 'planner' } },
       },
       trigger,
     });
@@ -111,7 +120,7 @@ async function snoozeReminder(instanceId, title, minutes = 15) {
         body: `Snoozed — back in ${minutes} min`,
         sound: true,
         categoryIdentifier: CATEGORY,
-        data: { instanceId, kind: CATEGORY },
+        data: { instanceId, kind: CATEGORY, target: { kind: 'planner' } },
       },
       trigger: { seconds: minutes * 60 },
     });

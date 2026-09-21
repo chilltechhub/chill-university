@@ -47,6 +47,7 @@ const STANDALONE = [
   { title: 'Library',         subtitle: 'Every hub, life area & class',      icon: 'book-outline',            route: tab('Library') },
   { title: 'Capture Inbox',   subtitle: 'Process what you jotted down',      icon: 'file-tray-full-outline',  route: library('CaptureInbox') },
   { title: 'Import Hub',      subtitle: 'Bulk-import text, links or files',  icon: 'cloud-upload-outline',    route: library('ImportScreen') },
+  { title: 'Fill with AI',    subtitle: 'Plan or change anything with any AI chatbot', icon: 'sparkles-outline', route: library('AIBridgeScreen') },
   { title: 'Work Mode',       subtitle: 'Focus session timer',               icon: 'timer-outline',           route: library('WorkModeScreen') },
   { title: 'Weekly Review',   subtitle: 'Look back on the week',             icon: 'calendar-clear-outline',  route: library('WeeklyReviewScreen') },
   { title: 'Labs',            subtitle: 'Experiments in progress',           icon: 'flask-outline',           route: library('LabsScreen') },

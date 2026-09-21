@@ -130,6 +130,12 @@ export function restartQuest(questId) {
   updateQuest(questId, { step: 'spark', answers: {}, taskAdded: false, xpEarned: 0, completedAt, restartedAt: new Date().toISOString() });
 }
 
+/** The same state, for code outside React (the Notification Center's notices). */
+export async function getQuestProgress() {
+  await ensureLoaded();
+  return state;
+}
+
 /** { byId, finished, ready } — re-renders when any quest changes. */
 export function useQuestProgress() {
   const [snap, setSnap] = useState(state);

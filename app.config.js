@@ -14,6 +14,23 @@ export default ({ config }) => {
       'expo-asset',
       'expo-font',
       'expo-status-bar',
+      // Share INTO the app: "Chill" shows in the phone's share sheet for
+      // links and text, which land in the Notification Center to be filed
+      // (src/components/ShareIntentListener.js). Needs a dev/store build —
+      // Expo Go can't carry a share extension, and the app simply skips it
+      // there. Relies on `scheme` in app.json. The iOS extension gets its
+      // own bundle id (…chillapp.share-extension) and an app group; EAS asks
+      // to set those up on the next build.
+      [
+        'expo-share-intent',
+        {
+          iosActivationRules: {
+            NSExtensionActivationSupportsWebURLWithMaxCount: 1,
+            NSExtensionActivationSupportsText: true,
+          },
+          androidIntentFilters: ['text/*'],
+        },
+      ],
       // Replaces the old top-level `splash` key in app.json, removed as of
       // SDK 57 — same image/color/resizeMode as before, just as a plugin.
       [

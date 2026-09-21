@@ -8,6 +8,7 @@ import LibraryScreen   from './LibraryScreen';
 import LifeAreaScreen  from './LifeAreaScreen';
 import CaptureInbox    from '../CaptureInbox';
 import ImportScreen    from '../ImportScreen';
+import AIBridgeScreen  from '../AIBridgeScreen';
 import WorkModeScreen   from '../WorkModeScreen';
 import WeeklyReviewScreen from '../WeeklyReviewScreen';
 
@@ -124,6 +125,9 @@ export default function LibraryNavigator() {
       <Stack.Screen name="WorkModeScreen" component={GatedWorkMode} options={{ headerShown: false }} />
       <Stack.Screen name="WeeklyReviewScreen" component={GatedWeeklyReview} options={{ headerShown: false }} />
       <Stack.Screen name="ImportScreen" component={GatedImport} options={{ headerShown: false }} />
+      {/* Fill with AI — free and open to everyone: it only writes into places
+          the person has unlocked, and checks that itself (AIBridgeScreen.js). */}
+      <Stack.Screen name="AIBridgeScreen" component={AIBridgeScreen} options={{ headerShown: false }} />
 
       {/* Academic & Career */}
       <Stack.Screen name="ProjectsScreen"          component={ProjectsScreen}          options={{ title: 'The Workshop' }} />

@@ -15,6 +15,7 @@ import { supabase } from '../../api/profileScopedClient';
 import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../api/offlineCache';
 import RelatedLinks, { EXCLUDE_LINK_FILTER } from './RelatedLinks';
 import TourSpot from '../../components/TourSpot';
+import FillWithAIButton from '../../components/FillWithAIButton';
 import LockBadge from '../../components/LockBadge';
 import { useFeatureGate } from '../../components/FeatureGate';
 import { useAccess } from '../../../context/AccessContext';
@@ -423,9 +424,12 @@ export default function LifeAreaScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
         {/* ── Hero banner ── */}
         <View style={{ backgroundColor: color + '18', borderBottomWidth: 1, borderBottomColor: color + '33', padding: s.xl, paddingTop: s.xxl }}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: s.md }}>
-            <Ionicons name="chevron-back" size={22} color={color} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: s.md }}>
+            <TouchableOpacity onPress={() => navigation.goBack()}>
+              <Ionicons name="chevron-back" size={22} color={color} />
+            </TouchableOpacity>
+            <FillWithAIButton target="life_areas" color={color} />
+          </View>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: s.lg }}>
             <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: color + '33', borderWidth: 2, borderColor: color, alignItems: 'center', justifyContent: 'center' }}>
               {showEmojis ? <Text style={{ fontSize: 32 }}>{area.emoji}</Text> : <Ionicons name={area.icon} size={30} color={color} />}
