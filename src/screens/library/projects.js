@@ -119,6 +119,18 @@ function stageFor(project) {
 }
 
 // ─── New Build Modal ───────────────────────────────────────────────────────
+// Worked examples for a blank sheet. Each comes with a real first step, so a
+// new build lands on Home's desk as something to do rather than a title.
+// Tapping one only fills the fields; nothing is created until Start.
+const STARTER_BUILDS = [
+  { label: 'Science fair',        emoji: '🔬', type: '🔬 Science', title: 'Science fair project',    objective: 'A question, an experiment and a board I can explain.', next: 'Write down three questions I could test' },
+  { label: 'One-page portfolio',  emoji: '🗂️', type: '🎯 Personal', title: 'One-page portfolio',      objective: 'One page that shows what I have made or done.',       next: 'List three things I have made or done' },
+  { label: 'Volunteer plan',      emoji: '🤝', type: '🎯 Personal', title: 'Volunteer project plan',  objective: 'Pick a cause, find a place, show up once.',            next: 'Find two places near me that take volunteers' },
+  { label: 'Offer v1',            emoji: '💼', type: '💰 Business', title: 'Offer v1',                objective: 'Check people want it before I build it.',              next: 'Write the offer in one sentence, and who it is for' },
+  { label: '$50 buffer',          emoji: '💰', type: '📊 Finance', title: '$50 buffer',              objective: 'Fifty dollars set aside for surprises.',                next: 'Move $5 into savings today' },
+  { label: 'Cook 3 dinners',      emoji: '🍳', type: '🎯 Personal', title: 'Cook 3 dinners this week', objective: 'Three home-cooked dinners, nothing fancy.',            next: 'Pick the three recipes' },
+];
+
 // `prefill` arrives from a tutorial step (see `prefill` in
 // context/TourContext.js). It seeds the fields with a worked example the
 // user can edit or clear — the build is only ever created by them pressing
@@ -131,7 +143,14 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
   const [emoji,     setEmoji]     = useState('🏗️');
   const [color,     setColor]     = useState(buildColors[0]);
   const [type,      setType]      = useState(initialType || '');
+  const [nextStep,  setNextStep]  = useState('');
   const [saving,    setSaving]    = useState(false);
+  const { signalAction: signalBuild } = useAccess();
+
+  const applyStarter = (ex) => {
+    setTitle(ex.title); setObjective(ex.objective); setNextStep(ex.next); setEmoji(ex.emoji);
+    if (BUILD_TYPES.includes(ex.type)) setType(ex.type);
+  };
 
   // A career (or any deep link) can land here with a build type already
   // chosen — sync it in whenever the sheet opens, not just on first mount.
@@ -148,7 +167,7 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
   }, [visible, prefill]);
 
   const reset = () => {
-    setTitle(''); setObjective(''); setEmoji('🏗️');
+    setTitle(''); setObjective(''); setEmoji('🏗️'); setNextStep('');
     setColor(buildColors[0]); setType(initialType || '');
   };
 
@@ -174,6 +193,7 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
         date: todayStr(),
       });
 
+      if (data.next_action) signalBuild('project-next-set');
       onCreated(data);
       reset();
     } catch (e) {
@@ -201,6 +221,20 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 20 }}>
+            {!title && !prefill && (
+              <>
+                <Text style={s.label}>START FROM AN EXAMPLE</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    {STARTER_BUILDS.map(ex => (
+                      <TouchableOpacity key={ex.label} onPress={() => applyStarter(ex)} style={s.typeChip}>
+                        <Text style={s.typeText}>{showEmojis ? `${ex.emoji} ` : ''}{ex.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              </>
+            )}
             <TextInput style={[s.input, { borderColor: color }]}
               value={title} onChangeText={setTitle}
               placeholder="Build name..." placeholderTextColor={bp.ink3}
@@ -209,6 +243,9 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
               value={objective} onChangeText={setObjective}
               placeholder="What are you building? (optional)" placeholderTextColor={bp.ink3}
               multiline />
+            <TextInput style={[s.input, { borderColor: bp.border }]}
+              value={nextStep} onChangeText={setNextStep}
+              placeholder="First next step (optional): the actual next move" placeholderTextColor={bp.ink3} />
 
             <Text style={s.label}>BUILD ICON</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>

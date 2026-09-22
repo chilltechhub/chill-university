@@ -19,7 +19,7 @@ import TourSpot from '../components/TourSpot';
 import FloatingCard from '../components/FloatingCard';
 import { useTour } from '../../context/TourContext';
 import { useAccess } from '../../context/AccessContext';
-import { todayStr } from '../logic/dateUtils';
+import { todayStr, dateStr } from '../logic/dateUtils';
 
 // supabase-js resolves { data, error } instead of throwing on a failed
 // insert/update — awaiting a call directly silently ignores a rejected
@@ -204,6 +204,16 @@ function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated,
   const [processing,    setProcessing]    = useState(false);
   const [taskTitle,     setTaskTitle]     = useState(item.title || item.body?.slice(0, 60) || '');
   const [taskDueDate,   setTaskDueDate]   = useState('');
+  // Start New Project: the build's name and its first next action, so the
+  // project lands on Home's desk as something to do, not a title to decode.
+  const [projTitle,     setProjTitle]     = useState(item.title || item.body?.slice(0, 60) || '');
+  const [projNext,      setProjNext]      = useState('');
+  // Add to Planner: which day, and which area it belongs to. The planner is
+  // for things with a real day — this used to drop everything on today
+  // under 'professional' without asking.
+  const [planDay,       setPlanDay]       = useState(0); // days from today
+  const [planArea,      setPlanArea]      = useState('professional');
+  const { signalAction } = useAccess();
 
   // The item being processed, kept editable — starts as the inbox row and
   // picks up any edits saved below, so whichever destination you pick uses
@@ -266,6 +276,8 @@ function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated,
     if (dest.key === 'project')    { setStep('pick_project'); return; }
     if (dest.key === 'life_area')  { setStep('pick_area');    return; }
     if (dest.key === 'task')       { setStep('task_details'); return; }
+    if (dest.key === 'new_project') { setStep('project_details'); return; }
+    if (dest.key === 'planner')    { setStep('plan_details'); return; }
     setStep('confirm');
   };
 
@@ -301,10 +313,34 @@ function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated,
         navigation.navigate('ProjectDetail', { project: selectedProj });
 
       } else if (destination.key === 'new_project') {
-        // Navigate to projects, inbox item becomes the project seed
+        // Build the project from the capture itself. This used to mark the
+        // capture done and open the Workshop with an alert saying "use this
+        // as your starting point" — no project was made, the alert is a no-op
+        // on web, and the capture had already left the inbox.
+        const title = projTitle.trim() || current.title || current.body?.slice(0, 80) || 'New project';
+        const body = (current.body || '').trim();
+        const project = await mustSucceed(supabase.from('projects').insert({
+          user_id: userId, title,
+          objective: body && body !== title ? body.slice(0, 500) : null,
+          next_action: projNext.trim() || null,
+          emoji: '🏗️', color: '#c9a84c', cover_color: '#c9a84c', banner_emoji: '🏗️',
+          category: 'general', status: 'active', sort_order: 0,
+        }).select().single());
+        await supabase.from('project_milestones').insert({
+          user_id: userId, project_id: project.id,
+          title: '📥 Started from the Capture Inbox', type: 'project_created', date: todayStr(),
+        });
+        // A captured link is the project's first piece of research.
+        if (current.url) {
+          await supabase.from('project_research').insert({
+            user_id: userId, project_id: project.id, title: current.title || current.url,
+            url: current.url, notes: body || null, type: 'link',
+          });
+        }
+        signalAction('project-started');
+        if (project.next_action) signalAction('project-next-set');
         await markDoneAndClose(item.id, onProcessed);
-        navigation.navigate('ProjectsScreen');
-        Alert.alert('Create a new mission', `Use this as your starting point:\n\n"${current.title || current.body?.slice(0, 100)}"`);
+        navigation.navigate('ProjectDetail', { project });
 
       } else if (destination.key === 'idea_garden') {
         // plant_type must be one of the garden's own tree/flower/plant/sprout
@@ -347,16 +383,19 @@ function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated,
         navigation.navigate('ResearchScreen');
 
       } else if (destination.key === 'planner') {
+        const planDate = new Date();
+        planDate.setDate(planDate.getDate() + planDay);
         await mustSucceed(supabase.from('agenda_instances').insert({
           user_id:    userId,
           title:      current.title || current.body?.slice(0, 80) || 'Captured item',
-          area:       'professional',
+          area:       planArea,
           cadence:    'once',
-          date:       todayStr(),
+          date:       dateStr(planDate),
           completed:  false,
           skipped:    false,
           created_at: now,
         }));
+        signalAction('planner-item-added', { area: planArea });
         await markDoneAndClose(item.id, onProcessed);
         navigation.navigate('PlannerScreen');
 
@@ -597,6 +636,67 @@ function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated,
                   style={{ backgroundColor: '#4caf7d', borderRadius: r.md, padding: s.md, alignItems: 'center', opacity: !taskTitle.trim() ? 0.5 : 1 }}>
                   {processing ? <ActivityIndicator color="#fff" size="small" />
                     : <Text style={{ color: '#fff', fontWeight: t.bold }}>Create Task</Text>}
+                </TouchableOpacity>
+              </>
+            )}
+
+            {step === 'project_details' && (
+              <>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: s.lg }}>
+                  <TouchableOpacity onPress={() => setStep('choose')}>
+                    <Ionicons name="chevron-back" size={20} color={c.teal} />
+                  </TouchableOpacity>
+                  <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>Start a Project</Text>
+                </View>
+                <Text style={{ fontSize: t.xs, color: c.text4, marginBottom: 6 }}>Project name</Text>
+                <TextInput style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: c.border, marginBottom: s.md }}
+                  value={projTitle} onChangeText={setProjTitle} autoFocus />
+                <Text style={{ fontSize: t.xs, color: c.text4, marginBottom: 6 }}>First next step (optional)</Text>
+                <TextInput style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: c.border, marginBottom: 4 }}
+                  value={projNext} onChangeText={setProjNext} placeholder="The next physical move, e.g. email Ms. Lee" placeholderTextColor={c.text4} />
+                <Text style={{ fontSize: t.xs, color: c.text4, marginBottom: s.lg }}>It shows on Home's desk until you change it.</Text>
+                <TouchableOpacity onPress={process} disabled={!projTitle.trim() || processing}
+                  style={{ backgroundColor: '#00a8b5', borderRadius: r.md, padding: s.md, alignItems: 'center', opacity: !projTitle.trim() ? 0.5 : 1 }}>
+                  {processing ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={{ color: '#fff', fontWeight: t.bold }}>Start Project</Text>}
+                </TouchableOpacity>
+              </>
+            )}
+
+            {step === 'plan_details' && (
+              <>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: s.lg }}>
+                  <TouchableOpacity onPress={() => setStep('choose')}>
+                    <Ionicons name="chevron-back" size={20} color={c.teal} />
+                  </TouchableOpacity>
+                  <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>Add to Planner</Text>
+                </View>
+                <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: s.md, lineHeight: 18 }}>
+                  The planner is for things with a real day. No day yet? Go back and make it a task instead.
+                </Text>
+                <Text style={{ fontSize: t.xs, color: c.text4, marginBottom: 6 }}>Which day?</Text>
+                <View style={{ flexDirection: 'row', gap: s.sm, marginBottom: s.md }}>
+                  {[{ d: 0, label: 'Today' }, { d: 1, label: 'Tomorrow' }, { d: 7, label: 'In a week' }].map(o => (
+                    <TouchableOpacity key={o.d} onPress={() => setPlanDay(o.d)}
+                      style={{ flex: 1, alignItems: 'center', paddingVertical: s.sm, borderRadius: r.md, borderWidth: 1, borderColor: planDay === o.d ? '#b07be0' : c.border, backgroundColor: planDay === o.d ? '#b07be022' : c.bg0 }}>
+                      <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: planDay === o.d ? c.text1 : c.text3 }}>{o.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <Text style={{ fontSize: t.xs, color: c.text4, marginBottom: 6 }}>Life area</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: s.lg }}>
+                  {LIFE_AREA_OPTIONS.map(a => (
+                    <TouchableOpacity key={a.key} onPress={() => setPlanArea(a.key)}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: r.full, borderWidth: 1, borderColor: planArea === a.key ? '#b07be0' : c.border, backgroundColor: planArea === a.key ? '#b07be022' : c.bg0 }}>
+                      <Text style={{ fontSize: 12 }}>{a.emoji}</Text>
+                      <Text style={{ fontSize: t.xs, color: planArea === a.key ? c.text1 : c.text3 }}>{a.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TouchableOpacity onPress={process} disabled={processing}
+                  style={{ backgroundColor: '#b07be0', borderRadius: r.md, padding: s.md, alignItems: 'center', opacity: processing ? 0.7 : 1 }}>
+                  {processing ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={{ color: '#fff', fontWeight: t.bold }}>Add to Planner</Text>}
                 </TouchableOpacity>
               </>
             )}

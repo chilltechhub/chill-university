@@ -7,6 +7,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, RefreshControl, Modal, KeyboardAvoidingView,
   Platform, FlatList, Alert, ActivityIndicator, Animated, Easing,
+  AccessibilityInfo,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
@@ -168,13 +169,13 @@ const WIDGET_KEYS = WIDGET_DEFS.map(w => w.key);
 //
 // `exploring` is onboarding's "I'm not sure yet" answer. Someone who said
 // they don't know what they want gets Wayfinder straight under the
-// Commander card, whatever type they ended up as — it's the one thing on
-// the dashboard built for exactly that answer.
+// Compass, whatever type they ended up as — it's the one thing on the
+// dashboard built for exactly that answer.
 function layoutForPersona(personaKey, { exploring = false } = {}) {
   let wanted = getPersona(personaKey)?.defaultWidgets || [];
   if (exploring) {
-    const rest = wanted.filter(k => k !== 'wayfinder' && k !== 'hq');
-    wanted = [...(wanted.includes('hq') ? ['hq'] : []), 'wayfinder', ...rest];
+    const rest = wanted.filter(k => k !== 'wayfinder' && k !== 'compass');
+    wanted = [...(wanted.includes('compass') ? ['compass'] : []), 'wayfinder', ...rest];
   }
   const known = new Set(WIDGET_DEFS.map(w => w.key));
   const visible = wanted.filter(k => known.has(k));
@@ -701,9 +702,18 @@ function DeskTicker({ items, onItemPress, onAdd, c, t, s, r }) {
   const { style: ui, accent } = useTheme();
   const translateX = useRef(new Animated.Value(0)).current;
   const [setWidth, setSetWidth] = useState(0);
+  // Reduce Motion: no endless drift. The chips become a plain row you
+  // swipe yourself.
+  const [reduceMotion, setReduceMotion] = useState(false);
+  useEffect(() => {
+    let live = true;
+    AccessibilityInfo.isReduceMotionEnabled?.().then(v => { if (live) setReduceMotion(!!v); }).catch(() => {});
+    const sub = AccessibilityInfo.addEventListener?.('reduceMotionChanged', v => setReduceMotion(!!v));
+    return () => { live = false; sub?.remove?.(); };
+  }, []);
 
   useEffect(() => {
-    if (!setWidth) return;
+    if (!setWidth || reduceMotion) return;
     translateX.setValue(0);
     const loop = Animated.loop(
       Animated.timing(translateX, {
@@ -715,7 +725,7 @@ function DeskTicker({ items, onItemPress, onAdd, c, t, s, r }) {
     );
     loop.start();
     return () => loop.stop();
-  }, [setWidth, items.length]);
+  }, [setWidth, items.length, reduceMotion]);
 
   if (items.length === 0) {
     return (
@@ -747,6 +757,14 @@ function DeskTicker({ items, onItemPress, onAdd, c, t, s, r }) {
       </TouchableOpacity>
     );
   };
+
+  if (reduceMotion) {
+    return (
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -s.lg }} contentContainerStyle={{ paddingHorizontal: s.lg }}>
+        {items.map(item => chip(item, 'a'))}
+      </ScrollView>
+    );
+  }
 
   return (
     <View style={{ overflow: 'hidden', marginHorizontal: -s.lg, paddingHorizontal: s.lg }}>
@@ -785,7 +803,7 @@ export default function HomeScreen() {
   // far, a couple at a time, with no editor. 'dashboard' brings this type's
   // own layout and an editor offering this type's widgets; 'doors' offers
   // all twenty.
-  const { can, opened, isScreenVisible, isGameVisible } = useAccess();
+  const { can, opened, isScreenVisible, isGameVisible, signalAction } = useAccess();
   const { background: playerBackground } = useCharacterLoadout({ level, points, rank, streakDays });
   // Set from Settings → Appearance, not on this screen itself.
   const [bgMode] = useSetting(SETTING_KEYS.HOME_BACKGROUND, 'plain');
@@ -1428,7 +1446,9 @@ export default function HomeScreen() {
     const text = nextActionDraft.trim();
     setSavingNextAction(true);
     try {
-      await supabase.from('projects').update({ next_action: text, updated_at: new Date().toISOString() }).eq('id', projectId);
+      const { error } = await supabase.from('projects').update({ next_action: text, updated_at: new Date().toISOString() }).eq('id', projectId);
+      if (error) throw error;
+      signalAction('project-next-set');
       setTodos(prev => prev.map(it => it.id === nextActionTarget.id
         ? { ...it, title: text, hasNextAction: true, meta: { project: { ...it.meta.project, next_action: text } } }
         : it));
@@ -1726,12 +1746,33 @@ export default function HomeScreen() {
                       </TouchableOpacity>
                     </View>
                   )}
-                  <DeskTicker
-                    items={todos}
-                    onItemPress={setSelectedDeskItem}
-                    onAdd={() => setShowTodoInput(true)}
-                    c={c} t={t} s={s} r={r}
-                  />
+                  {/* The one thing to do next, with its actions right here, and
+                      the rest of the ranked list drifting past underneath.
+                      Everything used to be an equal chip in the ticker, so
+                      "what do I do now" took a tap to answer. */}
+                  {todos.length > 0 ? (
+                    <>
+                      <NextUpCard item={todos[0]} actions={actionsForDeskItem(todos[0])} c={c} t={t} s={s} r={r} />
+                      {todos.length > 1 && (
+                        <View style={{ marginTop: s.sm }}>
+                          <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: 6 }}>Also on the desk</Text>
+                          <DeskTicker
+                            items={todos.slice(1)}
+                            onItemPress={setSelectedDeskItem}
+                            onAdd={() => setShowTodoInput(true)}
+                            c={c} t={t} s={s} r={r}
+                          />
+                        </View>
+                      )}
+                    </>
+                  ) : (
+                    <DeskTicker
+                      items={todos}
+                      onItemPress={setSelectedDeskItem}
+                      onAdd={() => setShowTodoInput(true)}
+                      c={c} t={t} s={s} r={r}
+                    />
+                  )}
                 </View>
                 </TourSpot>
               ),

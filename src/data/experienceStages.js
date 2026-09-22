@@ -46,9 +46,14 @@
 
 export const CAPS = ['all-games', 'dashboard', 'all-tools', 'doors'];
 
-// The last five stages are the same shape for everyone; only the eighth
-// differs, because it is whichever core tool that type hasn't met yet.
-const tail = (eighth) => [
+// The last five stages are the same shape for everyone except the first of
+// them (stage 6), which is whichever core tool that type hasn't met yet. It
+// comes before the bigger caps on purpose: somewhere to put projects and
+// notes is the "deepen" step, and a rearrangeable dashboard or every game is
+// polish on top of it. It used to be stage 8, so a Personal or Student
+// account couldn't see the Workshop until seven goals or levels in.
+const tail = (sixth) => [
+  sixth,
   {
     key: 'all-games',
     label: 'Every training game',
@@ -62,7 +67,6 @@ const tail = (eighth) => [
     caps: ['dashboard'],
     reteach: ['Home'],
   },
-  eighth,
   {
     key: 'all-tools',
     label: 'Every open tool',
@@ -109,7 +113,9 @@ export const PATHS = {
       label: 'The Capture Inbox',
       blurb: 'Get a thought out of your head now, decide where it goes later.',
       features: ['capture'],
-      widgets: ['focus'],
+      // The desk is where captured things turn into the next action, so it
+      // arrives with the inbox rather than three stages later.
+      widgets: ['desk', 'focus'],
       fab: ['note', 'inbox'],
     },
     {
@@ -125,7 +131,7 @@ export const PATHS = {
       blurb: 'Work out what you want, and today’s drills on your dashboard.',
       widgets: ['wayfinder', 'dailyDrills'],
     },
-    { ...VAULT, widgets: ['desk', 'wisdom'] },
+    { ...VAULT, widgets: ['wisdom'] },
     ...tail(BUILD),
   ],
 
@@ -153,7 +159,7 @@ export const PATHS = {
       label: 'The Capture Inbox',
       blurb: 'Get a thought out of your head now, decide where it goes later.',
       features: ['capture'],
-      widgets: ['focus', 'activities'],
+      widgets: ['desk', 'focus', 'activities'],
       fab: ['inbox'],
     },
     {
@@ -161,7 +167,7 @@ export const PATHS = {
       label: 'Life Areas',
       blurb: 'Eight sides of a life, each with a rating you set and one small thing to do.',
       features: ['life-areas'],
-      widgets: ['wayfinder', 'desk'],
+      widgets: ['wayfinder', 'checkins'],
     },
     ...tail(BUILD),
   ],
@@ -172,7 +178,7 @@ export const PATHS = {
       label: 'Getting started',
       blurb: 'Home, your first goal, the Capture Inbox, the Planner and three games.',
       features: ['home-desk', 'compass', 'training', 'capture', 'planner'],
-      widgets: ['hq', 'compass', 'recurringOps'],
+      widgets: ['hq', 'compass', 'desk', 'recurringOps'],
       games: ['registerready', 'shiftmanager', 'people'],
       fab: ['reminder'],
     },
@@ -203,7 +209,7 @@ export const PATHS = {
       label: 'Life Areas',
       blurb: 'Eight sides of a life, each with a rating you set and one small thing to do.',
       features: ['life-areas'],
-      widgets: ['desk', 'orgSnapshot'],
+      widgets: ['checkins', 'orgSnapshot'],
       fab: ['note', 'inbox'],
     },
     ...tail({ ...VAULT, features: ['knowledge-vault', 'idea-garden'], label: 'The Knowledge Vault and Idea Garden' }),
@@ -215,7 +221,7 @@ export const PATHS = {
       label: 'Getting started',
       blurb: 'Home, your first goal, the Idea Garden, the Workshop and three games.',
       features: ['home-desk', 'compass', 'training', 'idea-garden', 'workshop'],
-      widgets: ['hq', 'compass', 'founderQuest'],
+      widgets: ['hq', 'compass', 'desk', 'founderQuest'],
       games: ['budget', 'survivemonth', 'trail'],
       fab: ['project'],
     },
@@ -246,7 +252,7 @@ export const PATHS = {
       label: 'The Planner and Life Areas',
       blurb: 'Your agenda, and eight sides of a life to keep an eye on.',
       features: ['planner', 'life-areas'],
-      widgets: ['builds', 'desk'],
+      widgets: ['builds', 'checkins'],
       fab: ['calendar', 'reminder'],
     },
     ...tail(VAULT),

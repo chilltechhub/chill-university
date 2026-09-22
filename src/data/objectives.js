@@ -174,8 +174,8 @@ export const OBJECTIVES = [
     steps: [
       { id: 'seed',    label: 'Plant the idea in the Idea Garden', hint: 'Rough is fine. It only has to be written down.', screen: 'IdeaGardenScreen', signal: 'idea-planted' },
       { id: 'project', label: 'Start a project in the Workshop',   hint: 'Give it a name you would say out loud.', screen: 'ProjectsScreen', signal: 'project-started' },
-      { id: 'step',    label: 'Set its next physical step',        hint: 'Not "work on it" — the actual next move.', screen: 'ProjectsScreen' },
-      { id: 'ship',    label: 'Mark the project complete',         hint: 'Shipped beats perfect. You can always build a second one.', screen: 'ProjectsScreen' },
+      { id: 'step',    label: 'Set its next physical step',        hint: 'Not "work on it" — the actual next move.', screen: 'ProjectsScreen', signal: 'project-next-set' },
+      { id: 'ship',    label: 'Mark the project shipped',          hint: 'Open the build and tap SHIPPED at the top. Shipped beats perfect.', screen: 'ProjectsScreen', signal: 'project-shipped' },
     ],
     unlocks: ['portfolio'],
     next: 'show-your-work',
@@ -242,7 +242,7 @@ export const OBJECTIVES = [
     steps: [
       { id: 'area',    label: 'Rate your Professional life area', hint: 'Start from where you are, not where you would like to be.', screen: 'LibraryScreen', signal: 'area-rated:professional' },
       { id: 'capture', label: 'Capture the role you are aiming at', hint: 'A title, a company, or a description of the work.', screen: 'CaptureInbox' },
-      { id: 'project', label: 'Start a project that proves it',   hint: 'Something a stranger could look at.', screen: 'ProjectsScreen' },
+      { id: 'project', label: 'Start a project that proves it',   hint: 'Something a stranger could look at.', screen: 'ProjectsScreen', signal: 'project-started' },
       { id: 'points',  label: 'Earn 250 points',                  hint: 'Ticks itself. Evidence that you kept at it.', auto: { stat: 'points', value: 250 } },
     ],
     unlocks: ['career-map'],
@@ -357,7 +357,7 @@ export const OBJECTIVES = [
     why: 'Discover is a room full of other people’s work. Turning up with something of your own changes what it is for.',
     estimate: '2 days',
     steps: [
-      { id: 'ship',      label: 'Have one completed project',   hint: 'The Workshop marks it complete.', screen: 'ProjectsScreen' },
+      { id: 'ship',      label: 'Have one shipped project',     hint: 'Open the build and tap SHIPPED at the top.', screen: 'ProjectsScreen', signal: 'project-shipped' },
       { id: 'portfolio', label: 'Add it to your Portfolio',      hint: 'Title, one line on what it was.', screen: 'PortfolioScreen' },
       { id: 'write',     label: 'Write what you learned',        hint: 'Two sentences. The part that surprised you.', screen: 'KnowledgeScreen' },
       { id: 'ready',     label: 'Decide it is ready to show',    hint: 'It is. Tick it.' },

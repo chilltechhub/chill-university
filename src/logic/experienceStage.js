@@ -128,9 +128,14 @@ export function fabActionsFor(opened) {
 // Home before the 'dashboard' stage: the widgets the path has opened, in the
 // order it opened them, everything else hidden. Never persisted — it's
 // derived, like the persona default.
+// Whatever else a stage has opened, the goal in flight and the next action
+// lead Home — that's the whole promise of the first screen.
+const LEAD_WIDGETS = ['compass', 'desk'];
+
 export function starterWidgetLayout(opened, allKeys) {
   const known = new Set(allKeys);
-  const visible = (opened?.widgets || []).filter(k => known.has(k));
+  const opens = (opened?.widgets || []).filter(k => known.has(k));
+  const visible = [...LEAD_WIDGETS.filter(k => opens.includes(k)), ...opens.filter(k => !LEAD_WIDGETS.includes(k))];
   const shown = new Set(visible);
   return [
     ...visible.map(key => ({ key, hidden: false })),
