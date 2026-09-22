@@ -150,9 +150,11 @@ function QuickNoteModal({ visible, userId, onSaved, onClose, c, t, s, r }) {
 function QuickProjectModal({ visible, userId, onCreated, onClose, c, t, s, r }) {
   const [title,     setTitle]     = useState('');
   const [objective, setObjective] = useState('');
+  const [nextStep,  setNextStep]  = useState('');
   const [saving,    setSaving]    = useState(false);
+  const { signalAction } = useAccess();
 
-  const reset = () => { setTitle(''); setObjective(''); };
+  const reset = () => { setTitle(''); setObjective(''); setNextStep(''); };
   const close = () => { reset(); onClose(); };
 
   const start = async () => {
@@ -165,6 +167,7 @@ function QuickProjectModal({ visible, userId, onCreated, onClose, c, t, s, r }) 
         user_id:     userId,
         title:       title.trim(),
         objective:   objective.trim() || null,
+        next_action: nextStep.trim() || null,
         emoji:       '🏗️',
         color:       c.gold,
         cover_color: c.gold,
@@ -184,6 +187,10 @@ function QuickProjectModal({ visible, userId, onCreated, onClose, c, t, s, r }) 
         });
       }
 
+      // Starting a project is a step on several goals; so is naming its
+      // next move.
+      signalAction('project-started');
+      if (nextStep.trim()) signalAction('project-next-set');
       onCreated(data);
       reset();
     } catch (e) {
@@ -211,8 +218,13 @@ function QuickProjectModal({ visible, userId, onCreated, onClose, c, t, s, r }) 
           value={objective} onChangeText={setObjective}
           placeholder="What are you building? (optional)" placeholderTextColor={c.text4} multiline
         />
+        <TextInput
+          style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: c.border, marginBottom: s.md }}
+          value={nextStep} onChangeText={setNextStep}
+          placeholder="First next step (optional): the actual next move" placeholderTextColor={c.text4}
+        />
         <Text style={{ fontSize: t.xs, color: c.text4, marginBottom: s.lg }}>
-          You can set an icon, color, and type from the Workshop once it's created.
+          The next step shows on Home's desk. Icon, color and type can be set from the Workshop.
         </Text>
         <View style={{ flexDirection: 'row', gap: s.sm }}>
           <TouchableOpacity onPress={close} style={{ flex: 1, padding: s.md, alignItems: 'center', backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border }}>

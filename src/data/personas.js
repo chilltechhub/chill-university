@@ -11,6 +11,8 @@
 // database error they can't act on.
 
 // ─── defaultWidgets ─────────────────────────────────────────────────────────
+// Every type leads with the Compass (the goal in flight) and the desk (the
+// one next action). Stats, quotes and rings come after the thing to do.
 // The ORDERED list of Home widgets a new profile of this type gets, by key.
 // Anything not listed starts hidden (and is still one tap away in Home's
 // widget-edit tray) — see layoutForPersona in src/screens/HomeScreen.js.
@@ -46,7 +48,7 @@ export const PERSONAS = [
       'Sectors start as Physical, Mental and Social',
     ],
     adultOnly: false,
-    defaultWidgets: ['hq', 'compass', 'habitRings', 'lifeAreas', 'dailyDrills', 'quests', 'wayfinder', 'focus', 'desk', 'streak', 'wisdom'],
+    defaultWidgets: ['compass', 'desk', 'hq', 'lifeAreas', 'habitRings', 'dailyDrills', 'quests', 'wayfinder', 'focus', 'streak', 'wisdom'],
   },
   {
     key: 'STUDENT',
@@ -62,7 +64,7 @@ export const PERSONAS = [
       'Sectors start as Mental, Professional and Social',
     ],
     adultOnly: false,
-    defaultWidgets: ['hq', 'compass', 'studyBlocks', 'classProgress', 'dailyDrills', 'quests', 'wayfinder', 'activities', 'focus', 'desk', 'streak'],
+    defaultWidgets: ['compass', 'desk', 'hq', 'studyBlocks', 'dailyDrills', 'classProgress', 'quests', 'wayfinder', 'activities', 'focus', 'checkins', 'streak'],
   },
   {
     key: 'BUSINESS',
@@ -78,7 +80,7 @@ export const PERSONAS = [
       'Sectors start as Professional, Financial and Digital',
     ],
     adultOnly: true,
-    defaultWidgets: ['hq', 'compass', 'recurringOps', 'systemsCheck', 'orgSnapshot', 'quests', 'desk', 'builds', 'focus', 'streak'],
+    defaultWidgets: ['compass', 'desk', 'hq', 'recurringOps', 'systemsCheck', 'builds', 'quests', 'orgSnapshot', 'focus', 'checkins', 'streak'],
   },
   {
     key: 'ENTREPRENEUR',
@@ -94,7 +96,7 @@ export const PERSONAS = [
       'Sectors start as Financial, Professional and Creative',
     ],
     adultOnly: true,
-    defaultWidgets: ['hq', 'compass', 'founderQuest', 'vaultStatus', 'targetsReadiness', 'quests', 'builds', 'desk', 'ideas', 'streak'],
+    defaultWidgets: ['compass', 'desk', 'hq', 'founderQuest', 'builds', 'vaultStatus', 'targetsReadiness', 'quests', 'ideas', 'checkins', 'streak'],
   },
 ];
 
