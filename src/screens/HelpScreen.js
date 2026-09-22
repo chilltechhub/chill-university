@@ -10,6 +10,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useTour } from '../../context/TourContext';
 import { SCREEN_HELP } from '../data/screenHelp';
+import { useAccess } from '../../context/AccessContext';
+import { SUPPORT_EMAIL } from '../config/legal';
 
 // ─── Per-screen "what is this?" copy ──────────────────────────────────────────
 // Keyed by the route name as React Navigation reports it (getCurrentRoute().name).
@@ -54,8 +56,26 @@ const FAQ = [
     a: 'Tap your crest/avatar (top-left, or the floating profile button) to open your Profile, or go to Settings for account-level options.',
   },
   {
+    q: 'What’s free, and what’s in Plus?',
+    plusOnly: true,
+    a: 'The learning, games, classes, planner, capture, projects and Fill with AI are all free, and stay free. Deskartes Plus is an optional subscription that adds the business and startup courses (the first lesson of each level is free), Deep Insights, AI Import, Custom Objectives and Organizations. The Plus screen shows the current price before you buy.',
+  },
+  {
+    q: 'How do I cancel or restore Plus?',
+    plusOnly: true,
+    a: 'Cancel in your App Store or Google Play subscriptions at least 24 hours before the period ends, and you won’t be charged again; you keep Plus until then. Deleting the app or your account does not cancel a store subscription. On a new phone, open the Plus screen and tap Restore purchases.',
+  },
+  {
+    q: 'Why can’t I see some courses or tools?',
+    a: 'Two reasons. Some tools open as you use the app: the Compass lists what each one needs. And some courses and community features are limited by age, so younger accounts see a smaller, safer set.',
+  },
+  {
+    q: 'How do I delete my account or get a copy of my data?',
+    a: 'Settings → Export My Data gives you a copy of everything the account stores. Settings → Danger Zone → Delete Account removes the account and everything in it for good; you type DELETE to confirm. A parent or guardian can also email ' + SUPPORT_EMAIL + ' to have a child’s account deleted.',
+  },
+  {
     q: 'I’m stuck or found a bug — what do I do?',
-    a: 'Check Settings for a contact/support option. In the meantime, most screens have their own explanation — tap Help from the floating button while on that screen for context-specific guidance.',
+    a: 'Email ' + SUPPORT_EMAIL + ' (Settings → Contact support opens it for you) and say what you were doing when it happened. In the meantime, most screens have their own explanation: tap Help from the floating button while on that screen.',
   },
 ];
 
@@ -69,6 +89,8 @@ export default function HelpScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { startTour } = useTour();
+  // Plus questions only once Plus can actually be bought.
+  const { plusOnSale } = useAccess();
   const fromScreen = route.params?.fromScreen;
   const screenInfo = fromScreen ? SCREEN_HELP[fromScreen] : null;
   const [openIdx, setOpenIdx] = useState(screenInfo ? -1 : 0);
@@ -143,7 +165,7 @@ export default function HelpScreen() {
         <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.md }}>
           Frequently Asked Questions
         </Text>
-        {FAQ.map((item, i) => {
+        {FAQ.filter(item => !item.plusOnly || plusOnSale).map((item, i) => {
           const open = openIdx === i;
           return (
             <View key={i} style={{

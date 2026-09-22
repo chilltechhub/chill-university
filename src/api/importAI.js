@@ -91,7 +91,19 @@ function buildMessage(text, context) {
 
 async function callEdgeFunction(text, format, context) {
   const { data, error } = await supabase.functions.invoke('parse-import', { body: { text, format, context } });
-  if (error) throw new Error(error.message || 'The import assistant is unavailable right now.');
+  if (error) {
+    // functions.invoke turns any non-2xx into a generic "Edge Function
+    // returned a non-2xx status code" — the function's own message ("AI
+    // Import is part of Plus…") is in the response body, so read it back.
+    const status = error.context?.status;
+    let message = null;
+    try { message = (await error.context?.json?.())?.error || null; } catch {}
+    const err = new Error(message || (status === 404
+      ? 'The import assistant isn’t switched on yet.'
+      : 'The import assistant is unavailable right now.'));
+    if (status === 403) err.code = 'PLUS_REQUIRED';
+    throw err;
+  }
   if (data?.error) throw new Error(data.error);
   if (!Array.isArray(data?.items)) throw new Error('Could not parse a result from the model.');
   return data.items;
