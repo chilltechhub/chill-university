@@ -50,3 +50,6 @@ supabase/.temp/
 
 # planning/review PDFs handed in from outside (not project source)
 /*.pdf
+
+# repomix codebase dumps (regenerable)
+repomix-output.*

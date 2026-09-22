@@ -61,6 +61,9 @@ import ChildProgressScreen from './src/screens/family/ChildProgressScreen';
 import OrganizationScreen from './src/screens/organization/OrganizationScreen';
 import CohortRosterScreen from './src/screens/organization/CohortRosterScreen';
 import { useUserProgress } from './context/UserProgressContext';
+
+// Screens that show SignInPrompt to a guest instead of their content.
+const ACCOUNT_ONLY_SCREENS = new Set(['Profile', 'PlannerScreen']);
 import { supabase } from './src/api/supabaseClient';
 import useFirstVisitTutorial from './src/logic/useFirstVisitTutorial';
 import useGuidedFirstGoal from './src/logic/useGuidedFirstGoal';
@@ -203,7 +206,15 @@ function AppInner() {
   // The guide walks a new account through its first goal, and while it
   // does, screens don't also teach themselves (src/logic/useGuidedFirstGoal.js).
   const { guiding } = useGuidedFirstGoal(currentRouteName);
-  const maybeTeachScreen = useFirstVisitTutorial({ tourActive, startScreenTour, paused: guiding });
+  const teachScreen = useFirstVisitTutorial({ tourActive, startScreenTour, paused: guiding });
+  // A guest on an account-only screen sees a sign-in prompt, not the screen
+  // its tutorial describes ("Your rank" pointing at nothing), so those wait
+  // until there's an account. See src/components/SignInPrompt.js.
+  const { user: signedInUser } = useUserProgress();
+  const maybeTeachScreen = (name) => {
+    if (!signedInUser && ACCOUNT_ONLY_SCREENS.has(name)) return;
+    teachScreen(name);
+  };
 
   // Pulls in any admin-added pets/backgrounds from Supabase Storage (see
   // supabase/migrations/20260828_remote_art_storage.sql) once per app

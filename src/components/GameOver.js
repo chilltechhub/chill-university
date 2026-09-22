@@ -121,16 +121,6 @@ export default function GameOver({
         </View>
       )}
 
-      {/* Stats grid */}
-      <View style={s.statsGrid}>
-        <StatBox s={s} label="Accuracy" value={`${accuracy}%`} icon="stats-chart" color={accuracy >= 70 ? G.success : G.warning} />
-        <StatBox s={s} label="Correct" value={`${correct}/${total}`} icon="checkmark-circle" color={G.teal} />
-        <StatBox s={s} label="Best Streak" value={streak} icon="flame" color={G.gold} />
-        {timeSeconds !== null && (
-          <StatBox s={s} label="Time" value={`${timeSeconds}s`} icon="timer" color={G.purple} />
-        )}
-      </View>
-
       {/* Linked lesson — the bridge from a game back into the Academy.
           Shown either way, with the framing flipped: a weak run gets
           "here's what would help", a strong run gets "go deeper", so the
@@ -162,15 +152,9 @@ export default function GameOver({
         </TouchableOpacity>
       )}
 
-      {/* Fact */}
-      {!!fact && (
-        <View style={s.factBox}>
-          <Text style={s.factLabel}>{showEmojis ? '💡 ' : ''}Did You Know</Text>
-          <Text style={s.factText}>{fact}</Text>
-        </View>
-      )}
-
-      {/* Buttons */}
+      {/* Exits — straight after the result and its lesson, not below the
+          stats and fact, so the next move is on screen without scrolling.
+          Stats and the fact follow for anyone who wants them. */}
       <TouchableOpacity style={s.playAgainBtn} onPress={onPlayAgain}>
         <Ionicons name="refresh" size={18} color={G.bg} />
         <Text style={s.playAgainText}>Play Again</Text>
@@ -179,6 +163,24 @@ export default function GameOver({
       <TouchableOpacity style={s.quitBtn} onPress={onQuit}>
         <Text style={s.quitText}>← Back to games</Text>
       </TouchableOpacity>
+      {/* Stats grid */}
+      <View style={s.statsGrid}>
+        <StatBox s={s} label="Accuracy" value={`${accuracy}%`} icon="stats-chart" color={accuracy >= 70 ? G.success : G.warning} />
+        <StatBox s={s} label="Correct" value={`${correct}/${total}`} icon="checkmark-circle" color={G.teal} />
+        <StatBox s={s} label="Best Streak" value={streak} icon="flame" color={G.gold} />
+        {timeSeconds !== null && (
+          <StatBox s={s} label="Time" value={`${timeSeconds}s`} icon="timer" color={G.purple} />
+        )}
+      </View>
+
+      {/* Fact */}
+      {!!fact && (
+        <View style={s.factBox}>
+          <Text style={s.factLabel}>{showEmojis ? '💡 ' : ''}Did You Know</Text>
+          <Text style={s.factText}>{fact}</Text>
+        </View>
+      )}
+
     </ScrollView>
   );
 }
@@ -222,6 +224,6 @@ const makeStyles = (G) => StyleSheet.create({
   factText:    { fontSize: 13, color: G.cream, lineHeight: 18 },
   playAgainBtn:{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: G.gold, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 32, marginBottom: 14, width: '100%', justifyContent: 'center' },
   playAgainText:{ fontSize: 16, fontWeight: '700', color: G.bg },
-  quitBtn:     { padding: 12 },
+  quitBtn:     { padding: 12, marginBottom: 20 },
   quitText:    { fontSize: 14, color: G.muted },
 });

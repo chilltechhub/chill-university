@@ -21,13 +21,13 @@ export const THEMES = {
     borderStrong:'#aab3c8',
 
     // Gold — rank, points, primary CTA
-    gold:       '#9a7228',
+    gold:       '#8a6420',   // AA on bg0/bg1 (was #9a7228, ~3.9:1)
     goldMid:    '#c9a84c',
     goldLight:  '#f5e8c8',
     goldDim:    '#6a4e10',
 
     // Teal — action, discovery, progress
-    teal:       '#1a8a7a',
+    teal:       '#167a6c',   // AA on bg0/bg1 (was #1a8a7a, ~3.7:1)
     tealMid:    '#2bb5a0',
     tealLight:  '#e0f4f0',
     tealDim:    '#0f5a50',
@@ -40,15 +40,15 @@ export const THEMES = {
     // Text
     text1:      '#161b28',   // primary
     text2:      '#454f66',   // body
-    text3:      '#7a839c',   // secondary
-    text4:      '#a7b0c6',   // muted / caption
+    text3:      '#5f6880',   // secondary — AA (was #7a839c, ~3.3:1)
+    text4:      '#a7b0c6',   // placeholders / decoration only — below AA on purpose
 
     // Semantic
-    success:    '#2a8a4a',
+    success:    '#237a3f',
     successLight:'#e8f8ee',
     error:      '#c43030',
     errorLight: '#fdeaea',
-    warning:    '#c97a10',
+    warning:    '#9c5a08',
     warningLight:'#fef4e4',
 
     // Subject / life area colors
@@ -116,18 +116,18 @@ export const THEMES = {
     tealLight:  '#0a2822',
     tealDim:    '#1e8f6f',
 
-    purple:     '#8b4fc4',
+    purple:     '#a67ad8',   // AA on bg1 (was #8b4fc4, ~3.1:1)
     purpleLight:'#2a0a4a',
     purpleDim:  '#5a2a8a',
 
     text1:      '#eef1f8',
     text2:      '#a7b0c6',
-    text3:      '#6d7690',
+    text3:      '#8a92ab',   // AA (was #6d7690, ~3.6:1)
     text4:      '#414a68',
 
     success:    '#3ac860',
     successLight:'#0a2818',
-    error:      '#e05050',
+    error:      '#ef6a6a',
     errorLight: '#2a0808',
     warning:    '#e0a030',
     warningLight:'#2a1a04',
@@ -177,6 +177,86 @@ export const FONTS = {
   displaySemibold: 'Rajdhani_600SemiBold',
   mono:            'JetBrainsMono_500Medium',
   monoSemibold:    'JetBrainsMono_600SemiBold',
+};
+
+// ── Style: how the app is dressed, independent of light/dark ──────────────
+// `plain` is the default: system type, sentence-case labels, soft cards.
+// `command` is the original HUD look: mono uppercase labels, Rajdhani
+// titles, tighter corners. Screens read these through useTheme().style
+// (or the shared primitives) rather than hard-coding FONTS.mono or
+// textTransform: 'uppercase' — see docs/finishing-touches-plan.md.
+export const STYLES = {
+  plain: {
+    name: 'plain',
+    label: 'Plain',
+    description: 'Clean and calm. Easy on long sessions.',
+    // Section / eyebrow labels ("Appearance", "App experience")
+    sectionLabel: { fontFamily: undefined, textTransform: 'none', letterSpacing: 0, fontWeight: '600' },
+    // Big screen titles. undefined = system font.
+    titleFont: undefined,
+    titleTracking: 0,
+    // Stats and readouts ("LV 3", "12 / 20", timers).
+    numberFont: undefined,
+    // Small eyebrow above a card title ("Your first goal").
+    eyebrow: { fontFamily: undefined, textTransform: 'none', letterSpacing: 0, fontWeight: '600' },
+    buttonLabel: { fontFamily: undefined, textTransform: 'none', letterSpacing: 0, fontWeight: '700' },
+    cardRadius: 14,
+    buttonRadius: 12,
+    borderWidth: 0.5,
+    cardShadow: 'sm',
+    // What "Show Emojis" means until the user sets it themselves.
+    emojiDefault: false,
+  },
+  command: {
+    name: 'command',
+    label: 'Command',
+    description: 'The ops-deck look. Mono labels, sharper edges.',
+    sectionLabel: { fontFamily: FONTS.mono, textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: '700' },
+    titleFont: FONTS.display,
+    titleTracking: 0.5,
+    numberFont: FONTS.mono,
+    eyebrow: { fontFamily: FONTS.mono, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: '700' },
+    buttonLabel: { fontFamily: FONTS.display, textTransform: 'uppercase', letterSpacing: 1, fontWeight: '700' },
+    cardRadius: 6,
+    buttonRadius: 6,
+    borderWidth: 1,
+    cardShadow: null,
+    emojiDefault: true,
+  },
+};
+export const DEFAULT_STYLE = 'plain';
+
+// ── Accent: the colour of primary actions ─────────────────────────────────
+// Per mode so contrast holds in both. Light-mode teal/gold are one step
+// darker than colors.teal / colors.gold: those sit at ~4.2:1 on white, just
+// under WCAG AA (4.5) for text, and white-on-button fails the same way.
+// These clear 5:1. `onPrimary` is the text/icon colour on a filled button.
+export const ACCENTS = {
+  teal: {
+    label: 'Teal',
+    light: { primary: '#167a6c', primaryMid: '#2bb5a0', primaryLight: '#e0f4f0', onPrimary: '#ffffff' },
+    dark:  { primary: '#3fcf9e', primaryMid: '#6ce0b8', primaryLight: '#0a2822', onPrimary: '#0d1119' },
+  },
+  gold: {
+    label: 'Gold',
+    light: { primary: '#8a6420', primaryMid: '#c9a84c', primaryLight: '#f5e8c8', onPrimary: '#ffffff' },
+    dark:  { primary: '#e8b34a', primaryMid: '#f0c164', primaryLight: '#2a2007', onPrimary: '#0d1119' },
+  },
+  slate: {
+    label: 'Slate',
+    light: { primary: '#3d5a80', primaryMid: '#6a86ab', primaryLight: '#e6ecf4', onPrimary: '#ffffff' },
+    dark:  { primary: '#9db4d3', primaryMid: '#bccde3', primaryLight: '#172238', onPrimary: '#0d1119' },
+  },
+};
+export const DEFAULT_ACCENT = 'teal';
+
+// A persona suggests an accent once, at the end of onboarding, and only if
+// the user hasn't picked one. It never sets the style.
+export const PERSONA_ACCENT = {
+  STUDENT:      'teal',
+  PERSONAL:     'teal',
+  BUSINESS:     'slate',
+  ENTREPRENEUR: 'gold',
 };
 
 // Typography — same across both themes

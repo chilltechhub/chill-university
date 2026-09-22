@@ -13,7 +13,7 @@ import { useTour } from '../../context/TourContext';
 import { useCommandPalette } from '../../context/CommandPaletteContext';
 import ProfileSwitcher from './ProfileSwitcher';
 import NotificationBell from './NotificationBell';
-import { RANK_LABELS, FONTS } from '../theme';
+import { RANK_LABELS } from '../theme';
 import LoginScreen from '../screens/LoginScreen';
 
 // Profile / Help / Screen Tutorial / Settings / Search — one tap-menu off
@@ -22,15 +22,21 @@ import LoginScreen from '../screens/LoginScreen';
 // "create something" actions, and the crest is a root-level control that
 // can navigate to them just as reliably as the FAB could (see
 // FloatingActionButton.js's header comment for why that reliability matters).
-function CrestMenu({ visible, onClose, onSelect, c, t, s }) {
+//
+// Guests get the same menu with "Sign in" in Profile's place. It used to
+// open sign-in directly, which left a guest no way to reach Settings, Help
+// or Search at all.
+function CrestMenu({ visible, onClose, onSelect, signedIn, c, t, s }) {
   const items = [
-    { key: 'profile',  label: 'Profile',        icon: 'person-circle-outline', colorKey: 'gold' },
+    signedIn
+      ? { key: 'profile', label: 'Profile', icon: 'person-circle-outline', colorKey: 'gold' }
+      : { key: 'signin',  label: 'Sign in', icon: 'log-in-outline',        colorKey: 'teal' },
     { key: 'help',     label: 'Help',           icon: 'help-circle-outline',   colorKey: 'purple' },
     { key: 'tutorial', label: 'Screen Tutorial', icon: 'school-outline',       colorKey: 'teal' },
     { key: 'settings', label: 'Settings',       icon: 'settings-outline',      colorKey: 'text3' },
     // The phone-side entry to the command palette — Cmd/Ctrl+K only exists
     // where there's a keyboard, so search needs a visible control too.
-    { key: 'search',   label: 'Search',         icon: 'search-outline',        color: '#3fb8cf' },
+    { key: 'search',   label: 'Search',         icon: 'search-outline',        colorKey: 'tealMid' },
   ];
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -55,7 +61,7 @@ function CrestMenu({ visible, onClose, onSelect, c, t, s }) {
 
 export default function TopBar({ currentScreen }) {
   const { user, points, rank, level, progress, loading, pendingRewards } = useUserProgress();
-  const { colors, typography, spacing, shadows } = useTheme();
+  const { colors, typography, spacing, shadows, accent, style: ui } = useTheme();
   const { showEmojis } = useUIPrefs();
   const navigation = useNavigation();
   const { startScreenTour } = useTour();
@@ -63,13 +69,14 @@ export default function TopBar({ currentScreen }) {
   const [showLogin, setShowLogin] = useState(false);
   const [showCrestMenu, setShowCrestMenu] = useState(false);
 
-  const s = makeStyles(colors, typography, spacing, shadows);
+  const s = makeStyles(colors, typography, spacing, shadows, accent, ui);
   const rankInfo = RANK_LABELS[rank] || RANK_LABELS[20];
 
   const handleCrestMenuSelect = (key) => {
     setShowCrestMenu(false);
     switch (key) {
       case 'profile':  navigation.navigate('Profile'); break;
+      case 'signin':   setShowLogin(true); break;
       case 'help':     navigation.navigate('Help', { fromScreen: currentScreen }); break;
       case 'tutorial': startScreenTour(currentScreen); break;
       case 'settings': navigation.navigate('Settings'); break;
@@ -90,11 +97,10 @@ export default function TopBar({ currentScreen }) {
       <View style={s.container}>
         <View style={s.topRow}>
           {/* Crest — opens the Profile/Help/Tutorial/Settings/Search menu
-              for a signed-in user, same as tapping it always did for
-              Profile alone; guests still get the sign-in prompt. */}
+              (Sign in instead of Profile for a guest). */}
           <TouchableOpacity
             style={s.crest}
-            onPress={() => user ? setShowCrestMenu(true) : setShowLogin(true)}
+            onPress={() => setShowCrestMenu(true)}
             activeOpacity={0.75}
           >
             <Text style={s.crestEmoji}>{rankInfo.emoji}</Text>
@@ -120,7 +126,7 @@ export default function TopBar({ currentScreen }) {
             </TouchableOpacity>
           ) : (
             <TouchableOpacity style={s.signInBtn} onPress={() => setShowLogin(true)}>
-              <Ionicons name="person-circle-outline" size={14} color="#fff" />
+              <Ionicons name="person-circle-outline" size={14} color={accent.onPrimary} />
               <Text style={s.signInText}>Sign In</Text>
             </TouchableOpacity>
           )}
@@ -158,6 +164,7 @@ export default function TopBar({ currentScreen }) {
         visible={showCrestMenu}
         onClose={() => setShowCrestMenu(false)}
         onSelect={handleCrestMenuSelect}
+        signedIn={!!user}
         c={colors} t={typography} s={spacing}
       />
 
@@ -168,7 +175,7 @@ export default function TopBar({ currentScreen }) {
   );
 }
 
-const makeStyles = (c, t, s, sh) => StyleSheet.create({
+const makeStyles = (c, t, s, sh, accent, ui) => StyleSheet.create({
   container: {
     paddingHorizontal: s.lg,
     paddingVertical: s.sm,
@@ -196,15 +203,15 @@ const makeStyles = (c, t, s, sh) => StyleSheet.create({
     paddingHorizontal: s.sm + 2,
     paddingVertical: 6,
   },
-  statPillText: { fontSize: t.sm, fontWeight: t.bold, color: c.gold, fontFamily: FONTS.mono },
+  statPillText: { fontSize: t.sm, fontWeight: t.bold, color: c.gold, fontFamily: ui.numberFont },
   barBg: { height: 4, backgroundColor: c.bg2, borderRadius: 3, overflow: 'hidden', marginTop: s.sm },
   barFill: { height: 4, backgroundColor: c.goldMid, borderRadius: 3 },
   signInBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: c.teal, borderRadius: 14,
+    backgroundColor: accent.primary, borderRadius: 14,
     paddingHorizontal: s.sm + 2, paddingVertical: 6,
   },
-  signInText: { fontSize: t.xs, color: '#fff', fontWeight: t.semibold },
+  signInText: { fontSize: t.xs, color: accent.onPrimary, fontWeight: t.semibold },
   rewardBtn: { marginLeft: s.sm, position: 'relative' },
   rewardDot: {
     position: 'absolute', top: -3, right: -3,
@@ -212,5 +219,5 @@ const makeStyles = (c, t, s, sh) => StyleSheet.create({
     minWidth: 16, height: 16,
     justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3,
   },
-  rewardDotText: { color: '#fff', fontSize: 9, fontWeight: t.bold },
+  rewardDotText: { color: '#ffffff', fontSize: 9, fontWeight: t.bold }, // style-ok: white count on the red badge in both modes
 });

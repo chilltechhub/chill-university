@@ -10,7 +10,7 @@
 export const TOUR_STEPS = [
   {
     id: null,
-    title: '👋 Welcome to Chill',
+    title: '👋 Welcome to Deskartes',
     body: "A tour of where everything lives — a couple of minutes, and you can replay it any time from Settings.",
   },
   {

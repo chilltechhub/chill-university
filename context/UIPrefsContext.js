@@ -3,18 +3,21 @@
 //   showEmojis  — decorative emoji next to titles/labels ("📝 Notes")
 //   showSubtext — the descriptive line under a screen title
 //     ("Quick notes and thoughts captured anywhere")
-// Both default on (matches how the app already looks) and persist locally.
+// Only what the user actually set is stored. Until they touch it,
+// showEmojis follows the appearance style (Plain: off, Command: on — see
+// STYLES.emojiDefault) and showSubtext is on. Persist locally.
 // Usage: const { showEmojis, showSubtext } = useUIPrefs();
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from './ThemeContext';
 
 const UIPrefsContext = createContext(null);
 const STORAGE_KEY = '@cth_ui_prefs';
 
-const DEFAULTS = { showEmojis: true, showSubtext: true };
-
 export function UIPrefsProvider({ children }) {
-  const [prefs, setPrefs] = useState(DEFAULTS);
+  const { style } = useTheme();
+  // Explicit choices only — a key that's missing means "use the default".
+  const [prefs, setPrefs] = useState({});
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -38,11 +41,12 @@ export function UIPrefsProvider({ children }) {
   const setShowSubtext = (v) => update({ showSubtext: v });
 
   const value = useMemo(() => ({
-    ...prefs,
+    showEmojis:  prefs.showEmojis ?? style.emojiDefault,
+    showSubtext: prefs.showSubtext ?? true,
     loaded,
     setShowEmojis,
     setShowSubtext,
-  }), [prefs, loaded]);
+  }), [prefs, loaded, style]);
 
   return (
     <UIPrefsContext.Provider value={value}>

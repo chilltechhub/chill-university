@@ -7,6 +7,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import GameShell, { useGameTheme } from './GameShell';
 import GameOver from './GameOver';
 import GradeSelectCard from './GradeSelectCard';
@@ -165,6 +166,7 @@ export default function MemoryMatchGame({ onGameEnd }) {
               <TouchableOpacity
                 key={card.id}
                 style={[s.card, isFlipped && s.cardFlipped, isMatched && s.cardMatched]}
+                accessibilityLabel={isFlipped ? `${card.text}${isMatched ? ', matched' : ''}` : 'Hidden card'}
                 onPress={() => handleCardPress(idx)}
                 activeOpacity={0.8}
                 disabled={isMatched}
@@ -173,6 +175,13 @@ export default function MemoryMatchGame({ onGameEnd }) {
                   <Text style={s.cardText} numberOfLines={4}>{card.text}</Text>
                 ) : (
                   <Text style={s.cardBack}>?</Text>
+                )}
+                {/* Matched isn't shown by the green tint alone — a
+                    colour-only cue is invisible to colour-blind players. */}
+                {isMatched && (
+                  <View style={s.matchedBadge} accessibilityLabel="Matched">
+                    <Ionicons name="checkmark" size={11} color={G.bg} />
+                  </View>
                 )}
               </TouchableOpacity>
             );
@@ -194,6 +203,7 @@ const makeStyles = (G) => StyleSheet.create({
   },
   cardFlipped: { backgroundColor: G.card, borderColor: G.teal },
   cardMatched: { backgroundColor: G.success + '22', borderColor: G.success },
+  matchedBadge: { position: 'absolute', top: 4, right: 4, width: 16, height: 16, borderRadius: 8, backgroundColor: G.success, alignItems: 'center', justifyContent: 'center' },
   cardBack:    { fontSize: 22, color: G.muted, fontWeight: '700' },
   cardText:    { fontSize: 9, color: G.cream, textAlign: 'center', lineHeight: 12 },
 });

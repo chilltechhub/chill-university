@@ -34,11 +34,11 @@ import { featuresUnlockedBy } from '../data/featureCatalog';
 import { goToScreen } from '../logic/appRoutes';
 import { resumeFirstGoalGuide } from '../logic/useGuidedFirstGoal';
 import { useTour } from '../../context/TourContext';
-import { FONTS } from '../theme';
+import { Button } from './ui';
 
 export default function CompassCard() {
   const navigation = useNavigation();
-  const { colors: c, typography: t, spacing: sp, radius: r } = useTheme();
+  const { colors: c, typography: t, spacing: sp, radius: r, style: ui, accent: themeAccent } = useTheme();
   const { showEmojis, showSubtext } = useUIPrefs();
   const {
     purposeKey, purpose, suggestedPurposeKey, activeObjective,
@@ -47,7 +47,7 @@ export default function CompassCard() {
   } = useAccess();
 
   const { active: tourActive } = useTour();
-  const s = makeStyles(c, t, sp, r);
+  const s = makeStyles(c, t, sp, r, ui);
 
   // Nothing to say until the first load settles — an empty prompt that
   // flickers into a live objective is worse than a beat of nothing.
@@ -61,8 +61,8 @@ export default function CompassCard() {
   const introDone = completedObjectiveIds.some(id => getObjective(id)?.intro);
   if (!live && firstGoal && !introDone) {
     return (
-      <View style={[s.card, { borderLeftColor: c.teal }]}>
-        <Text style={[s.kicker, { color: c.teal }]}>{showEmojis ? '🎯 ' : ''}Your first goal</Text>
+      <View style={[s.card, { borderLeftColor: themeAccent.primary }]}>
+        <Text style={[s.kicker, { color: themeAccent.primary }]}>{showEmojis ? '🎯 ' : ''}Your first goal</Text>
         <Text style={s.headline}>{firstGoal.label}</Text>
         {showSubtext && <Text style={s.sub}>{firstGoal.promise}</Text>}
         <View style={s.previewList}>
@@ -70,14 +70,12 @@ export default function CompassCard() {
             <Text key={step.id} style={s.previewStep}>{i + 1}. {step.label}</Text>
           ))}
         </View>
-        <TouchableOpacity
-          style={[s.claimBtn, { backgroundColor: c.teal }]}
+        <Button
+          icon="play"
+          label={`Start · ${firstGoal.estimate.toLowerCase()}`}
           onPress={() => { startFirstGoal(); resumeFirstGoalGuide(); }}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="play" size={14} color="#fff" />
-          <Text style={s.claimText}>Start · {firstGoal.estimate.toLowerCase()}</Text>
-        </TouchableOpacity>
+          style={s.claimBtn}
+        />
       </View>
     );
   }
@@ -155,14 +153,13 @@ export default function CompassCard() {
               ].filter(Boolean).join(' ')}
             </Text>
           )}
-          <TouchableOpacity
-            style={[s.claimBtn, { backgroundColor: accent }]}
+          <Button
+            icon="trophy-outline"
+            label={`Finish ${objective.label}`}
             onPress={completeActiveObjective}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="trophy-outline" size={15} color="#fff" />
-            <Text style={s.claimText}>Finish {objective.label}</Text>
-          </TouchableOpacity>
+            color={accent}
+            style={s.claimBtn}
+          />
         </>
       ) : (
         <>
@@ -199,10 +196,16 @@ export default function CompassCard() {
           {/* A first goal has a guide. If they sent it away, this is the
               way to call it back (src/logic/useGuidedFirstGoal.js). */}
           {objective.intro && !tourActive && (
-            <TouchableOpacity onPress={resumeFirstGoalGuide} activeOpacity={0.7} style={s.guideLink}>
-              <Ionicons name="chatbubble-ellipses-outline" size={13} color={accent} />
-              <Text style={[s.guideLinkText, { color: accent }]}>Show me how</Text>
-            </TouchableOpacity>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon="chatbubble-ellipses-outline"
+              label="Show me how"
+              color={accent}
+              fullWidth={false}
+              onPress={resumeFirstGoalGuide}
+              style={s.guideLink}
+            />
           )}
         </>
       )}
@@ -210,11 +213,11 @@ export default function CompassCard() {
   );
 }
 
-const makeStyles = (c, t, sp, r) => StyleSheet.create({
-  card:     { backgroundColor: c.bg1, borderRadius: r.lg, padding: sp.lg, marginHorizontal: sp.lg, marginBottom: sp.md, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3 },
-  kicker:   { flex: 1, fontSize: 10, color: c.gold, textTransform: 'uppercase', letterSpacing: 1.1, fontWeight: '800' },
+const makeStyles = (c, t, sp, r, ui) => StyleSheet.create({
+  card:     { backgroundColor: c.bg1, borderRadius: ui.cardRadius, padding: sp.lg, marginHorizontal: sp.lg, marginBottom: sp.md, borderWidth: ui.borderWidth, borderColor: c.border, borderLeftWidth: 3 },
+  kicker:   { flex: 1, fontSize: ui.name === 'plain' ? 12 : 10, color: c.gold, ...ui.eyebrow },
   topRow:   { flexDirection: 'row', alignItems: 'center', gap: sp.sm },
-  count:    { fontSize: 10, fontFamily: FONTS.mono, color: c.text3 },
+  count:    { fontSize: ui.name === 'plain' ? 12 : 10, fontFamily: ui.numberFont, color: c.text3, fontVariant: ['tabular-nums'] },
   track:    { height: 4, borderRadius: 2, backgroundColor: c.bg3, overflow: 'hidden', marginTop: sp.sm, marginBottom: sp.md },
   fill:     { height: 4, borderRadius: 2 },
 
@@ -224,7 +227,7 @@ const makeStyles = (c, t, sp, r) => StyleSheet.create({
   ctaRow:   { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: sp.md },
   cta:      { fontSize: t.xs, fontWeight: '800', color: c.gold, letterSpacing: 0.4 },
 
-  nextLabel:{ fontSize: 9, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 },
+  nextLabel:{ fontSize: ui.name === 'plain' ? 12 : 9, color: c.text3, ...ui.eyebrow, marginBottom: 6 },
   stepRow:  { flexDirection: 'row', alignItems: 'center', gap: sp.md },
   stepLabel:{ fontSize: t.sm, fontWeight: '700', color: c.text1, lineHeight: 19 },
   stepHint: { fontSize: t.xs, color: c.text3, marginTop: 2, lineHeight: 17 },
@@ -233,10 +236,8 @@ const makeStyles = (c, t, sp, r) => StyleSheet.create({
 
   previewList:{ marginTop: sp.md, gap: 4 },
   previewStep:{ fontSize: t.xs, color: c.text2, lineHeight: 18 },
-  stageHint:{ fontSize: t.xs, color: c.text4, marginTop: sp.md, fontStyle: 'italic' },
-  guideLink:{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: sp.md, alignSelf: 'flex-start' },
-  guideLinkText:{ fontSize: t.xs, fontWeight: '800' },
+  stageHint:{ fontSize: t.xs, color: c.text3, marginTop: sp.md },
+  guideLink:{ marginTop: sp.md },
 
-  claimBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: r.md, paddingVertical: sp.md, marginTop: sp.md },
-  claimText:{ color: '#fff', fontSize: t.sm, fontWeight: '800' },
+  claimBtn: { marginTop: sp.md },
 });

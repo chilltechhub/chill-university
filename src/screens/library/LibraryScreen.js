@@ -28,7 +28,6 @@ import LevelRing from '../../components/LevelRing';
 import PlayerMatchBackground from '../../components/PlayerMatchBackground';
 import useCharacterLoadout from '../../logic/useCharacterLoadout';
 import useSetting, { SETTING_KEYS } from '../../logic/useSetting';
-import { FONTS } from '../../theme';
 import TourSpot from '../../components/TourSpot';
 import LockBadge from '../../components/LockBadge';
 import { useFeatureGate } from '../../components/FeatureGate';
@@ -220,7 +219,7 @@ function DomainContentRow({ item, onToggleTask, onPress, c, t, s }) {
       >
         {item.title}
       </Text>
-      <Text style={{ fontSize: 10, color: c.text4, textTransform: 'uppercase' }}>{item.kind}</Text>
+      <Text style={{ fontSize: 11, color: c.text3 }}>{item.kind}</Text>
     </TouchableOpacity>
   );
 }
@@ -305,7 +304,7 @@ function AddAreaModal({ visible, hidden, onAdd, onClose, c, t, s, r }) {
 
 export default function LibraryScreen() {
   const navigation = useNavigation();
-  const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
+  const { colors: c, typography: t, spacing: s, radius: r, style: ui, accent } = useTheme();
   const { showEmojis, showSubtext } = useUIPrefs();
   const { level, points, rank, streakDays } = useUserProgress();
   const { currentStep, active: tourActive } = useTour();
@@ -446,7 +445,7 @@ export default function LibraryScreen() {
     setTabOrder(keys);
   };
 
-  const styles = makeStyles(c, t, s, r);
+  const styles = makeStyles(c, t, s, r, ui, accent);
 
   // The guided tour drives this screen's sub-tab from the outside (see
   // tourSteps.js's librarySubTab field) — only while it's actually active,
@@ -828,7 +827,7 @@ export default function LibraryScreen() {
             onPress={() => navigation.navigate('CaptureInbox')}
             activeOpacity={0.8}
           >
-            <Ionicons name="create-outline" size={16} color="#fff" />
+            <Ionicons name="create-outline" size={16} color={accent.onPrimary} />
             <Text style={styles.captureBtnText}>Capture</Text>
           </TouchableOpacity>
           </TourSpot>
@@ -1113,7 +1112,7 @@ export default function LibraryScreen() {
   );
 }
 
-const makeStyles = (c, t, s, r) =>
+const makeStyles = (c, t, s, r, ui, accent) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: c.bg0 },
     loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.bg0 },
@@ -1128,7 +1127,8 @@ const makeStyles = (c, t, s, r) =>
     titleBtn: { flexDirection: 'row', alignItems: 'center', gap: 7 },
     headerTitle: {
       fontSize: t.xxxl,
-      fontFamily: FONTS.display,
+      fontFamily: ui.titleFont,
+      letterSpacing: ui.titleTracking,
       fontWeight: '800',
       color: c.text1,
     },
@@ -1141,11 +1141,11 @@ const makeStyles = (c, t, s, r) =>
       left: 20,
       minWidth: 240,
       backgroundColor: c.bg1,
-      borderRadius: r.lg,
-      borderWidth: 0.5,
+      borderRadius: ui.cardRadius,
+      borderWidth: ui.borderWidth,
       borderColor: c.border,
       paddingHorizontal: 4,
-      shadowColor: '#000',
+      shadowColor: '#000', // style-ok: drop shadow is black in both modes
       shadowOpacity: 0.18,
       shadowRadius: 14,
       shadowOffset: { width: 0, height: 6 },
@@ -1176,12 +1176,12 @@ const makeStyles = (c, t, s, r) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      backgroundColor: c.teal,
+      backgroundColor: accent.primary,
       paddingHorizontal: 15,
       paddingVertical: 10,
-      borderRadius: r.xl,
+      borderRadius: ui.buttonRadius,
     },
-    captureBtnText: { color: '#fff', fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
+    captureBtnText: { color: accent.onPrimary, fontSize: 13, ...ui.buttonLabel },
     sectionContainer: { marginBottom: 28 },
     sectionHeader: {
       flexDirection: 'row',
@@ -1191,14 +1191,11 @@ const makeStyles = (c, t, s, r) =>
       marginBottom: 14,
     },
     sectionTitle: {
-      fontSize: 12,
-      fontFamily: FONTS.displaySemibold,
-      fontWeight: '800',
-      color: c.text1,
-      textTransform: 'uppercase',
-      letterSpacing: 1.5,
+      fontSize: ui.name === 'plain' ? 14 : 12,
+      color: ui.name === 'plain' ? c.text2 : c.text1,
+      ...ui.sectionLabel,
     },
-    sectionAction: { fontSize: 12, fontFamily: FONTS.mono, color: c.teal, fontWeight: '700' },
+    sectionAction: { fontSize: 12, fontFamily: ui.numberFont, color: accent.primary, fontWeight: '700' },
     /* ── Life areas — small bubbles ── */
     // Fixed 4 columns (4x2 for the usual 8 areas) rather than the old
     // organic flex-wrap, which fit a different count per row depending on
@@ -1231,22 +1228,22 @@ const makeStyles = (c, t, s, r) =>
       minWidth: 14, height: 14, borderRadius: 7, paddingHorizontal: 3,
       alignItems: 'center', justifyContent: 'center',
     },
-    bubbleDotText: { fontSize: 8, fontFamily: FONTS.mono, fontWeight: '800', color: '#fff' },
+    bubbleDotText: { fontSize: 8, fontFamily: ui.numberFont, fontWeight: '800', color: '#ffffff' }, // style-ok: white count on a coloured dot
     areaEmoji: { fontSize: 16 },
     areaLabel: { fontSize: 9, fontWeight: '700', color: c.text1, textAlign: 'center', marginTop: 5 },
     domainHint: { fontSize: 11, color: c.text4, textAlign: 'center', marginTop: 14, paddingHorizontal: 20 },
     domainEmptyText: { fontSize: t.sm, color: c.text4, paddingHorizontal: 20, lineHeight: 19 },
     domainResultsCard: {
       marginHorizontal: 20,
-      backgroundColor: c.bg1, borderRadius: r.lg, padding: 14,
-      borderWidth: 0.5, borderColor: c.border,
+      backgroundColor: c.bg1, borderRadius: ui.cardRadius, padding: 14,
+      borderWidth: ui.borderWidth, borderColor: c.border,
     },
     /* ── Per-tab previews ── */
     previewCard: {
       marginHorizontal: 20,
-      backgroundColor: c.bg1, borderRadius: r.lg,
+      backgroundColor: c.bg1, borderRadius: ui.cardRadius,
       paddingHorizontal: 14,
-      borderWidth: 0.5, borderColor: c.border,
+      borderWidth: ui.borderWidth, borderColor: c.border,
     },
     previewRow: {
       flexDirection: 'row', alignItems: 'center', gap: 10,
@@ -1258,7 +1255,7 @@ const makeStyles = (c, t, s, r) =>
     // text3 rather than text4 here and on the due-chip days: these carry
     // real information someone reads, and text4 measures badly against
     // both bg1 surfaces (see the contrast pass in the previous round).
-    previewMeta: { fontSize: 11, color: c.text3, fontFamily: FONTS.mono },
+    previewMeta: { fontSize: 11, color: c.text3, fontFamily: ui.numberFont },
     previewEmpty: { fontSize: t.sm, color: c.text4, paddingHorizontal: 20, lineHeight: 19 },
     chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 20 },
     dueChip: {
@@ -1267,20 +1264,20 @@ const makeStyles = (c, t, s, r) =>
       borderRadius: 20, borderWidth: 1, backgroundColor: c.bg1,
     },
     dueChipText: { fontSize: 12, fontWeight: '700' },
-    dueChipDays: { fontSize: 11, color: c.text3, fontFamily: FONTS.mono },
+    dueChipDays: { fontSize: 11, color: c.text3, fontFamily: ui.numberFont },
     /* Wing (hub) styling */
     hubContainer: { paddingHorizontal: 20, marginBottom: 32 },
     hubHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
-    hubTitle: { fontSize: 17, fontFamily: FONTS.displaySemibold, fontWeight: '800', color: c.text1 },
+    hubTitle: { fontSize: 17, fontFamily: ui.titleFont, fontWeight: '800', color: c.text1 },
     hubTagline: { fontSize: 11, color: c.text3 },
     gridContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
     /* Featured full-width card */
     featuredCard: {
       width: '100%',
       backgroundColor: c.bg1,
-      borderRadius: r.lg,
+      borderRadius: ui.cardRadius,
       padding: 16,
-      borderWidth: 0.5,
+      borderWidth: ui.borderWidth,
       borderColor: c.border,
       borderLeftWidth: 4,
       flexDirection: 'row',
@@ -1305,9 +1302,9 @@ const makeStyles = (c, t, s, r) =>
     standardGridCard: {
       flex: 1,
       backgroundColor: c.bg1,
-      borderRadius: r.lg,
+      borderRadius: ui.cardRadius,
       padding: 12,
-      borderWidth: 0.5,
+      borderWidth: ui.borderWidth,
       borderColor: c.border,
       justifyContent: 'space-between',
     },

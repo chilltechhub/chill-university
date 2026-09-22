@@ -160,6 +160,7 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
         user_id:      userId,
         title:        title.trim(),
         objective:    objective.trim() || null,
+        next_action:  nextStep.trim() || null,
         emoji, color, cover_color: color, banner_emoji: emoji,
         category:     type || 'general',
         status:       'active',
@@ -276,8 +277,55 @@ const makeModalStyles = bp => StyleSheet.create({
   startBtn:    { flex: 2, borderRadius: 4, padding: 14, alignItems: 'center' },
 });
 
+// ─── Next step sheet ────────────────────────────────────────────────────────
+// A build with no next action is the one most likely to stall, so the list
+// asks for it right there instead of "open the build to set one". Same
+// column and wording ProjectDetail's own editor uses.
+function NextStepModal({ project, bp, onSave, onClose }) {
+  const s = makeModalStyles(bp);
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { setDraft(project?.next_action || ''); }, [project?.id]);
+  const color = project?.color || bp.accent;
+  const save = async () => {
+    const next = draft.trim();
+    if (!next || saving) return;
+    setSaving(true);
+    try { await onSave(project, next); } finally { setSaving(false); }
+  };
+  return (
+    <Modal visible={!!project} transparent animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={s.sheet}>
+          <View style={s.handle} />
+          <Text style={s.sheetEyebrow}>NEXT STEP</Text>
+          <Text style={s.sheetTitle} numberOfLines={2}>{project?.title}</Text>
+          <TextInput
+            style={[s.input, { borderColor: color }]}
+            value={draft}
+            onChangeText={setDraft}
+            placeholder="What's the next physical step?"
+            placeholderTextColor={bp.ink3}
+            autoFocus
+            onSubmitEditing={save}
+            returnKeyType="done"
+          />
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+            <TouchableOpacity style={s.cancelBtn} onPress={onClose}>
+              <Text style={{ color: bp.ink2, fontWeight: '600' }}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[s.startBtn, { backgroundColor: color, opacity: draft.trim() ? 1 : 0.5 }]} onPress={save} disabled={!draft.trim() || saving}>
+              {saving ? <ActivityIndicator color={bp.onAccent} /> : <Text style={{ color: bp.onAccent, fontWeight: '800' }}>Save next step</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
 // ─── Build card ─────────────────────────────────────────────────────────────
-function BuildCard({ project, bp, onPress, onFavorite, onDelete }) {
+function BuildCard({ project, bp, onPress, onFavorite, onDelete, onSetNext }) {
   const s = makeCardStyles(bp);
   const color = project.color || bp.accent;
   const stage = stageFor(project);
@@ -311,6 +359,16 @@ function BuildCard({ project, bp, onPress, onFavorite, onDelete }) {
           <Ionicons name="flag" size={11} color={color} />
           <Text style={[s.nextActionText, { color }]} numberOfLines={1}>{project.next_action}</Text>
         </View>
+      ) : project.status !== 'completed' && onSetNext ? (
+        <TouchableOpacity
+          onPress={() => onSetNext(project)}
+          accessibilityRole="button"
+          accessibilityLabel={`Set the next step for ${project.title}`}
+          style={[s.setNextRow, { borderColor: color }]}
+        >
+          <Ionicons name="flag-outline" size={12} color={color} />
+          <Text style={[s.nextActionText, { color }]}>Set next step</Text>
+        </TouchableOpacity>
       ) : null}
 
       {total > 0 && (
@@ -351,6 +409,7 @@ const makeCardStyles = bp => StyleSheet.create({
   progressText: { fontSize: 9.5, fontFamily: FONTS.mono, color: bp.ink3, marginTop: 5, letterSpacing: 0.4 },
   nextActionRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8 },
   nextActionText: { fontSize: 11, fontWeight: '700', flexShrink: 1 },
+  setNextRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, alignSelf: 'flex-start', borderWidth: 1, borderStyle: 'dashed', borderRadius: 3, paddingHorizontal: 9, paddingVertical: 5 },
   actions:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 11 },
   outlineBtn:  { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderRadius: 3, paddingHorizontal: 9, paddingVertical: 5 },
   outlineBtnText: { fontSize: 10, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 0.3 },
@@ -370,6 +429,7 @@ export default function ProjectsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [userId,     setUserId]     = useState(null);
   const [filter,     setFilter]     = useState('all');
+  const [nextTarget, setNextTarget] = useState(null); // project whose next step is being set
   const [showNew,    setShowNew]    = useState(false);
   const [search,     setSearch]     = useState('');
   // A tutorial step can hand this screen a worked example to open the New
@@ -409,6 +469,17 @@ export default function ProjectsScreen() {
       navigation.setParams({ autoOpen: false });
     }
   }, [route.params?.autoOpen]));
+
+  const saveNextStep = async (proj, next) => {
+    try {
+      await supabase.from('projects').update({ next_action: next, updated_at: new Date().toISOString() }).eq('id', proj.id);
+      setProjects(prev => prev.map(p => p.id === proj.id ? { ...p, next_action: next } : p));
+      setNextTarget(null);
+    } catch (e) {
+      console.warn('save next_action error', e);
+      Alert.alert('Not saved', 'Could not save the next step. Check your connection and try again.');
+    }
+  };
 
   const load = async (uid) => {
     setLoading(true);
@@ -573,12 +644,16 @@ export default function ProjectsScreen() {
                   {hero.objective && (
                     <Text style={s.heroObj} numberOfLines={2}>{hero.objective}</Text>
                   )}
-                  <View style={[s.heroNextRow, { borderColor: hero.next_action ? (hero.color || bp.accent) : bp.border, borderStyle: hero.next_action ? 'solid' : 'dashed' }]}>
+                  <TouchableOpacity
+                    disabled={!!hero.next_action}
+                    onPress={() => setNextTarget(hero)}
+                    accessibilityRole={hero.next_action ? undefined : 'button'}
+                    style={[s.heroNextRow, { borderColor: hero.next_action ? (hero.color || bp.accent) : bp.border, borderStyle: hero.next_action ? 'solid' : 'dashed' }]}>
                     <Ionicons name="flag" size={12} color={hero.next_action ? (hero.color || bp.accent) : bp.ink3} />
                     <Text style={[s.heroNextText, !hero.next_action && s.heroNextTextEmpty]} numberOfLines={1}>
-                      {hero.next_action || 'No next action set — open the build to set one'}
+                      {hero.next_action || 'No next step yet. Tap to set one'}
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                   {heroTotal > 0 && (
                     <View style={{ marginTop: 12 }}>
                       <RulerBar pct={heroPct} color={hero.color || bp.accent} bp={bp} height={11} />
@@ -649,6 +724,7 @@ export default function ProjectsScreen() {
                     onPress={() => navigation.navigate('ProjectDetail', { project: proj })}
                     onFavorite={toggleFavorite}
                     onDelete={deleteProject}
+                    onSetNext={setNextTarget}
                   />
                 ))
               )}
@@ -657,6 +733,7 @@ export default function ProjectsScreen() {
         )}
       </ScrollView>
 
+      <NextStepModal project={nextTarget} bp={bp} onSave={saveNextStep} onClose={() => setNextTarget(null)} />
       <NewBuildModal
         visible={showNew} userId={userId} bp={bp} buildColors={buildColors}
         initialType={route.params?.presetType}

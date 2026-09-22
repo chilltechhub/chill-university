@@ -13,6 +13,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../api/profileScopedClient';
 import { cacheRead, cacheWrite, isOnline } from '../api/offlineCache';
+import { addCapture } from '../api/captureService';
 import { RETENTION_DAYS, getRecentlyDeleted, restoreItem, permanentlyDelete, purgeExpired } from '../api/trashService';
 import TourSpot from '../components/TourSpot';
 import FloatingCard from '../components/FloatingCard';
@@ -1013,17 +1014,17 @@ export function QuickCaptureModal({ visible, userId, onSaved, onClose, prefill, 
     setSaving(true);
     try {
       const tagList = tags.split(',').map(t => t.trim()).filter(Boolean);
-      const { data, error } = await supabase.from('captures').insert({
-        user_id:    userId,
+      // Through addCapture's offlineWrite: offline (or a dropped request)
+      // queues the capture for flushQueue() instead of losing what was
+      // typed behind a "Could not save". Capture is the one write that must
+      // never ask the user to try again later.
+      const data = await addCapture(userId, {
         type,
-        title:      draft.length > 80 ? draft.slice(0, 77) + '...' : draft,
-        body:       draft,
-        url:        url,
-        tags:       tagList,
-        status:     'inbox',
-        created_at: new Date().toISOString(),
-      }).select().single();
-      if (error) throw error;
+        title: draft.length > 80 ? draft.slice(0, 77) + '...' : draft,
+        body:  draft,
+        url,
+        tags:  tagList,
+      });
       onSaved(data);
       setDraft(''); setType('note'); setTags(''); setUrl(null);
     } catch (e) {

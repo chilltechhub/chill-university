@@ -18,14 +18,14 @@
 // SQL and stays enforced whatever this renders.
 
 import React, { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAccess } from '../../context/AccessContext';
 import UnlockSheet from './UnlockSheet';
 import { unlockHint } from '../logic/featureAccess';
-import { FONTS } from '../theme';
+import { Card, Button } from './ui';
 
 /* ─── Hook: gate a list of entry points ───────────────────────────────────── */
 
@@ -85,7 +85,7 @@ export function gatedScreen(featureId, Component) {
 
 export default function FeatureGate({ featureId, children, fallback }) {
   const navigation = useNavigation();
-  const { colors: c, typography: t, spacing: sp, radius: r } = useTheme();
+  const { colors: c, typography: t, spacing: sp, radius: r, style: ui, accent } = useTheme();
   const { accessFor } = useAccess();
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -93,32 +93,30 @@ export default function FeatureGate({ featureId, children, fallback }) {
   if (access.available) return children;
   if (fallback) return fallback;
 
-  const s = makeStyles(c, t, sp, r);
+  const s = makeStyles(c, t, sp, r, ui);
   const feature = access.feature;
 
   return (
     <View style={s.wrap}>
-      <View style={s.card}>
-        <View style={s.iconBox}>
+      <Card style={s.card}>
+        <View style={[s.iconBox, { backgroundColor: accent.primaryLight }]}>
           <Ionicons
             name={access.status === 'paid' ? 'star-outline'
               : access.status === 'experimental' ? 'flask-outline'
               : 'lock-closed-outline'}
             size={26}
-            color={c.text3}
+            color={accent.primary}
           />
         </View>
         <Text style={s.title}>{feature?.label || 'Not open yet'}</Text>
-        <Text style={s.blurb}>{feature?.blurb}</Text>
+        {!!feature?.blurb && <Text style={s.blurb}>{feature.blurb}</Text>}
+        {/* How to open it — the line this screen exists for, so it gets
+            body contrast rather than the faintest grey. */}
         <Text style={s.hint}>{unlockHint(access)}</Text>
 
-        <TouchableOpacity style={s.primaryBtn} onPress={() => setSheetOpen(true)} activeOpacity={0.85}>
-          <Text style={s.primaryBtnText}>How to open this</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={s.ghostBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={s.ghostBtnText}>Back</Text>
-        </TouchableOpacity>
-      </View>
+        <Button label="How to open this" onPress={() => setSheetOpen(true)} />
+        <Button label="Back" variant="ghost" onPress={() => navigation.goBack()} style={{ marginTop: sp.xs }} />
+      </Card>
 
       <UnlockSheet
         visible={sheetOpen}
@@ -129,15 +127,11 @@ export default function FeatureGate({ featureId, children, fallback }) {
   );
 }
 
-const makeStyles = (c, t, sp, r) => StyleSheet.create({
+const makeStyles = (c, t, sp, r, ui) => StyleSheet.create({
   wrap:     { flex: 1, backgroundColor: c.bg0, alignItems: 'center', justifyContent: 'center', padding: sp.xl },
-  card:     { width: '100%', maxWidth: 360, backgroundColor: c.bg1, borderRadius: r.lg, borderWidth: 0.5, borderColor: c.border, padding: sp.xl, alignItems: 'center' },
-  iconBox:  { width: 52, height: 52, borderRadius: r.md, backgroundColor: c.bg2, alignItems: 'center', justifyContent: 'center', marginBottom: sp.md },
-  title:    { fontSize: t.lg, fontFamily: FONTS.displaySemibold, fontWeight: '800', color: c.text1, marginBottom: sp.sm, textAlign: 'center' },
+  card:     { width: '100%', maxWidth: 360, padding: sp.xl, alignItems: 'center' },
+  iconBox:  { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', marginBottom: sp.md },
+  title:    { fontSize: t.lg, fontFamily: ui.titleFont, fontWeight: '800', color: c.text1, marginBottom: sp.sm, textAlign: 'center' },
   blurb:    { fontSize: t.sm, color: c.text2, lineHeight: 20, textAlign: 'center', marginBottom: sp.sm },
-  hint:     { fontSize: t.xs, color: c.text4, textAlign: 'center', marginBottom: sp.lg },
-  primaryBtn:    { alignSelf: 'stretch', backgroundColor: c.teal, borderRadius: r.md, paddingVertical: sp.md, alignItems: 'center' },
-  primaryBtnText:{ color: '#fff', fontSize: t.sm, fontWeight: '800' },
-  ghostBtn:      { paddingVertical: sp.md },
-  ghostBtnText:  { color: c.text3, fontSize: t.sm },
+  hint:     { fontSize: t.sm, color: c.text1, fontWeight: t.semibold, lineHeight: 20, textAlign: 'center', marginBottom: sp.lg },
 });

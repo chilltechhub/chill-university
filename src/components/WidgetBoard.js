@@ -25,6 +25,7 @@ import Animated, {
   withRepeat, withSequence, withDelay, cancelAnimation,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { Eyebrow } from './ui';
 
 const JIGGLE_DEG = 1.4;
 const JIGGLE_MS = 130;
@@ -118,13 +119,13 @@ function DraggableWidget({ widgetKey, index, y, editing, offsetsRef, onSwap, onL
       onLayout={(e) => onLayoutHeight(widgetKey, Math.round(e.nativeEvent.layout.height))}
       style={{ position: 'absolute', left: 0, right: 0, top: dragging ? baseOffsetRef.current : y, zIndex: dragging ? 100 : 1 }}
     >
-      <Animated.View style={[aStyle, dragging && { shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 10 }]}>
+      <Animated.View style={[aStyle, dragging && { shadowColor: '#000' /* style-ok: drop shadow is black in both modes */, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 10 }]}>
         {children}
         {editing && (
           <>
             <TouchableOpacity onPress={onHide} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={{ position: 'absolute', top: -6, left: s.lg - 6, width: 22, height: 22, borderRadius: 11, backgroundColor: c.error || '#e05858', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: c.bg0, zIndex: 5 }}>
-              <Ionicons name="remove" size={14} color="#fff" />
+              style={{ position: 'absolute', top: -6, left: s.lg - 6, width: 22, height: 22, borderRadius: 11, backgroundColor: c.error, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: c.bg0, zIndex: 5 }}>
+              <Ionicons name="remove" size={14} color="#ffffff" /> {/* style-ok: white on the red remove badge */}
             </TouchableOpacity>
             <GestureDetector gesture={pan}>
               <View
@@ -201,9 +202,7 @@ export default function WidgetBoard({ layout, widgets, editing, onChangeLayout, 
 
       {editing && hidden.length > 0 && (
         <View style={{ paddingHorizontal: s.lg, marginTop: s.md }}>
-          <Text style={{ fontSize: 11, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>
-            Hidden widgets
-          </Text>
+          <Eyebrow style={{ marginBottom: s.sm }}>Hidden widgets</Eyebrow>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm }}>
             {hidden.map(({ key }) => (
               <TouchableOpacity key={key} onPress={() => handleToggleHidden(key)}

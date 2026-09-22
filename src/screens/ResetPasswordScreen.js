@@ -6,10 +6,9 @@
 // LoginScreen.js, since this is still part of the auth flow.
 
 import React, { useState } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity, Alert,
-  ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform,
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform, Image } from 'react-native';
+// Bright-teal variant of the icon mark: these screens are always dark.
+const BRAND_MARK = require('../../assets/splash-icon-dark.png');
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../api/supabaseClient';
@@ -69,9 +68,9 @@ export default function ResetPasswordScreen({ linkInvalid }) {
 
       <View style={s.content}>
         <View style={s.logoWrap}>
-          <Text style={s.logoEmoji}>🛸</Text>
-          <Text style={s.ornament}>✦  ·  ·  ✦</Text>
-          <Text style={s.appName}>ChillTech Hub</Text>
+          <Image source={BRAND_MARK} style={s.logoMark} accessibilityLabel="Deskartes logo" />
+          <Text style={s.appName}>Deskartes</Text>
+          <Text style={s.tagline}>by ChillTech Hub</Text>
         </View>
 
         <View style={s.card}>
@@ -148,6 +147,8 @@ const s = StyleSheet.create({
   content:     { paddingHorizontal: 24 },
   logoWrap:    { alignItems: 'center', marginBottom: 32 },
   logoEmoji:   { fontSize: 56, marginBottom: 8 },
+  logoMark:    { width: 76, height: 76, marginBottom: 10 },
+  tagline:     { fontSize: 13, color: 'rgba(255,255,255,0.35)', marginTop: 4 },
   ornament:    { color: '#c9a84c', fontSize: 13, letterSpacing: 8, marginBottom: 6 },
   appName:     { fontSize: 22, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
   card:        { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 24, padding: 24, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.1)' },
