@@ -96,7 +96,7 @@ const STEPS = [
 export default function MultiStepOnboarding() {
   const navigation = useNavigation();
   const themeCtx = useTheme(); // raw ThemeContext value — {colors, spacing, radius, ...}
-  const { colors: c, typography: t, spacing: s, radius: r, shadows: sh, isDark, setTheme } = themeCtx;
+  const { colors: c, typography: t, spacing: s, radius: r, shadows: sh, isDark, setTheme, suggestAccentForPersona } = themeCtx;
   // Shorthand bundle every Step component / helper below expects
   // ({c, t, s, r, sh, isDark}) — not the same shape as the raw context
   // value above, which uses the full property names.
@@ -509,6 +509,9 @@ export default function MultiStepOnboarding() {
     // Same reason: Home, the Library and Training all read the stage on
     // their first render.
     await setExperienceMode(data.experience_mode);
+    // The persona's accent colour, once, and only if none is set yet —
+    // Settings > Appearance owns it after that. Device-local; can't strand.
+    await suggestAccentForPersona(data.active_persona || DEFAULT_PERSONA).catch(() => {});
 
     // ── Out of the wizard, immediately ───────────────────────────────────
     // Saved is saved. Nothing below is worth holding someone on this

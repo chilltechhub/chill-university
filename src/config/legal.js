@@ -23,13 +23,14 @@
 // 307s to /privacy-policy.) Verified reachable.
 export const PRIVACY_POLICY_URL = 'https://chilltechhub.com/privacy-policy';
 
-// Set alongside the privacy policy when the marketing site has a terms page.
-// Null hides the link rather than rendering a dead one.
-export const TERMS_URL = null;
+// The app's own Terms of Service (published 2026-09-21, verified reachable).
+// Covers Deskartes Plus auto-renewal and cancellation, so it doubles as the
+// subscription Terms of Use both stores ask for — Google Play has no
+// "standard EULA" fallback, so this is the link that satisfies Play.
+export const TERMS_URL = 'https://chilltechhub.com/terms';
 
 // Apple requires every auto-renewing subscription screen to link to Terms of
-// Use (a EULA). Until the site has its own terms page, Apple's standard EULA
-// is the one that applies to the app anyway, so that's the honest link. The
-// same link has to go in the App Store listing's description.
+// Use (a EULA). TERMS_URL is that link now; Apple's standard EULA stays as
+// the fallback only. The same link has to go in the App Store description.
 export const APPLE_STANDARD_EULA_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
 export const SUBSCRIPTION_TERMS_URL = TERMS_URL || APPLE_STANDARD_EULA_URL;

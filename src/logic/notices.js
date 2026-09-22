@@ -27,7 +27,7 @@ export const NOTICE_CATS = [
   { key: 'inbox',    label: 'Capture Inbox',   icon: 'file-tray-full-outline' },
   { key: 'areas',    label: 'Life area check-ins', icon: 'pulse-outline' },
   { key: 'news',     label: 'App news',        icon: 'megaphone-outline' },
-  { key: 'shared',   label: 'Shared with Chill', icon: 'share-outline' },
+  { key: 'shared',   label: 'Shared with Deskartes', icon: 'share-outline' },
   { key: 'setup',    label: 'Setup tips',      icon: 'settings-outline' },
 ];
 
@@ -246,7 +246,7 @@ export function buildNotices(data, env) {
   if (env.phoneCapable && env.notifyPermission === 'denied' && env.wantsPhone) {
     add({
       id: 'setup-permission', cat: 'setup', priority: 88, icon: 'notifications-off-outline', tone: 'error',
-      title: 'Your phone is blocking Chill’s reminders',
+      title: 'Your phone is blocking Deskartes reminders',
       body: 'Reminders are on here but notifications are off in your phone’s settings.',
       primary: { label: 'Open settings', action: 'open-settings' }, snooze: false,
     });

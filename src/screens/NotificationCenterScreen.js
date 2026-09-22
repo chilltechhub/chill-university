@@ -353,10 +353,10 @@ export default function NotificationCenterScreen() {
       {news.map(n => <NoticeCard key={n.id} n={n} />)}
       {!news.length && <Text style={{ fontSize: 12, color: c.text3, marginBottom: s.lg }}>No news from Chill Tech right now.</Text>}
       <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, borderWidth: 0.5, borderColor: c.border, padding: s.lg }}>
-        <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.text1 }}>Bring things into Chill</Text>
+        <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.text1 }}>Bring things into Deskartes</Text>
         <Text style={{ fontSize: 12, color: c.text3, marginTop: 4, lineHeight: 17 }}>
           Copy a link or some text anywhere, then paste it here to save it, get a reminder, or plan it with AI.
-          {Platform.OS !== 'web' ? ' In the latest app build you can also tap Share in Safari, TikTok, Notes and more, then pick Chill.' : ''}
+          {Platform.OS !== 'web' ? ' In the latest app build you can also tap Share in Safari, TikTok, Notes and more, then pick Deskartes.' : ''}
         </Text>
         <View style={{ flexDirection: 'row', marginTop: s.md }}>
           {pill('Paste something in', 'clipboard-outline', pasteIn, { filled: true })}
@@ -487,7 +487,7 @@ export default function NotificationCenterScreen() {
               <>
                 {feed.permission === 'denied' && (
                   <TouchableOpacity onPress={() => Linking.openSettings().catch(() => {})} style={{ backgroundColor: c.errorLight, borderRadius: r.md, padding: s.md, marginTop: s.md }}>
-                    <Text style={{ fontSize: 12, color: c.error }}>Your phone is blocking notifications from Chill. Tap to open settings.</Text>
+                    <Text style={{ fontSize: 12, color: c.error }}>Your phone is blocking notifications from Deskartes. Tap to open settings.</Text>
                   </TouchableOpacity>
                 )}
                 <SettingLabel c={c} s={s} text="Remind me before timed plans" />

@@ -13,7 +13,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useUIPrefs } from '../../context/UIPrefsContext';
 import { supabase } from '../api/supabaseClient';
 import { cacheRead, cacheWrite, isOnline } from '../api/offlineCache';
-import { RANK_LABELS, FONTS } from '../theme';
+import { RANK_LABELS, FONTS, STYLES, ACCENTS } from '../theme';
 import LevelRing from '../components/LevelRing';
 import { getRank, getRankProgress } from '../logic/rankUtils';
 import { getUserApiKey, setUserApiKey, clearUserApiKey, maskKey } from '../api/aiKey';
@@ -42,8 +42,9 @@ import { isMinorRequiringConsent } from '../logic/ageOfConsent';
 // it back on.
 function SettingRow({ icon, iconColor, label, subtitle, right, onPress, c, t, s, r, alwaysShowSubtitle = false }) {
   const { showSubtext } = useUIPrefs();
+  const { style } = useTheme();
   const content = (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, backgroundColor: c.bg1, borderRadius: r.md, padding: s.lg, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, backgroundColor: c.bg1, borderRadius: style.cardRadius, padding: s.lg, marginBottom: s.sm, borderWidth: style.borderWidth, borderColor: c.border }}>
       <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: iconColor + '22', alignItems: 'center', justifyContent: 'center' }}>
         <Ionicons name={icon} size={18} color={iconColor} />
       </View>
@@ -92,7 +93,95 @@ function UnlockSummary({ accessFor, c, t, s, r, onPress }) {
 }
 
 function SectionLabel({ label, c, t, s }) {
-  return <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.sm, marginTop: s.lg, paddingHorizontal: 2 }}>{label}</Text>;
+  const { style } = useTheme();
+  return <Text style={{ fontSize: t.xs, color: style.name === 'plain' ? c.text3 : c.text4, ...style.sectionLabel, marginBottom: s.sm, marginTop: s.lg, paddingHorizontal: 2 }}>{label}</Text>;
+}
+
+// Mode / Style / Accent — the three appearance choices, all in ThemeContext.
+const MODE_OPTIONS = [
+  { key: 'system', label: 'System', icon: 'phone-portrait-outline' },
+  { key: 'light',  label: 'Light',  icon: 'sunny-outline' },
+  { key: 'dark',   label: 'Dark',   icon: 'moon-outline' },
+];
+
+function AppearancePicker({ c, t, s }) {
+  const { mode, setMode, styleName, setStyle, accentName, setAccent, accent, style, isDark } = useTheme();
+  const box = { backgroundColor: c.bg1, borderRadius: style.cardRadius, padding: s.lg, marginBottom: s.sm, borderWidth: style.borderWidth, borderColor: c.border };
+  const heading = { fontSize: t.sm, fontWeight: t.semibold, color: c.text1, marginBottom: s.sm };
+  return (
+    <View style={box}>
+      <Text style={heading}>Mode</Text>
+      <View style={{ flexDirection: 'row', backgroundColor: c.bg2, borderRadius: style.buttonRadius, padding: 3, marginBottom: s.lg }}>
+        {MODE_OPTIONS.map(m => {
+          const on = mode === m.key;
+          return (
+            <TouchableOpacity
+              key={m.key}
+              onPress={() => setMode(m.key)}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 9, borderRadius: style.buttonRadius - 2, backgroundColor: on ? c.bg1 : 'transparent' }}
+            >
+              <Ionicons name={m.icon} size={15} color={on ? accent.primary : c.text3} />
+              <Text style={{ fontSize: t.sm, fontWeight: on ? t.semibold : t.medium, color: on ? c.text1 : c.text3 }}>{m.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      <Text style={heading}>Style</Text>
+      <View style={{ flexDirection: 'row', gap: s.sm, marginBottom: s.lg }}>
+        {Object.values(STYLES).map(st => {
+          const on = styleName === st.name;
+          return (
+            <TouchableOpacity
+              key={st.name}
+              onPress={() => setStyle(st.name)}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              style={{ flex: 1, borderRadius: st.cardRadius, borderWidth: on ? 2 : 1, borderColor: on ? accent.primary : c.border, backgroundColor: c.bg0, padding: s.md }}
+            >
+              {/* A tiny sample of the style itself: its label and a card. */}
+              <Text style={{ fontSize: 10, color: c.text3, ...st.sectionLabel }}>{st.name === 'plain' ? 'Today' : 'TODAY'}</Text>
+              <View style={{ marginTop: 6, height: 22, borderRadius: st.cardRadius / 2, backgroundColor: c.bg1, borderWidth: st.borderWidth, borderColor: c.border, justifyContent: 'center', paddingHorizontal: 8 }}>
+                <View style={{ width: '60%', height: 5, borderRadius: 3, backgroundColor: c.text4 }} />
+              </View>
+              <Text style={{ marginTop: s.sm, fontSize: t.sm, fontWeight: t.semibold, color: c.text1, fontFamily: st.titleFont }}>{st.label}</Text>
+              <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>{st.description}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      <Text style={heading}>Accent</Text>
+      <View style={{ flexDirection: 'row', gap: s.lg }}>
+        {Object.entries(ACCENTS).map(([key, a]) => {
+          const on = accentName === key;
+          const swatch = a[isDark ? 'dark' : 'light'].primary;
+          return (
+            <TouchableOpacity
+              key={key}
+              onPress={() => setAccent(key)}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={`${a.label} accent`}
+              accessibilityState={{ selected: on }}
+              style={{ alignItems: 'center', gap: 4 }}
+            >
+              <View style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: on ? swatch : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
+                <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: swatch, alignItems: 'center', justifyContent: 'center' }}>
+                  {on && <Ionicons name="checkmark" size={15} color={a[isDark ? 'dark' : 'light'].onPrimary} />}
+                </View>
+              </View>
+              <Text style={{ fontSize: t.xs, color: on ? c.text1 : c.text3 }}>{a.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
 }
 
 // 2x2 grid, laid out the way the corners actually sit on screen.
@@ -522,7 +611,7 @@ function AIKeyCard({ c, t, s, r }) {
 
 export default function SettingsScreen() {
   const navigation  = useNavigation();
-  const { colors: c, typography: t, spacing: s, radius: r, isDark, toggleTheme } = useTheme();
+  const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
 
   const [profile,   setProfile]   = useState(null);
   const [loading,   setLoading]   = useState(true);
@@ -781,21 +870,7 @@ export default function SettingsScreen() {
         {/* Appearance */}
         <SectionLabel label="Appearance" c={c} t={t} s={s} />
         <TourSpot id="settings-appearance">
-        <SettingRow
-          icon={isDark ? 'moon' : 'sunny'}
-          iconColor={isDark ? '#b07be0' : '#f5a623'}
-          label={isDark ? 'Dark Mode' : 'Light Mode'}
-          subtitle="Toggle between dark and light theme"
-          right={
-            <Switch
-              value={isDark}
-              onValueChange={toggleTheme}
-              trackColor={{ false: c.bg2, true: c.teal + '88' }}
-              thumbColor={isDark ? c.teal : c.text4}
-            />
-          }
-          c={c} t={t} s={s} r={r}
-        />
+        <AppearancePicker c={c} t={t} s={s} />
         </TourSpot>
         <TourSpot id="settings-background">
         <SettingRow
@@ -1093,7 +1168,7 @@ export default function SettingsScreen() {
             );
           }}
           c={c} t={t} s={s} r={r} />
-        <SettingRow icon="information-circle-outline" iconColor={c.teal} label="App Version" subtitle="CT App · ChillTech Hub LLC"
+        <SettingRow icon="information-circle-outline" iconColor={c.teal} label="App Version" subtitle="Deskartes · ChillTech Hub LLC"
           right={<Text style={{ fontSize: t.xs, color: c.text4 }}>v1.0.0</Text>}
           c={c} t={t} s={s} r={r} />
         <SettingRow icon="globe-outline" iconColor="#64b5f6" label="Privacy Policy"

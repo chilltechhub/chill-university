@@ -179,6 +179,76 @@ export const FONTS = {
   monoSemibold:    'JetBrainsMono_600SemiBold',
 };
 
+// ── Style: how the app is dressed, independent of light/dark ──────────────
+// `plain` is the default: system type, sentence-case labels, soft cards.
+// `command` is the original HUD look: mono uppercase labels, Rajdhani
+// titles, tighter corners. Screens read these through useTheme().style
+// (or the shared primitives) rather than hard-coding FONTS.mono or
+// textTransform: 'uppercase' — see docs/finishing-touches-plan.md.
+export const STYLES = {
+  plain: {
+    name: 'plain',
+    label: 'Plain',
+    description: 'Clean and calm. Easy on long sessions.',
+    // Section / eyebrow labels ("Appearance", "App experience")
+    sectionLabel: { fontFamily: undefined, textTransform: 'none', letterSpacing: 0, fontWeight: '600' },
+    // Big screen titles. undefined = system font.
+    titleFont: undefined,
+    cardRadius: 14,
+    buttonRadius: 12,
+    borderWidth: 0.5,
+    cardShadow: 'sm',
+    // What "Show Emojis" means until the user sets it themselves.
+    emojiDefault: false,
+  },
+  command: {
+    name: 'command',
+    label: 'Command',
+    description: 'The ops-deck look. Mono labels, sharper edges.',
+    sectionLabel: { fontFamily: FONTS.mono, textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: '700' },
+    titleFont: FONTS.display,
+    cardRadius: 6,
+    buttonRadius: 6,
+    borderWidth: 1,
+    cardShadow: null,
+    emojiDefault: true,
+  },
+};
+export const DEFAULT_STYLE = 'plain';
+
+// ── Accent: the colour of primary actions ─────────────────────────────────
+// Per mode so contrast holds in both. Light-mode teal/gold are one step
+// darker than colors.teal / colors.gold: those sit at ~4.2:1 on white, just
+// under WCAG AA (4.5) for text, and white-on-button fails the same way.
+// These clear 5:1. `onPrimary` is the text/icon colour on a filled button.
+export const ACCENTS = {
+  teal: {
+    label: 'Teal',
+    light: { primary: '#167a6c', primaryMid: '#2bb5a0', primaryLight: '#e0f4f0', onPrimary: '#ffffff' },
+    dark:  { primary: '#3fcf9e', primaryMid: '#6ce0b8', primaryLight: '#0a2822', onPrimary: '#0d1119' },
+  },
+  gold: {
+    label: 'Gold',
+    light: { primary: '#8a6420', primaryMid: '#c9a84c', primaryLight: '#f5e8c8', onPrimary: '#ffffff' },
+    dark:  { primary: '#e8b34a', primaryMid: '#f0c164', primaryLight: '#2a2007', onPrimary: '#0d1119' },
+  },
+  slate: {
+    label: 'Slate',
+    light: { primary: '#3d5a80', primaryMid: '#6a86ab', primaryLight: '#e6ecf4', onPrimary: '#ffffff' },
+    dark:  { primary: '#9db4d3', primaryMid: '#bccde3', primaryLight: '#172238', onPrimary: '#0d1119' },
+  },
+};
+export const DEFAULT_ACCENT = 'teal';
+
+// A persona suggests an accent once, at the end of onboarding, and only if
+// the user hasn't picked one. It never sets the style.
+export const PERSONA_ACCENT = {
+  STUDENT:      'teal',
+  PERSONAL:     'teal',
+  BUSINESS:     'slate',
+  ENTREPRENEUR: 'gold',
+};
+
 // Typography — same across both themes
 export const typography = {
   xs:       11,

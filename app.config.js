@@ -14,7 +14,7 @@ export default ({ config }) => {
       'expo-asset',
       'expo-font',
       'expo-status-bar',
-      // Share INTO the app: "Chill" shows in the phone's share sheet for
+      // Share INTO the app: "Deskartes" shows in the phone's share sheet for
       // links and text, which land in the Notification Center to be filed
       // (src/components/ShareIntentListener.js). Needs a dev/store build —
       // Expo Go can't carry a share extension, and the app simply skips it
@@ -38,7 +38,15 @@ export default ({ config }) => {
         {
           image: './assets/splash-icon.png',
           resizeMode: 'contain',
-          backgroundColor: '#ffffff',
+          // The icon's paper colour, so launch -> icon -> splash reads as one.
+          backgroundColor: '#fafbf5',
+          // Dark-mode phones got a white flash on launch. A brighter-teal
+          // mark (scripts/render-brand-assets.mjs) on the dark page colour
+          // (THEMES.dark.bg0). Needs userInterfaceStyle "automatic".
+          dark: {
+            image: './assets/splash-icon-dark.png',
+            backgroundColor: '#12161f',
+          },
         },
       ],
     ],

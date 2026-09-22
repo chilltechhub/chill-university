@@ -101,7 +101,7 @@ export default function PlusScreen() {
           <View style={st.starWrap}>
             <Ionicons name="star" size={30} color={c.gold} />
           </View>
-          <Text style={st.kicker}>Chill Plus</Text>
+          <Text style={st.kicker}>Deskartes Plus</Text>
           <Text style={st.title}>
             {plus.hasPlus ? 'You have Plus' : (FROM_COPY[from] || 'Go deeper')}
           </Text>
@@ -166,7 +166,7 @@ function Purchase({ plus, user, packages, selected, setChoice, saving, onBuy, st
     return (
       <Text style={st.note}>
         {Platform.OS === 'web'
-          ? 'Plus is bought in the Chill App on iPhone or Android. Once you have it, it works here too when you sign in.'
+          ? 'Plus is bought in the Deskartes app on iPhone or Android. Once you have it, it works here too when you sign in.'
           : 'Purchases aren’t set up in this build yet.'}
       </Text>
     );

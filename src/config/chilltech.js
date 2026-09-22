@@ -31,7 +31,7 @@ export const DIVISIONS = [
   { key: 'analytics',   label: 'Business Analytics', url: page('business-analytics'), blurb: 'Reporting and business intelligence' },
   { key: 'recovery',    label: 'CTH Recovery',       url: 'https://cthrecovery.com',  blurb: 'Data and device recovery' },
   { key: 'wiki',        label: 'CT Encyclopedia',    url: page('wiki'),               blurb: 'Reference wiki, incl. 3D printing and manufacturing' },
-  { key: 'chuni',       label: 'Chuni',              url: page('ct-app'),             blurb: 'This app' },
+  { key: 'deskartes',   label: 'Deskartes',          url: page('ct-app'),             blurb: 'This app' },
 ];
 
 export const LINKS = {

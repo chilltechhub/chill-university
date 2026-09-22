@@ -2,11 +2,9 @@
 // Clean auth screen — space traveler theme, handles both login and signup
 
 import React, { useState } from 'react';
-import {
-  View, Text, TextInput, TouchableOpacity, Alert,
-  ActivityIndicator, StyleSheet, KeyboardAvoidingView,
-  Platform, Animated, Linking,
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform, Animated, Linking, Image } from 'react-native';
+// Bright-teal variant of the icon mark: these screens are always dark.
+const BRAND_MARK = require('../../assets/splash-icon-dark.png');
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../api/supabaseClient';
@@ -204,10 +202,9 @@ export default function LoginScreen({ onSuccess, onClose }) {
       <View style={s.content}>
         {/* Logo */}
         <View style={s.logoWrap}>
-          <Text style={s.logoEmoji}>🛸</Text>
-          <Text style={s.ornament}>✦  ·  ·  ✦</Text>
-          <Text style={s.appName}>ChillTech Hub</Text>
-          <Text style={s.tagline}>Tech for the rest of us</Text>
+          <Image source={BRAND_MARK} style={s.logoMark} accessibilityLabel="Deskartes logo" />
+          <Text style={s.appName}>Deskartes</Text>
+          <Text style={s.tagline}>by ChillTech Hub</Text>
         </View>
 
         {/* Card */}
@@ -379,6 +376,7 @@ const s = StyleSheet.create({
   content:     { paddingHorizontal: 24 },
   logoWrap:    { alignItems: 'center', marginBottom: 32 },
   logoEmoji:   { fontSize: 56, marginBottom: 8 },
+  logoMark:    { width: 76, height: 76, marginBottom: 10 },
   ornament:    { color: '#c9a84c', fontSize: 13, letterSpacing: 8, marginBottom: 6 },
   appName:     { fontSize: 22, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
   tagline:     { fontSize: 13, color: 'rgba(255,255,255,0.35)', marginTop: 4 },

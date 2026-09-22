@@ -1,7 +1,7 @@
 // src/screens/HelpScreen.js
 // Help & FAQ — reachable from the floating action button anywhere in the app.
 // Shows a "this screen" card (when we know where the user came from) plus a
-// general FAQ accordion covering every major area of ChillApp.
+// general FAQ accordion covering every major area of Deskartes.
 
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
@@ -42,7 +42,7 @@ const FAQ = [
     a: 'Open the Workshop (Library → Projects) and tap the + button, or use the floating + button anywhere and choose "New Project."',
   },
   {
-    q: 'Can I use ChillApp offline?',
+    q: 'Can I use Deskartes offline?',
     a: 'Some data is cached locally, but most features (planner, projects, notes) need a connection to sync with your account.',
   },
   {
@@ -134,7 +134,7 @@ export default function HelpScreen() {
             borderWidth: 0.5, borderColor: c.border, marginBottom: s.xl,
           }}>
             <Text style={{ fontSize: t.sm, color: c.text3, lineHeight: 20 }}>
-              No specific guide for this screen yet — the FAQ below covers the rest of ChillApp.
+              No specific guide for this screen yet — the FAQ below covers the rest of Deskartes.
             </Text>
           </View>
         )}

@@ -16,7 +16,7 @@ export default function MaintenanceScreen({ message }) {
       <Ionicons name="construct-outline" size={48} color={c.gold} />
       <Text style={[styles.title, { color: c.text1 }]}>Be right back</Text>
       <Text style={[styles.message, { color: c.text3 }]}>
-        {message || 'Chill is getting a quick tune-up. Back in a few minutes.'}
+        {message || 'Deskartes is getting a quick tune-up. Back in a few minutes.'}
       </Text>
     </View>
   );
