@@ -33,7 +33,7 @@ import { useProfiles } from '../../context/ProfileAccountsContext';
 import { FEATURES } from '../data/featureCatalog';
 import { stageMeta } from '../logic/experienceStage';
 import { MAX_STAGE } from '../data/experienceStages';
-import { PRIVACY_POLICY_URL, TERMS_URL } from '../config/legal';
+import { PRIVACY_POLICY_URL, TERMS_URL, SUPPORT_EMAIL } from '../config/legal';
 import { shareMyDataExport } from '../api/dataExport';
 import { isMinorRequiringConsent } from '../logic/ageOfConsent';
 
@@ -1133,6 +1133,9 @@ export default function SettingsScreen() {
               ],
             );
           }}
+          c={c} t={t} s={s} r={r} />
+        <SettingRow icon="mail-outline" iconColor={c.teal} label="Contact support" subtitle={`${SUPPORT_EMAIL} · account, billing and bugs`}
+          onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Deskartes support')}`)}
           c={c} t={t} s={s} r={r} />
         <SettingRow icon="information-circle-outline" iconColor={c.teal} label="App Version" subtitle="Deskartes · ChillTech Hub LLC"
           right={<Text style={{ fontSize: t.xs, color: c.text4 }}>v1.0.0</Text>}

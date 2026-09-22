@@ -32,6 +32,7 @@ import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
+import { usePlus } from '../../context/PlusContext';
 import { supabase } from '../api/profileScopedClient';
 import { addCapture } from '../api/captureService';
 import { analyzeWithAI, hasUserApiKey } from '../api/importAI';
@@ -101,6 +102,17 @@ export default function ImportScreen() {
 
   const detected = useMemo(() => (format === 'auto' ? detectFormat(pasteText) : format), [pasteText, format]);
   const willUseAI = detected === 'freeform';
+  // The shared AI runs on the app's paid model, so the server only allows it
+  // with Plus. Without Plus or your own key, say so up front and point at
+  // the free route (Fill with AI) instead of letting the tap fail.
+  const plus = usePlus();
+  const sharedAIOpen = hasKey || plus.hasPlus;
+  const [planNotice, setPlanNotice] = useState(null); // text shown by the Analyze button
+  const needsPlus = (e) => {
+    if (e?.code !== 'PLUS_REQUIRED') return false;
+    setPlanNotice(e.message);
+    return true;
+  };
 
   const pasteFromClipboard = async () => {
     try {
@@ -208,7 +220,7 @@ export default function ImportScreen() {
         setDupSkipped(duplicatesSkipped);
       }
     } catch (e) {
-      Alert.alert('Could not analyze that', e.message || 'Try again in a moment.');
+      if (!needsPlus(e)) Alert.alert('Could not analyze that', e.message || 'Try again in a moment.');
     }
     setAnalyzing(false);
   };
@@ -238,7 +250,7 @@ export default function ImportScreen() {
       }));
     } catch (e) {
       console.error('ImportScreen enrich failed:', e);
-      Alert.alert('Could not enrich with AI', e.message || 'Try again in a moment.');
+      if (!needsPlus(e)) Alert.alert('Could not enrich with AI', e.message || 'Try again in a moment.');
     }
     setEnriching(false);
   };
@@ -321,7 +333,9 @@ export default function ImportScreen() {
               style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.goldLight, borderRadius: r.md, padding: s.md, marginBottom: s.lg, borderWidth: 0.5, borderColor: c.gold + '55' }}>
               <Ionicons name="information-circle-outline" size={16} color={c.gold} />
               <Text style={{ flex: 1, fontSize: 11, color: c.gold }}>
-                Using the app's shared AI. Add your own Anthropic key in Settings for faster, unlimited imports.
+                {plus.hasPlus
+                  ? 'Using Deskartes AI with your Plus plan. Add your own Anthropic key in Settings for unlimited imports.'
+                  : 'Sorting messy text with AI is part of Plus, or free with your own Anthropic key (tap to add one). Links, lists and CSV import free either way.'}
               </Text>
             </TouchableOpacity>
           )}
@@ -347,7 +361,7 @@ export default function ImportScreen() {
             </View>
             <TextInput
               value={pasteText}
-              onChangeText={setPasteText}
+              onChangeText={(v) => { setPasteText(v); setPlanNotice(null); }}
               placeholder={'Drop in raw URLs, "site.com - what it does" one per line, a browser bookmarks export, a markdown list, CSV, tab dumps — whatever you\'ve got.'}
               placeholderTextColor={c.text4}
               multiline
@@ -389,6 +403,32 @@ export default function ImportScreen() {
           </TourSpot>
 
           {/* ── 3. Analyze / Parse ── */}
+          {(planNotice || (willUseAI && !sharedAIOpen)) && (
+            <View style={{ backgroundColor: c.bg1, borderRadius: r.md, borderWidth: 1, borderColor: c.gold + '66', padding: s.md, marginBottom: s.md, gap: s.sm }}>
+              <Text style={{ fontSize: t.sm, color: c.text1, lineHeight: 19 }}>
+                {planNotice || 'This looks like free-form text, which needs AI to sort. That runs with Plus or your own key.'}
+              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm }}>
+                <TouchableOpacity onPress={() => navigation.navigate('AIBridgeScreen', { target: 'vault' })}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: s.md, paddingVertical: 8, borderRadius: r.md, backgroundColor: c.tealLight }}>
+                  <Ionicons name="sparkles-outline" size={14} color={c.teal} />
+                  <Text style={{ fontSize: t.xs, fontWeight: '700', color: c.teal }}>Fill with AI (free)</Text>
+                </TouchableOpacity>
+                {plus.onSale && (
+                  <TouchableOpacity onPress={() => navigation.navigate('Plus', { from: 'ai-import' })}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: s.md, paddingVertical: 8, borderRadius: r.md, borderWidth: 1, borderColor: c.gold }}>
+                    <Ionicons name="star-outline" size={14} color={c.gold} />
+                    <Text style={{ fontSize: t.xs, fontWeight: '700', color: c.gold }}>See Plus</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity onPress={() => navigation.navigate('Settings')}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: s.md, paddingVertical: 8 }}>
+                  <Ionicons name="key-outline" size={14} color={c.text2} />
+                  <Text style={{ fontSize: t.xs, fontWeight: '700', color: c.text2 }}>Use my own key</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
           <TourSpot id="import-analyze">
           <TouchableOpacity
             onPress={analyze}

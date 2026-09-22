@@ -23,6 +23,10 @@
 // 307s to /privacy-policy.) Verified reachable.
 export const PRIVACY_POLICY_URL = 'https://chilltechhub.com/privacy-policy';
 
+// The support address the Terms of Service give for account, billing and
+// deletion questions. Help's FAQ and Settings > Contact support use it.
+export const SUPPORT_EMAIL = 'help@chilltechhub.com';
+
 // The app's own Terms of Service (published 2026-09-21, verified reachable).
 // Covers Deskartes Plus auto-renewal and cancellation, so it doubles as the
 // subscription Terms of Use both stores ask for — Google Play has no

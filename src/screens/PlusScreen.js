@@ -27,6 +27,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { usePlus } from '../../context/PlusContext';
 import { PRIVACY_POLICY_URL, SUBSCRIPTION_TERMS_URL } from '../config/legal';
+import { getFeature } from '../data/featureCatalog';
 import { FONTS } from '../theme';
 
 const PERKS = [
@@ -42,10 +43,17 @@ const PERKS = [
     body: 'Run a class, team or group, with rosters, invites and assignments.' },
 ];
 
-// What they bumped into, said back to them.
+// What they bumped into, said back to them. `feature` with a featureId
+// names the tool ("Deep Insights is part of Plus.").
 const FROM_COPY = {
   business: 'The rest of this course is part of Plus.',
   feature: 'That one is part of Plus.',
+  'ai-import': 'AI Import is part of Plus.',
+};
+// A free way to do the same job, said on the paywall so Plus never looks
+// like the only road. Keyed like FROM_COPY / featureId.
+const FREE_ALTERNATIVE = {
+  'ai-import': 'Fill with AI stays free: it works with your own ChatGPT, Claude or Gemini.',
 };
 
 export default function PlusScreen() {
@@ -57,6 +65,10 @@ export default function PlusScreen() {
   const st = useMemo(() => makeStyles(c, s, r), [c, s, r]);
 
   const from = route.params?.from;
+  const featureId = route.params?.featureId || (from === 'ai-import' ? 'ai-import' : null);
+  const feature = featureId ? getFeature(featureId) : null;
+  const headline = (from === 'feature' && feature) ? `${feature.label} is part of Plus.` : FROM_COPY[from];
+  const freeAlt = FREE_ALTERNATIVE[featureId];
   const [choice, setChoice] = useState(null);
   const [message, setMessage] = useState(null); // { tone: 'good'|'bad'|'info', text }
 
@@ -103,13 +115,14 @@ export default function PlusScreen() {
           </View>
           <Text style={st.kicker}>Deskartes Plus</Text>
           <Text style={st.title}>
-            {plus.hasPlus ? 'You have Plus' : (FROM_COPY[from] || 'Go deeper')}
+            {plus.hasPlus ? 'You have Plus' : (headline || 'Go deeper')}
           </Text>
           {!plus.hasPlus && (
             <Text style={st.lede}>
               All the learning, games and life tools stay free. Plus adds the business courses and the power tools.
             </Text>
           )}
+          {!plus.hasPlus && !!freeAlt && <Text style={st.freeAlt}>{freeAlt}</Text>}
         </View>
 
         {plus.hasPlus && <PlanStatus plus={plus} st={st} c={c} />}
@@ -301,6 +314,7 @@ const makeStyles = (c, s, r) => StyleSheet.create({
   },
   title: { fontSize: 28, fontFamily: FONTS.display, fontWeight: '800', color: c.text1, textAlign: 'center' },
   lede: { fontSize: 14, color: c.text2, lineHeight: 21, textAlign: 'center', marginTop: 8 },
+  freeAlt: { fontSize: 13, color: c.teal, fontWeight: '600', lineHeight: 19, textAlign: 'center', marginTop: 8 },
 
   perks: {
     backgroundColor: c.bg1, borderRadius: r.lg, borderWidth: 1, borderColor: c.border,

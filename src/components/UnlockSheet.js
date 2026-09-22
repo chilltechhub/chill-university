@@ -227,7 +227,7 @@ export default function UnlockSheet({ visible, featureId, onClose, onUnlocked })
                     <>
                       <TouchableOpacity
                         style={s.outlineBtn}
-                        onPress={() => { onClose?.(); navigation.navigate('Plus', { from: 'feature' }); }}
+                        onPress={() => { onClose?.(); navigation.navigate('Plus', { from: 'feature', featureId }); }}
                         activeOpacity={0.85}
                       >
                         <Ionicons name="star" size={15} color={c.gold} />
