@@ -14,6 +14,7 @@ import { useUIPrefs } from '../../context/UIPrefsContext';
 import { supabase } from '../api/supabaseClient';
 import { cacheRead, cacheWrite, isOnline } from '../api/offlineCache';
 import { RANK_LABELS, FONTS, STYLES, ACCENTS } from '../theme';
+import { SectionLabel, Eyebrow, Button, ListRow, Readout } from '../components/ui';
 import LevelRing from '../components/LevelRing';
 import { getRank, getRankProgress } from '../logic/rankUtils';
 import { getUserApiKey, setUserApiKey, clearUserApiKey, maskKey } from '../api/aiKey';
@@ -40,22 +41,9 @@ import { isMinorRequiringConsent } from '../logic/ageOfConsent';
 // themselves — hiding the explanation of what "show subtitles" does the
 // instant you turn it off would bury the very control you'd need to turn
 // it back on.
-function SettingRow({ icon, iconColor, label, subtitle, right, onPress, c, t, s, r, alwaysShowSubtitle = false }) {
-  const { showSubtext } = useUIPrefs();
-  const { style } = useTheme();
-  const content = (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, backgroundColor: c.bg1, borderRadius: style.cardRadius, padding: s.lg, marginBottom: s.sm, borderWidth: style.borderWidth, borderColor: c.border }}>
-      <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: iconColor + '22', alignItems: 'center', justifyContent: 'center' }}>
-        <Ionicons name={icon} size={18} color={iconColor} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1 }}>{label}</Text>
-        {subtitle && (alwaysShowSubtitle || showSubtext) && <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>{subtitle}</Text>}
-      </View>
-      {right}
-    </View>
-  );
-  return onPress ? <TouchableOpacity onPress={onPress} activeOpacity={0.8}>{content}</TouchableOpacity> : content;
+// Thin adapter: the existing call sites pass `label`, and c/t/s/r (ignored).
+function SettingRow({ label, ...rest }) {
+  return <ListRow title={label} {...rest} />;
 }
 
 // A one-line tally of what's open and what isn't. Deliberately a count
@@ -90,11 +78,6 @@ function UnlockSummary({ accessFor, c, t, s, r, onPress }) {
       </View>
     </TouchableOpacity>
   );
-}
-
-function SectionLabel({ label, c, t, s }) {
-  const { style } = useTheme();
-  return <Text style={{ fontSize: t.xs, color: style.name === 'plain' ? c.text3 : c.text4, ...style.sectionLabel, marginBottom: s.sm, marginTop: s.lg, paddingHorizontal: 2 }}>{label}</Text>;
 }
 
 // Mode / Style / Accent — the three appearance choices, all in ThemeContext.
@@ -318,7 +301,7 @@ function CrestModal({ visible, crestColor, roleBadge, onClose, onSave, c, t, s, 
             <TouchableOpacity onPress={onClose}><Ionicons name="close" size={22} color={c.text3} /></TouchableOpacity>
           </View>
 
-          <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Crest color</Text>
+          <Eyebrow style={{ marginBottom: s.sm }}>Crest color</Eyebrow>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: s.lg }}>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               {CREST_COLORS.map(cc => (
@@ -330,7 +313,7 @@ function CrestModal({ visible, crestColor, roleBadge, onClose, onSave, c, t, s, 
             </View>
           </ScrollView>
 
-          <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Role badge</Text>
+          <Eyebrow style={{ marginBottom: s.sm }}>Role badge</Eyebrow>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: s.xl }}>
             {ROLE_BADGES.map(b => (
               <TouchableOpacity key={b.key} onPress={() => setBadge(b.key)}
@@ -341,9 +324,7 @@ function CrestModal({ visible, crestColor, roleBadge, onClose, onSave, c, t, s, 
             ))}
           </View>
 
-          <TouchableOpacity onPress={() => onSave(color, badge)} style={{ backgroundColor: c.teal, borderRadius: r.md, paddingVertical: 14, alignItems: 'center' }}>
-            <Text style={{ color: '#fff', fontWeight: '800', fontSize: t.md }}>Save</Text>
-          </TouchableOpacity>
+          <Button label="Save" onPress={() => onSave(color, badge)} />
         </View>
       </View>
     </Modal>
@@ -413,9 +394,9 @@ function DeleteAccountModal({ visible, onClose, onConfirm, deleting, c, t, s, r 
                   })}
                 </View>
 
-                <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginTop: s.lg, marginBottom: s.sm }}>
+                <Eyebrow style={{ marginTop: s.lg, marginBottom: s.sm }}>
                   Anything else? (optional)
-                </Text>
+                </Eyebrow>
                 <TextInput
                   value={details}
                   onChangeText={setDetails}
@@ -431,10 +412,7 @@ function DeleteAccountModal({ visible, onClose, onConfirm, deleting, c, t, s, r 
                   style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: r.md, borderWidth: 1, borderColor: c.border }}>
                   <Text style={{ color: c.text3, fontWeight: t.semibold, fontSize: t.sm }}>Skip</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => setStep('confirm')}
-                  style={{ flex: 1, backgroundColor: c.teal, borderRadius: r.md, paddingVertical: 14, alignItems: 'center' }}>
-                  <Text style={{ color: '#fff', fontWeight: '800', fontSize: t.sm }}>Continue</Text>
-                </TouchableOpacity>
+                <Button label="Continue" onPress={() => setStep('confirm')} style={{ flex: 1 }} />
               </View>
             </>
           ) : (
@@ -446,14 +424,14 @@ function DeleteAccountModal({ visible, onClose, onConfirm, deleting, c, t, s, r 
                 </TouchableOpacity>
                 <TouchableOpacity onPress={onClose} disabled={deleting}><Ionicons name="close" size={22} color={c.text3} /></TouchableOpacity>
               </View>
-              <Text style={{ fontSize: t.lg, fontWeight: '800', color: '#e05858', marginBottom: s.md }}>Delete Account</Text>
+              <Text style={{ fontSize: t.lg, fontWeight: '800', color: c.error, marginBottom: s.md }}>Delete Account</Text>
               <Text style={{ fontSize: t.sm, color: c.text2, lineHeight: 20, marginBottom: s.lg }}>
                 This permanently deletes your account and everything in it — projects, planner, notes,
                 research, portfolio, garden, progress, all of it. There's no undo.
               </Text>
-              <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>
+              <Eyebrow style={{ marginBottom: s.sm }}>
                 Type DELETE to confirm
-              </Text>
+              </Eyebrow>
               <TextInput
                 value={confirmText}
                 onChangeText={setConfirmText}
@@ -462,18 +440,15 @@ function DeleteAccountModal({ visible, onClose, onConfirm, deleting, c, t, s, r 
                 autoCapitalize="characters"
                 autoCorrect={false}
                 editable={!deleting}
-                style={{ fontSize: t.md, color: c.text1, backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 1, borderColor: canDelete ? '#e05858' : c.border, padding: s.md, marginBottom: s.lg }}
+                style={{ fontSize: t.md, color: c.text1, backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 1, borderColor: canDelete ? c.error : c.border, padding: s.md, marginBottom: s.lg }}
               />
-              <TouchableOpacity
+              <Button
+                label="Permanently Delete My Account"
                 onPress={() => onConfirm({ reason, details })}
-                disabled={!canDelete || deleting}
-                style={{ backgroundColor: '#e05858', borderRadius: r.md, paddingVertical: 14, alignItems: 'center', opacity: (!canDelete || deleting) ? 0.5 : 1 }}
-              >
-                {deleting
-                  ? <ActivityIndicator color="#fff" size="small" />
-                  : <Text style={{ color: '#fff', fontWeight: '800', fontSize: t.md }}>Permanently Delete My Account</Text>
-                }
-              </TouchableOpacity>
+                disabled={!canDelete}
+                busy={deleting}
+                color={c.error}
+              />
             </>
           )}
         </View>
@@ -514,10 +489,7 @@ function BirthDateModal({ visible, onClose, onSave, saving, c, t, s, r }) {
             <TextInput style={[input, { flex: 1 }]} placeholder="DD" placeholderTextColor={c.text4} value={dd} onChangeText={setDd} keyboardType="number-pad" maxLength={2} />
             <TextInput style={[input, { flex: 1.6 }]} placeholder="YYYY" placeholderTextColor={c.text4} value={yyyy} onChangeText={setYyyy} keyboardType="number-pad" maxLength={4} />
           </View>
-          <TouchableOpacity onPress={() => onSave({ mm, dd, yyyy })} disabled={saving}
-            style={{ backgroundColor: c.teal, borderRadius: r.md, padding: s.md, alignItems: 'center' }}>
-            {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontWeight: t.bold, fontSize: t.sm }}>Save</Text>}
-          </TouchableOpacity>
+          <Button label="Save" onPress={() => onSave({ mm, dd, yyyy })} busy={saving} />
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -569,7 +541,7 @@ function AIKeyCard({ c, t, s, r }) {
         <ActivityIndicator size="small" color={c.gold} />
       ) : savedKey && !editing ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={{ fontSize: t.sm, fontFamily: FONTS.mono, color: c.text2 }}>{maskKey(savedKey)}</Text>
+          <Text style={{ fontSize: t.sm, fontFamily: FONTS.mono, color: c.text2 }}>{maskKey(savedKey)}</Text>{/* style-ok: keys read better monospaced */}
           <View style={{ flexDirection: 'row', gap: s.md }}>
             <TouchableOpacity onPress={() => { setDraft(savedKey); setEditing(true); }}>
               <Text style={{ fontSize: 12, fontWeight: '700', color: c.teal }}>Change</Text>
@@ -589,19 +561,13 @@ function AIKeyCard({ c, t, s, r }) {
             secureTextEntry
             autoCapitalize="none"
             autoCorrect={false}
-            style={{ fontSize: t.sm, color: c.text1, backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border, padding: s.md, marginBottom: s.sm, fontFamily: FONTS.mono }}
+            style={{ fontSize: t.sm, color: c.text1, backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border, padding: s.md, marginBottom: s.sm, fontFamily: FONTS.mono /* style-ok: keys read better monospaced */ }}
           />
           <View style={{ flexDirection: 'row', gap: s.sm }}>
             <TouchableOpacity onPress={() => Linking.openURL('https://console.anthropic.com/settings/keys')} style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: s.sm }}>
               <Text style={{ fontSize: 12, fontWeight: '700', color: c.teal }}>Get a key →</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={save}
-              disabled={saving || !draft.trim()}
-              style={{ flex: 1, backgroundColor: c.gold, borderRadius: r.md, paddingVertical: s.sm, alignItems: 'center', opacity: (saving || !draft.trim()) ? 0.5 : 1 }}
-            >
-              {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{ fontSize: 12, fontWeight: '800', color: '#fff' }}>Save key</Text>}
-            </TouchableOpacity>
+            <Button label="Save key" size="sm" onPress={save} disabled={!draft.trim()} busy={saving} style={{ flex: 1 }} />
           </View>
         </>
       )}
@@ -611,7 +577,7 @@ function AIKeyCard({ c, t, s, r }) {
 
 export default function SettingsScreen() {
   const navigation  = useNavigation();
-  const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
+  const { colors: c, typography: t, spacing: s, radius: r, style: ui } = useTheme();
 
   const [profile,   setProfile]   = useState(null);
   const [loading,   setLoading]   = useState(true);
@@ -836,14 +802,14 @@ export default function SettingsScreen() {
           const { progress } = getRankProgress(profile.points || 0);
           const rankInfo = RANK_LABELS[rank] || RANK_LABELS[20];
           return (
-            <View style={{ backgroundColor: c.bg1, borderRadius: r.xl, padding: s.xl, marginBottom: s.lg, borderWidth: 0.5, borderColor: c.border, borderTopWidth: 2, borderTopColor: c.gold, alignItems: 'center' }}>
+            <View style={{ backgroundColor: c.bg1, borderRadius: ui.cardRadius, padding: s.xl, marginBottom: s.lg, borderWidth: ui.borderWidth, borderColor: c.border, borderTopWidth: 2, borderTopColor: c.gold, alignItems: 'center' }}>
               <LevelRing pct={progress} size={72} strokeWidth={5} color={c.gold} trackColor={c.bg2} style={{ marginBottom: s.md }}>
                 <Text style={{ fontSize: 30 }}>{rankInfo.emoji}</Text>
               </LevelRing>
-              <Text style={{ fontSize: t.xl, fontFamily: FONTS.display, fontWeight: t.bold, color: c.text1, marginBottom: 2 }}>
+              <Text style={{ fontSize: t.xl, fontFamily: ui.titleFont, fontWeight: t.bold, color: c.text1, marginBottom: 2 }}>
                 {profile.display_name || 'Commander'}
               </Text>
-              <Text style={{ fontSize: t.xs, fontFamily: FONTS.mono, fontWeight: t.semibold, color: c.gold, marginBottom: 4 }}>
+              <Text style={{ fontSize: t.xs, fontFamily: ui.numberFont, fontWeight: t.semibold, color: c.gold, marginBottom: 4 }}>
                 LV {profile.level || 1} · {rankInfo.label}
               </Text>
               <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: s.md }}>{profile.email}</Text>
@@ -855,11 +821,11 @@ export default function SettingsScreen() {
                   // this used to read profile.streak_count directly from its own
                   // separate fetch, a raw DB column nothing actually increments day
                   // to day, so it drifted from what Home displayed for the same account.
-                  { label: 'Streak', val: (streakDays || 0) + 'd',                 color: '#FF4081' },
+                  { label: 'Streak', val: (streakDays || 0) + 'd',                 color: c.warning },
                 ].map(st => (
                   <View key={st.label} style={{ alignItems: 'center' }}>
-                    <Text style={{ fontSize: t.lg, fontFamily: FONTS.mono, fontWeight: t.bold, color: st.color }}>{st.val}</Text>
-                    <Text style={{ fontSize: t.xs, fontFamily: FONTS.mono, color: c.text4 }}>{st.label}</Text>
+                    <Readout size={t.lg} color={st.color}>{st.val}</Readout>
+                    <Text style={{ fontSize: t.xs, fontFamily: ui.numberFont, color: c.text4 }}>{st.label}</Text>
                   </View>
                 ))}
               </View>
@@ -1028,7 +994,7 @@ export default function SettingsScreen() {
         <SectionLabel label="Personalization" c={c} t={t} s={s} />
         <SettingRow
           icon="easel-outline"
-          iconColor="#b07be0"
+          iconColor={c.purple}
           label="Teacher / Educator Mode"
           subtitle="Adds the Classroom Day Lesson Plan Builder and My Lesson Plans to Academy Classes. Off: Classes stays a learner's screen — subjects, readings, and quizzes only. Saved plans are kept either way."
           alwaysShowSubtitle
@@ -1036,8 +1002,8 @@ export default function SettingsScreen() {
             <Switch
               value={educatorMode === true}
               onValueChange={setEducatorMode}
-              trackColor={{ false: c.bg2, true: '#b07be088' }}
-              thumbColor={educatorMode === true ? '#b07be0' : c.text4}
+              trackColor={{ false: c.bg2, true: c.purple + '88' }}
+              thumbColor={educatorMode === true ? c.purple : c.text4}
             />
           }
           c={c} t={t} s={s} r={r}
@@ -1051,7 +1017,7 @@ export default function SettingsScreen() {
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
           onPress={() => navigation.navigate('Profile')}
           c={c} t={t} s={s} r={r} />
-        <SettingRow icon="color-palette-outline" iconColor="#b07be0" label="Crest" subtitle="Crest color and role badge shown on Home & Portfolio"
+        <SettingRow icon="color-palette-outline" iconColor={c.purple} label="Crest" subtitle="Crest color and role badge shown on Home & Portfolio"
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
           onPress={() => setShowCrestModal(true)}
           c={c} t={t} s={s} r={r} />
@@ -1066,13 +1032,13 @@ export default function SettingsScreen() {
           }
           c={c} t={t} s={s} r={r} />
         <TourSpot id="settings-family">
-        <SettingRow icon="people-outline" iconColor="#e0a830" label="Family" subtitle="Link a parent/child account to follow progress"
+        <SettingRow icon="people-outline" iconColor={c.warning} label="Family" subtitle="Link a parent/child account to follow progress"
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
           onPress={() => navigation.navigate('Family')}
           c={c} t={t} s={s} r={r} />
         </TourSpot>
         <TourSpot id="settings-organization">
-        <SettingRow icon="school-outline" iconColor="#2bb5a0" label="Organization" subtitle="Manage or join a class, team, or group"
+        <SettingRow icon="school-outline" iconColor={c.tealMid} label="Organization" subtitle="Manage or join a class, team, or group"
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
           onPress={() => navigation.navigate('Organization')}
           c={c} t={t} s={s} r={r} />
@@ -1082,7 +1048,7 @@ export default function SettingsScreen() {
             this screen re-check that flag and raise NOT_AN_ADMIN, so hiding the
             row is presentation rather than access control. */}
         {liveProfile?.is_admin === true && (
-          <SettingRow icon="shield-checkmark-outline" iconColor="#e05858" label="Moderation"
+          <SettingRow icon="shield-checkmark-outline" iconColor={c.error} label="Moderation"
             subtitle="Review reported and filtered community posts"
             right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
             onPress={() => navigation.navigate('Library', { screen: 'ModerationQueueScreen' })}
@@ -1091,7 +1057,7 @@ export default function SettingsScreen() {
 
         {/* Notifications */}
         <SectionLabel label="Notifications" c={c} t={t} s={s} />
-        <SettingRow icon="notifications-outline" iconColor="#4caf7d" label="Daily Reminders" subtitle="A nudge if today's Daily Drills are still open, or your streak is at risk"
+        <SettingRow icon="notifications-outline" iconColor={c.success} label="Daily Reminders" subtitle="A nudge if today's Daily Drills are still open, or your streak is at risk"
           right={
             <Switch
               value={remindersEnabled}
@@ -1109,7 +1075,7 @@ export default function SettingsScreen() {
         {/* Data */}
         <SectionLabel label="Data & Privacy" c={c} t={t} s={s} />
         {userId && !liveProfile?.date_of_birth && (
-          <SettingRow icon="calendar-outline" iconColor="#e0a830" label="Birth Date" subtitle="Not added yet. Some features need it"
+          <SettingRow icon="calendar-outline" iconColor={c.warning} label="Birth Date" subtitle="Not added yet. Some features need it"
             alwaysShowSubtitle
             right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
             onPress={() => setShowDobModal(true)}
@@ -1117,7 +1083,7 @@ export default function SettingsScreen() {
         )}
         {/* Opens the Digital life area's privacy checklist — tips for your own
             online privacy, not settings for this app — so it's labelled that way. */}
-        <SettingRow icon="shield-checkmark-outline" iconColor="#64b5f6" label="Privacy Checkup" subtitle="Your digital-privacy checklist"
+        <SettingRow icon="shield-checkmark-outline" iconColor={c.math} label="Privacy Checkup" subtitle="Your digital-privacy checklist"
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
           onPress={() => navigation.navigate('MainTabs', { screen: 'Library', params: { screen: 'PrivacyScreen' } })}
           c={c} t={t} s={s} r={r} />
@@ -1130,13 +1096,13 @@ export default function SettingsScreen() {
 
         {/* About */}
         <SectionLabel label="About" c={c} t={t} s={s} />
-        <SettingRow icon="school-outline" iconColor="#b07be0" label="Replay Tutorial" subtitle="Take the guided tour of the app's features again"
+        <SettingRow icon="school-outline" iconColor={c.purple} label="Replay Tutorial" subtitle="Take the guided tour of the app's features again"
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
           onPress={() => { navigation.navigate('MainTabs'); setTimeout(startTour, 300); }}
           c={c} t={t} s={s} r={r} />
         {/* Per-screen tutorials — see src/logic/useFirstVisitTutorial.js. The
             main teaching in the app now, which is why it defaults on. */}
-        <SettingRow icon="chatbubbles-outline" iconColor="#b07be0" label="Screen Tutorials"
+        <SettingRow icon="chatbubbles-outline" iconColor={c.purple} label="Screen Tutorials"
           subtitle="A short walkthrough the first time you open each screen"
           alwaysShowSubtitle
           right={
@@ -1148,7 +1114,7 @@ export default function SettingsScreen() {
             />
           }
           c={c} t={t} s={s} r={r} />
-        <SettingRow icon="refresh-outline" iconColor="#b07be0" label="Show All Tutorials Again"
+        <SettingRow icon="refresh-outline" iconColor={c.purple} label="Show All Tutorials Again"
           subtitle="Forget which screens you've already seen a walkthrough for"
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
           onPress={() => {
@@ -1171,12 +1137,12 @@ export default function SettingsScreen() {
         <SettingRow icon="information-circle-outline" iconColor={c.teal} label="App Version" subtitle="Deskartes · ChillTech Hub LLC"
           right={<Text style={{ fontSize: t.xs, color: c.text4 }}>v1.0.0</Text>}
           c={c} t={t} s={s} r={r} />
-        <SettingRow icon="globe-outline" iconColor="#64b5f6" label="Privacy Policy"
+        <SettingRow icon="globe-outline" iconColor={c.math} label="Privacy Policy"
           right={<Ionicons name="open-outline" size={16} color={c.text4} />}
           onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
           c={c} t={t} s={s} r={r} />
         {TERMS_URL ? (
-          <SettingRow icon="document-text-outline" iconColor="#64b5f6" label="Terms of Service"
+          <SettingRow icon="document-text-outline" iconColor={c.math} label="Terms of Service"
             right={<Ionicons name="open-outline" size={16} color={c.text4} />}
             onPress={() => Linking.openURL(TERMS_URL)}
             c={c} t={t} s={s} r={r} />
@@ -1185,21 +1151,21 @@ export default function SettingsScreen() {
         {/* Sign out */}
         <SectionLabel label="Account" c={c} t={t} s={s} />
         <TouchableOpacity onPress={signOut} disabled={signingOut}
-          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: s.sm, backgroundColor: '#e05858' + '18', borderRadius: r.md, padding: s.lg, borderWidth: 1, borderColor: '#e05858' + '44' }}>
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: s.sm, backgroundColor: c.error + '18', borderRadius: r.md, padding: s.lg, borderWidth: 1, borderColor: c.error + '44' }}>
           {signingOut
-            ? <ActivityIndicator color="#e05858" size="small" />
+            ? <ActivityIndicator color={c.error} size="small" />
             : <>
-                <Ionicons name="log-out-outline" size={18} color="#e05858" />
-                <Text style={{ color: '#e05858', fontWeight: t.bold, fontSize: t.sm }}>Sign Out</Text>
+                <Ionicons name="log-out-outline" size={18} color={c.error} />
+                <Text style={{ color: c.error, fontWeight: t.bold, fontSize: t.sm }}>Sign Out</Text>
               </>
           }
         </TouchableOpacity>
 
         <SectionLabel label="Danger Zone" c={c} t={t} s={s} />
         <TouchableOpacity onPress={() => setShowDeleteModal(true)}
-          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: s.sm, borderRadius: r.md, padding: s.lg, borderWidth: 1, borderColor: '#e05858' + '44' }}>
-          <Ionicons name="trash-outline" size={16} color="#e05858" />
-          <Text style={{ color: '#e05858', fontWeight: t.semibold, fontSize: t.xs }}>Delete Account</Text>
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: s.sm, borderRadius: r.md, padding: s.lg, borderWidth: 1, borderColor: c.error + '44' }}>
+          <Ionicons name="trash-outline" size={16} color={c.error} />
+          <Text style={{ color: c.error, fontWeight: t.semibold, fontSize: t.xs }}>Delete Account</Text>
         </TouchableOpacity>
       </ScrollView>
 

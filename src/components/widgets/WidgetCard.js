@@ -26,19 +26,19 @@ export default function WidgetCard({
   empty = null,      // { text, cta, onPress } — shown instead of children
   children,
 }) {
-  const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
-  const edge = accent || c.teal;
+  const { colors: c, typography: t, spacing: s, radius: r, style: ui, accent: themeAccent } = useTheme();
+  const edge = accent || themeAccent.primary;
 
   return (
     <View style={{
-      backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg,
-      marginHorizontal: s.lg, borderWidth: 0.5, borderColor: c.border,
+      backgroundColor: c.bg1, borderRadius: ui.cardRadius, padding: s.lg,
+      marginHorizontal: s.lg, borderWidth: ui.borderWidth, borderColor: c.border,
       borderTopWidth: 2, borderTopColor: edge,
     }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: s.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           {icon && <Ionicons name={icon} size={14} color={edge} />}
-          <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: t.semibold }}>
+          <Text style={{ fontSize: ui.name === 'plain' ? t.sm : t.xs, color: ui.name === 'plain' ? c.text2 : c.text4, ...ui.sectionLabel }}>
             {title}
           </Text>
         </View>

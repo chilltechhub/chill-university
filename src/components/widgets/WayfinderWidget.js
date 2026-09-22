@@ -23,7 +23,7 @@ import { situationProgress } from '../../logic/wayfinderDeeper';
 import WidgetCard, { Bar } from './WidgetCard';
 
 export function WayfinderWidget({ userId, onOpen }) {
-  const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
+  const { colors: c, typography: t, spacing: s, radius: r, style: ui, accent: themeAccent } = useTheme();
   const [state, setState] = useState(null);
 
   useFocusEffect(useCallback(() => {
@@ -34,7 +34,7 @@ export function WayfinderWidget({ userId, onOpen }) {
     return () => { alive = false; };
   }, [userId]));
 
-  const accent = c.teal;
+  const accent = themeAccent.primary;
   const progress = state ? progressOf(state) : null;
   const situations = (state?.situations || []).map(id => SITUATION_MAP[id]).filter(Boolean);
   const neverStarted = state === undefined
@@ -115,7 +115,7 @@ export function WayfinderWidget({ userId, onOpen }) {
       <View style={{ marginTop: s.md, paddingTop: s.md, borderTopWidth: 0.5, borderTopColor: c.border }}>
         {active ? (
           <>
-            <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+            <Text style={{ fontSize: t.xs, color: c.text3, ...ui.eyebrow }}>
               Experiment · {findRung(findItem(active.pathId)?.kind, active.rung)?.label} · {findItem(active.pathId)?.title}
             </Text>
             <Text style={{ fontSize: t.sm, color: c.text2, marginTop: 4, lineHeight: 18 }} numberOfLines={2}>{active.text}</Text>
@@ -124,7 +124,7 @@ export function WayfinderWidget({ userId, onOpen }) {
               accessibilityRole="button"
               style={{ marginTop: s.sm, alignSelf: 'flex-start', paddingHorizontal: s.lg, paddingVertical: s.sm, borderRadius: r.full, backgroundColor: accent }}
             >
-              <Text style={{ fontSize: t.xs, color: '#fff', fontWeight: t.bold }}>Did it? Say how it went</Text>
+              <Text style={{ fontSize: t.xs, color: themeAccent.onPrimary, fontWeight: t.bold }}>Did it? Say how it went</Text>
             </TouchableOpacity>
           </>
         ) : (

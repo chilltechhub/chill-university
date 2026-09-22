@@ -194,6 +194,12 @@ export const STYLES = {
     sectionLabel: { fontFamily: undefined, textTransform: 'none', letterSpacing: 0, fontWeight: '600' },
     // Big screen titles. undefined = system font.
     titleFont: undefined,
+    titleTracking: 0,
+    // Stats and readouts ("LV 3", "12 / 20", timers).
+    numberFont: undefined,
+    // Small eyebrow above a card title ("Your first goal").
+    eyebrow: { fontFamily: undefined, textTransform: 'none', letterSpacing: 0, fontWeight: '600' },
+    buttonLabel: { fontFamily: undefined, textTransform: 'none', letterSpacing: 0, fontWeight: '700' },
     cardRadius: 14,
     buttonRadius: 12,
     borderWidth: 0.5,
@@ -207,6 +213,10 @@ export const STYLES = {
     description: 'The ops-deck look. Mono labels, sharper edges.',
     sectionLabel: { fontFamily: FONTS.mono, textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: '700' },
     titleFont: FONTS.display,
+    titleTracking: 0.5,
+    numberFont: FONTS.mono,
+    eyebrow: { fontFamily: FONTS.mono, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: '700' },
+    buttonLabel: { fontFamily: FONTS.display, textTransform: 'uppercase', letterSpacing: 1, fontWeight: '700' },
     cardRadius: 6,
     buttonRadius: 6,
     borderWidth: 1,

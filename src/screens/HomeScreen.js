@@ -12,6 +12,9 @@ import { Ionicons } from '@expo/vector-icons';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
+import { Button, Eyebrow, Readout } from '../components/ui';
+import { areaColor } from '../data/areaColors';
+import { CREST_COLORS as CREST_OPTIONS } from '../data/crestOptions';
 import { useUIPrefs } from '../../context/UIPrefsContext';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { supabase } from '../api/profileScopedClient';
@@ -40,7 +43,7 @@ import { useAccess } from '../../context/AccessContext';
 import { starterWidgetLayout } from '../logic/experienceStage';
 import useCharacterLoadout from '../logic/useCharacterLoadout';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
-import { RANK_LABELS, FONTS } from '../theme';
+import { RANK_LABELS } from '../theme';
 import { GAMES_MASTER } from './GamesScreen';
 import { LIFE_AREAS } from './library/LifeAreaScreen';
 
@@ -91,19 +94,19 @@ const QUOTES = [
 // Same palette as CalendarModal's EVENT_TYPES/PLANNER_AREAS so an item looks
 // like the same thing whether you meet it here or in the full calendar.
 const ACTIVITY_TYPES = {
-  event:    { label: 'Event',    icon: 'calendar-outline',         color: '#2bb5a0' },
-  reminder: { label: 'Reminder', icon: 'notifications-outline',    color: '#c9a84c' },
-  note:     { label: 'Note',     icon: 'document-text-outline',    color: '#8b4fc4' },
-  task:     { label: 'Task',     icon: 'checkmark-circle-outline', color: '#3ac860' },
-  assignment: { label: 'Assignment', icon: 'school-outline',       color: '#c9a84c' },
-  planner:  { label: 'Routine',  icon: 'repeat-outline',           color: '#2bb5a0' },
+  event:    { label: 'Event',    icon: 'calendar-outline',         color: '#2bb5a0' }, // style-ok: category palette, matches CalendarModal
+  reminder: { label: 'Reminder', icon: 'notifications-outline',    color: '#c9a84c' }, // style-ok: category palette, matches CalendarModal
+  note:     { label: 'Note',     icon: 'document-text-outline',    color: '#8b4fc4' }, // style-ok: category palette, matches CalendarModal
+  task:     { label: 'Task',     icon: 'checkmark-circle-outline', color: '#3ac860' }, // style-ok: category palette, matches CalendarModal
+  assignment: { label: 'Assignment', icon: 'school-outline',       color: '#c9a84c' }, // style-ok: category palette, matches CalendarModal
+  planner:  { label: 'Routine',  icon: 'repeat-outline',           color: '#2bb5a0' }, // style-ok: category palette, matches CalendarModal
 };
-const PLANNER_AREA_META = {
-  physical:     { emoji: '💪', color: '#e05858' }, mental:       { emoji: '🧠', color: '#8b4fc4' },
-  social:       { emoji: '🤝', color: '#2bb5a0' }, financial:    { emoji: '💰', color: '#3ac860' },
-  professional: { emoji: '🚀', color: '#c9a84c' }, spiritual:    { emoji: '✨', color: '#6b9fe8' },
-  creative:     { emoji: '🎨', color: '#e0a830' }, digital:      { emoji: '💻', color: '#5a9ae0' },
-};
+// Colours come from the one shared area palette (src/data/areaColors.js) —
+// this map had drifted from it (mental purple here, blue everywhere else).
+const PLANNER_AREA_META = Object.fromEntries(Object.entries({
+  physical: '💪', mental: '🧠', social: '🤝', financial: '💰',
+  professional: '🚀', spiritual: '✨', creative: '🎨', digital: '💻',
+}).map(([id, emoji]) => [id, { emoji, color: areaColor(id) }]));
 function fmtActivityTime(t24) {
   if (!t24) return '';
   const [h, m] = t24.split(':').map(Number);
@@ -218,14 +221,12 @@ function getTodaysQuote(pool) {
 }
 
 // ─── Commander card — base HQ identity, crest color stays user-customizable ──
-const CREST_COLORS = {
-  teal:   '#2bb5a0', gold:   '#c9a84c', purple: '#8b4fc4',
-  red:    '#e05858', blue:   '#3a7bd5', green:  '#3ac860',
-  orange: '#e07a30', silver: '#9a9aa8',
-};
+// The user's crest colour, from the same list Settings picks it from.
+const CREST_COLORS = Object.fromEntries(CREST_OPTIONS.map(cc => [cc.key, cc.color]));
 const BADGE_EMOJIS = { explorer: '🧭', builder: '🏗️', scholar: '📚', guardian: '🛡️', pioneer: '🌟', creator: '🎨' };
 
 function CommanderCard({ profile, rank, progress, c, t, onPress }) {
+  const { style: ui, accent } = useTheme();
   const crestColor = CREST_COLORS[profile?.suit_color] || c.gold;
   const badgeEmoji = BADGE_EMOJIS[profile?.badge] || null;
   const name       = profile?.traveler_name || profile?.display_name || 'Commander';
@@ -245,8 +246,8 @@ function CommanderCard({ profile, rank, progress, c, t, onPress }) {
         </View>
       </LevelRing>
       <View style={cmd.info}>
-        <Text style={[cmd.name, { color: c.text1 }]} numberOfLines={1}>{name}</Text>
-        <Text style={[cmd.rank, { color: crestColor }]}>LV {level} · {rankInfo.label}</Text>
+        <Text style={[cmd.name, { color: c.text1, fontFamily: ui.titleFont }]} numberOfLines={1}>{name}</Text>
+        <Text style={[cmd.rank, { color: crestColor, fontFamily: ui.numberFont }]}>LV {level} · {rankInfo.label}</Text>
       </View>
       <Ionicons name="chevron-forward" size={18} color={c.text4} />
     </TouchableOpacity>
@@ -258,20 +259,21 @@ const cmd = StyleSheet.create({
   crestEmoji:{ fontSize: 20 },
   badgeDot:  { position: 'absolute', bottom: -4, right: -4, width: 18, height: 18, borderRadius: 9, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   info:      { flex: 1, marginLeft: 14, marginRight: 8 },
-  name:      { fontSize: 17, fontFamily: FONTS.display, fontWeight: '800' },
-  rank:      { fontSize: 12, fontFamily: FONTS.mono, fontWeight: '700', letterSpacing: 0.3, marginTop: 2 },
+  name:      { fontSize: 17, fontWeight: '800' },
+  rank:      { fontSize: 12, fontWeight: '700', letterSpacing: 0.3, marginTop: 2 },
 });
 
 // ─── Section header ───────────────────────────────────────────────────────────
 function SectionHead({ title, action, onAction, c, t }) {
+  const { style: ui, accent } = useTheme();
   return (
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-      <Text style={{ fontSize: t.sm, fontFamily: FONTS.displaySemibold, fontWeight: t.bold, color: c.gold, textTransform: 'uppercase', letterSpacing: 1.2 }}>
+      <Text style={{ fontSize: t.sm, color: ui.name === 'plain' ? c.text2 : c.gold, ...ui.sectionLabel }}>
         {title}
       </Text>
       {action && (
-        <TouchableOpacity onPress={onAction}>
-          <Text style={{ fontSize: t.xs, fontFamily: FONTS.mono, color: c.teal }}>{action}</Text>
+        <TouchableOpacity onPress={onAction} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Text style={{ fontSize: t.xs, fontWeight: t.semibold, fontFamily: ui.numberFont, color: accent.primary }}>{action}</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -281,6 +283,7 @@ function SectionHead({ title, action, onAction, c, t }) {
 
 // ─── Focus modal with presets ─────────────────────────────────────────────────
 function FocusModal({ visible, draft, setDraft, onSave, onClose, presets, onAddPreset, onDeletePreset, c, t, s, r }) {
+  const { style: ui, accent } = useTheme();
   const { showEmojis } = useUIPrefs();
   const [newPreset, setNewPreset] = useState('');
   const [showPresetInput, setShowPresetInput] = useState(false);
@@ -300,7 +303,7 @@ function FocusModal({ visible, draft, setDraft, onSave, onClose, presets, onAddP
           />
 
           {/* Presets */}
-          <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Presets</Text>
+          <Eyebrow style={{ marginBottom: s.sm }}>Presets</Eyebrow>
           <ScrollView style={{ maxHeight: 160 }} showsVerticalScrollIndicator={false}>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm, marginBottom: s.sm }}>
               {presets.map((preset, i) => (
@@ -321,14 +324,15 @@ function FocusModal({ visible, draft, setDraft, onSave, onClose, presets, onAddP
             {showPresetInput && (
               <View style={{ flexDirection: 'row', gap: s.sm, marginBottom: s.sm }}>
                 <TextInput
-                  style={{ flex: 1, backgroundColor: c.bg0, borderRadius: r.md, padding: s.sm, fontSize: t.sm, color: c.text1, borderWidth: 0.5, borderColor: c.border }}
+                  style={{ flex: 1, backgroundColor: c.bg0, borderRadius: r.md, padding: s.sm, fontSize: t.sm, color: c.text1, borderWidth: ui.borderWidth, borderColor: c.border }}
                   value={newPreset} onChangeText={setNewPreset}
                   placeholder="New preset..." placeholderTextColor={c.text4}
                   autoFocus
                 />
                 <TouchableOpacity onPress={() => { if (newPreset.trim()) { onAddPreset(newPreset.trim()); setNewPreset(''); setShowPresetInput(false); } }}
-                  style={{ backgroundColor: c.teal, borderRadius: r.md, padding: s.sm, justifyContent: 'center' }}>
-                  <Ionicons name="checkmark" size={16} color="#fff" />
+                  accessibilityLabel="Add preset"
+                  style={{ backgroundColor: accent.primary, borderRadius: ui.buttonRadius, padding: s.sm, justifyContent: 'center' }}>
+                  <Ionicons name="checkmark" size={16} color={accent.onPrimary} />
                 </TouchableOpacity>
               </View>
             )}
@@ -338,10 +342,7 @@ function FocusModal({ visible, draft, setDraft, onSave, onClose, presets, onAddP
             <TouchableOpacity onPress={onClose} style={{ paddingVertical: s.md, paddingHorizontal: s.lg }}>
               <Text style={{ fontSize: t.sm, color: c.text3 }}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={onSave}
-              style={{ backgroundColor: c.teal, borderRadius: r.md, paddingVertical: s.md, paddingHorizontal: s.xl }}>
-              <Text style={{ color: '#fff', fontWeight: t.bold, fontSize: t.sm }}>Save</Text>
-            </TouchableOpacity>
+            <Button label="Save" onPress={onSave} fullWidth={false} />
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -351,6 +352,7 @@ function FocusModal({ visible, draft, setDraft, onSave, onClose, presets, onAddP
 
 // ─── Affirmation modal with rotation pool ────────────────────────────────────
 function AffirmationModal({ visible, affirmations, onSave, onClose, c, t, s, r }) {
+  const { style: ui, accent } = useTheme();
   const { showEmojis, showSubtext } = useUIPrefs();
   const [input, setInput] = useState('');
   const [list,  setList]  = useState(affirmations || []);
@@ -377,14 +379,15 @@ function AffirmationModal({ visible, affirmations, onSave, onClose, c, t, s, r }
           {/* Add input */}
           <View style={{ flexDirection: 'row', gap: s.sm, marginBottom: s.md }}>
             <TextInput
-              style={{ flex: 1, backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 0.5, borderColor: c.border }}
+              style={{ flex: 1, backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: ui.borderWidth, borderColor: c.border }}
               value={input} onChangeText={setInput}
               placeholder="I am capable of..." placeholderTextColor={c.text4}
               onSubmitEditing={add}
             />
             <TouchableOpacity onPress={add}
-              style={{ backgroundColor: c.gold, borderRadius: r.md, padding: s.md, justifyContent: 'center' }}>
-              <Ionicons name="add" size={18} color="#fff" />
+              accessibilityLabel="Add affirmation"
+              style={{ backgroundColor: accent.primary, borderRadius: ui.buttonRadius, padding: s.md, justifyContent: 'center' }}>
+              <Ionicons name="add" size={18} color={accent.onPrimary} />
             </TouchableOpacity>
           </View>
 
@@ -410,10 +413,7 @@ function AffirmationModal({ visible, affirmations, onSave, onClose, c, t, s, r }
             <TouchableOpacity onPress={onClose} style={{ paddingVertical: s.md, paddingHorizontal: s.lg }}>
               <Text style={{ fontSize: t.sm, color: c.text3 }}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => onSave(list)}
-              style={{ backgroundColor: c.gold, borderRadius: r.md, paddingVertical: s.md, paddingHorizontal: s.xl }}>
-              <Text style={{ color: '#fff', fontWeight: t.bold, fontSize: t.sm }}>Save all</Text>
-            </TouchableOpacity>
+            <Button label="Save all" onPress={() => onSave(list)} fullWidth={false} />
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -422,6 +422,7 @@ function AffirmationModal({ visible, affirmations, onSave, onClose, c, t, s, r }
 }
 
 function IdeaPreviewCard({ idea, visible, onClose, c, t, s, r }) {
+  const { style: ui, accent } = useTheme();
   const { showEmojis } = useUIPrefs();
   if (!idea) return null;
 
@@ -438,7 +439,7 @@ function IdeaPreviewCard({ idea, visible, onClose, c, t, s, r }) {
   const notes     = petals.filter(p => p.petal_type === 'note');
   const ideaPets  = petals.filter(p => p.petal_type === 'idea');
   const done      = tasks.filter(p => p.completed).length;
-  const ideaColor = idea.color || '#2bb5a0';
+  const ideaColor = idea.color || c.tealMid;
 
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -487,13 +488,13 @@ function IdeaPreviewCard({ idea, visible, onClose, c, t, s, r }) {
             {/* Tasks */}
             {tasks.length > 0 && (
               <View style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md }}>
-                <Text style={{ fontSize: t.xs, color: ideaColor, textTransform: 'uppercase', letterSpacing: 1, fontWeight: t.bold, marginBottom: s.sm }}>
+                <Text style={{ fontSize: t.xs, color: ideaColor, ...ui.eyebrow, marginBottom: s.sm }}>
                   {showEmojis ? '✅ ' : ''}Tasks ({done}/{tasks.length} done)
                 </Text>
                 {tasks.slice(0, 4).map((task, i) => (
                   <View key={task.id || i} style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, paddingVertical: 4 }}>
                     <View style={{ width: 16, height: 16, borderRadius: 8, borderWidth: 1.5, borderColor: task.completed ? ideaColor : c.border, backgroundColor: task.completed ? ideaColor : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
-                      {task.completed && <Ionicons name="checkmark" size={9} color="#fff" />}
+                      {task.completed && <Ionicons name="checkmark" size={9} color={c.bg1} />}
                     </View>
                     <Text style={{ fontSize: t.xs, color: task.completed ? c.text4 : c.text1, textDecorationLine: task.completed ? 'line-through' : 'none', flex: 1 }} numberOfLines={1}>
                       {task.title}
@@ -507,7 +508,7 @@ function IdeaPreviewCard({ idea, visible, onClose, c, t, s, r }) {
             {/* Ideas / sub-ideas */}
             {ideaPets.length > 0 && (
               <View style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md }}>
-                <Text style={{ fontSize: t.xs, color: c.gold, textTransform: 'uppercase', letterSpacing: 1, fontWeight: t.bold, marginBottom: s.sm }}>
+                <Text style={{ fontSize: t.xs, color: c.gold, ...ui.eyebrow, marginBottom: s.sm }}>
                   {showEmojis ? '💡 ' : ''}Ideas ({ideaPets.length})
                 </Text>
                 {ideaPets.slice(0, 3).map((ip, i) => (
@@ -521,7 +522,7 @@ function IdeaPreviewCard({ idea, visible, onClose, c, t, s, r }) {
             {/* Notes */}
             {notes.length > 0 && (
               <View style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md }}>
-                <Text style={{ fontSize: t.xs, color: c.teal, textTransform: 'uppercase', letterSpacing: 1, fontWeight: t.bold, marginBottom: s.sm }}>
+                <Text style={{ fontSize: t.xs, color: c.teal, ...ui.eyebrow, marginBottom: s.sm }}>
                   {showEmojis ? '📝 ' : ''}Notes ({notes.length})
                 </Text>
                 {notes.slice(0, 2).map((note, i) => (
@@ -552,7 +553,9 @@ function IdeaPreviewCard({ idea, visible, onClose, c, t, s, r }) {
 // actionsForDeskItem) rather than this component guessing what's possible;
 // one filled "primary" button plus however many outlined ones fit.
 function ActionPill({ label, icon, tone, color, c, t, onPress }) {
-  const pillColor = tone === 'danger' ? (c.error || '#e05858') : (color || c.teal);
+  const { style: ui, accent } = useTheme();
+  const pillColor = tone === 'danger' ? c.error : (color || accent.primary);
+  const onFill = color || tone === 'danger' ? c.bg1 : accent.onPrimary;
   const filled = tone === 'primary';
   return (
     <TouchableOpacity onPress={onPress}
@@ -560,19 +563,20 @@ function ActionPill({ label, icon, tone, color, c, t, onPress }) {
         flexDirection: 'row', alignItems: 'center', gap: 6,
         backgroundColor: filled ? pillColor : 'transparent',
         borderWidth: filled ? 0 : 1, borderColor: pillColor + (filled ? '' : '99'),
-        borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9,
+        borderRadius: ui.buttonRadius, paddingHorizontal: 12, paddingVertical: 9,
       }}>
-      <Ionicons name={icon} size={14} color={filled ? '#fff' : pillColor} />
-      <Text style={{ color: filled ? '#fff' : pillColor, fontWeight: t.bold, fontSize: t.xs }}>{label}</Text>
+      <Ionicons name={icon} size={14} color={filled ? onFill : pillColor} />
+      <Text style={{ color: filled ? onFill : pillColor, fontSize: t.xs, ...ui.buttonLabel }}>{label}</Text>
     </TouchableOpacity>
   );
 }
 
 function NextUpCard({ item, actions, onAdd, c, t, s, r }) {
+  const { style: ui, accent } = useTheme();
   if (!item) {
     return (
       <TouchableOpacity
-        style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 0.5, borderColor: c.border, borderStyle: 'dashed' }}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border, borderStyle: 'dashed' }}
         onPress={onAdd}>
         <Ionicons name="add-circle-outline" size={18} color={c.text4} />
         <Text style={{ flex: 1, fontSize: t.sm, color: c.text4 }}>Add priorities from your projects, notes and ideas</Text>
@@ -590,10 +594,10 @@ function NextUpCard({ item, actions, onAdd, c, t, s, r }) {
   const headline = isProject && !item.hasNextAction ? `What's next for ${item.projectTitle}?` : item.title;
 
   return (
-    <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.md, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: color }}>
+    <View style={{ backgroundColor: c.bg1, borderRadius: ui.cardRadius, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: color }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: 8 }}>
         <View style={{ backgroundColor: color + '22', borderRadius: r.full, paddingHorizontal: 8, paddingVertical: 2 }}>
-          <Text style={{ fontSize: 9, color, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>{badgeLabel}</Text>
+          <Text style={{ fontSize: ui.name === 'plain' ? 11 : 9, color, ...ui.eyebrow }}>{badgeLabel}</Text>
         </View>
         {item.notes ? <Text style={{ flex: 1, fontSize: 10, color: c.text4 }} numberOfLines={1}>{item.notes}</Text> : null}
       </View>
@@ -615,10 +619,11 @@ function NextUpCard({ item, actions, onAdd, c, t, s, r }) {
 // planner routines, assignments due today) — tap opens ActivityDetailCard in
 // the same bottom-sheet pattern as the desk ticker's NextUpCard, below.
 function ActivityRow({ item, onPress, c, t, s, r }) {
+  const { style: ui, accent } = useTheme();
   const meta = ACTIVITY_TYPES[item.type] || ACTIVITY_TYPES.event;
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.75}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: item.color || meta.color }}>
+      style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, marginBottom: s.sm, borderWidth: ui.borderWidth, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: item.color || meta.color }}>
       <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: (item.color || meta.color) + '22', alignItems: 'center', justifyContent: 'center' }}>
         {item.emoji ? <Text style={{ fontSize: 14 }}>{item.emoji}</Text> : <Ionicons name={meta.icon} size={15} color={item.color || meta.color} />}
       </View>
@@ -626,7 +631,7 @@ function ActivityRow({ item, onPress, c, t, s, r }) {
         <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1 }} numberOfLines={1}>{item.title}</Text>
         <View style={{ flexDirection: 'row', gap: 6, marginTop: 1 }}>
           {item.time && <Text style={{ fontSize: 10, color: item.color || meta.color, fontWeight: t.bold }}>{fmtActivityTime(item.time)}</Text>}
-          <Text style={{ fontSize: 10, color: c.text4, textTransform: 'uppercase', letterSpacing: 0.3 }}>{meta.label}</Text>
+          <Text style={{ fontSize: 10, color: c.text3, ...ui.eyebrow, marginBottom: 0 }}>{meta.label}</Text>
         </View>
       </View>
       <Ionicons name="chevron-forward" size={16} color={c.text4} />
@@ -635,14 +640,15 @@ function ActivityRow({ item, onPress, c, t, s, r }) {
 }
 
 function ActivityDetailCard({ item, actions, c, t, s, r }) {
+  const { style: ui, accent } = useTheme();
   if (!item) return null;
   const meta = ACTIVITY_TYPES[item.type] || ACTIVITY_TYPES.event;
   const color = item.color || meta.color;
   return (
-    <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.md, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: color }}>
+    <View style={{ backgroundColor: c.bg1, borderRadius: ui.cardRadius, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: color }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: 8 }}>
         <View style={{ backgroundColor: color + '22', borderRadius: r.full, paddingHorizontal: 8, paddingVertical: 2 }}>
-          <Text style={{ fontSize: 9, color, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>{meta.label}</Text>
+          <Text style={{ fontSize: ui.name === 'plain' ? 11 : 9, color, ...ui.eyebrow }}>{meta.label}</Text>
         </View>
         {item.time && <Text style={{ fontSize: 11, color: c.text3 }}>{fmtActivityTime(item.time)}</Text>}
       </View>
@@ -692,6 +698,7 @@ function EdgeFade({ side, color }) {
 }
 
 function DeskTicker({ items, onItemPress, onAdd, c, t, s, r }) {
+  const { style: ui, accent } = useTheme();
   const translateX = useRef(new Animated.Value(0)).current;
   const [setWidth, setSetWidth] = useState(0);
 
@@ -713,7 +720,7 @@ function DeskTicker({ items, onItemPress, onAdd, c, t, s, r }) {
   if (items.length === 0) {
     return (
       <TouchableOpacity
-        style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 0.5, borderColor: c.border, borderStyle: 'dashed' }}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border, borderStyle: 'dashed' }}
         onPress={onAdd}>
         <Ionicons name="add-circle-outline" size={18} color={c.text4} />
         <Text style={{ flex: 1, fontSize: t.sm, color: c.text4 }}>Add priorities from your projects, notes and ideas</Text>
@@ -729,10 +736,10 @@ function DeskTicker({ items, onItemPress, onAdd, c, t, s, r }) {
           flexDirection: 'row', alignItems: 'center', gap: 7,
           backgroundColor: c.bg1, borderRadius: r.md,
           paddingVertical: 7, paddingHorizontal: 12, marginRight: s.sm,
-          borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 2, borderLeftColor: color,
+          borderWidth: ui.borderWidth, borderColor: c.border, borderLeftWidth: 2, borderLeftColor: color,
         }}>
-        <Text style={{ fontSize: 9, fontFamily: FONTS.mono, fontWeight: '800', color, letterSpacing: 0.5 }}>
-          {(item.source || '').toUpperCase()}
+        <Text style={{ fontSize: ui.name === 'plain' ? 11 : 9, color, ...ui.eyebrow, marginBottom: 0 }}>
+          {item.source || ''}
         </Text>
         <Text style={{ fontSize: 12, fontWeight: '600', color: c.text1, maxWidth: 180 }} numberOfLines={1}>
           {item.title}
@@ -766,7 +773,7 @@ function DeskTicker({ items, onItemPress, onAdd, c, t, s, r }) {
 // ─── Main HomeScreen ──────────────────────────────────────────────────────────
 export default function HomeScreen() {
   const navigation = useNavigation();
-  const { colors: c, typography: t, spacing: s, radius: r, shadows: sh } = useTheme();
+  const { colors: c, typography: t, spacing: s, radius: r, shadows: sh, style: ui, accent } = useTheme();
   const { showEmojis, showSubtext } = useUIPrefs();
   const { profile, streakDays, rank, progress, level, points, dailyMissions, subjectProgress } = useUserProgress();
   // The active profile's type is what decides this dashboard's default
@@ -1548,7 +1555,7 @@ export default function HomeScreen() {
       >
         {/* ── Date + streak + widget edit toggle ── */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: s.lg, paddingTop: s.md, paddingBottom: s.sm }}>
-          <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 0.8 }}>{dateStr}</Text>
+          <Text style={{ fontSize: t.xs, color: c.text3, ...ui.eyebrow, marginBottom: 0 }}>{dateStr}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm }}>
             {(streakDays || 0) > 0 && !editingWidgets && (
               <View style={{ backgroundColor: c.bg1, borderRadius: 12, paddingHorizontal: s.sm, paddingVertical: 3, borderWidth: 0.5, borderColor: c.gold }}>
@@ -1589,7 +1596,7 @@ export default function HomeScreen() {
             {
               key: 'hq', title: 'Commander',
               render: () => (
-                <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, marginHorizontal: s.lg, borderWidth: 0.5, borderColor: c.border, borderTopWidth: 2, borderTopColor: c.gold }}>
+                <View style={{ backgroundColor: c.bg1, borderRadius: ui.cardRadius, padding: s.lg, marginHorizontal: s.lg, borderWidth: ui.borderWidth, borderColor: c.border, borderTopWidth: 2, borderTopColor: c.gold }}>
                   <CommanderCard
                     profile={profile}
                     rank={rank}
@@ -1601,17 +1608,17 @@ export default function HomeScreen() {
                   <View style={{ flexDirection: 'row', gap: 10, marginTop: s.md }}>
                     {studyDestinations.length > 0 && (
                     <TouchableOpacity
-                      style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: c.teal, backgroundColor: c.tealLight, borderRadius: r.md, paddingVertical: s.md }}
+                      style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: c.teal, backgroundColor: c.tealLight, borderRadius: ui.buttonRadius, paddingVertical: s.md }}
                       onPress={goStudy} onLongPress={() => setShowStudyMenu(true)} delayLongPress={350}>
                       <Ionicons name="book-outline" size={15} color={c.teal} />
-                      <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.teal, letterSpacing: 1 }}>STUDY</Text>
+                      <Text style={{ fontSize: t.md, color: c.teal, ...ui.buttonLabel }}>Study</Text>
                     </TouchableOpacity>
                     )}
                     <TouchableOpacity
-                      style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: c.gold, borderRadius: r.md, paddingVertical: s.md }}
+                      style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: c.gold, backgroundColor: c.goldLight, borderRadius: ui.buttonRadius, paddingVertical: s.md }}
                       onPress={goPlay} onLongPress={() => setShowPlayMenu(true)} delayLongPress={350}>
-                      <Ionicons name="game-controller-outline" size={15} color="#fff" />
-                      <Text style={{ fontSize: t.md, fontWeight: t.bold, color: '#fff', letterSpacing: 1 }}>PLAY</Text>
+                      <Ionicons name="game-controller-outline" size={15} color={c.gold} />
+                      <Text style={{ fontSize: t.md, color: c.gold, ...ui.buttonLabel }}>Play</Text>
                     </TouchableOpacity>
                   </View>
                   </TourSpot>
@@ -1622,9 +1629,9 @@ export default function HomeScreen() {
               key: 'wisdom', title: "Today's Wisdom",
               render: () => (
                 <TourSpot id="home-focus">
-                <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, marginHorizontal: s.lg, borderLeftWidth: 3, borderLeftColor: c.teal, borderWidth: 0.5, borderColor: c.border }}>
+                <View style={{ backgroundColor: c.bg1, borderRadius: ui.cardRadius, padding: s.lg, marginHorizontal: s.lg, borderLeftWidth: 3, borderLeftColor: c.teal, borderWidth: ui.borderWidth, borderColor: c.border }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: s.sm }}>
-                    <Text style={{ fontSize: 10, color: c.teal, textTransform: 'uppercase', letterSpacing: 1, fontWeight: t.semibold }}>{showEmojis ? '✦ ' : ''}Today's Wisdom</Text>
+                    <Text style={{ fontSize: ui.name === 'plain' ? 12 : 10, color: c.teal, ...ui.eyebrow }}>{showEmojis ? '✦ ' : ''}Today's Wisdom</Text>
                     <TouchableOpacity onPress={() => setEditAffirm(true)}>
                       <Ionicons name="add-circle-outline" size={20} color={c.gold} />
                     </TouchableOpacity>
@@ -1634,7 +1641,7 @@ export default function HomeScreen() {
                   {todaysAffirmation && (
                     <TouchableOpacity onPress={() => setEditAffirm(true)}
                       style={{ marginTop: s.sm, borderTopWidth: 0.5, borderTopColor: c.border, paddingTop: s.sm }}>
-                      <Text style={{ fontSize: 10, color: c.gold, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>{showEmojis ? '💛 ' : ''}My Affirmation</Text>
+                      <Text style={{ fontSize: ui.name === 'plain' ? 12 : 10, color: c.gold, ...ui.eyebrow, marginBottom: 4 }}>{showEmojis ? '💛 ' : ''}My Affirmation</Text>
                       <Text style={{ fontSize: t.sm, color: c.text1, lineHeight: 20 }}>{todaysAffirmation}</Text>
                       {affirmations.length > 1 && (
                         <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 4 }}>{affirmations.length} affirmations rotating daily</Text>
@@ -1651,7 +1658,7 @@ export default function HomeScreen() {
                 <TourSpot id="home-focus-input">
                 <View style={{ paddingHorizontal: s.lg, flexDirection: 'row', gap: s.sm }}>
                   <TouchableOpacity
-                    style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 0.5, borderColor: c.border }}
+                    style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border }}
                     onPress={() => { setFocusDraft(todayFocus || ''); setEditFocus(true); }}>
                     <Ionicons name="bookmark" size={14} color={c.teal} />
                     <Text style={{ flex: 1, fontSize: t.sm, color: todayFocus ? c.text1 : c.text4, lineHeight: 20 }} numberOfLines={2}>
@@ -1659,10 +1666,10 @@ export default function HomeScreen() {
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={{ backgroundColor: c.bg1, borderRadius: r.md, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 0.5, borderColor: c.border, alignItems: 'center', justifyContent: 'center', minWidth: 70 }}
+                    style={{ backgroundColor: c.bg1, borderRadius: r.md, paddingHorizontal: 14, paddingVertical: 10, borderWidth: ui.borderWidth, borderColor: c.border, alignItems: 'center', justifyContent: 'center', minWidth: 70 }}
                     onPress={() => setShowCalendar(true)}>
-                    <Text style={{ fontSize: t.xxl, fontFamily: FONTS.display, fontWeight: t.bold, color: c.text1, lineHeight: 28 }}>{today.getDate()}</Text>
-                    <Text style={{ fontSize: 9, color: c.text4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    <Text style={{ fontSize: t.xxl, fontFamily: ui.titleFont, fontWeight: t.bold, color: c.text1, lineHeight: 28 }}>{today.getDate()}</Text>
+                    <Text style={{ fontSize: ui.name === 'plain' ? 11 : 9, color: c.text3, ...ui.eyebrow, marginBottom: 0 }}>
                       {today.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                     </Text>
                   </TouchableOpacity>
@@ -1676,7 +1683,7 @@ export default function HomeScreen() {
                 todayActivities.length === 0 ? (
                   editingWidgets ? (
                     <View style={{ paddingHorizontal: s.lg }}>
-                      <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 0.5, borderColor: c.border, borderStyle: 'dashed' }}>
+                      <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border, borderStyle: 'dashed' }}>
                         <Text style={{ fontSize: t.xs, color: c.text4 }}>Today's Activities — nothing scheduled today</Text>
                       </View>
                     </View>
@@ -1709,13 +1716,13 @@ export default function HomeScreen() {
                   {showTodoInput && (
                     <View style={{ flexDirection: 'row', gap: s.sm, marginBottom: s.sm }}>
                       <TextInput
-                        style={{ flex: 1, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 0.5, borderColor: c.border }}
+                        style={{ flex: 1, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: ui.borderWidth, borderColor: c.border }}
                         value={todoInput} onChangeText={setTodoInput}
                         placeholder="What needs to get done?" placeholderTextColor={c.text4}
                         autoFocus onSubmitEditing={addTodo}
                       />
-                      <TouchableOpacity style={{ backgroundColor: c.teal, borderRadius: r.md, padding: s.md, alignItems: 'center', justifyContent: 'center' }} onPress={addTodo}>
-                        <Ionicons name="checkmark" size={18} color="#fff" />
+                      <TouchableOpacity style={{ backgroundColor: accent.primary, borderRadius: ui.buttonRadius, padding: s.md, alignItems: 'center', justifyContent: 'center' }} onPress={addTodo} accessibilityLabel="Add to desk">
+                        <Ionicons name="checkmark" size={18} color={accent.onPrimary} />
                       </TouchableOpacity>
                     </View>
                   )}
@@ -1735,7 +1742,7 @@ export default function HomeScreen() {
                 ideas.length === 0 ? (
                   editingWidgets ? (
                     <View style={{ paddingHorizontal: s.lg }}>
-                      <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 0.5, borderColor: c.border, borderStyle: 'dashed' }}>
+                      <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border, borderStyle: 'dashed' }}>
                         <Text style={{ fontSize: t.xs, color: c.text4 }}>Latest Ideas — nothing planted yet</Text>
                       </View>
                     </View>
@@ -1772,9 +1779,9 @@ export default function HomeScreen() {
             {
               key: 'streak', title: 'Streak & Level',
               render: () => (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, marginHorizontal: s.lg, borderWidth: 0.5, borderColor: c.border }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, backgroundColor: c.bg1, borderRadius: ui.cardRadius, padding: s.lg, marginHorizontal: s.lg, borderWidth: ui.borderWidth, borderColor: c.border }}>
                   <LevelRing pct={progress || 0} size={44} strokeWidth={3} color={c.gold} trackColor={c.bg2}>
-                    <Text style={{ fontSize: 13, fontWeight: '800', color: c.gold, fontFamily: FONTS.mono }}>{level}</Text>
+                    <Readout size={13} color={c.gold}>{level}</Readout>
                   </LevelRing>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: t.sm, fontWeight: '700', color: c.text1 }}>Level {level} · {Math.round(progress || 0)}% to next</Text>
@@ -1783,7 +1790,7 @@ export default function HomeScreen() {
                   {streakDays > 0 && (
                     <View style={{ alignItems: 'center', minWidth: 34 }}>
                       {showEmojis && <Text style={{ fontSize: 17 }}>🔥</Text>}
-                      <Text style={{ fontSize: t.xs, fontWeight: '800', color: c.gold, fontFamily: FONTS.mono }}>{streakDays}d</Text>
+                      <Readout size={t.xs} color={c.gold}>{streakDays}d</Readout>
                     </View>
                   )}
                 </View>
@@ -1795,7 +1802,7 @@ export default function HomeScreen() {
                 activeBuilds.length === 0 ? (
                   editingWidgets ? (
                     <View style={{ paddingHorizontal: s.lg }}>
-                      <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 0.5, borderColor: c.border, borderStyle: 'dashed' }}>
+                      <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border, borderStyle: 'dashed' }}>
                         <Text style={{ fontSize: t.xs, color: c.text4 }}>Active Builds — nothing in progress</Text>
                       </View>
                     </View>
@@ -1803,7 +1810,7 @@ export default function HomeScreen() {
                 ) : (
                   <View style={{ paddingHorizontal: s.lg }}>
                     <SectionHead title="Active Builds" action="Workshop →" onAction={() => navigation.navigate('ProjectsScreen')} c={c} t={t} />
-                    <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, borderWidth: 0.5, borderColor: c.border, paddingHorizontal: s.md }}>
+                    <View style={{ backgroundColor: c.bg1, borderRadius: ui.cardRadius, borderWidth: ui.borderWidth, borderColor: c.border, paddingHorizontal: s.md }}>
                       {activeBuilds.slice(0, 4).map((p, i, arr) => (
                         <TouchableOpacity key={p.id} onPress={() => navigation.navigate('Library', { screen: 'ProjectDetail', params: { project: p } })} activeOpacity={0.7}
                           style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, paddingVertical: 10, borderBottomWidth: i === arr.length - 1 ? 0 : 0.5, borderBottomColor: c.border }}>
@@ -1826,7 +1833,7 @@ export default function HomeScreen() {
                 checkInDue.length === 0 ? (
                   editingWidgets ? (
                     <View style={{ paddingHorizontal: s.lg }}>
-                      <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 0.5, borderColor: c.border, borderStyle: 'dashed' }}>
+                      <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border, borderStyle: 'dashed' }}>
                         <Text style={{ fontSize: t.xs, color: c.text4 }}>Check-ins Due — every domain is current</Text>
                       </View>
                     </View>
@@ -1845,7 +1852,7 @@ export default function HomeScreen() {
                             ? <Text style={{ fontSize: 13 }}>{area.emoji}</Text>
                             : <Ionicons name={area.icon} size={13} color={area.color || c.teal} />}
                           <Text style={{ fontSize: 12, fontWeight: '700', color: area.color || c.teal }}>{area.label}</Text>
-                          <Text style={{ fontSize: 11, color: c.text3, fontFamily: FONTS.mono }}>{days === null ? 'never' : `${days}d`}</Text>
+                          <Readout size={11} color={c.text3} weight="400">{days === null ? 'never' : `${days}d`}</Readout>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -2035,13 +2042,10 @@ export default function HomeScreen() {
             />
             <View style={{ flexDirection: 'row', gap: s.sm }}>
               <TouchableOpacity onPress={() => setNextActionTarget(null)}
-                style={{ flex: 1, padding: s.md, alignItems: 'center', backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border }}>
+                style={{ flex: 1, padding: s.md, alignItems: 'center', backgroundColor: c.bg0, borderRadius: r.md, borderWidth: ui.borderWidth, borderColor: c.border }}>
                 <Text style={{ color: c.text3, fontSize: t.sm }}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={saveNextActionFor} disabled={!nextActionDraft.trim() || savingNextAction}
-                style={{ flex: 2, padding: s.md, alignItems: 'center', backgroundColor: c.teal, borderRadius: r.md, opacity: !nextActionDraft.trim() ? 0.5 : 1 }}>
-                {savingNextAction ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontWeight: t.bold, fontSize: t.sm }}>Save</Text>}
-              </TouchableOpacity>
+              <Button label="Save" onPress={saveNextActionFor} disabled={!nextActionDraft.trim()} busy={savingNextAction} style={{ flex: 2 }} />
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -2067,7 +2071,7 @@ export default function HomeScreen() {
         <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setShowStudyMenu(false)}>
           <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 44 }}>
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
-            <Text style={{ fontSize: t.lg, fontFamily: FONTS.display, fontWeight: t.bold, color: c.text1, marginBottom: s.md }}>Study</Text>
+            <Text style={{ fontSize: t.lg, fontFamily: ui.titleFont, fontWeight: t.bold, color: c.text1, marginBottom: s.md }}>Study</Text>
             {studyDestinations.map(d => (
               <TouchableOpacity key={d.key} onPress={() => pickStudy(d.key)}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, paddingVertical: s.md, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
@@ -2084,7 +2088,7 @@ export default function HomeScreen() {
         <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setShowPlayMenu(false)}>
           <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 44, maxHeight: '75%' }}>
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
-            <Text style={{ fontSize: t.lg, fontFamily: FONTS.display, fontWeight: t.bold, color: c.text1, marginBottom: s.md }}>Play</Text>
+            <Text style={{ fontSize: t.lg, fontFamily: ui.titleFont, fontWeight: t.bold, color: c.text1, marginBottom: s.md }}>Play</Text>
             <ScrollView showsVerticalScrollIndicator={false}>
               {GAMES.map(game => (
                 <TouchableOpacity key={game.key} onPress={() => pickGame(game.key)}

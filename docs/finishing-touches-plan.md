@@ -41,6 +41,17 @@ Also found:
 - `TERMS_URL` = https://chilltechhub.com/terms (live, covers Plus renewal).
 - Age rating: **12+**.
 
+**Phase 2: done 2026-09-21, checked in the web preview (Plain and Command).**
+- `src/components/ui/` holds `SectionLabel`, `Eyebrow`, `Card`, `Button`, `ListRow`, `EmptyState`, `ScreenTitle` and `Readout`. Each reads the theme itself.
+- `scripts/check-style.mjs` is part of `npm run check` and guards 16 files: Settings, TopBar, Home, Library, FeatureGate, CompassCard, GettingStartedCard, WidgetBoard, and all persona widgets through `WidgetCard`.
+- GameOver was left out on purpose: it uses the games' own skin. Its exits are Phase 3.
+- Fixes found while moving screens over:
+  - Guests couldn't reach Settings/Help/Search (the crest opened sign-in). It now opens the menu, with "Sign in" in place of Profile.
+  - Home's planner area colours had drifted from `areaColors.js`, and its crest colours duplicated `crestOptions`. Both now use the shared source.
+  - Home had two filled primary buttons (Play and the first goal's Start). Play is now outlined, so the next step leads.
+  - The FeatureGate unlock hint and the Compass "finish to open" hint were in the faintest grey. Both are now readable.
+- Not moved yet (still HUD in both styles): the rest of the ~100 themed files, including the Library sub-screens, Planner, Classes, Profile, onboarding, UnlockSheet and games.
+
 **Still open:** the privacy-policy wording check on a phone.
 - Found along the way (Phase 3): a guest on Profile sees "Not signed in" plus a "Your rank" tutorial bubble pointing at nothing. Guests also can't reach Settings at all, so they can't change appearance.
 - Found along the way (Phase 4): the existing light-mode `colors.teal` (#1a8a7a) and `colors.gold` (#9a7228) are ~4.2:1 on white, just under AA. The new accents use AA-passing shades. The rest of the app still uses the old ones.

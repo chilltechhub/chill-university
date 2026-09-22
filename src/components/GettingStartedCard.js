@@ -27,6 +27,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
+import { Button, Eyebrow } from './ui';
 import { useTour } from '../../context/TourContext';
 import { supabase } from '../api/supabaseClient';
 import { saveOnboardingFields, applyPlannerPicks } from '../api/onboardingService';
@@ -45,7 +46,7 @@ const DONE_KEY = '@cth_setting_setupTasksDone';
 
 export default function GettingStartedCard({ onNavigate }) {
   const themeCtx = useTheme();
-  const { colors: c, typography: t, spacing: s, radius: r, isDark } = themeCtx;
+  const { colors: c, typography: t, spacing: s, radius: r, isDark, style: ui, accent } = themeCtx;
   // The step components expect the shorthand bundle, not the raw context.
   const theme = { c, t, s, r, sh: themeCtx.shadows, isDark };
 
@@ -170,18 +171,16 @@ export default function GettingStartedCard({ onNavigate }) {
   };
 
   const card = {
-    backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg,
+    backgroundColor: c.bg1, borderRadius: ui.cardRadius, padding: s.lg,
     marginHorizontal: s.lg, marginBottom: s.md,
-    borderWidth: 0.5, borderColor: c.border,
+    borderWidth: ui.borderWidth, borderColor: c.border,
   };
 
   return (
     <>
-      <View style={[card, { borderTopWidth: 2, borderTopColor: c.teal }]}>
+      <View style={[card, { borderTopWidth: 2, borderTopColor: accent.primary }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: s.md }}>
-          <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1 }}>
-            Getting started
-          </Text>
+          <Eyebrow style={{ marginBottom: 0 }}>Getting started</Eyebrow>
           <TouchableOpacity
             onPress={() => setDismissed(true)}
             accessibilityRole="button"
@@ -195,21 +194,12 @@ export default function GettingStartedCard({ onNavigate }) {
         <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1, marginBottom: 4 }}>
           {action.label}
         </Text>
-        <TouchableOpacity
-          onPress={() => onNavigate?.(action.target)}
-          accessibilityRole="button"
-          style={{
-            flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-            backgroundColor: c.teal, borderRadius: r.md, paddingVertical: 12, marginTop: s.sm,
-          }}>
-          <Text style={{ color: '#fff', fontWeight: '700', fontSize: t.sm }}>{action.cta}</Text>
-          <Ionicons name="arrow-forward" size={15} color="#fff" />
-        </TouchableOpacity>
+        <Button label={action.cta} onPress={() => onNavigate?.(action.target)} style={{ marginTop: s.sm }} />
 
         {/* ── The rest of setup, one row at a time ── */}
-        <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginTop: s.lg, marginBottom: s.sm }}>
+        <Eyebrow style={{ marginTop: s.lg, marginBottom: s.sm }}>
           Finish your setup · {remaining.length} left
-        </Text>
+        </Eyebrow>
         {remaining.map(task => (
           <TouchableOpacity
             key={task.key}
@@ -218,10 +208,10 @@ export default function GettingStartedCard({ onNavigate }) {
             accessibilityLabel={`${task.label}. ${task.blurb}`}
             style={{
               flexDirection: 'row', alignItems: 'center', gap: s.md,
-              backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, marginBottom: s.sm,
-              borderWidth: 0.5, borderColor: c.border,
+              backgroundColor: c.bg0, borderRadius: ui.buttonRadius, padding: s.md, marginBottom: s.sm,
+              borderWidth: ui.borderWidth, borderColor: c.border,
             }}>
-            <Ionicons name={task.icon} size={18} color={c.teal} />
+            <Ionicons name={task.icon} size={18} color={accent.primary} />
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1 }}>{task.label}</Text>
               <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 1 }}>{task.blurb}</Text>
@@ -270,18 +260,7 @@ export default function GettingStartedCard({ onNavigate }) {
             </ScrollView>
 
             <View style={{ paddingHorizontal: s.xl, paddingTop: s.md }}>
-              <TouchableOpacity
-                onPress={saveSheet}
-                disabled={saving}
-                accessibilityRole="button"
-                style={{
-                  backgroundColor: c.teal, borderRadius: r.md, paddingVertical: 14,
-                  alignItems: 'center', opacity: saving ? 0.6 : 1,
-                }}>
-                {saving
-                  ? <ActivityIndicator color="#fff" size="small" />
-                  : <Text style={{ color: '#fff', fontWeight: '700', fontSize: t.sm }}>Save</Text>}
-              </TouchableOpacity>
+              <Button label="Save" onPress={saveSheet} busy={saving} />
             </View>
           </View>
         </View>
