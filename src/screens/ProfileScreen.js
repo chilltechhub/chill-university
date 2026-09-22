@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../api/supabaseClient';
 import { useTheme } from '../../context/ThemeContext';
+import SignInPrompt from '../components/SignInPrompt';
 import { useUserProgress, SUBJECT_CONFIG } from '../../context/UserProgressContext';
 import useCharacterLoadout from '../logic/useCharacterLoadout';
 import useBonusRewards from '../logic/useBonusRewards';
@@ -88,7 +89,9 @@ export default function ProfileScreen() {
       }
     })();
     return () => { mounted = false; };
-  }, []);
+  // Re-read when the account changes, so signing in from the guest
+  // prompt below shows the profile without leaving the screen.
+  }, [progress.user?.id]);
 
   const markDirty = (setter) => (val) => { setter(val); setDirty(true); };
 
@@ -128,10 +131,10 @@ export default function ProfileScreen() {
 
   if (!session) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.title}>Not signed in</Text>
-        <Text style={styles.subtitle}>Sign in to view or edit your profile.</Text>
-      </View>
+      <SignInPrompt
+        title="Make it yours"
+        body="Sign in to keep your level, points, streak and badges, and pick up where you left off on any device."
+      />
     );
   }
 

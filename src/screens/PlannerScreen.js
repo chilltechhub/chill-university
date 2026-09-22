@@ -11,6 +11,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
+import SignInPrompt from '../components/SignInPrompt';
+import { useUserProgress } from '../../context/UserProgressContext';
 import { useUIPrefs } from '../../context/UIPrefsContext';
 import { useAccess } from '../../context/AccessContext';
 import { supabase } from '../api/profileScopedClient';
@@ -1191,12 +1193,15 @@ export default function PlannerScreen() {
   const { showingAll, toggle: toggleScope } = useViewScope('planner', SCOPE_PROFILE);
   const { profiles } = useProfiles();
 
+  // Re-read when the account changes, so signing in from the guest prompt
+  // opens the planner without leaving the screen.
+  const { user: signedInUser } = useUserProgress();
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) setUserId(user.id);
+      setUserId(user ? user.id : null);
       setLoading(false);
     });
-  }, []);
+  }, [signedInUser?.id]);
 
   const toggleArea = (key) => {
     if (key === 'all') { setAreas(new Set()); return; }
@@ -1239,9 +1244,11 @@ export default function PlannerScreen() {
   );
 
   if (!userId) return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.bg0 }}>
-      <Text style={{ fontSize: t.lg, color: c.text3 }}>Sign in to use the Planner</Text>
-    </View>
+    <SignInPrompt
+      icon="calendar-outline"
+      title="Your planner lives in your account"
+      body="Sign in to plan your days, set routines and get reminders. It syncs across your devices."
+    />
   );
 
   return (

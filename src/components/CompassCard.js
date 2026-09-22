@@ -196,10 +196,16 @@ export default function CompassCard() {
           {/* A first goal has a guide. If they sent it away, this is the
               way to call it back (src/logic/useGuidedFirstGoal.js). */}
           {objective.intro && !tourActive && (
-            <TouchableOpacity onPress={resumeFirstGoalGuide} activeOpacity={0.7} style={s.guideLink}>
-              <Ionicons name="chatbubble-ellipses-outline" size={13} color={accent} />
-              <Text style={[s.guideLinkText, { color: accent }]}>Show me how</Text>
-            </TouchableOpacity>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon="chatbubble-ellipses-outline"
+              label="Show me how"
+              color={accent}
+              fullWidth={false}
+              onPress={resumeFirstGoalGuide}
+              style={s.guideLink}
+            />
           )}
         </>
       )}
@@ -231,8 +237,7 @@ const makeStyles = (c, t, sp, r, ui) => StyleSheet.create({
   previewList:{ marginTop: sp.md, gap: 4 },
   previewStep:{ fontSize: t.xs, color: c.text2, lineHeight: 18 },
   stageHint:{ fontSize: t.xs, color: c.text3, marginTop: sp.md },
-  guideLink:{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: sp.md, alignSelf: 'flex-start' },
-  guideLinkText:{ fontSize: t.xs, fontWeight: '800' },
+  guideLink:{ marginTop: sp.md },
 
   claimBtn: { marginTop: sp.md },
 });

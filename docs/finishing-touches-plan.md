@@ -52,6 +52,15 @@ Also found:
   - The FeatureGate unlock hint and the Compass "finish to open" hint were in the faintest grey. Both are now readable.
 - Not moved yet (still HUD in both styles): the rest of the ~100 themed files, including the Library sub-screens, Planner, Classes, Profile, onboarding, UnlockSheet and games.
 
+**Phase 3: done 2026-09-22, except 3.1, which is handed to a parallel session.**
+- 3.1 Home: owned by the "User scenarios and app needs" session (NextUpCard, desk placement). Asked for `compass` first in every persona's `defaultWidgets`.
+- 3.2 Locked and empty states: FeatureGate was done in Phase 2. Profile and Planner showed guests a bare "Not signed in" line with no button; they now show `SignInPrompt` (what the screen is for, plus Sign in), and re-check the session after sign-in. Other empty states already coach.
+- 3.3 GameOver: the lesson and Play again / Back come straight after the result. Stats and the fact move below, so the exits are on screen without scrolling.
+- 3.4 Workshop: a build with no next step shows "Set next step" (card and hero) and saves in place. Not seen live: the test account's builds all have next steps.
+- 3.5 Capture: already save-first. The Capture screen's quick-capture box wrote straight to Supabase and lost the text offline; it now goes through `addCapture` → `offlineWrite` (queued, synced on launch).
+- 3.6 Guide resume: "Show me how" is a visible button instead of a small link.
+- The guest "Your rank" bubble: App.js skips auto-tutorials on account-only screens (Profile, Planner) for guests.
+
 **Still open:** the privacy-policy wording check on a phone.
 - Found along the way (Phase 3): a guest on Profile sees "Not signed in" plus a "Your rank" tutorial bubble pointing at nothing. Guests also can't reach Settings at all, so they can't change appearance.
 - Found along the way (Phase 4): the existing light-mode `colors.teal` (#1a8a7a) and `colors.gold` (#9a7228) are ~4.2:1 on white, just under AA. The new accents use AA-passing shades. The rest of the app still uses the old ones.
