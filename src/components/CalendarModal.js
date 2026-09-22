@@ -18,6 +18,7 @@ import { buildProfileLookup } from '../data/personas';
 import useViewScope, { SCOPE_ALL } from '../logic/useViewScope';
 import { cacheRead, cacheWrite, isOnline } from '../api/offlineCache';
 import { dateStr } from '../logic/dateUtils';
+import TimePickerField from './TimePickerField';
 
 // ─── Notifications ────────────────────────────────────────────────────────────
 let Notifications = null;
@@ -155,8 +156,7 @@ function AddEventForm({ date, userId, onSave, onCancel, c, t, s, r, initialType 
           <Text style={{ fontSize:t.xs, color: allDay ? tc.color : c.text3 }}>All day</Text>
         </TouchableOpacity>
         {!allDay && (
-          <TextInput style={{ flex:1, borderBottomWidth:1, borderBottomColor:c.border, paddingVertical:4, fontSize:t.sm, color:c.text1 }}
-            value={time} onChangeText={setTime} placeholder="Time (e.g. 14:30)" placeholderTextColor={c.text4} keyboardType="numbers-and-punctuation" />
+          <TimePickerField value={time} onChange={setTime} placeholder="Pick a time" style={{ flex:1, paddingVertical:8 }} />
         )}
       </View>
       {!allDay && (

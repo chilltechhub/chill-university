@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import SignInPrompt from '../components/SignInPrompt';
+import TimePickerField from '../components/TimePickerField';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { useUIPrefs } from '../../context/UIPrefsContext';
 import { useAccess } from '../../context/AccessContext';
@@ -493,12 +494,7 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
             <View style={{ flexDirection: 'row', gap: s.sm }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Time</Text>
-                <TextInput
-                  style={{ borderWidth: 1, borderColor: c.border, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, backgroundColor: c.bg0 }}
-                  value={timeVal} onChangeText={setTimeVal}
-                  placeholder="e.g. 08:00" placeholderTextColor={c.text4}
-                  keyboardType="numbers-and-punctuation"
-                />
+                <TimePickerField value={timeVal} onChange={setTimeVal} placeholder="Any time" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Duration (min)</Text>

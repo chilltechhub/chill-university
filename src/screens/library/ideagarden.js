@@ -980,11 +980,13 @@ export default function IdeaGardenScreen() {
           <TouchableOpacity style={styles.exportBtn} onPress={exportGarden}>
             <Ionicons name="share-outline" size={18} color={gc.text2} />
           </TouchableOpacity>
-          {/* Historic id — it wraps the ADD button, not a list. radius 17
-              matches styles.addBtn, so the spotlight is a circle. */}
+          {/* Historic id — it wraps the ADD button, not a list. A labelled
+              pill: an unlabelled "+" at the end of five icons was the reason
+              people couldn't find where to add an idea. */}
           <TourSpot id="ideas-list" radius={17}>
-          <TouchableOpacity style={styles.addBtn} onPress={openNewCore}>
-            <Ionicons name="add" size={18} color={gc.white} />
+          <TouchableOpacity style={styles.addBtn} onPress={openNewCore} accessibilityRole="button" accessibilityLabel="Plant a new idea">
+            <Ionicons name="add" size={17} color={gc.white} />
+            <Text style={styles.addBtnText}>Plant</Text>
           </TouchableOpacity>
           </TourSpot>
         </View>
@@ -1028,7 +1030,7 @@ export default function IdeaGardenScreen() {
           {cores.length === 0 && (
             <View style={styles.emptyGarden}>
               <Text style={styles.emptyGardenText}>Your garden is empty</Text>
-              <Text style={styles.emptyGardenSub}>Tap + to plant your first idea</Text>
+              <Text style={styles.emptyGardenSub}>Tap Plant (top right) to add your first idea</Text>
             </View>
           )}
         </View>
@@ -1111,7 +1113,15 @@ export default function IdeaGardenScreen() {
               </View>
             );
           })}
-          {cores.length === 0 && <View style={styles.emptyList}><Text style={styles.emptyListText}>No plants yet — tap + to start</Text></View>}
+          {cores.length === 0 && (
+            <View style={styles.emptyList}>
+              <Text style={styles.emptyListText}>No ideas yet. Rough is fine: it only has to be written down.</Text>
+              <TouchableOpacity style={[styles.addBtn, { marginTop: 14, height: 40, paddingHorizontal: 18 }]} onPress={openNewCore} accessibilityRole="button">
+                <Ionicons name="add" size={18} color={gc.white} />
+                <Text style={styles.addBtnText}>Plant your first idea</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </ScrollView>
       )}
 
@@ -1416,7 +1426,8 @@ const makeStyles = (gc) => StyleSheet.create({
   viewBtn: { padding: 6, borderRadius: 6 },
   viewBtnActive: { backgroundColor: gc.green },
   exportBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
-  addBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: gc.green, alignItems: 'center', justifyContent: 'center' },
+  addBtn: { height: 34, borderRadius: 17, paddingHorizontal: 12, gap: 4, flexDirection: 'row', backgroundColor: gc.green, alignItems: 'center', justifyContent: 'center' },
+  addBtnText: { color: gc.white, fontSize: 13, fontWeight: '700' },
   canvasWrap: { flex: 1, position: 'relative', overflow: 'hidden' },
   emptyGarden: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' },
   emptyGardenText: { fontSize: 16, color: gc.text4, fontWeight: '500' },
@@ -1439,7 +1450,7 @@ const makeStyles = (gc) => StyleSheet.create({
   listAction: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 10, backgroundColor: gc.bg2, borderRadius: 8 },
   listActionText: { fontSize: 12, color: gc.text4 },
   emptyList: { alignItems: 'center', paddingTop: 60 },
-  emptyListText: { fontSize: 14, color: gc.text4 },
+  emptyListText: { fontSize: 14, color: gc.text3, textAlign: 'center', paddingHorizontal: 32, lineHeight: 20 },
   panel: { backgroundColor: gc.bg1, borderTopWidth: 0.5, borderTopColor: gc.border, padding: 16, paddingBottom: 24 },
   panelClose: { position: 'absolute', top: 12, right: 12, padding: 4 },
   panelHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6, paddingRight: 30 },

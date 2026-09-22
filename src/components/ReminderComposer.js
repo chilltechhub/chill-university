@@ -19,6 +19,7 @@ import { isoDate, addDaysIso, REPEAT_COUNTS } from '../logic/aiBridgeFormat';
 import { TARGET_LABEL } from '../logic/openTarget';
 import { AREA_COLORS } from '../data/areaColors';
 import { PHONE_CAPABLE } from '../logic/noticeStore';
+import TimePickerField from './TimePickerField';
 
 const AREAS = [
   ['physical', '💪', 'Physical'], ['mental', '🧠', 'Mental'], ['social', '🤝', 'Social'], ['financial', '💰', 'Financial'],
@@ -74,7 +75,7 @@ export default function ReminderComposer({ visible, onClose, userId, initial = {
     setTarget(initial.target || null);
     setTargetLabel(initial.targetLabel || '');
     setDate(first.date);
-    setTimeText(fmt12(first.time));
+    setTimeText(first.time || "");
     setRepeat(null);
     setArea(initial.area || (initial.target?.kind === 'project' ? 'professional' : 'physical'));
     setNotify(PHONE_CAPABLE);
@@ -155,18 +156,13 @@ export default function ReminderComposer({ visible, onClose, userId, initial = {
 
               {label('When')}
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm }}>
-                {picks.map(p => chip(p.key, p.label, date === p.date && time === p.time, () => { setDate(p.date); setTimeText(fmt12(p.time)); }))}
+                {picks.map(p => chip(p.key, p.label, date === p.date && time === p.time, () => { setDate(p.date); setTimeText(p.time || ""); }))}
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: s.md }} contentContainerStyle={{ gap: s.sm }}>
                 {days.map((d, i) => chip(d, dayLabel(d, i), date === d, () => setDate(d)))}
               </ScrollView>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginTop: s.md }}>
-                <Ionicons name="time-outline" size={16} color={c.text3} />
-                <TextInput
-                  value={timeText} onChangeText={setTimeText} placeholder="Time, e.g. 5pm (blank = any time)" placeholderTextColor={c.text4}
-                  autoCapitalize="none" keyboardType={Platform.OS === 'ios' ? 'numbers-and-punctuation' : 'default'}
-                  style={{ flex: 1, fontSize: t.sm, color: c.text1, backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 0.5, borderColor: timeBad ? c.error : c.border, padding: s.sm }}
-                />
+                <TimePickerField value={timeText} onChange={setTimeText} placeholder="Any time (tap to pick)" style={{ flex: 1, padding: s.sm }} />
               </View>
               {past && <Text style={{ fontSize: 11, color: c.gold, marginTop: 4 }}>That time has already passed today.</Text>}
 

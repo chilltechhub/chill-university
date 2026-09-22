@@ -24,11 +24,12 @@
 // the game to the next round / ends it — callers should NOT re-add the
 // points there, `onAward` already banked them.
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useGameTheme } from './GameShell';
 import { useUIPrefs } from '../../context/UIPrefsContext';
+import { useUserProgress } from '../../context/UserProgressContext';
 
 // Grade tier (1=K-2 … 4=9-12) scales the whole prize pool down for younger
 // bands — same round performance, smaller numbers, so points stay roughly
@@ -84,6 +85,10 @@ export default function RoundCompleteScreen({
 }) {
   const G = useGameTheme();
   const s = makeStyles(G);
+  // Count this round now, so objectives like "Play one training game" tick
+  // after one round instead of waiting for the whole run to end.
+  const { noteRoundPlayed } = useUserProgress();
+  useEffect(() => { noteRoundPlayed?.(total); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const { showEmojis } = useUIPrefs();
   const [prizes] = useState(() => rollPrizes(correct, total, difficulty, funGame));
   const [picked, setPicked] = useState(null);

@@ -43,6 +43,7 @@ export default function LoginScreen({ onSuccess, onClose }) {
   const [loading,     setLoading]     = useState(false);
   const [mode,        setMode]        = useState('login'); // login | signup | reset
   const [showPass,    setShowPass]    = useState(false);
+  const [agreed,      setAgreed]      = useState(false); // signup: Terms + Privacy ticked
 
   const goAfterAuth = async (user) => {
   try {
@@ -125,6 +126,10 @@ export default function LoginScreen({ onSuccess, onClose }) {
       Alert.alert('Missing fields', 'Please enter your email and password.');
       return;
     }
+    if (mode === 'signup' && !agreed) {
+      Alert.alert('One more step', 'Tick the box to agree to the Terms and Privacy Policy.');
+      return;
+    }
     if (mode === 'signup' && password.length < 6) {
       Alert.alert('Password too short', 'Password must be at least 6 characters.');
       return;
@@ -139,7 +144,8 @@ export default function LoginScreen({ onSuccess, onClose }) {
       } else {
         const { data, error } = await supabase.auth.signUp({
           email: trimEmail, password,
-          options: { data: { display_name: displayName.trim() || trimEmail.split('@')[0] } },
+          // When they agreed, kept with the account (auth user metadata).
+          options: { data: { display_name: displayName.trim() || trimEmail.split('@')[0], terms_accepted_at: new Date().toISOString() } },
         });
         if (error) { Alert.alert('Sign up failed', error.message); return; }
 
@@ -299,8 +305,39 @@ export default function LoginScreen({ onSuccess, onClose }) {
             </TouchableOpacity>
           )}
 
+          {/* Agreement — a tick, not a line of small print. Signup stays
+              disabled until it's ticked. */}
+          {mode === 'signup' && (
+            <View style={s.agreeRow}>
+              <TouchableOpacity
+                onPress={() => setAgreed(a => !a)}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: agreed }}
+                accessibilityLabel="I agree to the Terms and Privacy Policy"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name={agreed ? 'checkbox' : 'square-outline'} size={22} color={agreed ? '#2bb5a0' : 'rgba(255,255,255,0.5)'} />
+              </TouchableOpacity>
+              <Text style={s.agreeText} onPress={() => setAgreed(a => !a)}>
+                I agree to the{' '}
+                {TERMS_URL ? (
+                  <>
+                    <Text style={s.legalLink} onPress={() => Linking.openURL(TERMS_URL)}>Terms</Text>
+                    {' and '}
+                  </>
+                ) : null}
+                <Text style={s.legalLink} onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>Privacy Policy</Text>
+              </Text>
+            </View>
+          )}
+
           {/* Submit */}
-          <TouchableOpacity style={s.btn} onPress={handleSubmit} disabled={loading} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={[s.btn, mode === 'signup' && !agreed && { opacity: 0.5 }]}
+            onPress={handleSubmit}
+            disabled={loading || (mode === 'signup' && !agreed)}
+            activeOpacity={0.85}
+          >
             {loading
               ? <ActivityIndicator color="#fff" size="small" />
               : <>
@@ -311,21 +348,6 @@ export default function LoginScreen({ onSuccess, onClose }) {
                 </>
             }
           </TouchableOpacity>
-
-          {/* What signing up agrees to. Terms only appear once TERMS_URL is
-              set in src/config/legal.js, so this never links to nothing. */}
-          {mode === 'signup' && (
-            <Text style={s.legalText}>
-              By creating an account you agree to our{' '}
-              {TERMS_URL ? (
-                <>
-                  <Text style={s.legalLink} onPress={() => Linking.openURL(TERMS_URL)}>Terms</Text>
-                  {' and '}
-                </>
-              ) : null}
-              <Text style={s.legalLink} onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>Privacy Policy</Text>.
-            </Text>
-          )}
 
           {/* Switch mode */}
           {mode === 'reset' ? (
@@ -393,6 +415,8 @@ const s = StyleSheet.create({
   btnText:     { color: '#fff', fontWeight: '700', fontSize: 16 },
   btnEmoji:    { fontSize: 16 },
   legalText:   { marginTop: 14, fontSize: 12, lineHeight: 17, color: 'rgba(255,255,255,0.4)', textAlign: 'center' },
+  agreeRow:    { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
+  agreeText:   { flex: 1, fontSize: 13, lineHeight: 18, color: 'rgba(255,255,255,0.75)' },
   legalLink:   { color: '#2bb5a0', textDecorationLine: 'underline' },
   switchRow:   { marginTop: 18, alignItems: 'center' },
   switchText:  { fontSize: 13, color: 'rgba(255,255,255,0.4)' },

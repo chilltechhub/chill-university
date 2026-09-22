@@ -10,6 +10,7 @@ import useGame from '../logic/useGame';
 import useGradeLevel, { levelForTier } from '../logic/useGradeLevel';
 import { createAdaptiveTier, nextAdaptiveTier, STAGE_COUNT } from '../logic/difficultyAdapter';
 import { BUDGET_BANK } from '../data/gameContent/budgetBalance';
+import { rotatePick } from '../logic/questionRotation';
 
 const BLURBS = {
   'K-2': 'Small budgets, obvious needs vs wants.',
@@ -20,10 +21,9 @@ const BLURBS = {
 
 // `avoid` accumulates every scenario title served this run — see the same
 // note on RecipeBuilderGame's pickRecipe.
+// Rotates through the whole pool across runs, see questionRotation.js.
 function pickNext(pool, avoid = []) {
-  const choices = pool.filter(sc => !avoid.includes(sc.title));
-  const list = choices.length ? choices : pool;
-  return list[Math.floor(Math.random() * list.length)];
+  return rotatePick(pool, avoid, q => q.title);
 }
 
 export default function BudgetBalanceGame({ onGameEnd }) {

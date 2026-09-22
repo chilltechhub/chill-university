@@ -61,9 +61,8 @@ export function roundLength(roundsCompletedThisRun = 0) {
 
 // How many rounds make up one session for games built around a fixed
 // number of discrete rounds per run (every game with a RoundCompleteScreen
-// prize pick) — round 1 is still short (roundLength(0) = 4), but a player
-// who keeps clearing rounds now gets a full 10-round run instead of
-// stopping at 3, growing to roundLength(9) = 8 questions in the final
-// round (sum: 4+4+5+5+6+6+7+7+8+8 = 60 questions if every round is
-// cleared) rather than plateauing early.
-export const STAGE_COUNT = 10;
+// prize pick). Five, not ten: ten was too long for a daily drill (up to 60
+// questions). Rounds still grow — roundLength(0..4) = 4,4,5,5,6, so 24
+// questions if every round is cleared — and questionRotation.js keeps
+// replays from repeating the same ones.
+export const STAGE_COUNT = 5;

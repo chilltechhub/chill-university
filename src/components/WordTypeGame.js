@@ -13,6 +13,7 @@ import useGameFacts from '../logic/useGameFacts';
 import useGradeLevel, { levelForTier } from '../logic/useGradeLevel';
 import { createAdaptiveTier, nextAdaptiveTier, roundLength, STAGE_COUNT } from '../logic/difficultyAdapter';
 import { WORD_BANK, WORD_TYPE_COLORS } from '../data/gameContent/wordDetective';
+import { rotatePick } from '../logic/questionRotation';
 
 const BLURBS = {
   'K-2': 'Simple sentences — noun, verb, adjective, adverb.',
@@ -21,10 +22,9 @@ const BLURBS = {
   '9-12': 'Gerunds, participles, interjections & complex clause structure.',
 };
 
-function pickNext(pool, avoid) {
-  const choices = pool.filter(q => !avoid.includes(q.word + q.sentence));
-  const list = choices.length ? choices : pool;
-  return list[Math.floor(Math.random() * list.length)];
+// Rotates through the whole pool across runs, see questionRotation.js.
+function pickNext(pool, avoid = []) {
+  return rotatePick(pool, avoid, q => q.word + q.sentence);
 }
 
 export default function WordTypeGame({ onGameEnd }) {

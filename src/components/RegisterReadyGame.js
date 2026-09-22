@@ -22,6 +22,7 @@ import useGameFacts from '../logic/useGameFacts';
 import useGradeLevel, { levelForTier } from '../logic/useGradeLevel';
 import { createAdaptiveTier, nextAdaptiveTier, roundLength, STAGE_COUNT } from '../logic/difficultyAdapter';
 import { REGISTER_BANK } from '../data/gameContent/registerReady';
+import { rotatePick } from '../logic/questionRotation';
 
 const TIER_LABELS = {
   'K-2': 'Day One', '3-5': 'First Weeks', '6-8': 'Experienced Associate', '9-12': 'Shift Lead',
@@ -36,10 +37,9 @@ const BLURBS = {
 
 function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
-function pickNext(pool, avoid) {
-  const choices = pool.filter(q => !avoid.includes(q.prompt));
-  const list = choices.length ? choices : pool;
-  return list[Math.floor(Math.random() * list.length)];
+// Rotates through the whole pool across runs, see questionRotation.js.
+function pickNext(pool, avoid = []) {
+  return rotatePick(pool, avoid, q => q.prompt);
 }
 
 export default function RegisterReadyGame({ onGameEnd }) {

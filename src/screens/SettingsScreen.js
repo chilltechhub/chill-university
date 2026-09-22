@@ -36,6 +36,7 @@ import { MAX_STAGE } from '../data/experienceStages';
 import { PRIVACY_POLICY_URL, TERMS_URL, SUPPORT_EMAIL } from '../config/legal';
 import { shareMyDataExport } from '../api/dataExport';
 import { isMinorRequiringConsent } from '../logic/ageOfConsent';
+import { dobFromParts } from '../logic/dateUtils';
 
 // `alwaysShowSubtitle` is for the Show Emojis / Show Subtitles rows
 // themselves — hiding the explanation of what "show subtitles" does the
@@ -486,7 +487,7 @@ function BirthDateModal({ visible, onClose, onSave, saving, c, t, s, r }) {
           </Text>
           <View style={{ flexDirection: 'row', gap: s.sm, marginBottom: s.lg }}>
             <TextInput style={[input, { flex: 1 }]} placeholder="MM" placeholderTextColor={c.text4} value={mm} onChangeText={setMm} keyboardType="number-pad" maxLength={2} />
-            <TextInput style={[input, { flex: 1 }]} placeholder="DD" placeholderTextColor={c.text4} value={dd} onChangeText={setDd} keyboardType="number-pad" maxLength={2} />
+            <TextInput style={[input, { flex: 1 }]} placeholder="DD (opt.)" accessibilityLabel="Birth day, optional" placeholderTextColor={c.text4} value={dd} onChangeText={setDd} keyboardType="number-pad" maxLength={2} />
             <TextInput style={[input, { flex: 1.6 }]} placeholder="YYYY" placeholderTextColor={c.text4} value={yyyy} onChangeText={setYyyy} keyboardType="number-pad" maxLength={4} />
           </View>
           <Button label="Save" onPress={() => onSave({ mm, dd, yyyy })} busy={saving} />
@@ -703,12 +704,9 @@ export default function SettingsScreen() {
   };
 
   const saveBirthDate = async ({ mm, dd, yyyy }) => {
-    const m = parseInt(mm, 10), d = parseInt(dd, 10), y = parseInt(yyyy, 10);
-    const dob = new Date(y, (m || 1) - 1, d || 1);
-    const valid = y > 1900 && m >= 1 && m <= 12 && d >= 1 && d <= 31
-      && dob <= new Date() && (new Date().getFullYear() - y) < 120;
-    if (!valid) { Alert.alert('Check your birth date', 'Enter a valid month, day, and year.'); return; }
-    const dateOfBirth = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    // Month + year required, day optional — same rule as onboarding.
+    const dateOfBirth = dobFromParts(mm, dd, yyyy);
+    if (!dateOfBirth) { Alert.alert('Check your birth date', 'Enter your birth month and year. The day is optional.'); return; }
     const isMinor = isMinorRequiringConsent(dateOfBirth, liveProfile?.country_code || 'US');
 
     setSavingDob(true);

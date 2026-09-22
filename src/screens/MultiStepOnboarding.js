@@ -51,6 +51,7 @@ import {
 } from '../api/onboardingService';
 import { LIFE_AREAS } from './library/LifeAreaScreen';
 import { isMinorRequiringConsent } from '../logic/ageOfConsent';
+import { dobFromParts } from '../logic/dateUtils';
 import { startParentVerification, getVerificationStatus } from '../api/kwsVerification';
 import { DEFAULT_PERSONA, personasFor, defaultPersonaFor, getPersona } from '../data/personas';
 import { ageCategoryFromDob, isMinorBand } from '../logic/profileResolver';
@@ -266,17 +267,12 @@ export default function MultiStepOnboarding() {
   }, [phase]);
 
   const submitBirthDate = async () => {
-    const mm = parseInt(birthMonth, 10);
-    const dd = parseInt(birthDay, 10);
-    const yyyy = parseInt(birthYear, 10);
-    const dob = new Date(yyyy, (mm || 1) - 1, dd || 1);
-    const valid = yyyy > 1900 && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31
-      && dob <= new Date() && (new Date().getFullYear() - yyyy) < 120;
-    if (!valid) {
-      Alert.alert('Check your birth date', 'Enter a valid month, day, and year.');
+    // Month + year required, day optional — see dobFromParts.
+    const dateOfBirth = dobFromParts(birthMonth, birthDay, birthYear);
+    if (!dateOfBirth) {
+      Alert.alert('Check your birth date', 'Enter your birth month and year. The day is optional.');
       return;
     }
-    const dateOfBirth = `${yyyy}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
     const isMinor = isMinorRequiringConsent(dateOfBirth, countryCode);
     setAgeBand(ageCategoryFromDob(dateOfBirth));
     dobRef.current = dateOfBirth;
@@ -612,7 +608,7 @@ export default function MultiStepOnboarding() {
             <View style={gs.dobRow}>
               <TextInput style={[gs.input, gs.dobInput]} placeholder="MM" placeholderTextColor={c.text4}
                 value={birthMonth} onChangeText={setBirthMonth} keyboardType="number-pad" maxLength={2} />
-              <TextInput style={[gs.input, gs.dobInput]} placeholder="DD" placeholderTextColor={c.text4}
+              <TextInput style={[gs.input, gs.dobInput]} placeholder="DD (opt.)" accessibilityLabel="Birth day, optional" placeholderTextColor={c.text4}
                 value={birthDay} onChangeText={setBirthDay} keyboardType="number-pad" maxLength={2} />
               <TextInput style={[gs.input, gs.dobInputYear]} placeholder="YYYY" placeholderTextColor={c.text4}
                 value={birthYear} onChangeText={setBirthYear} keyboardType="number-pad" maxLength={4} />
