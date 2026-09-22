@@ -61,7 +61,16 @@ Also found:
 - 3.6 Guide resume: "Show me how" is a visible button instead of a small link.
 - The guest "Your rank" bubble: App.js skips auto-tutorials on account-only screens (Profile, Planner) for guests.
 
-**Still open:** the privacy-policy wording check on a phone.
+**Phase 4: done 2026-09-22.**
+- Contrast: every theme text and semantic colour now clears WCAG AA (4.5:1) on both bg0 and bg1.
+  - Light: `text3` #5f6880, teal #167a6c, gold #8a6420, success #237a3f, warning #9c5a08.
+  - Dark: `text3` #8a92ab, purple #a67ad8, error #ef6a6a.
+  - `text4` stays faint on purpose (placeholders and decoration only).
+- Colour-only feedback: 29 games checked. All pair colour with ✓/✗, words or +/− signs, except Memory Match's matched cards. Those now get a checkmark badge.
+- Tab bar follows the accent (done in Phase 1).
+- Motion: the widget edit wiggle and the walking guide are kept on purpose. **Follow-up:** Home's desk ticker scrolls continuously. It should stop when the OS "reduce motion" setting is on (`AccessibilityInfo.isReduceMotionEnabled`), or stop after one pass. Not done here because HomeScreen.js had a parallel session's uncommitted work in it.
+
+**Still open:** the privacy-policy wording check on a phone, Phase 5 device QA, and the Supabase `maintenance_mode` message, which still says "Chill".
 - Found along the way (Phase 3): a guest on Profile sees "Not signed in" plus a "Your rank" tutorial bubble pointing at nothing. Guests also can't reach Settings at all, so they can't change appearance.
 - Found along the way (Phase 4): the existing light-mode `colors.teal` (#1a8a7a) and `colors.gold` (#9a7228) are ~4.2:1 on white, just under AA. The new accents use AA-passing shades. The rest of the app still uses the old ones.
 

@@ -21,13 +21,13 @@ export const THEMES = {
     borderStrong:'#aab3c8',
 
     // Gold — rank, points, primary CTA
-    gold:       '#9a7228',
+    gold:       '#8a6420',   // AA on bg0/bg1 (was #9a7228, ~3.9:1)
     goldMid:    '#c9a84c',
     goldLight:  '#f5e8c8',
     goldDim:    '#6a4e10',
 
     // Teal — action, discovery, progress
-    teal:       '#1a8a7a',
+    teal:       '#167a6c',   // AA on bg0/bg1 (was #1a8a7a, ~3.7:1)
     tealMid:    '#2bb5a0',
     tealLight:  '#e0f4f0',
     tealDim:    '#0f5a50',
@@ -40,15 +40,15 @@ export const THEMES = {
     // Text
     text1:      '#161b28',   // primary
     text2:      '#454f66',   // body
-    text3:      '#7a839c',   // secondary
-    text4:      '#a7b0c6',   // muted / caption
+    text3:      '#5f6880',   // secondary — AA (was #7a839c, ~3.3:1)
+    text4:      '#a7b0c6',   // placeholders / decoration only — below AA on purpose
 
     // Semantic
-    success:    '#2a8a4a',
+    success:    '#237a3f',
     successLight:'#e8f8ee',
     error:      '#c43030',
     errorLight: '#fdeaea',
-    warning:    '#c97a10',
+    warning:    '#9c5a08',
     warningLight:'#fef4e4',
 
     // Subject / life area colors
@@ -116,18 +116,18 @@ export const THEMES = {
     tealLight:  '#0a2822',
     tealDim:    '#1e8f6f',
 
-    purple:     '#8b4fc4',
+    purple:     '#a67ad8',   // AA on bg1 (was #8b4fc4, ~3.1:1)
     purpleLight:'#2a0a4a',
     purpleDim:  '#5a2a8a',
 
     text1:      '#eef1f8',
     text2:      '#a7b0c6',
-    text3:      '#6d7690',
+    text3:      '#8a92ab',   // AA (was #6d7690, ~3.6:1)
     text4:      '#414a68',
 
     success:    '#3ac860',
     successLight:'#0a2818',
-    error:      '#e05050',
+    error:      '#ef6a6a',
     errorLight: '#2a0808',
     warning:    '#e0a030',
     warningLight:'#2a1a04',
