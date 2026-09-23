@@ -214,7 +214,7 @@ export default function WeeklyReviewScreen() {
       {loading ? (
         <ActivityIndicator style={{ marginTop: 60 }} color={color} />
       ) : (
-        <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 48, flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+        <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 48, flexGrow: 1 }} keyboardShouldPersistTaps="handled">
 
           {step === 0 && (
             <View>

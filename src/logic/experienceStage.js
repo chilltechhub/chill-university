@@ -130,7 +130,7 @@ export function fabActionsFor(opened) {
 // derived, like the persona default.
 // Whatever else a stage has opened, the goal in flight and the next action
 // lead Home — that's the whole promise of the first screen.
-const LEAD_WIDGETS = ['compass', 'desk'];
+const LEAD_WIDGETS = ['compass', 'goalSteps', 'desk'];
 
 export function starterWidgetLayout(opened, allKeys) {
   const known = new Set(allKeys);

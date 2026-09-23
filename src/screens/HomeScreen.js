@@ -39,6 +39,7 @@ import { VaultStatusWidget, FounderQuestWidget, TargetsReadinessWidget } from '.
 import { WayfinderWidget } from '../components/widgets/WayfinderWidget';
 import QuestWidget from '../components/widgets/QuestWidget';
 import CompassCard from '../components/CompassCard';
+import GoalStepsWidget from '../components/GoalStepsWidget';
 import { getWayfinderIntent } from '../api/wayfinderService';
 import { useAccess } from '../../context/AccessContext';
 import { starterWidgetLayout } from '../logic/experienceStage';
@@ -142,6 +143,9 @@ const WIDGET_DEFS = [
   // board stays the one system that owns the dashboard — it defaults to
   // directly under the HQ card, and stays reorderable from there.
   { key: 'compass',     title: 'Compass' },
+  // The steps of the goal in flight, ticked or not — the Compass card
+  // shows only the next one.
+  { key: 'goalSteps',   title: 'Your steps' },
   // Persona widgets — src/components/widgets/
   { key: 'habitRings',       title: 'Habits' },
   { key: 'lifeAreas',        title: 'Life Areas' },
@@ -305,7 +309,7 @@ function FocusModal({ visible, draft, setDraft, onSave, onClose, presets, onAddP
 
           {/* Presets */}
           <Eyebrow style={{ marginBottom: s.sm }}>Presets</Eyebrow>
-          <ScrollView style={{ maxHeight: 160 }} showsVerticalScrollIndicator={false}>
+          <ScrollView automaticallyAdjustKeyboardInsets style={{ maxHeight: 160 }} showsVerticalScrollIndicator={false}>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm, marginBottom: s.sm }}>
               {presets.map((preset, i) => (
                 <TouchableOpacity key={i} onPress={() => setDraft(preset)}
@@ -393,7 +397,7 @@ function AffirmationModal({ visible, affirmations, onSave, onClose, c, t, s, r }
           </View>
 
           {/* List */}
-          <ScrollView style={{ maxHeight: 200 }} showsVerticalScrollIndicator={false}>
+          <ScrollView automaticallyAdjustKeyboardInsets style={{ maxHeight: 200 }} showsVerticalScrollIndicator={false}>
             {list.length === 0 ? (
               <Text style={{ fontSize: t.sm, color: c.text4, textAlign: 'center', paddingVertical: s.lg }}>
                 No affirmations yet — add one above
@@ -472,7 +476,7 @@ function IdeaPreviewCard({ idea, visible, onClose, c, t, s, r }) {
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={{ paddingHorizontal: s.xl, gap: s.md, paddingBottom: s.lg }}>
+          <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ paddingHorizontal: s.xl, gap: s.md, paddingBottom: s.lg }}>
             {/* Progress if project */}
             {idea.is_project && tasks.length > 0 && (
               <View>
@@ -1568,7 +1572,7 @@ export default function HomeScreen() {
     // their own inputs this way.
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg0 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {bgMode === 'player' && <PlayerMatchBackground background={playerBackground} />}
-      <ScrollView
+      <ScrollView automaticallyAdjustKeyboardInsets
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.teal} />}
         contentContainerStyle={{ paddingBottom: 40 }}
@@ -2000,6 +2004,10 @@ export default function HomeScreen() {
                 </TourSpot>
               ),
             },
+            {
+              key: 'goalSteps', title: 'Your steps',
+              render: () => <GoalStepsWidget />,
+            },
           ]}
         />
       </ScrollView>
@@ -2130,7 +2138,7 @@ export default function HomeScreen() {
           <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 44, maxHeight: '75%' }}>
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
             <Text style={{ fontSize: t.lg, fontFamily: ui.titleFont, fontWeight: t.bold, color: c.text1, marginBottom: s.md }}>Play</Text>
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false}>
               {GAMES.map(game => (
                 <TouchableOpacity key={game.key} onPress={() => pickGame(game.key)}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, paddingVertical: s.md, borderBottomWidth: 0.5, borderBottomColor: c.border }}>

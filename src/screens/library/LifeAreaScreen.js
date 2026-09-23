@@ -421,7 +421,7 @@ export default function LifeAreaScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg0 }}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
+      <ScrollView automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
         {/* ── Hero banner ── */}
         <View style={{ backgroundColor: color + '18', borderBottomWidth: 1, borderBottomColor: color + '33', padding: s.xl, paddingTop: s.xxl }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: s.md }}>

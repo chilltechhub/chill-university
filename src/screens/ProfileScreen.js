@@ -155,7 +155,7 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+      <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         {/* ── Hero: character + pet on a landscape backdrop ─────────────── */}
         <LandscapeBackground background={background} height={200} style={styles.hero}>
           <CharacterWalker

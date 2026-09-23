@@ -183,7 +183,7 @@ export default function WorkModeScreen() {
 
       <Stepper phase={phase} c={c} t={t} />
 
-      <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 48, flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+      <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 48, flexGrow: 1 }} keyboardShouldPersistTaps="handled">
 
         {phase === 'start' && (
           <View>

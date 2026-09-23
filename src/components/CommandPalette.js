@@ -255,7 +255,7 @@ export default function CommandPalette() {
               )}
             </View>
 
-            <ScrollView style={styles.results} keyboardShouldPersistTaps="handled">
+            <ScrollView automaticallyAdjustKeyboardInsets style={styles.results} keyboardShouldPersistTaps="handled">
               {nothing && (
                 <View style={styles.empty}>
                   <Ionicons name="telescope-outline" size={28} color={c.border} />

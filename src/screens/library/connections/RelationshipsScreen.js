@@ -106,7 +106,7 @@ export default function RelationshipsScreen() {
         </ScrollView>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }}>
+      <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }}>
         <ActionPanel aa={aa} color={color} onEdit={() => setEditOpen(true)} />
 
         <TouchableOpacity onPress={() => setShowAdd(true)}

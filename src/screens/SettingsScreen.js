@@ -37,6 +37,8 @@ import { PRIVACY_POLICY_URL, TERMS_URL, SUPPORT_EMAIL } from '../config/legal';
 import { shareMyDataExport } from '../api/dataExport';
 import { isMinorRequiringConsent } from '../logic/ageOfConsent';
 import { dobFromParts } from '../logic/dateUtils';
+import { confirmAsync } from '../logic/confirm';
+import TwoFactorSheet from '../components/TwoFactorSheet';
 
 // `alwaysShowSubtitle` is for the Show Emojis / Show Subtitles rows
 // themselves — hiding the explanation of what "show subtitles" does the
@@ -379,7 +381,7 @@ function DeleteAccountModal({ visible, onClose, onConfirm, deleting, c, t, s, r 
                 Mind telling us why? Totally optional — it just helps us improve.
               </Text>
 
-              <ScrollView style={{ marginBottom: s.md }}>
+              <ScrollView automaticallyAdjustKeyboardInsets style={{ marginBottom: s.md }}>
                 <View style={{ gap: s.sm }}>
                   {DELETION_REASONS.map(opt => {
                     const active = reason === opt.key;
@@ -612,6 +614,7 @@ export default function SettingsScreen() {
   const [deletingAccount, setDeletingAccount] = useState(false);
   const { dailyMissions, profile: liveProfile, streakDays, refreshProfile } = useUserProgress();
   const [showDobModal, setShowDobModal] = useState(false);
+  const [show2fa, setShow2fa] = useState(false);
   const [savingDob, setSavingDob] = useState(false);
   const [exportingData, setExportingData] = useState(false);
   const { startTour } = useTour();
@@ -676,19 +679,17 @@ export default function SettingsScreen() {
     }
   };
 
-  const signOut = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: async () => {
-        setSigningOut(true);
-        await supabase.auth.signOut();
-        // reset(), not replace() — replace() only swaps the current
-        // (Settings) entry; MainTabs is still sitting underneath it in
-        // history, so swiping back after signing out would land right back
-        // on an authenticated screen. reset() clears the whole stack.
-        navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-      }},
-    ]);
+  // confirmAsync: Alert.alert with buttons does nothing on web, so this
+  // button used to do nothing at all in the browser.
+  const signOut = async () => {
+    if (!(await confirmAsync('Sign out?', 'You can sign back in any time. Nothing is deleted.', 'Sign out'))) return;
+    setSigningOut(true);
+    await supabase.auth.signOut();
+    // reset(), not replace() — replace() only swaps the current
+    // (Settings) entry; MainTabs is still sitting underneath it in
+    // history, so swiping back after signing out would land right back
+    // on an authenticated screen. reset() clears the whole stack.
+    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
   };
 
   const exportData = async () => {
@@ -793,7 +794,7 @@ export default function SettingsScreen() {
         <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>{showEmojis ? '⚙️ ' : ''}Settings</Text>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }}>
+      <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }}>
         {/* Account card */}
         {profile && (() => {
           const rank = getRank(profile.points || 0);
@@ -1086,6 +1087,12 @@ export default function SettingsScreen() {
           onPress={() => navigation.navigate('MainTabs', { screen: 'Library', params: { screen: 'PrivacyScreen' } })}
           c={c} t={t} s={s} r={r} />
         {userId && (
+          <SettingRow icon="shield-checkmark-outline" iconColor={c.teal} label="Two-step sign-in"
+            subtitle="Ask for a code from an authenticator app when signing in"
+            onPress={() => setShow2fa(true)}
+            c={c} t={t} s={s} r={r} />
+        )}
+        {userId && (
           <SettingRow icon="download-outline" iconColor={c.gold} label="Export My Data" subtitle="A copy of everything this account has stored"
             right={exportingData ? <ActivityIndicator color={c.text4} size="small" /> : <Ionicons name="share-outline" size={16} color={c.text4} />}
             onPress={exportingData ? undefined : exportData}
@@ -1186,6 +1193,7 @@ export default function SettingsScreen() {
         deleting={deletingAccount}
         c={c} t={t} s={s} r={r}
       />
+      <TwoFactorSheet visible={show2fa} onClose={() => setShow2fa(false)} />
       <BirthDateModal
         visible={showDobModal}
         onClose={() => setShowDobModal(false)}

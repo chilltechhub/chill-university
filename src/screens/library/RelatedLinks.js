@@ -153,7 +153,7 @@ export default function RelatedLinks({ areaId, color, c, t, s, r }) {
               value={search} onChangeText={setSearch}
               placeholder="Search..." placeholderTextColor={c.text4} />
             {optLoading ? <ActivityIndicator color={color} style={{ marginTop: 20 }} /> : (
-              <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
+              <ScrollView automaticallyAdjustKeyboardInsets style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
                 {filteredOptions.length === 0 ? (
                   <Text style={{ fontSize: t.sm, color: c.text3, textAlign: 'center', paddingVertical: 30 }}>Nothing found</Text>
                 ) : filteredOptions.map(item => (

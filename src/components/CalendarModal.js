@@ -405,7 +405,7 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
                 <ActivityIndicator color={c.teal} />
               </View>
             ) : (
-              <ScrollView style={{ flex:1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical:8, paddingRight:12, gap:6 }}>
+              <ScrollView automaticallyAdjustKeyboardInsets style={{ flex:1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical:8, paddingRight:12, gap:6 }}>
                 {weekDays.map((day, i) => {
                   const iso    = toISO(day);
                   const isToday = iso === toISO(today);

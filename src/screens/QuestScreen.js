@@ -114,7 +114,7 @@ export default function QuestScreen() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg0 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView
+      <ScrollView automaticallyAdjustKeyboardInsets
         ref={scrollRef}
         contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }}
         keyboardShouldPersistTaps="handled"

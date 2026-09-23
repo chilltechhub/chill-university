@@ -141,7 +141,7 @@ export default function ReminderComposer({ visible, onClose, userId, initial = {
               </TouchableOpacity>
             </View>
           ) : (
-            <ScrollView contentContainerStyle={{ paddingHorizontal: s.lg, paddingBottom: s.xxl }} keyboardShouldPersistTaps="handled">
+            <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ paddingHorizontal: s.lg, paddingBottom: s.xxl }} keyboardShouldPersistTaps="handled">
               <TextInput
                 value={title} onChangeText={setTitle} placeholder="Remind me to…" placeholderTextColor={c.text4} autoFocus={!initial.title}
                 style={{ fontSize: t.md, color: c.text1, backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border, padding: s.md }}

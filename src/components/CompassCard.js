@@ -29,7 +29,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useUIPrefs } from '../../context/UIPrefsContext';
 import { useAccess } from '../../context/AccessContext';
-import { getPurpose, getObjective } from '../data/objectives';
+import { getPurpose, getObjective, objectivesForPurpose } from '../data/objectives';
 import { featuresUnlockedBy } from '../data/featureCatalog';
 import { goToScreen } from '../logic/appRoutes';
 import { resumeFirstGoalGuide } from '../logic/useGuidedFirstGoal';
@@ -43,7 +43,7 @@ export default function CompassCard() {
   const {
     purposeKey, purpose, suggestedPurposeKey, activeObjective,
     toggleStep, completeActiveObjective, loading,
-    nextStage, firstGoalId, startFirstGoal, completedObjectiveIds,
+    nextStage, firstGoalId, startFirstGoal, completedObjectiveIds, startObjective,
   } = useAccess();
 
   const { active: tourActive } = useTour();
@@ -105,19 +105,45 @@ export default function CompassCard() {
   const accent = c[purpose?.accentKey] || c.teal;
 
   /* ── Purpose, but nothing in flight ── */
+  // Finishing one goal hands over the next one rather than sending someone
+  // back to a list: the best-matching objective they haven't done is offered
+  // here with one tap. The full list is still a tap away on the Compass.
   if (!live) {
+    const suggestion = objectivesForPurpose(purposeKey).find(o => !completedObjectiveIds.includes(o.id));
     return (
-      <TouchableOpacity style={[s.card, { borderLeftColor: accent }]} onPress={goCompass} activeOpacity={0.85}>
-        <Text style={[s.kicker, { color: accent }]}>
-          {showEmojis ? `${purpose?.emoji} ` : ''}{purpose?.label}
-        </Text>
-        <Text style={s.headline}>Pick one thing to finish</Text>
-        {showSubtext && <Text style={s.sub}>One objective at a time. Finishing it opens more of the app.</Text>}
-        <View style={s.ctaRow}>
-          <Text style={[s.cta, { color: accent }]}>Choose an objective</Text>
-          <Ionicons name="arrow-forward" size={14} color={accent} />
-        </View>
-      </TouchableOpacity>
+      <View style={[s.card, { borderLeftColor: accent }]}>
+        <TouchableOpacity onPress={goCompass} activeOpacity={0.85}>
+          <Text style={[s.kicker, { color: accent }]}>
+            {showEmojis ? `${purpose?.emoji} ` : ''}{purpose?.label}
+          </Text>
+          <Text style={s.headline}>{suggestion ? suggestion.label : 'Pick one thing to finish'}</Text>
+          {showSubtext && (
+            <Text style={s.sub}>
+              {suggestion?.promise || 'One objective at a time. Finishing it opens more of the app.'}
+            </Text>
+          )}
+        </TouchableOpacity>
+        {suggestion ? (
+          <>
+            <Button
+              icon="play"
+              label={`Start · ${suggestion.estimate ? suggestion.estimate.toLowerCase() : 'next goal'}`}
+              onPress={() => startObjective(suggestion.id)}
+              color={accent}
+              style={s.claimBtn}
+            />
+            <TouchableOpacity onPress={goCompass} activeOpacity={0.7} style={s.ctaRow}>
+              <Text style={[s.cta, { color: accent }]}>Choose a different one</Text>
+              <Ionicons name="arrow-forward" size={14} color={accent} />
+            </TouchableOpacity>
+          </>
+        ) : (
+          <TouchableOpacity onPress={goCompass} activeOpacity={0.7} style={s.ctaRow}>
+            <Text style={[s.cta, { color: accent }]}>Choose an objective</Text>
+            <Ionicons name="arrow-forward" size={14} color={accent} />
+          </TouchableOpacity>
+        )}
+      </View>
     );
   }
 

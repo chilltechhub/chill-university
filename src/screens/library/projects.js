@@ -220,7 +220,7 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
             <Text style={[s.previewName, { color }]}>{title || 'BUILD NAME'}</Text>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 20 }}>
+          <ScrollView automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 20 }}>
             {!title && !prefill && (
               <>
                 <Text style={s.label}>START FROM AN EXAMPLE</Text>
@@ -647,7 +647,7 @@ export default function ProjectsScreen() {
         </TourSpot>
       </View>
 
-      <ScrollView
+      <ScrollView automaticallyAdjustKeyboardInsets
         style={{ flex: 1, zIndex: 1, backgroundColor: 'transparent' }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={bp.accent} />}

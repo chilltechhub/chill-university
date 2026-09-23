@@ -172,7 +172,7 @@ export default function ActionEditSheet({ visible, onClose, aa, color, title }) 
             </TouchableOpacity>
           )}
 
-          <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 36, gap: 8 }} keyboardShouldPersistTaps="handled">
+          <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 36, gap: 8 }} keyboardShouldPersistTaps="handled">
             <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: 2, paddingHorizontal: 4 }}>
               Star to pin one to the top. Tap the wording to change it. Hidden ones can come back any time.
             </Text>

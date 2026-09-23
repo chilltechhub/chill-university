@@ -86,7 +86,7 @@ export default function SecurityScreen() {
         {showSubtext && <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 3 }}>Keep your accounts and data safe</Text>}
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }}>
+      <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }}>
         <ActionPanel aa={aa} color={color} onEdit={() => setEditOpen(true)} />
         <View style={{ height: s.xl }} />
 

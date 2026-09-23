@@ -274,21 +274,18 @@ export function PersonaStep({ data, set, theme, isMinor, ageBand }) {
   return (
     <View style={st.stepContent}>
       <Text style={st.stepTitle}>Your first profile</Text>
-      <Text style={st.stepSubtitle}>
-        This one becomes your master profile — the one that manages the rest. You can add more later
-        (a second job, another startup, a separate personal space), and your level, points and streak
-        are shared across all of them.
-      </Text>
+      <Text style={st.stepSubtitle}>Pick the one that fits best. You can add more profiles later.</Text>
 
       {options.map(p => {
         const sel = !exploring && data.active_persona === p.key;
         return (
           <TouchableOpacity key={p.key} onPress={() => choose(p.key)}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: sel ? p.color + '18' : c.bg0, borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: sel ? p.color : c.border }}>
+            accessibilityRole="radio" accessibilityState={{ checked: sel }}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: sel ? p.color + '18' : c.bg0, borderRadius: 12, paddingVertical: 11, paddingHorizontal: 14, marginBottom: 8, borderWidth: 1, borderColor: sel ? p.color : c.border }}>
             <Text style={{ fontSize: 24 }}>{p.emoji}</Text>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 15, fontWeight: '600', color: sel ? p.color : c.text1, marginBottom: 2 }}>{p.label}</Text>
-              <Text style={{ fontSize: 12, color: c.text3 }}>{p.blurb}</Text>
+              <Text style={{ fontSize: 12, color: c.text3 }} numberOfLines={1}>{p.blurb}</Text>
             </View>
             <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: sel ? p.color : c.border, backgroundColor: sel ? p.color : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
               {sel && <Ionicons name="checkmark" size={13} color="#fff" />}
@@ -328,106 +325,75 @@ export function PersonaStep({ data, set, theme, isMinor, ageBand }) {
         </Text>
       )}
 
-      {/* What the choice actually does. This used to be a one-line blurb per
-          option and nothing else, which made the pick feel cosmetic — and
-          for a long time it WAS cosmetic, because nothing read the type.
-          Every line here is checkable against personas.defaultWidgets and
-          the persona filter in Classes.js. */}
-      {exploring && (
-        <View style={{ marginTop: 16, backgroundColor: c.teal + '12', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: c.teal + '44' }}>
-          <Text style={{ fontSize: 11, color: c.teal, fontFamily: FONTS.mono, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
-            What this changes
-          </Text>
-          {exploringChanges(exploringBase, ageBand).map(line => (
-            <View key={line} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
-              <Ionicons name="checkmark" size={13} color={c.teal} style={{ marginTop: 2 }} />
-              <Text style={{ fontSize: 12, color: c.text2, flex: 1, lineHeight: 17 }}>{line}</Text>
-            </View>
-          ))}
-          <Text style={{ fontSize: 11, color: c.text4, marginTop: 4, lineHeight: 16 }}>
-            Not knowing yet is where most people start. Nothing here locks you in.
-          </Text>
-        </View>
-      )}
-
-      {!exploring && chosen?.changes?.length > 0 && (
-        <View style={{ marginTop: 16, backgroundColor: chosen.color + '12', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: chosen.color + '44' }}>
-          <Text style={{ fontSize: 11, color: chosen.color, fontFamily: FONTS.mono, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
-            What this changes
-          </Text>
-          {chosen.changes.map(line => (
-            <View key={line} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
-              <Ionicons name="checkmark" size={13} color={chosen.color} style={{ marginTop: 2 }} />
-              <Text style={{ fontSize: 12, color: c.text2, flex: 1, lineHeight: 17 }}>{line}</Text>
-            </View>
-          ))}
-          <Text style={{ fontSize: 11, color: c.text4, marginTop: 4, lineHeight: 16 }}>
-            {data.experience_mode !== 'full'
-              ? 'Starting simple, the dashboard fills in a widget or two at a time as you go. '
-              : ''}
-            You can change type later, add more profiles for other parts of your life, and rearrange
-            any of it — your level, points and streak are shared across all of them.
-          </Text>
-        </View>
-      )}
-
-      {/* How much of the app to start with — src/data/experienceStages.js.
-          Simple is the default and the recommendation: one goal, the tools
-          that fit this type, three games, and a little more with every goal
-          finished and level gained.
-          "Everything" is for someone who already knows apps like this and
-          would find a short list patronising. Either is one switch in
-          Settings later, so this never has to be the right answer forever. */}
+      {/* One line on what the pick changes. The full list, the start mode
+          and the name each got their own card: onboarding is one question
+          per card now, with nothing to scroll. */}
       {chosen && (
-        <View style={{ marginTop: 16 }}>
-          <SectionLabel label="How much do you want to see at first?" theme={theme} />
-          <ExperienceChoice
-            selected={data.experience_mode !== 'full'}
-            emoji="🌱"
-            title="Start simple"
-            tag="Recommended"
-            body={(() => {
-              const first = getObjective(firstGoalFor(data.active_persona).objective);
-              return `One goal to start${first ? ` (${first.label})` : ''}, with your guide showing you each step. A few tools and three games picked for ${exploring ? 'you' : chosen.short}, and a little more opens with every goal you finish.`;
-            })()}
-            onPress={() => set('experience_mode', 'auto')}
-            theme={theme}
-          />
-          <ExperienceChoice
-            selected={data.experience_mode === 'full'}
-            emoji="🗺️"
-            title="Show me everything"
-            body="Every tool, game and widget from day one. For people who know their way around apps like this."
-            onPress={() => set('experience_mode', 'full')}
-            theme={theme}
-          />
-        </View>
+        <Text style={{ fontSize: 12, color: exploring ? c.teal : chosen.color, marginTop: 8, lineHeight: 17 }}>
+          {exploring ? exploringChanges(exploringBase, ageBand)[0] : chosen.changes?.[0]}
+        </Text>
       )}
+    </View>
+  );
+}
 
-      {/* Your name, not the profile's. The profile itself isn't named here
-          on purpose: createProfile() already falls back to the persona's
-          short label ("Personal", "Student"...), and renaming it is one tap
-          in the profile switcher — so asking for it up front was a field
-          that cost a keyboard and bought nothing. */}
-      {chosen && (
-        <View style={{ marginTop: 16 }}>
-          <SectionLabel label="What should we call you?" theme={theme} />
-          <TextInput
-            style={st.input}
-            value={data.display_name}
-            onChangeText={v => set('display_name', v)}
-            placeholder="Display name..."
-            placeholderTextColor={c.text4}
-            maxLength={40}
-          />
-          <Text style={{ fontSize: 11, color: c.text4, marginTop: 6 }}>
-            Shows on your Home card and the leaderboard. Change it any time in Settings.
-          </Text>
-        </View>
-      )}
+// ─── Card 2: how much of the app to start with ─────────────────────────────
+// src/data/experienceStages.js. Simple is the default and the recommendation;
+// "everything" is for people who know apps like this. One switch in Settings
+// later either way.
+export function StartModeStep({ data, set, theme }) {
+  const { c } = theme;
+  const st = stepStyles(theme);
+  const exploring = !!data.exploring;
+  const chosen = data.active_persona ? getPersona(data.active_persona) : null;
+  const first = chosen ? getObjective(firstGoalFor(data.active_persona).objective) : null;
+  return (
+    <View style={st.stepContent}>
+      <Text style={st.stepTitle}>How much do you want to see at first?</Text>
+      <Text style={st.stepSubtitle}>You can switch this any time in Settings.</Text>
+      <ExperienceChoice
+        selected={data.experience_mode !== 'full'}
+        emoji="🌱"
+        title="Start simple"
+        tag="Recommended"
+        body={`One goal to start${first ? ` (${first.label})` : ''}, with your guide showing each step. A few tools and games picked for ${exploring || !chosen ? 'you' : chosen.short}; more opens with every goal you finish.`}
+        onPress={() => set('experience_mode', 'auto')}
+        theme={theme}
+      />
+      <ExperienceChoice
+        selected={data.experience_mode === 'full'}
+        emoji="🗺️"
+        title="Show me everything"
+        body="Every tool, game and widget from day one. For people who know their way around apps like this."
+        onPress={() => set('experience_mode', 'full')}
+        theme={theme}
+      />
+    </View>
+  );
+}
 
+// ─── Card 3: your name (and the persona's optional starting number) ────────
+// Your name, not the profile's: the profile falls back to the persona's
+// short label and is renamed in one tap from the profile switcher.
+export function NameStep({ data, set, theme }) {
+  const { c } = theme;
+  const st = stepStyles(theme);
+  const baseline = data.active_persona && !data.exploring ? PERSONA_BASELINE[data.active_persona] : null;
+  return (
+    <View style={st.stepContent}>
+      <Text style={st.stepTitle}>What should we call you?</Text>
+      <Text style={st.stepSubtitle}>Shows on your Home card and the leaderboard. Change it any time in Settings.</Text>
+      <TextInput
+        style={st.input}
+        value={data.display_name}
+        onChangeText={v => set('display_name', v)}
+        placeholder="Display name..."
+        placeholderTextColor={c.text4}
+        maxLength={40}
+        autoFocus
+      />
       {baseline && (
-        <View style={{ marginTop: 16 }}>
+        <View style={{ marginTop: 20 }}>
           <SectionLabel label={baseline.label} theme={theme} />
           <TextInput
             style={st.input}
@@ -437,7 +403,7 @@ export function PersonaStep({ data, set, theme, isMinor, ageBand }) {
             placeholderTextColor={c.text4}
             keyboardType={baseline.keyboard}
           />
-          <Text style={{ fontSize: 11, color: c.text4, marginTop: 6 }}>Optional — you can set this later.</Text>
+          <Text style={{ fontSize: 11, color: c.text3, marginTop: 6 }}>Optional. You can set this later.</Text>
         </View>
       )}
     </View>
@@ -478,25 +444,23 @@ export function SectorsStep({ data, set, theme }) {
 
   return (
     <View style={st.stepContent}>
-      <Text style={st.stepTitle}>Choose Your Sectors</Text>
-      <Text style={st.stepSubtitle}>Pre-picked from your mission — change any of them. Pick 2-5 life areas to focus on first. These are exactly what shows up in your Library's life-area grid — add the rest any time with the "+ Add" tile there, or from Settings.</Text>
+      <Text style={st.stepTitle}>Choose your sectors</Text>
+      <Text style={st.stepSubtitle}>Pre-picked from your profile. Pick 2 to 5 to focus on first; add the rest any time from the Library.</Text>
 
-      {LIFE_AREAS.map(area => {
-        const sel = (data.active_life_areas || []).includes(area.id);
-        return (
-          <TouchableOpacity key={area.id} onPress={() => toggle(area.id)}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: sel ? area.color + '18' : c.bg0, borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: sel ? area.color : c.border }}>
-            <Text style={{ fontSize: 24 }}>{area.emoji}</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: '600', color: sel ? area.color : c.text1, marginBottom: 2 }}>{area.label}</Text>
-              <Text style={{ fontSize: 12, color: c.text3 }}>{area.subtitle}</Text>
-            </View>
-            <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: sel ? area.color : c.border, backgroundColor: sel ? area.color : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
-              {sel && <Ionicons name="checkmark" size={13} color="#fff" />}
-            </View>
-          </TouchableOpacity>
-        );
-      })}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+        {LIFE_AREAS.map(area => {
+          const sel = (data.active_life_areas || []).includes(area.id);
+          return (
+            <TouchableOpacity key={area.id} onPress={() => toggle(area.id)}
+              accessibilityRole="checkbox" accessibilityState={{ checked: sel }} accessibilityLabel={area.label}
+              style={{ width: '48.5%', flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: sel ? area.color + '18' : c.bg0, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 10, marginBottom: 8, borderWidth: 1, borderColor: sel ? area.color : c.border }}>
+              <Text style={{ fontSize: 20 }}>{area.emoji}</Text>
+              <Text style={{ flex: 1, fontSize: 14, fontWeight: '600', color: sel ? area.color : c.text1 }} numberOfLines={1}>{area.label}</Text>
+              {sel && <Ionicons name="checkmark-circle" size={18} color={area.color} />}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
 
       <Text style={{ fontSize: 11, color: c.text4, textAlign: 'center', marginTop: 8 }}>
         {(data.active_life_areas || []).length} selected — aim for 2-5

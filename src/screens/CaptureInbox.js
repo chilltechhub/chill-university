@@ -545,7 +545,7 @@ function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated,
                 <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.md }}>
                   Where does this go?
                 </Text>
-                <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
+                <ScrollView automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
                   {DESTINATIONS.map(dest => (
                     <TouchableOpacity key={dest.key} onPress={() => handleDestination(dest)}
                       style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border }}>
@@ -575,7 +575,7 @@ function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated,
                   </TouchableOpacity>
                   <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>Choose a Project</Text>
                 </View>
-                <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 300 }}>
+                <ScrollView automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false} style={{ maxHeight: 300 }}>
                   {projects.length === 0 ? (
                     <Text style={{ color: c.text3, textAlign: 'center', paddingVertical: 30 }}>No active projects yet</Text>
                   ) : (
@@ -871,7 +871,7 @@ function BulkProcessModal({ items, projects, userId, onClose, onProcessed, c, t,
                 <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.md }}>
                   Send all of them where?
                 </Text>
-                <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
+                <ScrollView automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
                   {BULK_DESTINATIONS.map(dest => (
                     <TouchableOpacity key={dest.key} onPress={() => handleDestination(dest)}
                       style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border }}>
@@ -901,7 +901,7 @@ function BulkProcessModal({ items, projects, userId, onClose, onProcessed, c, t,
                   </TouchableOpacity>
                   <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>Choose a Project</Text>
                 </View>
-                <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 300 }}>
+                <ScrollView automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false} style={{ maxHeight: 300 }}>
                   {projects.length === 0 ? (
                     <Text style={{ color: c.text3, textAlign: 'center', paddingVertical: 30 }}>No active projects yet</Text>
                   ) : (
@@ -1419,7 +1419,7 @@ export default function CaptureInbox() {
             </Text>
           </View>
         ) : (
-          <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 80 }}
+          <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 80 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.teal} />}>
             <View style={{ backgroundColor: c.teal + '12', borderRadius: r.md, padding: s.md, marginBottom: s.md, flexDirection: 'row', alignItems: 'center', gap: s.sm }}>
               <Ionicons name="information-circle-outline" size={16} color={c.teal} />
@@ -1458,7 +1458,7 @@ export default function CaptureInbox() {
             )}
           </View>
         ) : (
-          <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: selectMode ? 130 : 80 }}
+          <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: selectMode ? 130 : 80 }}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.teal} />}>
             {selectMode ? (
               <View style={{ backgroundColor: c.teal + '12', borderRadius: r.md, padding: s.md, marginBottom: s.md, flexDirection: 'row', alignItems: 'center', gap: s.sm }}>

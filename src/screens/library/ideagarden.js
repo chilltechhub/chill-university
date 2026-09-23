@@ -1008,7 +1008,7 @@ export default function IdeaGardenScreen() {
       )}
       {view === 'map' && Platform.OS !== 'web' && (
         <View style={styles.canvasWrap}>
-          <ScrollView
+          <ScrollView automaticallyAdjustKeyboardInsets
             style={{ flex: 1 }}
             contentContainerStyle={{ height: GARDEN_SCROLL_H }}
             showsVerticalScrollIndicator={false}
@@ -1038,7 +1038,7 @@ export default function IdeaGardenScreen() {
 
       {/* List view */}
       {view === 'list' && (
-        <ScrollView style={styles.listView} contentContainerStyle={{ padding: 12, gap: 10 }}>
+        <ScrollView automaticallyAdjustKeyboardInsets style={styles.listView} contentContainerStyle={{ padding: 12, gap: 10 }}>
           {cores.map(core => {
             const pt = PLANT_TYPES.find(p => p.id === core.plant_type);
             const petals = core.garden_petals || [];

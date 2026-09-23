@@ -167,7 +167,7 @@ export default function OrganizationScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }}>
+        <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }}>
           {/* ── My organizations ── */}
           <SectionLabel label="My Organizations" c={c} t={t} s={s} />
           {orgs.length === 0 ? (

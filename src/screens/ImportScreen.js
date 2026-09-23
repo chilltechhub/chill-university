@@ -326,7 +326,7 @@ export default function ImportScreen() {
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
+        <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
 
           {!hasKey && (
             <TouchableOpacity onPress={() => navigation.navigate('Settings')}

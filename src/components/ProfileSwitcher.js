@@ -12,7 +12,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Modal, Pressable, ScrollView,
-  TextInput, Alert, ActivityIndicator,
+  TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -21,7 +21,18 @@ import { useUIPrefs } from '../../context/UIPrefsContext';
 import { useProfiles } from '../../context/ProfileAccountsContext';
 import { useAccess } from '../../context/AccessContext';
 import { getPersona } from '../data/personas';
+import { confirmAsync, notify } from '../logic/confirm';
+import { supabase } from '../api/supabaseClient';
 import { FONTS } from '../theme';
+
+function RowAction({ icon, label, color, onPress, a11y, st }) {
+  return (
+    <TouchableOpacity onPress={onPress} hitSlop={6} style={st.rowAction} accessibilityRole="button" accessibilityLabel={a11y}>
+      <Ionicons name={icon} size={18} color={color} />
+      <Text style={[st.rowActionText, { color }]}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
 
 export default function ProfileSwitcher() {
   const { colors: c, typography: t, spacing: s, shadows: sh, radius: r } = useTheme();
@@ -77,20 +88,33 @@ export default function ProfileSwitcher() {
 
   const doAdd = async () => {
     const name = newName.trim();
-    if (!name) { Alert.alert('Name it', 'Give this profile a name — "Night Job", "Halcyon", "Home".'); return; }
+    if (!name) { notify('Name it', 'Give this profile a name: "Night Job", "Halcyon", "Home".'); return; }
     setBusy(true);
     try {
       // addProfile activates the new profile itself — see the note there.
       await addProfile({ type: newType, name });
       close();
     } catch (e) {
-      Alert.alert('Could not add profile', e?.message || 'Try again.');
+      notify('Could not add profile', e?.message || 'Try again.');
     } finally { setBusy(false); }
   };
 
+  // Hides a profile on this device. The last one can't be hidden (the
+  // device always shows something), so with one profile left this offers
+  // what people usually mean by "sign out": leaving the account.
   const doSignOut = async (p) => {
-    try { await signOut(p.id); }
-    catch (e) { Alert.alert('Cannot sign out', e?.message || 'Try again.'); }
+    if (profiles.length <= 1) { await signOutAccount(); return; }
+    try {
+      if (p.id === active.id) await switchProfile(profiles.find(o => o.id !== p.id).id);
+      await signOut(p.id);
+    } catch (e) { notify('Cannot sign out', e?.message || 'Try again.'); }
+  };
+
+  const signOutAccount = async () => {
+    if (!(await confirmAsync('Sign out of your account?', 'You can sign back in any time. Nothing is deleted.', 'Sign out'))) return;
+    close();
+    await supabase.auth.signOut();
+    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
   };
 
   const startSignIn = async (p) => {
@@ -102,7 +126,7 @@ export default function ProfileSwitcher() {
     setBusy(true);
     try {
       const okPin = await signIn(pinFor.id, pinValue);
-      if (!okPin) { Alert.alert('Wrong PIN', 'That PIN did not match.'); return; }
+      if (!okPin) { notify('Wrong PIN', 'That PIN did not match.'); return; }
       setMode('list'); setPinFor(null); setPinValue('');
     } finally { setBusy(false); }
   };
@@ -113,52 +137,44 @@ export default function ProfileSwitcher() {
 
   const submitSetPin = async () => {
     if (!/^\d{4,8}$/.test(pinValue)) {
-      Alert.alert('PIN too short', 'Use 4 to 8 digits.');
+      notify('PIN too short', 'Use 4 to 8 digits.');
       return;
     }
     if (pinValue !== pinConfirm) {
-      Alert.alert('PINs do not match', 'Enter the same PIN twice.');
+      notify('PINs do not match', 'Enter the same PIN twice.');
       return;
     }
     setBusy(true);
     try {
       await setPin(pinFor.id, pinValue);
+      // "Lock" means locked now: with another profile to fall back on, sign
+      // this one out so the PIN is asked for straight away. With only one
+      // profile the PIN waits for the next time it's signed out.
+      if (profiles.length > 1) {
+        if (pinFor.id === active.id) await switchProfile(profiles.find(o => o.id !== pinFor.id).id);
+        await signOut(pinFor.id);
+      }
       await refreshPinned();
       setMode('list'); setPinFor(null); setPinValue(''); setPinConfirm('');
     } catch (e) {
-      Alert.alert('Could not set PIN', e?.message || 'Try again.');
+      notify('Could not set PIN', e?.message || 'Try again.');
     } finally { setBusy(false); }
   };
 
-  const removeLock = (p) => {
-    Alert.alert(
-      `Remove the lock on "${p.name}"?`,
-      'It will sign back in on this device without a PIN.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Remove lock', style: 'destructive', onPress: async () => {
-          await clearPin(p.id);
-          await refreshPinned();
-        } },
-      ],
-    );
+  // confirmAsync, not Alert.alert with buttons: that does nothing on web,
+  // which is why removing a lock or a profile silently never happened there.
+  const removeLock = async (p) => {
+    if (!(await confirmAsync(`Remove the lock on "${p.name}"?`, 'It will sign back in on this device without a PIN.', 'Remove lock'))) return;
+    await clearPin(p.id);
+    await refreshPinned();
   };
 
-  const confirmArchive = (p) => {
-    Alert.alert(
-      `Remove "${p.name}"?`,
-      'It comes off your profile list. Anything saved to its Vault is kept, not deleted.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove', style: 'destructive',
-          onPress: async () => {
-            try { await archive(p.id); }
-            catch (e) { Alert.alert('Could not remove', e?.message || 'Try again.'); }
-          },
-        },
-      ],
-    );
+  const confirmArchive = async (p) => {
+    if (!(await confirmAsync(`Delete "${p.name}"?`, 'It comes off your profile list. Anything saved to its Vault is kept.', 'Delete'))) return;
+    try {
+      if (p.id === active.id) await switchProfile(profiles.find(o => o.id !== p.id).id);
+      await archive(p.id);
+    } catch (e) { notify('Could not delete', e?.message || 'Try again.'); }
   };
 
   return (
@@ -176,6 +192,8 @@ export default function ProfileSwitcher() {
       </TouchableOpacity>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={close}>
+        {/* Lifts the sheet over the keyboard for the name and PIN fields. */}
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <Pressable style={st.backdrop} onPress={close}>
           <Pressable style={st.sheet} onPress={() => {}}>
             <View style={st.sheetHandle} />
@@ -189,7 +207,7 @@ export default function ProfileSwitcher() {
                   targets, classes and Vault.
                 </Text>
 
-                <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
+                <ScrollView automaticallyAdjustKeyboardInsets style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
                   {profiles.map(p => {
                     const def = getPersona(p.type);
                     const isActive = p.id === active.id;
@@ -228,28 +246,21 @@ export default function ProfileSwitcher() {
                             the account. The master can also remove a profile
                             outright, which is a different thing entirely. */}
                         <View style={st.rowActions}>
-                          {/* Lock: sets the PIN this profile will ask for
-                              when signing back in on this device. */}
-                          <TouchableOpacity
+                          <RowAction
+                            icon={pinnedIds[p.id] ? 'lock-closed' : 'lock-open-outline'}
+                            label={pinnedIds[p.id] ? 'Unlock' : 'Lock'}
+                            color={pinnedIds[p.id] ? def.color : c.text2}
                             onPress={() => (pinnedIds[p.id] ? removeLock(p) : startSetPin(p))}
-                            hitSlop={8}
-                            style={st.iconBtn}
-                            accessibilityLabel={pinnedIds[p.id] ? `Remove lock on ${p.name}` : `Set a PIN on ${p.name}`}
-                          >
-                            <Ionicons
-                              name={pinnedIds[p.id] ? 'lock-closed' : 'lock-open-outline'}
-                              size={15}
-                              color={pinnedIds[p.id] ? def.color : c.text4}
-                            />
-                          </TouchableOpacity>
-                          <TouchableOpacity onPress={() => doSignOut(p)} hitSlop={8} style={st.iconBtn}
-                            accessibilityLabel={`Sign out of ${p.name} on this device`}>
-                            <Ionicons name="log-out-outline" size={16} color={c.text4} />
-                          </TouchableOpacity>
+                            a11y={pinnedIds[p.id] ? `Remove the PIN on ${p.name}` : `Lock ${p.name} with a PIN`}
+                            st={st}
+                          />
+                          {profiles.length > 1 && (
+                            <RowAction icon="log-out-outline" label="Hide" color={c.text2} onPress={() => doSignOut(p)}
+                              a11y={`Sign ${p.name} out on this device`} st={st} />
+                          )}
                           {isMasterActive && !p.is_master && (
-                            <TouchableOpacity onPress={() => confirmArchive(p)} hitSlop={8} style={st.iconBtn}>
-                              <Ionicons name="trash-outline" size={15} color={c.text4} />
-                            </TouchableOpacity>
+                            <RowAction icon="trash-outline" label="Delete" color={c.error} onPress={() => confirmArchive(p)}
+                              a11y={`Delete ${p.name}`} st={st} />
                           )}
                         </View>
                       </View>
@@ -284,7 +295,8 @@ export default function ProfileSwitcher() {
                 {/* A second profile opens with 'all-tools' (src/data/experienceStages.js):
                     on a first day, one profile is plenty to learn. Profiles
                     that already exist are always listed above. */}
-                {can('all-tools') && (
+                {/* Always offered. It used to wait for the last app stage,
+                    which read as "there's no way to add a profile". */}
                 <TouchableOpacity
                   style={[st.addBtn, { borderColor: c.teal }]}
                   onPress={() => { setNewType(allowedTypes[0]?.key || 'PERSONAL'); setMode('add'); }}
@@ -292,7 +304,6 @@ export default function ProfileSwitcher() {
                   <Ionicons name="add" size={16} color={c.teal} />
                   <Text style={[st.addBtnText, { color: c.teal }]}>Add a profile</Text>
                 </TouchableOpacity>
-                )}
 
                 {/* The master's cross-profile overview — what "the first one
                     controls all" actually gets you. */}
@@ -336,10 +347,15 @@ export default function ProfileSwitcher() {
                     it is not account security, because anyone who can sign
                     into the account itself can lift it. */}
                 <Text style={st.gateNote}>
-                  Sign out hides a profile on this device only — nothing is deleted, and it stays on your
-                  account. A PIN is asked for when signing it back in here. It's a privacy screen, not
+                  Lock puts a PIN on a profile and hides it on this device until the PIN is entered. Hide
+                  does the same without a PIN. Nothing is deleted either way. It's a privacy screen, not
                   account security: signing into your account can always restore it.
                 </Text>
+
+                <TouchableOpacity style={st.accountOut} onPress={signOutAccount} accessibilityRole="button">
+                  <Ionicons name="exit-outline" size={16} color={c.error} />
+                  <Text style={[st.addBtnText, { color: c.error }]}>Sign out of account</Text>
+                </TouchableOpacity>
 
                 <TouchableOpacity style={st.closeBtn} onPress={close}>
                   <Text style={st.closeText}>Close</Text>
@@ -393,7 +409,7 @@ export default function ProfileSwitcher() {
                   A second job, another startup, a separate personal space — each one keeps its own targets and Vault.
                 </Text>
 
-                <ScrollView style={{ maxHeight: 300 }} showsVerticalScrollIndicator={false}>
+                <ScrollView automaticallyAdjustKeyboardInsets style={{ maxHeight: 300 }} showsVerticalScrollIndicator={false}>
                   {allowedTypes.map(p => {
                     const sel = newType === p.key;
                     return (
@@ -479,6 +495,7 @@ export default function ProfileSwitcher() {
             )}
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </>
   );
@@ -535,6 +552,14 @@ const makeStyles = (c, t, s, sh, r) => StyleSheet.create({
   },
   rowActions: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   iconBtn: { padding: 6 },
+  // Labelled actions: the old unlabelled 15px icons in the faintest grey
+  // were the "what do these even do" part of the profile sheet.
+  rowAction: { alignItems: 'center', justifyContent: 'center', minWidth: 44, paddingVertical: 4, paddingHorizontal: 4 },
+  rowActionText: { fontSize: 10, fontWeight: '600', marginTop: 2 },
+  accountOut: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 11, marginTop: 8, borderRadius: 12, borderWidth: 1, borderColor: c.error + '55',
+  },
 
   masterTag: { borderWidth: 1, borderRadius: 4, paddingHorizontal: 4, paddingVertical: 1 },
   masterTagText: { fontSize: 8, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 0.5 },

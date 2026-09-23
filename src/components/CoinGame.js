@@ -262,7 +262,7 @@ export default function CoinGame({ onGameEnd }) {
       progress={levelCorrect / roundLength(roundsCompleted)}
     >
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={s.scroll}>
+      <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={s.scroll}>
         <View style={s.levelBadge}>
           <Text style={s.levelText}>Level {level} · {levelCorrect}/{roundLength(roundsCompleted)}</Text>
         </View>

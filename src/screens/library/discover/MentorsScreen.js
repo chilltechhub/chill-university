@@ -135,7 +135,7 @@ export default function MentorsScreen() {
       )}
 
       {loading ? <ActivityIndicator color={c.teal} style={{ marginTop: 48 }} /> : (
-        <ScrollView
+        <ScrollView automaticallyAdjustKeyboardInsets
           contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.teal} />}
