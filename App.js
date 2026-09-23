@@ -65,6 +65,7 @@ import { useUserProgress } from './context/UserProgressContext';
 // Screens that show SignInPrompt to a guest instead of their content.
 const ACCOUNT_ONLY_SCREENS = new Set(['Profile', 'PlannerScreen']);
 import { supabase } from './src/api/supabaseClient';
+import { needsSecondStep } from './src/api/mfa';
 import useFirstVisitTutorial from './src/logic/useFirstVisitTutorial';
 import useGuidedFirstGoal from './src/logic/useGuidedFirstGoal';
 import { goToScreen } from './src/logic/appRoutes';
@@ -310,7 +311,9 @@ function AppInner() {
 
     // 3. Normal launch — check auth state.
     supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session) {
+      // No session, or one that hasn't done its two-step code yet (2FA on;
+      // LoginScreen asks for the code): start at Login either way.
+      if (!session || await needsSecondStep().catch(() => false)) {
         setInitialRoute('Login');
         setShowTopBar(false);
         setCurrentRouteName('Login');

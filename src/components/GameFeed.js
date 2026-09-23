@@ -53,7 +53,9 @@ import {
   Dimensions,
   Platform,
   StatusBar,
+  TouchableOpacity,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import FactorCraftGame from './FactorCraftGame';
 import CoinGame from './CoinGame';
@@ -234,6 +236,14 @@ const GameFeed = forwardRef(({ initialGame }, ref) => {
     },
   }), [pageHeight, indexForGame]);
 
+  // Used by the on-screen up/down buttons below.
+  const goTo = (idx) => {
+    const clamped = Math.max(0, Math.min(idx, GAMES.length - 1));
+    if (clamped === activeIndexRef.current) return;
+    setActiveIndex(clamped);
+    if (pageHeight != null) scrollRef.current?.scrollTo({ y: clamped * pageHeight, animated: true });
+  };
+
   const onScrollSettle = (e) => {
     if (pageHeight == null) return;
     const idx = Math.round(e.nativeEvent.contentOffset.y / pageHeight);
@@ -281,6 +291,34 @@ const GameFeed = forwardRef(({ initialGame }, ref) => {
           })}
         </ScrollView>
       )}
+
+      {/* Buttons, not just the swipe. A game fills the page with its own
+          taps and drags (lanes, canvases, answer rows), which eat the
+          vertical swipe often enough that moving to the next game felt
+          broken. These always work, and say where you are. */}
+      {pageHeight != null && (
+        <View style={styles.nav} pointerEvents="box-none">
+          <TouchableOpacity
+            style={[styles.navBtn, activeIndex === 0 && styles.navBtnOff]}
+            disabled={activeIndex === 0}
+            onPress={() => goTo(activeIndex - 1)}
+            accessibilityRole="button"
+            accessibilityLabel="Previous game"
+          >
+            <Ionicons name="chevron-up" size={20} color="#eaf2ff" />
+          </TouchableOpacity>
+          <Text style={styles.navCount}>{activeIndex + 1}/{GAMES.length}</Text>
+          <TouchableOpacity
+            style={[styles.navBtn, activeIndex >= GAMES.length - 1 && styles.navBtnOff]}
+            disabled={activeIndex >= GAMES.length - 1}
+            onPress={() => goTo(activeIndex + 1)}
+            accessibilityRole="button"
+            accessibilityLabel="Next game"
+          >
+            <Ionicons name="chevron-down" size={20} color="#eaf2ff" />
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 });
@@ -288,6 +326,16 @@ const GameFeed = forwardRef(({ initialGame }, ref) => {
 export default GameFeed;
 
 const styles = StyleSheet.create({
+  nav: {
+    position: 'absolute', right: 8, top: '38%', alignItems: 'center', gap: 6,
+  },
+  navBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: 'rgba(10,22,40,0.72)', borderWidth: 1, borderColor: 'rgba(234,242,255,0.22)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  navBtnOff: { opacity: 0.3 },
+  navCount: { fontSize: 11, fontWeight: '700', color: 'rgba(234,242,255,0.75)' },
   page: {
     flex: 1,
     width: Dimensions.get('window').width,

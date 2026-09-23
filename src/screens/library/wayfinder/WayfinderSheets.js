@@ -39,7 +39,7 @@ function Sheet({ visible, onClose, title, headerRight, children, footer }) {
               <Ionicons name="close" size={22} color={c.text3} />
             </TouchableOpacity>
           </View>
-          <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: footer ? 12 : 34 }} keyboardShouldPersistTaps="handled">
+          <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: footer ? 12 : 34 }} keyboardShouldPersistTaps="handled">
             {children}
           </ScrollView>
           {footer && <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 28, borderTopWidth: 0.5, borderTopColor: c.border }}>{footer}</View>}

@@ -256,7 +256,7 @@ export default function LessonBuilder() {
   };
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: c.bg0 }} contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
+    <ScrollView automaticallyAdjustKeyboardInsets style={{ flex: 1, backgroundColor: c.bg0 }} contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: s.lg }}>
         <TouchableOpacity onPress={() => (stage === 'build' ? setStage('setup') : navigation.goBack())} style={{ marginRight: 10 }}>
           <Ionicons name="chevron-back" size={22} color={c.teal} />

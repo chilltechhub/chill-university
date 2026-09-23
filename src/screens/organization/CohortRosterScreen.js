@@ -161,7 +161,7 @@ export default function CohortRosterScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }}>
+        <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }}>
           {/* ── Roster ── */}
           <SectionLabel label={labels.memberPlural} c={c} t={t} s={s} />
           {roster.length === 0 ? (

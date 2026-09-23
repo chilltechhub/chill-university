@@ -276,7 +276,7 @@ export default function CommunityFeedScreen() {
       {loading ? (
         <ActivityIndicator color={c.teal} style={{ marginTop: 48 }} />
       ) : (
-        <ScrollView
+        <ScrollView automaticallyAdjustKeyboardInsets
           contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.teal} />}
@@ -384,7 +384,7 @@ export default function CommunityFeedScreen() {
               <Text style={{ fontSize: t.lg, fontWeight: '800', color: c.text1 }}>Share with the community</Text>
               <TouchableOpacity onPress={() => setShow(false)}><Ionicons name="close" size={22} color={c.text3} /></TouchableOpacity>
             </View>
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false}>
               {/* Kind picker — one screen now creates all three. */}
               <View style={{ flexDirection: 'row', gap: s.sm, marginBottom: s.md }}>
                 {KINDS.map(k => {

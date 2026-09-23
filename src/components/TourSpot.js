@@ -31,15 +31,38 @@ export default function TourSpot({ id, style, radius, children }) {
   const ref = useRef(null);
   const { registerTarget, unregisterTarget, active, currentStep } = useTour();
 
+  // The last rect handed to the overlay, so a re-measure that finds the
+  // element exactly where it was doesn't re-render the overlay.
+  const lastRect = useRef(null);
+  // Read inside measure() without making it a dependency.
+  const isCurrentRef = useRef(false);
+  isCurrentRef.current = active && currentStep?.id === id;
+
   const measure = useCallback(() => {
     // A frame late so the native node is definitely laid out — measuring
     // synchronously inside onLayout can occasionally return a stale rect.
     requestAnimationFrame(() => {
       ref.current?.measureInWindow?.((x, y, width, height) => {
-        if (width > 0 && height > 0) registerTarget(id, { x, y, width, height, radius });
+        if (!(width > 0 && height > 0)) {
+          // Nothing to measure: this screen is mounted but not on show (a
+          // tab left behind, a page of the game feed). Drop the old rect
+          // rather than let the overlay keep drawing a spotlight around
+          // where this used to be on a screen the user isn't looking at.
+          if (isCurrentRef.current && lastRect.current) {
+            lastRect.current = null;
+            unregisterTarget(id);
+          }
+          return;
+        }
+        const prev = lastRect.current;
+        const same = prev && Math.abs(prev.x - x) < 1 && Math.abs(prev.y - y) < 1
+          && Math.abs(prev.width - width) < 1 && Math.abs(prev.height - height) < 1;
+        if (same) return;
+        lastRect.current = { x, y, width, height };
+        registerTarget(id, { x, y, width, height, radius });
       });
     });
-  }, [id, registerTarget, radius]);
+  }, [id, registerTarget, unregisterTarget, radius]);
 
   useEffect(() => () => unregisterTarget(id), [id, unregisterTarget]);
 
@@ -69,6 +92,18 @@ export default function TourSpot({ id, style, radius, children }) {
     } else {
       measure();
     }
+  }, [active, currentStep?.id, id, measure]);
+
+  // While this spot IS the highlighted one, keep checking where it is.
+  // onLayout fires once and never again for a scroll, so anything that
+  // moves under a running tour — the game feed paging between games, a
+  // list settling, an image or font landing, the keyboard opening — left
+  // the spotlight drawn around wherever the element used to be. Cheap: a
+  // measure every 400ms that only re-registers when the rect really moved.
+  useEffect(() => {
+    if (!active || currentStep?.id !== id) return undefined;
+    const t = setInterval(measure, 400);
+    return () => clearInterval(t);
   }, [active, currentStep?.id, id, measure]);
 
   return (

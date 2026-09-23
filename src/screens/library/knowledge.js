@@ -377,7 +377,7 @@ function AddItemModal({ visible, defaultKind, onClose, onSave, c, styles, showEm
           <View style={styles.modalHandle} />
           <Text style={styles.modalHeaderTitle}>{showEmojis ? '⚡ ' : ''}ADD TO VAULT</Text>
 
-          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <ScrollView automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <ItemForm
               kind={kind} setKind={setKind}
               title={title} setTitle={setTitle}
@@ -490,7 +490,7 @@ function DetailModal({ item, folders, onClose, onSave, onDelete, onAssignFolder,
             </TouchableOpacity>
           </View>
 
-          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <ScrollView automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             {editing ? (
               <>
                 <ItemForm

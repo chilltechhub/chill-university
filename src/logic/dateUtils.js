@@ -76,3 +76,24 @@ export function isToday(str) {
   if (!str) return false;
   return String(str).slice(0, 10) === todayStr();
 }
+
+// Birth date from the age gate's fields. Month and year are required; the
+// day is optional (a birthday screen that asks for it is planned for v2).
+// With no day we store the LAST day of that month: the youngest the person
+// can be, so every age check (under-13 consent, minor limits) errs toward
+// "younger" rather than letting someone through a month early.
+// Returns 'YYYY-MM-DD', or null if the parts aren't a real past date.
+export function dobFromParts(month, day, year) {
+  const mm = parseInt(month, 10);
+  const yyyy = parseInt(year, 10);
+  const dayGiven = String(day ?? '').trim() !== '';
+  const lastDay = (mm >= 1 && mm <= 12 && yyyy > 1900) ? new Date(yyyy, mm, 0).getDate() : 0;
+  const dd = dayGiven ? parseInt(day, 10) : lastDay;
+  const now = new Date();
+  const ok = yyyy > 1900 && now.getFullYear() - yyyy < 120
+    && mm >= 1 && mm <= 12 && dd >= 1 && dd <= lastDay;
+  if (!ok) return null;
+  // The month itself can't be in the future; a given day can't be either.
+  if (new Date(yyyy, mm - 1, 1) > now || (dayGiven && new Date(yyyy, mm - 1, dd) > now)) return null;
+  return `${yyyy}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+}

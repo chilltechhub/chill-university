@@ -114,7 +114,7 @@ export default function FamilyScreen() {
         <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>👨‍👩‍👧 Family</Text>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }}>
+      <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }}>
         {/* ── My children (parent side) ── */}
         <SectionLabel label="My Children" c={c} t={t} s={s} />
         {loadingChildren ? (

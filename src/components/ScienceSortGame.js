@@ -13,6 +13,7 @@ import useGameFacts from '../logic/useGameFacts';
 import useGradeLevel, { levelForTier } from '../logic/useGradeLevel';
 import { createAdaptiveTier, nextAdaptiveTier, roundLength, STAGE_COUNT } from '../logic/difficultyAdapter';
 import { SCIENCE_TOPICS } from '../data/gameContent/scienceSort';
+import { rotatePick } from '../logic/questionRotation';
 
 const BLURBS = {
   'K-2': 'Animal classes & states of matter.',
@@ -25,10 +26,9 @@ function flatten(levelKey) {
   return SCIENCE_TOPICS[levelKey].flatMap(topic => topic.items.map(item => ({ ...item, topic })));
 }
 
-function pickNext(pool, avoid) {
-  const choices = pool.filter(q => !avoid.includes(q.name));
-  const list = choices.length ? choices : pool;
-  return list[Math.floor(Math.random() * list.length)];
+// Rotates through the whole pool across runs, see questionRotation.js.
+function pickNext(pool, avoid = []) {
+  return rotatePick(pool, avoid, q => q.name);
 }
 
 export default function ScienceSortGame({ onGameEnd }) {

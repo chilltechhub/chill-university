@@ -95,7 +95,7 @@ export default function NetworkScreen() {
         {showSubtext && <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 3 }}>The people you know — colleagues, mentors and community</Text>}
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }}>
+      <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }}>
         <ActionPanel aa={aa} color={color} onEdit={() => setEditOpen(true)} />
 
         <TouchableOpacity onPress={() => setShowAdd(true)}

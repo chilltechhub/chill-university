@@ -15,6 +15,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAccess } from '../../context/AccessContext';
+import { useUserProgress } from '../../context/UserProgressContext';
+import { useTour } from '../../context/TourContext';
+import { hasScreenTutorial } from '../logic/screenTutorials';
 import { goToScreen } from '../logic/appRoutes';
 import { MAX_STAGE } from '../data/experienceStages';
 import { getFeature } from '../data/featureCatalog';
@@ -30,8 +33,24 @@ export default function UnlockNotification() {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: sp, radius: r } = useTheme();
   const { unlockEvents, dismissUnlockEvent, stageEvents, dismissStageEvent } = useAccess();
+  const { progressEvents } = useUserProgress();
+  const { startScreenTour } = useTour();
 
   const s = makeStyles(c, t, sp, r);
+
+  // One celebration at a time. Finishing a game can level you up AND open a
+  // stage in the same moment; the level-up popup and this one are both
+  // native Modals, and two presented together is a known way to leave the
+  // app unresponsive on iOS. The level-up shows first, this waits for it.
+  if (progressEvents?.length) return null;
+
+  // "Show me" means show me: open the thing, then run its tutorial, even if
+  // that screen was visited before it was unlocked. The delay lets the
+  // screen mount and its TourSpots measure.
+  const openAndTeach = (screen) => {
+    goToScreen(navigation, screen);
+    if (hasScreenTutorial(screen)) setTimeout(() => startScreenTour(screen), 900);
+  };
 
   // A new stage goes first: it's usually what just happened (every goal
   // finished and every level gained opens one), and it says what's new.
@@ -48,7 +67,7 @@ export default function UnlockNotification() {
     const close = () => dismissStageEvent();
     const show = () => {
       dismissStageEvent();
-      if (target) goToScreen(navigation, target.screen);
+      if (target) openAndTeach(target.screen);
     };
     return (
       <Modal transparent animationType="fade" visible onRequestClose={close}>
@@ -92,7 +111,7 @@ export default function UnlockNotification() {
 
   const go = () => {
     dismissUnlockEvent();
-    if (feature.screen) goToScreen(navigation, feature.screen);
+    if (feature.screen) openAndTeach(feature.screen);
   };
 
   return (

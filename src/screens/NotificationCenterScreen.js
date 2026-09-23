@@ -17,7 +17,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, ScrollView, Modal, Switch, ActivityIndicator, Linking, Platform, TextInput,
+  View, Text, TouchableOpacity, ScrollView, Modal, Switch, ActivityIndicator, Linking, Platform, TextInput, KeyboardAvoidingView,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
@@ -396,7 +396,7 @@ export default function NotificationCenterScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 100 }}>
+      <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 100 }}>
         {!userId && (
           <Text style={{ fontSize: 12, color: c.gold, marginBottom: s.md }}>Sign in to see reminders and plans. Guests only get app news here.</Text>
         )}
@@ -416,6 +416,7 @@ export default function NotificationCenterScreen() {
 
       {/* ── Paste something in ────────────────────────────────────────── */}
       <Modal visible={pasteOpen} transparent animationType="slide" onRequestClose={() => setPasteOpen(false)}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} activeOpacity={1} onPress={() => setPasteOpen(false)} />
         <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: s.lg, paddingBottom: s.xxl }}>
           <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.md }}>Paste something in</Text>
@@ -431,6 +432,7 @@ export default function NotificationCenterScreen() {
             {pill('From clipboard', 'clipboard-outline', pasteFromClipboard, { tone: c.text3 })}
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ── Later ─────────────────────────────────────────────────────── */}
@@ -480,7 +482,7 @@ export default function NotificationCenterScreen() {
       <Modal visible={showSettings} transparent animationType="slide" onRequestClose={() => setShowSettings(false)}>
         <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} activeOpacity={1} onPress={() => setShowSettings(false)} />
         <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '85%' }}>
-          <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: s.xxl }}>
+          <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: s.xxl }}>
             <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1 }}>Notification settings</Text>
 
             {PHONE_CAPABLE ? (

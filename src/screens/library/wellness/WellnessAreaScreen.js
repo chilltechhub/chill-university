@@ -232,7 +232,7 @@ export default function WellnessAreaScreen({
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 60, gap: s.xl }} showsVerticalScrollIndicator={false}>
+      <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 60, gap: s.xl }} showsVerticalScrollIndicator={false}>
         <ActionPanel aa={aa} color={accentColor} onEdit={() => setEditOpen(true)} />
         <DetailsDrawer
           color={accentColor}

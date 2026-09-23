@@ -431,7 +431,7 @@ export default function AIBridgeScreen() {
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 80 }} keyboardShouldPersistTaps="handled">
+        <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 80 }} keyboardShouldPersistTaps="handled">
 
           {result ? (
             // ── Done ──────────────────────────────────────────────────────
@@ -558,7 +558,7 @@ export default function AIBridgeScreen() {
                   </TouchableOpacity>
                 )}
                 {showPrompt && !!prompt && (
-                  <ScrollView style={{ maxHeight: 260, marginTop: s.sm, backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border }} nestedScrollEnabled>
+                  <ScrollView automaticallyAdjustKeyboardInsets style={{ maxHeight: 260, marginTop: s.sm, backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border }} nestedScrollEnabled>
                     <Text selectable style={{ fontSize: 11, fontFamily: FONTS.mono, color: c.text2, padding: s.md }}>{prompt}</Text>
                   </ScrollView>
                 )}

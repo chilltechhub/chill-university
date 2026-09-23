@@ -14,6 +14,7 @@ import useGame from '../logic/useGame';
 import useGradeLevel, { tierForLevel } from '../logic/useGradeLevel';
 import { roundLength, STAGE_COUNT } from '../logic/difficultyAdapter';
 import { SCRAMBLE_BANK } from '../data/gameContent/wordScramble';
+import { rotatePick } from '../logic/questionRotation';
 
 // Stage lengths come from the same roundLength() curve every round-based
 // game shares (short first, longer as you clear more) — the opening stage
@@ -44,10 +45,9 @@ function scrambleWord(word) {
   return shuffled;
 }
 
-function pickNext(pool, avoid) {
-  const choices = pool.filter(w => !avoid.includes(w.word));
-  const list = choices.length ? choices : pool;
-  return list[Math.floor(Math.random() * list.length)];
+// Rotates through the whole pool across runs, see questionRotation.js.
+function pickNext(pool, avoid = []) {
+  return rotatePick(pool, avoid, q => q.word);
 }
 
 export default function WordScrambleGame({ onGameEnd }) {

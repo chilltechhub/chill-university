@@ -51,6 +51,7 @@ import {
 } from '../api/onboardingService';
 import { LIFE_AREAS } from './library/LifeAreaScreen';
 import { isMinorRequiringConsent } from '../logic/ageOfConsent';
+import { dobFromParts } from '../logic/dateUtils';
 import { startParentVerification, getVerificationStatus } from '../api/kwsVerification';
 import { DEFAULT_PERSONA, personasFor, defaultPersonaFor, getPersona } from '../data/personas';
 import { ageCategoryFromDob, isMinorBand } from '../logic/profileResolver';
@@ -59,7 +60,7 @@ import { useAccess } from '../../context/AccessContext';
 import { useFeatureFlag, useRemoteConfig } from '../../context/RemoteConfigContext';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import {
-  PersonaStep, SectorsStep, LookStep, PERSONA_AREA_DEFAULTS, pickFocusHub, buildRecommendations,
+  PersonaStep, StartModeStep, NameStep, SectorsStep, LookStep, PERSONA_AREA_DEFAULTS, pickFocusHub, buildRecommendations,
 } from './onboarding/steps';
 
 const { width: SW } = Dimensions.get('window');
@@ -87,10 +88,15 @@ const COUNTRY_CHOICES = [
 // screen's own tutorial firing the moment you land, spotlighting the real
 // tab bar — see src/logic/useFirstVisitTutorial.js. A card describing UI the
 // user can't see yet teaches nobody.
+// One question per card, each short enough to fit a phone screen without
+// scrolling. The persona card used to also hold the start mode, your name
+// and a baseline number, which made it the one long scrolling screen.
 const STEPS = [
-  { component: PersonaStep, title: 'Profile', subtitle: 'Your account type' },
-  { component: SectorsStep, title: 'Sectors', subtitle: 'Your focus areas' },
-  { component: LookStep,    title: 'Look',    subtitle: 'How it looks' },
+  { component: PersonaStep,    title: 'Profile', subtitle: 'Your account type' },
+  { component: StartModeStep,  title: 'Start',   subtitle: 'How much to start with' },
+  { component: NameStep,       title: 'Name',    subtitle: 'What to call you' },
+  { component: SectorsStep,    title: 'Sectors', subtitle: 'Your focus areas' },
+  { component: LookStep,       title: 'Look',    subtitle: 'How it looks' },
 ];
 
 export default function MultiStepOnboarding() {
@@ -266,17 +272,12 @@ export default function MultiStepOnboarding() {
   }, [phase]);
 
   const submitBirthDate = async () => {
-    const mm = parseInt(birthMonth, 10);
-    const dd = parseInt(birthDay, 10);
-    const yyyy = parseInt(birthYear, 10);
-    const dob = new Date(yyyy, (mm || 1) - 1, dd || 1);
-    const valid = yyyy > 1900 && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31
-      && dob <= new Date() && (new Date().getFullYear() - yyyy) < 120;
-    if (!valid) {
-      Alert.alert('Check your birth date', 'Enter a valid month, day, and year.');
+    // Month + year required, day optional — see dobFromParts.
+    const dateOfBirth = dobFromParts(birthMonth, birthDay, birthYear);
+    if (!dateOfBirth) {
+      Alert.alert('Check your birth date', 'Enter your birth month and year. The day is optional.');
       return;
     }
-    const dateOfBirth = `${yyyy}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
     const isMinor = isMinorRequiringConsent(dateOfBirth, countryCode);
     setAgeBand(ageCategoryFromDob(dateOfBirth));
     dobRef.current = dateOfBirth;
@@ -606,13 +607,13 @@ export default function MultiStepOnboarding() {
     return (
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={cs.bg}>
-          <ScrollView contentContainerStyle={gs.body} showsVerticalScrollIndicator={false}>
+          <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={gs.body} showsVerticalScrollIndicator={false}>
             <Text style={gs.title}>First, when's{'\n'}your birthday?</Text>
             <Text style={gs.subtitle}>We ask everyone this. It decides which parts of the app fit your age.</Text>
             <View style={gs.dobRow}>
               <TextInput style={[gs.input, gs.dobInput]} placeholder="MM" placeholderTextColor={c.text4}
                 value={birthMonth} onChangeText={setBirthMonth} keyboardType="number-pad" maxLength={2} />
-              <TextInput style={[gs.input, gs.dobInput]} placeholder="DD" placeholderTextColor={c.text4}
+              <TextInput style={[gs.input, gs.dobInput]} placeholder="DD (opt.)" accessibilityLabel="Birth day, optional" placeholderTextColor={c.text4}
                 value={birthDay} onChangeText={setBirthDay} keyboardType="number-pad" maxLength={2} />
               <TextInput style={[gs.input, gs.dobInputYear]} placeholder="YYYY" placeholderTextColor={c.text4}
                 value={birthYear} onChangeText={setBirthYear} keyboardType="number-pad" maxLength={4} />
@@ -662,7 +663,7 @@ export default function MultiStepOnboarding() {
     return (
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={cs.bg}>
-          <ScrollView contentContainerStyle={gs.body} showsVerticalScrollIndicator={false}>
+          <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={gs.body} showsVerticalScrollIndicator={false}>
             <Text style={gs.title}>Let's bring in a{'\n'}parent or guardian</Text>
             <Text style={gs.subtitle}>
               Because of your age, we need a parent or guardian to confirm before you can finish setting up your account.
@@ -707,7 +708,7 @@ export default function MultiStepOnboarding() {
   if (phase === 'consent') {
     return (
       <View style={cs.bg}>
-        <ScrollView contentContainerStyle={gs.body} showsVerticalScrollIndicator={false}>
+        <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={gs.body} showsVerticalScrollIndicator={false}>
           <Text style={gs.title}>Almost there</Text>
           <Text style={gs.subtitle}>Your parent or guardian has been verified. Please review this together before continuing.</Text>
           <Text style={gs.consentBody}>
@@ -769,7 +770,7 @@ export default function MultiStepOnboarding() {
 
         {/* Sliding card */}
         <Animated.View style={[cs.card, { transform: [{ translateX: slideAnim }] }]}>
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+          <ScrollView automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
             <StepComponent data={data} set={set} theme={theme} isMinor={personaCtx.isMinor} ageBand={ageBand} onThemeChange={setTheme} />
           </ScrollView>
         </Animated.View>

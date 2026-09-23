@@ -32,7 +32,7 @@ export default function FolderAssignSheet({ visible, folders, currentFolderId, o
           <View style={styles.handle} />
           <Text style={styles.title}>Move to Folder</Text>
 
-          <ScrollView style={{ maxHeight: 280 }} showsVerticalScrollIndicator={false}>
+          <ScrollView automaticallyAdjustKeyboardInsets style={{ maxHeight: 280 }} showsVerticalScrollIndicator={false}>
             <TouchableOpacity style={styles.row} onPress={() => onAssign(null)}>
               <Ionicons name="close-circle-outline" size={18} color={c.text3} />
               <Text style={styles.rowText}>No Folder</Text>

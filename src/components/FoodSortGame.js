@@ -13,6 +13,7 @@ import useGameFacts from '../logic/useGameFacts';
 import useGradeLevel, { levelForTier } from '../logic/useGradeLevel';
 import { createAdaptiveTier, nextAdaptiveTier, roundLength, STAGE_COUNT } from '../logic/difficultyAdapter';
 import { FOOD_BANK, NUTRITION_TIPS } from '../data/gameContent/foodSort';
+import { rotatePick } from '../logic/questionRotation';
 
 const BLURBS = {
   'K-2': 'Obvious healthy vs junk food picks.',
@@ -29,10 +30,9 @@ function getCatConfig(G) {
   };
 }
 
-function pickNext(pool, avoid) {
-  const choices = pool.filter(q => !avoid.includes(q.food));
-  const list = choices.length ? choices : pool;
-  return list[Math.floor(Math.random() * list.length)];
+// Rotates through the whole pool across runs, see questionRotation.js.
+function pickNext(pool, avoid = []) {
+  return rotatePick(pool, avoid, q => q.food);
 }
 
 export default function FoodSortGame({ onGameEnd }) {

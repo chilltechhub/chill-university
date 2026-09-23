@@ -298,6 +298,19 @@ export function UserProgressProvider({ children }) {
     await loadUserData(user.id);
   }
 
+  // A finished round counts toward "played" at once. Its answers were
+  // already written one by one (useGame → handleGameEvent), but
+  // gameplayStats is only rebuilt when the profile reloads, which used to be
+  // at game end, so leaving after one round never ticked "Play one training
+  // game". The next reload replaces this with the stored total.
+  const noteRoundPlayed = useCallback((answered) => {
+    if (!answered) return;
+    setGameplayStats(prev => ({
+      totalProblemsCorrect: 0, levelsCompleted: 0, ...(prev || {}),
+      totalProblemsAttempted: (prev?.totalProblemsAttempted || 0) + answered,
+    }));
+  }, []);
+
   async function refreshDailyMissions() {
     if (!user) return;
     await gamificationService.expireOldMissions(user.id);
@@ -363,6 +376,7 @@ export function UserProgressProvider({ children }) {
         longtermMissions,
         // gameplay
         gameplayStats,
+        noteRoundPlayed,
         // level-up / rank-up notification queue
         progressEvents,
         dismissProgressEvent,

@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import SignInPrompt from '../components/SignInPrompt';
+import TimePickerField from '../components/TimePickerField';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { useUIPrefs } from '../../context/UIPrefsContext';
 import { useAccess } from '../../context/AccessContext';
@@ -348,7 +349,7 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={{ paddingHorizontal: s.lg, gap: s.md, paddingBottom: s.xl }}>
+          <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ paddingHorizontal: s.lg, gap: s.md, paddingBottom: s.xl }}>
             {/* Title */}
             <TextInput
               style={{ borderWidth: 1, borderColor: areaColor, borderRadius: r.md, padding: s.md, fontSize: t.md, color: c.text1, backgroundColor: c.bg0 }}
@@ -493,12 +494,7 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
             <View style={{ flexDirection: 'row', gap: s.sm }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Time</Text>
-                <TextInput
-                  style={{ borderWidth: 1, borderColor: c.border, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, backgroundColor: c.bg0 }}
-                  value={timeVal} onChangeText={setTimeVal}
-                  placeholder="e.g. 08:00" placeholderTextColor={c.text4}
-                  keyboardType="numbers-and-punctuation"
-                />
+                <TimePickerField value={timeVal} onChange={setTimeVal} placeholder="Any time" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Duration (min)</Text>
@@ -733,7 +729,7 @@ function TimeView({ instances, onUpdate, onEdit, navigation, c, t, s, r }) {
   const untimed = instances.filter(i => !i.start_time && !i.skipped);
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
+    <ScrollView automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
       {/* Untimed items at top */}
       {untimed.length > 0 && (
         <View style={{ padding: s.lg, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
@@ -823,7 +819,7 @@ function ListView({ instances, onUpdate, onEdit, navigation, c, t, s, r }) {
   );
 
   return (
-    <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 80 }}>
+    <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 80 }}>
       <Section label={showEmojis ? '⚠️ Missed' : 'Missed'} items={overdue} color="#e05858" />
       <Section label="Today" items={today} />
       <Section label="Skipped" items={skipped} />
@@ -914,7 +910,7 @@ function WeeklyView({ userId, anchor, activeAreas, onDayPress, refreshKey, showi
   if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color={c.teal} />;
 
   return (
-    <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 80 }}>
+    <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 80 }}>
       {weekDays.map((day, i) => {
         const iso     = toISO(day);
         const items   = byDate[iso] || [];
@@ -988,7 +984,7 @@ function MonthlyView({ userId, anchor, activeAreas, onDayPress, refreshKey, show
   const cells = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
 
   return (
-    <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 80 }}>
+    <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 80 }}>
       <View style={{ flexDirection: 'row', marginBottom: s.sm }}>
         {['S','M','T','W','T','F','S'].map((d, i) => (
           <Text key={i} style={{ flex: 1, textAlign: 'center', fontSize: 10, fontWeight: '700', color: c.text4 }}>{d}</Text>
@@ -1088,7 +1084,7 @@ function SidePanel({ visible, onClose, userId, onAdded, c, t, s, r }) {
           </View>
         </View>
 
-        <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ paddingBottom: 40 }}>
           {!selectedArea ? (
             <View style={{ padding: s.lg, gap: s.sm }}>
               {Object.entries(AREAS).filter(([, a]) => a.preset).map(([key, area]) => (

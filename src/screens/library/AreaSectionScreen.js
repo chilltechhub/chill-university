@@ -603,7 +603,7 @@ export default function AreaSectionScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 60, gap: s.xl }} showsVerticalScrollIndicator={false}>
+      <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 60, gap: s.xl }} showsVerticalScrollIndicator={false}>
         <ActionPanel aa={aa} color={color} onEdit={() => setEditOpen(true)} />
         <DetailsDrawer
           color={color}

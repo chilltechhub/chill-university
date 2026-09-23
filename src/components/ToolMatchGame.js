@@ -13,6 +13,7 @@ import useGameFacts from '../logic/useGameFacts';
 import useGradeLevel, { levelForTier } from '../logic/useGradeLevel';
 import { createAdaptiveTier, nextAdaptiveTier, roundLength, STAGE_COUNT } from '../logic/difficultyAdapter';
 import { TOOL_BANK } from '../data/gameContent/toolMatch';
+import { rotatePick } from '../logic/questionRotation';
 
 const BLURBS = {
   'K-2': 'Common hand tools everyone recognizes.',
@@ -23,10 +24,9 @@ const BLURBS = {
 
 function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
-function pickNext(pool, avoid) {
-  const choices = pool.filter(q => !avoid.includes(q.tool));
-  const list = choices.length ? choices : pool;
-  return list[Math.floor(Math.random() * list.length)];
+// Rotates through the whole pool across runs, see questionRotation.js.
+function pickNext(pool, avoid = []) {
+  return rotatePick(pool, avoid, q => q.tool);
 }
 
 export default function ToolMatchGame({ onGameEnd }) {

@@ -1179,7 +1179,7 @@ export default function CareerExplorationScreen() {
               </Text>
             )}
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false}>
               <View style={styles.quizGrid}>
                 {INTERESTS.map(interest => {
                   const isPicked = quizPicks.includes(interest.id);
@@ -1229,7 +1229,7 @@ export default function CareerExplorationScreen() {
           {selectedCareer && (
             <View style={styles.modalContent}>
               <View style={styles.modalHandle} />
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false}>
                 <View style={styles.modalHeader}>
                   <View style={[styles.iconBox, { backgroundColor: fieldColor(selectedCareer.field) + '18' }]}>
                     <Ionicons name={selectedCareer.icon} size={28} color={fieldColor(selectedCareer.field)} />

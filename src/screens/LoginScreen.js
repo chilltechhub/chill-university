@@ -1,13 +1,14 @@
 // src/screens/LoginScreen.js
 // Clean auth screen — space traveler theme, handles both login and signup
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform, Animated, Linking, Image } from 'react-native';
 // Bright-teal variant of the icon mark: these screens are always dark.
 const BRAND_MARK = require('../../assets/splash-icon-dark.png');
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../api/supabaseClient';
+import { needsSecondStep, verifySignInCode } from '../api/mfa';
 import { useNavigation } from '@react-navigation/native';
 import { redeemOrgInviteCode } from '../api/organizationService';
 import { PRIVACY_POLICY_URL, TERMS_URL } from '../config/legal';
@@ -43,6 +44,39 @@ export default function LoginScreen({ onSuccess, onClose }) {
   const [loading,     setLoading]     = useState(false);
   const [mode,        setMode]        = useState('login'); // login | signup | reset
   const [showPass,    setShowPass]    = useState(false);
+  const [agreed,      setAgreed]      = useState(false); // signup: Terms + Privacy ticked
+  // Two-step sign-in (src/api/mfa.js): set once the password step passes on
+  // an account with an authenticator, or on arrival with a session that
+  // hasn't done the code step (App.js routes those here).
+  const [mfaUser,     setMfaUser]     = useState(null);
+  const [mfaCode,     setMfaCode]     = useState('');
+  const [mfaError,    setMfaError]    = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (alive && session?.user && await needsSecondStep()) setMfaUser(session.user);
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  const submitMfa = async () => {
+    if (mfaCode.trim().length !== 6 || loading) return;
+    setLoading(true); setMfaError(null);
+    try {
+      await verifySignInCode(mfaCode);
+      const user = mfaUser;
+      setMfaUser(null); setMfaCode('');
+      await goAfterAuth(user);
+    } catch (e) {
+      setMfaError(e.message || 'That code didn’t work.');
+    } finally { setLoading(false); }
+  };
+
+  const cancelMfa = async () => {
+    await supabase.auth.signOut();
+    setMfaUser(null); setMfaCode(''); setMfaError(null);
+  };
 
   const goAfterAuth = async (user) => {
   try {
@@ -125,6 +159,10 @@ export default function LoginScreen({ onSuccess, onClose }) {
       Alert.alert('Missing fields', 'Please enter your email and password.');
       return;
     }
+    if (mode === 'signup' && !agreed) {
+      Alert.alert('One more step', 'Tick the box to agree to the Terms and Privacy Policy.');
+      return;
+    }
     if (mode === 'signup' && password.length < 6) {
       Alert.alert('Password too short', 'Password must be at least 6 characters.');
       return;
@@ -135,11 +173,16 @@ export default function LoginScreen({ onSuccess, onClose }) {
       if (mode === 'login') {
         const { data, error } = await supabase.auth.signInWithPassword({ email: trimEmail, password });
         if (error) { Alert.alert('Sign in failed', error.message); return; }
-        if (data.user) await goAfterAuth(data.user);
+        if (data.user) {
+          // 2FA on: the session is only aal1 until the code step.
+          if (await needsSecondStep()) { setMfaUser(data.user); return; }
+          await goAfterAuth(data.user);
+        }
       } else {
         const { data, error } = await supabase.auth.signUp({
           email: trimEmail, password,
-          options: { data: { display_name: displayName.trim() || trimEmail.split('@')[0] } },
+          // When they agreed, kept with the account (auth user metadata).
+          options: { data: { display_name: displayName.trim() || trimEmail.split('@')[0], terms_accepted_at: new Date().toISOString() } },
         });
         if (error) { Alert.alert('Sign up failed', error.message); return; }
 
@@ -207,8 +250,34 @@ export default function LoginScreen({ onSuccess, onClose }) {
           <Text style={s.tagline}>by ChillTech Hub</Text>
         </View>
 
+        {/* Two-step sign-in: the password was right, now the code. */}
+        {mfaUser && (
+          <View style={s.card}>
+            <Text style={s.cardTitle}>Enter your code</Text>
+            <Text style={s.cardSub}>Open your authenticator app and type the 6-digit code for Deskartes.</Text>
+            <View style={s.inputWrap}>
+              <Ionicons name="keypad-outline" size={16} color="rgba(255,255,255,0.3)" style={s.inputIcon} />
+              <TextInput
+                style={[s.input, { letterSpacing: 4 }]}
+                value={mfaCode} onChangeText={setMfaCode}
+                placeholder="123456" placeholderTextColor="rgba(255,255,255,0.25)"
+                keyboardType="number-pad" maxLength={6} autoFocus
+                autoComplete="one-time-code" textContentType="oneTimeCode"
+                onSubmitEditing={submitMfa}
+              />
+            </View>
+            {!!mfaError && <Text style={{ color: '#ef6a6a', fontSize: 13, marginBottom: 8, textAlign: 'center' }}>{mfaError}</Text>}
+            <TouchableOpacity style={[s.btn, mfaCode.trim().length !== 6 && { opacity: 0.5 }]} onPress={submitMfa} disabled={loading || mfaCode.trim().length !== 6} activeOpacity={0.85}>
+              {loading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.btnText}>Verify</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity style={s.switchRow} onPress={cancelMfa}>
+              <Text style={s.switchText}><Text style={s.switchLink}>Use a different account</Text></Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Card */}
-        <View style={s.card}>
+        <View style={[s.card, mfaUser && { display: 'none' }]}>
           <Text style={s.cardTitle}>
             {mode === 'login' ? 'Welcome back, Traveler'
               : mode === 'reset' ? 'Recover your base'
@@ -299,8 +368,39 @@ export default function LoginScreen({ onSuccess, onClose }) {
             </TouchableOpacity>
           )}
 
+          {/* Agreement — a tick, not a line of small print. Signup stays
+              disabled until it's ticked. */}
+          {mode === 'signup' && (
+            <View style={s.agreeRow}>
+              <TouchableOpacity
+                onPress={() => setAgreed(a => !a)}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: agreed }}
+                accessibilityLabel="I agree to the Terms and Privacy Policy"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name={agreed ? 'checkbox' : 'square-outline'} size={22} color={agreed ? '#2bb5a0' : 'rgba(255,255,255,0.5)'} />
+              </TouchableOpacity>
+              <Text style={s.agreeText} onPress={() => setAgreed(a => !a)}>
+                I agree to the{' '}
+                {TERMS_URL ? (
+                  <>
+                    <Text style={s.legalLink} onPress={() => Linking.openURL(TERMS_URL)}>Terms</Text>
+                    {' and '}
+                  </>
+                ) : null}
+                <Text style={s.legalLink} onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>Privacy Policy</Text>
+              </Text>
+            </View>
+          )}
+
           {/* Submit */}
-          <TouchableOpacity style={s.btn} onPress={handleSubmit} disabled={loading} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={[s.btn, mode === 'signup' && !agreed && { opacity: 0.5 }]}
+            onPress={handleSubmit}
+            disabled={loading || (mode === 'signup' && !agreed)}
+            activeOpacity={0.85}
+          >
             {loading
               ? <ActivityIndicator color="#fff" size="small" />
               : <>
@@ -311,21 +411,6 @@ export default function LoginScreen({ onSuccess, onClose }) {
                 </>
             }
           </TouchableOpacity>
-
-          {/* What signing up agrees to. Terms only appear once TERMS_URL is
-              set in src/config/legal.js, so this never links to nothing. */}
-          {mode === 'signup' && (
-            <Text style={s.legalText}>
-              By creating an account you agree to our{' '}
-              {TERMS_URL ? (
-                <>
-                  <Text style={s.legalLink} onPress={() => Linking.openURL(TERMS_URL)}>Terms</Text>
-                  {' and '}
-                </>
-              ) : null}
-              <Text style={s.legalLink} onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>Privacy Policy</Text>.
-            </Text>
-          )}
 
           {/* Switch mode */}
           {mode === 'reset' ? (
@@ -393,6 +478,8 @@ const s = StyleSheet.create({
   btnText:     { color: '#fff', fontWeight: '700', fontSize: 16 },
   btnEmoji:    { fontSize: 16 },
   legalText:   { marginTop: 14, fontSize: 12, lineHeight: 17, color: 'rgba(255,255,255,0.4)', textAlign: 'center' },
+  agreeRow:    { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
+  agreeText:   { flex: 1, fontSize: 13, lineHeight: 18, color: 'rgba(255,255,255,0.75)' },
   legalLink:   { color: '#2bb5a0', textDecorationLine: 'underline' },
   switchRow:   { marginTop: 18, alignItems: 'center' },
   switchText:  { fontSize: 13, color: 'rgba(255,255,255,0.4)' },
