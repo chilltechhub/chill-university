@@ -385,10 +385,7 @@ export default function PortfolioScreen() {
                 >
                   <Ionicons name="chevron-back" size={22} color={th.cyan} />
                 </TouchableOpacity>
-                <View>
-                  <Text style={{ color: th.cyan, fontSize: 10, letterSpacing: 2, fontWeight: '800' }}>COMMAND VAULT</Text>
-                  <Text style={{ color: th.text1, fontSize: 22, fontWeight: 'bold' }}>Portfolio</Text>
-                </View>
+
               </View>
               <FillWithAIButton target="portfolio" color={th.cyan} />
             </View>

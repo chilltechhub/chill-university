@@ -614,10 +614,6 @@ export default function ProjectsScreen() {
             >
               <Ionicons name="chevron-back" size={22} color={bp.accent} />
             </TouchableOpacity>
-            <View>
-              <Text style={s.headerSub}>DRAFTING TABLE</Text>
-              <Text style={s.headerTitle}>The Workshop</Text>
-            </View>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <FillWithAIButton target="projects" color={bp.accent} />
@@ -789,7 +785,7 @@ export default function ProjectsScreen() {
 
 const makeStyles = bp => StyleSheet.create({
   screen:      { flex: 1, backgroundColor: bp.paper },
-  header:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10 },
+  header:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', rowGap: 8, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10 },
   headerSub:   { color: bp.ink3, fontSize: 10, fontFamily: FONTS.mono, letterSpacing: 2, fontWeight: '800' },
   headerTitle: { color: bp.ink, fontSize: 26, fontFamily: FONTS.display, fontWeight: '800' },
   newBtn:      { backgroundColor: bp.stamp, flexDirection: 'row', alignItems: 'center', paddingVertical: 9, paddingHorizontal: 13, borderRadius: 4, gap: 5 },

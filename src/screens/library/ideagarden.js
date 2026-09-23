@@ -953,10 +953,6 @@ export default function IdeaGardenScreen() {
           >
             <Ionicons name="chevron-back" size={20} color={gc.text2} />
           </TouchableOpacity>
-          <View>
-            <Text style={styles.topbarSub}>idea garden</Text>
-            <Text style={styles.topbarTitle}>{showEmojis ? '🌿 ' : ''}Your Ecosystem</Text>
-          </View>
         </View>
         <View style={styles.topbarRight}>
           <FillWithAIButton target="ideas" color={gc.green} />
@@ -1414,11 +1410,13 @@ export default function IdeaGardenScreen() {
 const makeStyles = (gc) => StyleSheet.create({
   container: { flex: 1, backgroundColor: gc.bg0 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: gc.bg0 },
-  topbar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, paddingTop: 16, backgroundColor: gc.bg1, borderBottomWidth: 0.5, borderBottomColor: gc.border },
+  topbar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', rowGap: 8, padding: 14, paddingTop: 16, backgroundColor: gc.bg1, borderBottomWidth: 0.5, borderBottomColor: gc.border },
   backBtn: { padding: 2 },
   topbarSub: { fontSize: 10, color: gc.text4, letterSpacing: 1, textTransform: 'uppercase' },
   topbarTitle: { fontSize: 17, fontWeight: '600', color: gc.text2 },
-  topbarRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  // Wraps and shrinks: with the title gone there's room, but a small
+  // phone plus a long label must never push the add button off-screen.
+  topbarRight: { flexDirection: 'row', alignItems: 'center', flexShrink: 1, flexWrap: 'wrap', justifyContent: 'flex-end', gap: 8, rowGap: 8 },
   connectBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: gc.border },
   connectBtnActive: { backgroundColor: gc.green, borderColor: gc.green },
   connectBtnText: { fontSize: 12, color: gc.text2 },
