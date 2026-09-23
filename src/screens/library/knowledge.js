@@ -1159,10 +1159,6 @@ export default function KnowledgeScreen() {
           >
             <Ionicons name="chevron-back" size={22} color={c.teal} />
           </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerSubtitle}>NOTES · LINKS · PAPERS · TOOLS</Text>
-            <Text style={styles.headerTitle}>Knowledge Vault</Text>
-          </View>
         </View>
         <FillWithAIButton target="vault" />
         {entries.length > 0 && (
@@ -1555,7 +1551,7 @@ export default function KnowledgeScreen() {
 
 const makeStyles = (c) => StyleSheet.create({
   container: { flex: 1, backgroundColor: c.bg0, paddingTop: 50 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 14, gap: 6 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', rowGap: 8, paddingHorizontal: 20, marginBottom: 14, gap: 6 },
   headerSubtitle: { color: c.teal, fontSize: 9, letterSpacing: 1.5, fontWeight: '800' },
   headerTitle: { color: c.text1, fontSize: 22, fontWeight: 'bold' },
   headerIconBtn: { backgroundColor: c.bg1, borderRadius: 10, padding: 8, borderWidth: 0.5, borderColor: c.border },

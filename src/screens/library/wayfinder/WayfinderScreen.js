@@ -501,10 +501,7 @@ export default function WayfinderScreen() {
       <TouchableOpacity onPress={goBackOut} accessibilityRole="button" accessibilityLabel="Back" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
         <Ionicons name="chevron-back" size={22} color={c.teal} />
       </TouchableOpacity>
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 10, color: c.teal, letterSpacing: 2, fontWeight: '800' }}>FIND YOUR DIRECTION</Text>
-        <Text style={{ fontSize: 22, fontWeight: '700', color: c.text1 }}>Wayfinder</Text>
-      </View>
+      <View style={{ flex: 1 }} />
       {inSteps && (
         <View style={{ flexDirection: 'row', gap: 5 }} accessibilityLabel={`Step ${stepIdx + 1} of 3`}>
           {STEP_ORDER.map((s, i) => (

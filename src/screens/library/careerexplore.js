@@ -956,10 +956,6 @@ export default function CareerExplorationScreen() {
           >
             <Ionicons name="chevron-back" size={22} color={c.financial} />
           </TouchableOpacity>
-          <View>
-            <Text style={styles.headerSubtitle}>SECTOR INTELLIGENCE</Text>
-            <Text style={styles.headerTitle}>Career Trajectories</Text>
-          </View>
         </View>
         <View style={styles.savedBadge}>
           <Ionicons name="bookmark" size={14} color={c.gold} />
@@ -1417,7 +1413,7 @@ export default function CareerExplorationScreen() {
 
 const makeStyles = (c) => StyleSheet.create({
   container: { flex: 1, backgroundColor: c.bg0, paddingTop: 50 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 16 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', rowGap: 8, paddingHorizontal: 20, marginBottom: 16 },
   headerSubtitle: { color: c.financial, fontSize: 10, letterSpacing: 2, fontWeight: '800' },
   headerTitle: { color: c.text1, fontSize: 24, fontWeight: 'bold' },
   savedBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.bg1, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, borderWidth: 1, borderColor: c.gold + '4d' },
