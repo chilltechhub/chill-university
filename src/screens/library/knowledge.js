@@ -39,11 +39,11 @@ import { ageBandFor, bandAllows } from '../../logic/profileResolver';
 import { notesToMarkdown, notesToCSV } from '../../logic/exportUtils';
 import useFolders from '../../logic/useFolders';
 import FolderRow from '../../components/FolderRow';
+import MoreMenu from '../../components/MoreMenu';
 import FolderAssignSheet from '../../components/FolderAssignSheet';
 import ItemLinks from '../../components/ItemLinks';
 import LinkifiedText from '../../components/LinkifiedText';
 import TourSpot from '../../components/TourSpot';
-import FillWithAIButton from '../../components/FillWithAIButton';
 
 // ─── Item kinds ────────────────────────────────────────────────────────────
 // One row shape, four profiles layered over it. `type`/`status` are what
@@ -1150,51 +1150,46 @@ export default function KnowledgeScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      {/* Header */}
+      {/* Header — one row: back, which half you're in, the one button that
+          makes something, and everything occasional behind the ⋯ menu. */}
       <View style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-          <TouchableOpacity
-            onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('LibraryScreen'))}
-            style={{ padding: 2 }}
-          >
-            <Ionicons name="chevron-back" size={22} color={c.teal} />
-          </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('LibraryScreen'))}
+          style={{ padding: 2 }}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+        >
+          <Ionicons name="chevron-back" size={22} color={c.teal} />
+        </TouchableOpacity>
+
+        <View style={styles.segment}>
+          {[['vault', `My Vault (${entries.length})`], ['discover', 'Discover']].map(([key, label]) => (
+            <TouchableOpacity
+              key={key}
+              style={[styles.segmentBtn, tab === key && styles.segmentBtnActive]}
+              onPress={() => setTab(key)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: tab === key }}
+            >
+              <Text style={[styles.segmentText, tab === key && styles.segmentTextActive]} numberOfLines={1}>{label}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
-        <FillWithAIButton target="vault" />
-        {entries.length > 0 && (
-          <>
-            <TouchableOpacity onPress={() => exportAs('markdown')} style={styles.headerIconBtn}>
-              <Ionicons name="document-text-outline" size={16} color={c.text2} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => exportAs('csv')} style={styles.headerIconBtn}>
-              <Ionicons name="grid-outline" size={16} color={c.text2} />
-            </TouchableOpacity>
-          </>
-        )}
+
         <TourSpot id="research-list">
-          <TouchableOpacity style={styles.addBtn} onPress={() => setShowAdd(true)}>
+          <TouchableOpacity style={styles.addBtn} onPress={() => setShowAdd(true)} accessibilityRole="button" accessibilityLabel="Add to your vault">
             <Ionicons name="add" size={18} color="#fff" />
             <Text style={styles.addBtnText}>New</Text>
           </TouchableOpacity>
         </TourSpot>
-      </View>
 
-      {/* Tabs */}
-      <View style={styles.tabRow}>
-        <TouchableOpacity
-          style={[styles.tabBtn, tab === 'vault' && styles.tabBtnActive]}
-          onPress={() => setTab('vault')}
-        >
-          <Ionicons name="library" size={13} color={tab === 'vault' ? c.teal : c.text3} />
-          <Text style={[styles.tabText, tab === 'vault' && styles.tabTextActive]}>My Vault ({entries.length})</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabBtn, tab === 'discover' && styles.tabBtnActive]}
-          onPress={() => setTab('discover')}
-        >
-          <Ionicons name="compass" size={13} color={tab === 'discover' ? c.teal : c.text3} />
-          <Text style={[styles.tabText, tab === 'discover' && styles.tabTextActive]}>Discover</Text>
-        </TouchableOpacity>
+        <MoreMenu
+          items={[
+            { label: 'Fill with AI', icon: 'sparkles', color: c.teal, onPress: () => navigation.navigate('AIBridgeScreen', { target: 'vault' }) },
+            entries.length > 0 && { label: 'Copy as Markdown', icon: 'document-text-outline', onPress: () => exportAs('markdown') },
+            entries.length > 0 && { label: 'Copy as CSV', icon: 'grid-outline', onPress: () => exportAs('csv') },
+          ]}
+        />
       </View>
 
       {/* Search + filter toggle */}
@@ -1314,6 +1309,18 @@ export default function KnowledgeScreen() {
                 </ScrollView>
               </View>
 
+              {/* Folders — shared by every kind, so one folder can hold a
+                  note, a paper and a tool. In here with the other filters
+                  rather than a row of its own above the list. */}
+              <FolderRow
+                folders={folders}
+                activeFolderId={folderFilter}
+                onSelect={setFolderFilter}
+                onCreate={createFolder}
+                onRename={renameFolder}
+                onDelete={handleDeleteFolder}
+              />
+
               {allTags.length > 0 && (
                 <View style={styles.filterBarContainer}>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
@@ -1339,17 +1346,6 @@ export default function KnowledgeScreen() {
             </>
           )}
 
-          {/* Folders — shared by every kind now, so one folder can hold a
-              note, a paper, and a tool at the same time */}
-          <FolderRow
-            folders={folders}
-            activeFolderId={folderFilter}
-            onSelect={setFolderFilter}
-            onCreate={createFolder}
-            onRename={renameFolder}
-            onDelete={handleDeleteFolder}
-          />
-
           {/* Quick note composer */}
           <TourSpot id="notes-input">
             <View style={styles.composer}>
@@ -1370,14 +1366,19 @@ export default function KnowledgeScreen() {
                   {savingNote ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="add" size={20} color="#fff" />}
                 </TouchableOpacity>
               </View>
-              <TextInput
-                style={styles.composerTags}
-                value={tagsInput}
-                onChangeText={setTagsInput}
-                placeholder="Tags (comma separated, optional)"
-                placeholderTextColor={c.text4}
-                onSubmitEditing={addQuickNote}
-              />
+              {/* The tags line only once there's a note to tag — it was a
+                  second always-on input on a screen that already had five
+                  rows above the first item. */}
+              {(!!input.trim() || !!tagsInput) && (
+                <TextInput
+                  style={styles.composerTags}
+                  value={tagsInput}
+                  onChangeText={setTagsInput}
+                  placeholder="Tags (comma separated, optional)"
+                  placeholderTextColor={c.text4}
+                  onSubmitEditing={addQuickNote}
+                />
+              )}
             </View>
           </TourSpot>
         </>
@@ -1558,11 +1559,13 @@ const makeStyles = (c) => StyleSheet.create({
   addBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.teal, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 },
   addBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
 
-  tabRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 8, marginBottom: 12 },
-  tabBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, backgroundColor: c.bg1, borderWidth: 1, borderColor: c.border },
-  tabBtnActive: { borderColor: c.teal, backgroundColor: c.teal + '18' },
-  tabText: { color: c.text3, fontSize: 12, fontWeight: '600' },
-  tabTextActive: { color: c.teal, fontWeight: 'bold' },
+  // Vault / Discover as one control in the header row, instead of two
+  // full-size buttons on a row of their own.
+  segment: { flex: 1, flexDirection: 'row', backgroundColor: c.bg2, borderRadius: 12, padding: 3, marginHorizontal: 6 },
+  segmentBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 7, borderRadius: 10 },
+  segmentBtnActive: { backgroundColor: c.bg1 },
+  segmentText: { color: c.text3, fontSize: 12, fontWeight: '600' },
+  segmentTextActive: { color: c.teal, fontWeight: 'bold' },
 
   searchRow: { flexDirection: 'row', paddingHorizontal: 20, marginBottom: 10, gap: 8 },
   searchBar: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: c.bg1, borderRadius: 12, paddingHorizontal: 12, borderWidth: 1, borderColor: c.border, gap: 8 },
