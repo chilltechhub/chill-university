@@ -199,12 +199,30 @@ function layoutForPersona(personaKey, { exploring = false } = {}) {
 // one widget joined a list of eight; appending eleven persona widgets
 // visible would rearrange the dashboard of every existing user without
 // being asked. Someone with a saved layout keeps exactly what they had.
+// A widget added by an app update is appended HIDDEN, so an update never
+// rearranges a dashboard someone has already set up. These are the
+// exceptions: ones that answer "what do I do next", which are no use
+// sitting switched off in the tray.
+const NEW_WIDGETS_SHOWN = new Set(['goalSteps']);
+
 function reconcileWidgetLayout(stored, personaKey, opts) {
   if (!Array.isArray(stored) || stored.length === 0) return layoutForPersona(personaKey, opts);
   const known = new Set(WIDGET_DEFS.map(w => w.key));
   const kept = stored.filter(l => l && known.has(l.key));
   const seen = new Set(kept.map(l => l.key));
-  const added = WIDGET_DEFS.filter(w => !seen.has(w.key)).map(w => ({ key: w.key, hidden: true }));
+  const added = WIDGET_DEFS.filter(w => !seen.has(w.key))
+    .map(w => ({ key: w.key, hidden: !NEW_WIDGETS_SHOWN.has(w.key) }));
+  // 'goalSteps' goes straight under the Compass card it belongs to, rather
+  // than to the bottom of the board, where the checklist for the goal in
+  // flight would sit below everything it's meant to lead.
+  const stepsIdx = added.findIndex(l => l.key === 'goalSteps');
+  if (stepsIdx >= 0) {
+    const [steps] = added.splice(stepsIdx, 1);
+    const compassAt = kept.findIndex(l => l.key === 'compass');
+    const out = [...kept];
+    out.splice(compassAt >= 0 ? compassAt + 1 : 0, 0, steps);
+    return [...out, ...added];
+  }
   return [...kept, ...added];
 }
 
