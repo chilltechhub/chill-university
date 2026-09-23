@@ -486,7 +486,8 @@ const makeStyles = (c, t, s, r) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: c.bg0,
-    paddingTop: 50,
+    // 8, not 50 — App.js already draws the top bar inside a safe-area view.
+    paddingTop: 8,
   },
   header: {
     paddingHorizontal: 20,

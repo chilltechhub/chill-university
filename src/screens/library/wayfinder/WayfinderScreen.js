@@ -980,7 +980,7 @@ export default function WayfinderScreen() {
   const reflectingItem = reflecting ? findItem(reflecting.pathId) : null;
 
   return (
-    <View style={{ flex: 1, backgroundColor: c.bg0, paddingTop: 50 }}>
+    <View style={{ flex: 1, backgroundColor: c.bg0, paddingTop: 8 }}>
       {header}
 
       {/* Back/Next sit at the end of the content rather than in a sticky

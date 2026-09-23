@@ -1074,7 +1074,7 @@ function SidePanel({ visible, onClose, userId, onAdded, c, t, s, r }) {
       </Animated.View>
       <Animated.View style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: PANEL_W, backgroundColor: c.bg0, transform: [{ translateX: slideX }], shadowColor: '#000', shadowOffset: { width: -4, height: 0 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 20 }}>
         {/* Header */}
-        <View style={{ backgroundColor: c.headerBg, padding: s.lg, paddingTop: 50, borderBottomWidth: 0.5, borderBottomColor: c.border, flexDirection: 'row', alignItems: 'center', gap: s.md }}>
+        <View style={{ backgroundColor: c.headerBg, padding: s.lg, borderBottomWidth: 0.5, borderBottomColor: c.border, flexDirection: 'row', alignItems: 'center', gap: s.md }}>
           <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
             <Ionicons name="chevron-forward" size={22} color={c.text3} />
           </TouchableOpacity>
