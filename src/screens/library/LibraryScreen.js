@@ -1116,7 +1116,8 @@ const makeStyles = (c, t, s, r, ui, accent) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: c.bg0 },
     loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.bg0 },
-    scrollContent: { paddingBottom: 60, paddingTop: 54 },
+    // 12, not 54: the app's own top bar sits above this screen already.
+    scrollContent: { paddingBottom: 60, paddingTop: 12 },
     header: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -1134,10 +1135,11 @@ const makeStyles = (c, t, s, r, ui, accent) =>
     },
     /* Anchored under the title. `top` clears scrollContent's paddingTop
        plus the title's own line height — the header is a fixed height, so
-       this doesn't need measuring. */
+       this doesn't need measuring. Moves with that padding: 54 -> 12 took
+       42 off the top, so this comes down by the same 42. */
     dropdown: {
       position: 'absolute',
-      top: 96,
+      top: 54,
       left: 20,
       minWidth: 240,
       backgroundColor: c.bg1,

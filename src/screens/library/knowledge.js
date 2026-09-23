@@ -1551,7 +1551,10 @@ export default function KnowledgeScreen() {
 }
 
 const makeStyles = (c) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: c.bg0, paddingTop: 50 },
+  // 8, not 50: the app draws its own top bar inside a safe-area view
+  // (App.js), so a screen adding a status-bar-sized inset of its own was
+  // half a phone-inch of empty space above every header.
+  container: { flex: 1, backgroundColor: c.bg0, paddingTop: 8 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', rowGap: 8, paddingHorizontal: 20, marginBottom: 14, gap: 6 },
   headerSubtitle: { color: c.teal, fontSize: 9, letterSpacing: 1.5, fontWeight: '800' },
   headerTitle: { color: c.text1, fontSize: 22, fontWeight: 'bold' },
