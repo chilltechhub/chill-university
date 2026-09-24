@@ -93,7 +93,7 @@ export default function ScienceSortGame({ onGameEnd }) {
     setFeedback(null);
     setStartTime(Date.now());
     factCountRef.current += 1;
-    setFact(factCountRef.current % 3 === 0 ? nextFact() : null);
+    setFact(prev => (prev && factCountRef.current % 3 !== 0 ? prev : nextFact()));
   }, [nextFact]);
 
   const handleAnswer = useCallback((cat) => {
@@ -174,7 +174,7 @@ export default function ScienceSortGame({ onGameEnd }) {
           total={roundComplete.total}
           streak={game.streak}
           difficulty={adaptive.tier}
-          fact={pace === 'rush' ? fact : null}
+          fact={fact}
           onAward={game.addPoints}
           onAdvance={handleClaimPrize}
         />
@@ -237,12 +237,6 @@ export default function ScienceSortGame({ onGameEnd }) {
           </View>
         )}
 
-        {pace === 'relaxed' && !!fact && (
-          <View style={s.factBox}>
-            <Text style={s.factLabel}>{showEmojis ? '💡 ' : ''}Did You Know</Text>
-            <Text style={s.factText}>{fact}</Text>
-          </View>
-        )}
       </ScrollView>
     </GameShell>
   );

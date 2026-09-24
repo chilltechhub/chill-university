@@ -238,6 +238,61 @@ const exploringChanges = (baseKey, ageBand) => [
     : `You start as a ${getPersona(baseKey).short} profile — you can change type any time`,
 ];
 
+// ─── Welcome ──────────────────────────────────────────────────────────────────
+// The first card, and the only one that asks nothing. Somebody who has just
+// made an account knows the name and nothing else: what it is, what it is
+// for, and what a normal week in it looks like. Four steps of setup with no
+// answer to "what am I setting up?" is how an app gets deleted on day one.
+//
+// Deliberately concrete rather than aspirational — each use case names the
+// real part of the app it maps to, so the words here stay checkable against
+// the thing that ships.
+const WELCOME_USES = [
+  { emoji: '🎯', icon: 'flag-outline',      title: 'Know what to do next',  body: 'One small goal at a time, right on your Home screen.' },
+  { emoji: '🗓️', icon: 'calendar-outline',  title: 'Run your days',         body: 'A planner for habits and to-dos, and a quick place to jot things down.' },
+  { emoji: '📚', icon: 'school-outline',    title: 'Learn something',       body: 'Short classes and quick games that earn you points.' },
+  { emoji: '🏗️', icon: 'hammer-outline',    title: 'Build your projects',   body: 'Turn an idea into a project and keep track of it.' },
+  { emoji: '🌿', icon: 'analytics-outline', title: 'See how life is going', body: 'Rate parts of your life, like health or money, and get ideas for each.' },
+];
+
+export function WelcomeStep({ theme }) {
+  const { c } = theme;
+  const st = stepStyles(theme);
+  return (
+    <View style={st.stepContent}>
+      <Text style={st.stepTitle}>Welcome to Deskartes</Text>
+      <Text style={st.stepSubtitle}>
+        One app for your days, your learning, your projects and how life is going. It opens up a little at a
+        time, so it never hands you everything at once.
+      </Text>
+
+      <SectionLabel label="What people use it for" theme={theme} />
+      {WELCOME_USES.map(use => (
+        <View
+          key={use.title}
+          style={{ flexDirection: 'row', gap: 12, backgroundColor: c.bg1, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: c.border }}
+        >
+          <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: c.teal + '22', alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ fontSize: 17 }}>{use.emoji}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 14, fontWeight: '700', color: c.text1, marginBottom: 3 }}>{use.title}</Text>
+            <Text style={{ fontSize: 12.5, color: c.text3, lineHeight: 18 }}>{use.body}</Text>
+          </View>
+        </View>
+      ))}
+
+      <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, padding: 12, borderRadius: 12, backgroundColor: c.gold + '14', borderWidth: 1, borderColor: c.gold + '44' }}>
+        <Ionicons name="time-outline" size={15} color={c.gold} style={{ marginTop: 1 }} />
+        <Text style={{ flex: 1, fontSize: 12.5, color: c.text2, lineHeight: 18 }}>
+          Five quick questions next, about a minute. Then your guide shows you around the app.
+          Every answer can be changed later in Settings.
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 export function PersonaStep({ data, set, theme, isMinor, ageBand }) {
   const { c } = theme;
   const st = stepStyles(theme);
@@ -273,8 +328,8 @@ export function PersonaStep({ data, set, theme, isMinor, ageBand }) {
 
   return (
     <View style={st.stepContent}>
-      <Text style={st.stepTitle}>Your first profile</Text>
-      <Text style={st.stepSubtitle}>Pick the one that fits best. You can add more profiles later.</Text>
+      <Text style={st.stepTitle}>What are you mostly here for?</Text>
+      <Text style={st.stepSubtitle}>This picks your first goal and what shows on your Home screen. Not sure? Pick the closest one; you can add another profile later.</Text>
 
       {options.map(p => {
         const sel = !exploring && data.active_persona === p.key;
@@ -285,7 +340,7 @@ export function PersonaStep({ data, set, theme, isMinor, ageBand }) {
             <Text style={{ fontSize: 24 }}>{p.emoji}</Text>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 15, fontWeight: '600', color: sel ? p.color : c.text1, marginBottom: 2 }}>{p.label}</Text>
-              <Text style={{ fontSize: 12, color: c.text3 }} numberOfLines={1}>{p.blurb}</Text>
+              <Text style={{ fontSize: 12, color: c.text3, lineHeight: 16 }} numberOfLines={2}>{p.blurb}</Text>
             </View>
             <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: sel ? p.color : c.border, backgroundColor: sel ? p.color : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
               {sel && <Ionicons name="checkmark" size={13} color="#fff" />}
@@ -364,7 +419,7 @@ export function StartModeStep({ data, set, theme }) {
         selected={data.experience_mode === 'full'}
         emoji="🗺️"
         title="Show me everything"
-        body="Every tool, game and widget from day one. For people who know their way around apps like this."
+        body="Every tool, game and widget from day one. Best if you already know apps like this; it is a lot at once."
         onPress={() => set('experience_mode', 'full')}
         theme={theme}
       />
@@ -382,7 +437,7 @@ export function NameStep({ data, set, theme }) {
   return (
     <View style={st.stepContent}>
       <Text style={st.stepTitle}>What should we call you?</Text>
-      <Text style={st.stepSubtitle}>Shows on your Home card and the leaderboard. Change it any time in Settings.</Text>
+      <Text style={st.stepSubtitle}>Shows on your Home card and, if you join one, the leaderboard. A first name or nickname is fine. Change it any time in Settings.</Text>
       <TextInput
         style={st.input}
         value={data.display_name}
@@ -444,8 +499,8 @@ export function SectorsStep({ data, set, theme }) {
 
   return (
     <View style={st.stepContent}>
-      <Text style={st.stepTitle}>Choose your sectors</Text>
-      <Text style={st.stepSubtitle}>Pre-picked from your profile. Pick 2 to 5 to focus on first; add the rest any time from the Library.</Text>
+      <Text style={st.stepTitle}>Which parts of life matter most right now?</Text>
+      <Text style={st.stepSubtitle}>These become your life areas: places to rate how things are going and find small things to do. We picked three to start. Tap to add or remove; 2 to 5 is a good number, and you can add the rest later.</Text>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
         {LIFE_AREAS.map(area => {
@@ -852,10 +907,10 @@ export function LookStep({ data, set, theme, onThemeChange }) {
 
   return (
     <View style={st.stepContent}>
-      <Text style={st.stepTitle}>{simple ? 'Look' : 'Look & Layout'}</Text>
+      <Text style={st.stepTitle}>{simple ? 'Light or dark?' : 'Look & Layout'}</Text>
       <Text style={st.stepSubtitle}>
         {simple
-          ? 'Pick your theme. Everything here is changeable any time from Settings.'
+          ? 'Tap one to see it right away. You can change it any time in Settings.'
           : 'Pick your theme, and choose which Library sections show up. Everything here is changeable any time from Settings.'}
       </Text>
 
@@ -864,8 +919,8 @@ export function LookStep({ data, set, theme, onThemeChange }) {
         <TouchableOpacity onPress={() => pickTheme('dark')}
           style={{ flexDirection: 'row', alignItems: 'center', borderRadius: 16, padding: 16, borderWidth: 2, backgroundColor: THEMES.dark.bg0, borderColor: data.theme === 'dark' ? THEMES.dark.gold : THEMES.dark.border }}>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: THEMES.dark.text1, fontWeight: '700', fontSize: 16, marginBottom: 4 }}>Dark · Command</Text>
-            <Text style={{ color: THEMES.dark.text3, fontSize: 13 }}>Command-deck slate. Gold accents.</Text>
+            <Text style={{ color: THEMES.dark.text1, fontWeight: '700', fontSize: 16, marginBottom: 4 }}>Dark</Text>
+            <Text style={{ color: THEMES.dark.text3, fontSize: 13 }}>Dark background, gold accents. Easier on the eyes at night.</Text>
             <View style={{ flexDirection: 'row', gap: 6, marginTop: 10 }}>
               {[THEMES.dark.bg0, THEMES.dark.bg1, THEMES.dark.gold, THEMES.dark.teal, THEMES.dark.text1].map((col, i) => (
                 <View key={i} style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: col, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.2)' }} />
@@ -878,8 +933,8 @@ export function LookStep({ data, set, theme, onThemeChange }) {
         <TouchableOpacity onPress={() => pickTheme('light')}
           style={{ flexDirection: 'row', alignItems: 'center', borderRadius: 16, padding: 16, borderWidth: 2, backgroundColor: THEMES.light.bg0, borderColor: data.theme === 'light' ? THEMES.light.teal : THEMES.light.border }}>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: THEMES.light.text1, fontWeight: '700', fontSize: 16, marginBottom: 4 }}>Light · Daylight</Text>
-            <Text style={{ color: THEMES.light.text3, fontSize: 13 }}>Cool steel and paper.</Text>
+            <Text style={{ color: THEMES.light.text1, fontWeight: '700', fontSize: 16, marginBottom: 4 }}>Light</Text>
+            <Text style={{ color: THEMES.light.text3, fontSize: 13 }}>White background, easy to read in daylight.</Text>
             <View style={{ flexDirection: 'row', gap: 6, marginTop: 10 }}>
               {[THEMES.light.bg0, THEMES.light.bg1, THEMES.light.gold, THEMES.light.teal, THEMES.light.text1].map((col, i) => (
                 <View key={i} style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: col, borderWidth: 0.5, borderColor: 'rgba(0,0,0,0.15)' }} />
@@ -894,7 +949,7 @@ export function LookStep({ data, set, theme, onThemeChange }) {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: c.bg1, borderRadius: 12, padding: 14, marginBottom: 20, borderWidth: 0.5, borderColor: c.border }}>
         <Ionicons name="image-outline" size={20} color={c.text3} />
         <Text style={{ flex: 1, fontSize: 12, color: c.text3, lineHeight: 17 }}>
-          Starting plain and simple. Switch Home or Library to match your traveler's landscape any time from Settings → Personalization.
+          Home and the Library start with a plain background. You can switch to a scenic one later in Settings → Personalization.
         </Text>
       </View>
 

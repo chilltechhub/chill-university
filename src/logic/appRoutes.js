@@ -43,25 +43,54 @@ const CLASS_SCREENS = new Set([
 export function goToScreen(navigation, screen, params) {
   if (!navigation || !screen) return;
 
+  // Every jump returns to a screen that's already open rather than stacking
+  // a copy (src/logic/navRules.js enforces the same at the router). Library
+  // screens pass `initial: false` so a first visit to the tab still has the
+  // Library underneath to go back to.
+  if (screen === 'Library') {
+    return navigation.navigate('MainTabs', { screen, params: params || { screen: 'LibraryScreen' } }, { pop: true });
+  }
   if (TAB_SCREENS.has(screen)) {
-    return navigation.navigate('MainTabs', { screen, params });
+    return navigation.navigate('MainTabs', { screen, params }, { pop: true });
   }
   if (ROOT_SCREENS.has(screen)) {
-    return navigation.navigate(screen, params);
+    return navigation.navigate(screen, params, { pop: true });
   }
   if (CLASS_SCREENS.has(screen)) {
     return navigation.navigate('MainTabs', {
       screen: 'Library',
-      params: { screen: 'ClassesStack', params: { screen, params } },
-    });
+      params: { screen: 'ClassesStack', initial: false, params: { screen, params } },
+    }, { pop: true });
   }
   return navigation.navigate('MainTabs', {
     screen: 'Library',
-    params: { screen, params },
-  });
+    params: { screen, params, initial: false },
+  }, { pop: true });
 }
 
 /** True when `screen` is one this resolver knows how to reach. */
 export function isKnownScreen(screen) {
   return TAB_SCREENS.has(screen) || ROOT_SCREENS.has(screen) || CLASS_SCREENS.has(screen);
+}
+
+/**
+ * A back button that always lands somewhere known.
+ *
+ * `navigation.goBack()` pops whatever happens to be underneath, and inside
+ * the Library that is not always the screen the user came through. The tab
+ * keeps its own stack, so opening a Library screen from Home (or from a
+ * search result, a link, or a goal's "Open" button) pushes it on top of
+ * whatever was last open in that tab — and Back then returned to a screen
+ * the person had not visited in days, which reads as the app losing its
+ * place.
+ *
+ * So: go back only when the thing underneath really is `screen`; otherwise
+ * navigate to it. Either way the button means what it says.
+ */
+export function goBackTo(navigation, screen, params) {
+  if (!navigation || !screen) return;
+  const state = navigation.getState?.();
+  const prev = state?.routes?.[(state.index ?? 0) - 1];
+  if (prev && prev.name === screen) return navigation.goBack();
+  return navigation.navigate(screen, params);
 }

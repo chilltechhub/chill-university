@@ -928,7 +928,12 @@ export default function IdeaGardenScreen() {
     setProgressModal(false);
   };
 
-  if (loading) return <View style={styles.centered}><ActivityIndicator color={gc.green} size="large" /></View>;
+  // No full-screen loading gate: the top bar holds <TourSpot id="ideas-list">
+  // (the Plant button), and the guide arrives pointing at it on the one
+  // visit that has no cache to render from. A spinner over the whole screen
+  // meant that spot did not exist yet, so the spotlight had nothing to trace
+  // and the highlight never appeared — on the first visit only. The bar is
+  // static chrome; only the garden below it has to wait.
 
   const openCore = openItem?.type === 'core' ? openItem.data : null;
   const openPetal = openItem?.type === 'petal' ? openItem.data : null;
@@ -988,8 +993,12 @@ export default function IdeaGardenScreen() {
         </View>
       </View>
 
+      {loading && (
+        <View style={styles.centered}><ActivityIndicator color={gc.green} size="large" /></View>
+      )}
+
       {/* Map view — WebView canvas (native only, see the `view` default above) */}
-      {view === 'map' && Platform.OS === 'web' && (
+      {!loading && view === 'map' && Platform.OS === 'web' && (
         <View style={styles.canvasWrap}>
           <View style={styles.emptyGarden}>
             <Ionicons name="leaf-outline" size={28} color={gc.text3} style={{ marginBottom: 8 }} />
@@ -1002,7 +1011,7 @@ export default function IdeaGardenScreen() {
           </View>
         </View>
       )}
-      {view === 'map' && Platform.OS !== 'web' && (
+      {!loading && view === 'map' && Platform.OS !== 'web' && (
         <View style={styles.canvasWrap}>
           <ScrollView automaticallyAdjustKeyboardInsets
             style={{ flex: 1 }}
@@ -1033,7 +1042,7 @@ export default function IdeaGardenScreen() {
       )}
 
       {/* List view */}
-      {view === 'list' && (
+      {!loading && view === 'list' && (
         <ScrollView automaticallyAdjustKeyboardInsets style={styles.listView} contentContainerStyle={{ padding: 12, gap: 10 }}>
           {cores.map(core => {
             const pt = PLANT_TYPES.find(p => p.id === core.plant_type);
@@ -1245,10 +1254,20 @@ export default function IdeaGardenScreen() {
         </View>
       )}
 
-      {/* Core modal */}
-      <Modal visible={coreModal} transparent animationType="slide">
-        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={styles.modalCard}>
+      {/* Core modal — centred, not a bottom sheet.
+           Planting an idea is the one thing this screen is for, and it was
+           arriving at the bottom edge with the garden still filling the
+           screen above it, reading as a detail panel rather than the main
+           event. Centred, with the card scrolling inside its own height so
+           "Plant it" stays reachable on a short screen. */}
+      <Modal visible={coreModal} transparent animationType="fade" onRequestClose={() => setCoreModal(false)}>
+        <KeyboardAvoidingView style={styles.modalOverlayCentered} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <ScrollView
+            style={styles.modalCardCentered}
+            contentContainerStyle={{ padding: 20 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <Text style={styles.modalTitle}>{editingCore ? 'Edit Plant' : 'Plant New Idea'}</Text>
               {editingCore && (
@@ -1306,7 +1325,7 @@ export default function IdeaGardenScreen() {
                   : <Text style={styles.modalSaveText}>{editingCore ? 'Update' : 'Plant it'}</Text>}
               </TouchableOpacity>
             </View>
-          </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
 
@@ -1462,6 +1481,8 @@ const makeStyles = (gc) => StyleSheet.create({
   panelBtnDanger: { backgroundColor: gc.dangerLight },
   panelBtnGold: { backgroundColor: gc.gold },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  modalOverlayCentered: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalCardCentered: { width: '100%', maxWidth: 440, maxHeight: '86%', backgroundColor: gc.bg0, borderRadius: 20, borderWidth: 0.5, borderColor: gc.border },
   modalCard: { backgroundColor: gc.bg0, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, borderTopWidth: 0.5, borderColor: gc.border },
   modalTitle: { fontSize: 17, fontWeight: '700', color: gc.text1, marginBottom: 14 },
   modalLabel: { fontSize: 11, fontWeight: '600', color: gc.text4, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },

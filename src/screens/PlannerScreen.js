@@ -1,7 +1,7 @@
 // src/screens/PlannerScreen.js
 // Full agenda/planner — time-based + list view, full CRUD, reminders, sync
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   ActivityIndicator, RefreshControl, Animated,
@@ -29,6 +29,7 @@ import { schedulePlanReminder, cancelPlanReminder, hasScheduledReminder } from '
 import { markManualReminder, setPlanReminder } from '../logic/hubNotifications';
 import { openTarget, targetFromInstance } from '../logic/openTarget';
 import { getQuest } from '../data/quests';
+import { suggestionsForArea } from '../data/plannerSuggestions';
 import DailyCheckin from '../components/DailyCheckin';
 import TourSpot from '../components/TourSpot';
 import FillWithAIButton from '../components/FillWithAIButton';
@@ -124,7 +125,12 @@ function MiniCalendar({ value, onChange, color, c, t, s, r }) {
 }
 
 // ─── Add / Edit instance modal ────────────────────────────────────────────────
-function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onClose, c, t, s, r }) {
+// `defaultArea`: where a new item starts (the area being filtered to, else
+// the person's own first life area; it was always Physical, which a Student
+// who never picked Physical got as the default for a study block).
+// `goalIdea`: the running goal's Planner step can name one ({ title,
+// cadence, area } on the step in objectives.js), shown first in the ideas.
+function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onClose, defaultArea = 'physical', goalIdea = null, c, t, s, r }) {
   const { showEmojis } = useUIPrefs();
   const [title,       setTitle]       = useState('');
   const [area,        setArea]        = useState('physical');
@@ -148,6 +154,10 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
   const [linkSubject, setLinkSubject] = useState(null); // class-picker browsing state only
   const [projects,       setProjects]       = useState(null); // null = not fetched yet
   const [loadingProjects, setLoadingProjects] = useState(false);
+  // Titles already on the agenda, so a suggestion is never something the
+  // person has plainly already scheduled. Fetched once per opening of a NEW
+  // item; an edit never shows suggestions, so it never pays for this.
+  const [scheduledTitles, setScheduledTitles] = useState([]);
   const isEdit = !!instance;
 
   useEffect(() => {
@@ -191,13 +201,13 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
         setLinkLabel('');
       }
     } else {
-      setTitle(''); setArea('physical'); setCadence('daily');
+      setTitle(''); setArea(goalIdea?.area || defaultArea || 'physical'); setCadence(goalIdea?.cadence || 'daily');
       setSelectedDate(date ? new Date(date + 'T00:00:00') : new Date());
       setTimeVal(''); setDuration(''); setNotes(''); setReminder(false);
       setLinkType(null); setLinkScreen(null); setLinkId(null); setLinkLabel(''); setLinkSubject(null);
       setProjects(null);
     }
-  }, [instance, visible, date]);
+  }, [instance, visible, date]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Lazy-load the user's open projects the first time the Project link tab
   // is opened, instead of fetching on every modal open regardless of need.
@@ -232,6 +242,30 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
     setLinkId(null);
     setLinkLabel(g.name);
     if (!title.trim()) setTitle(`Practice: ${g.name}`);
+  };
+
+  // What's already scheduled, for the suggestion filter above.
+  useEffect(() => {
+    if (!visible || isEdit || !userId) return;
+    let alive = true;
+    supabase.from('agenda_instances').select('title').eq('user_id', userId).limit(200)
+      .then(({ data }) => { if (alive) setScheduledTitles((data || []).map(row => row.title)); })
+      .catch(() => { /* suggestions just won't be de-duplicated */ });
+    return () => { alive = false; };
+  }, [visible, isEdit, userId]);
+
+  // Re-offered every time the life area changes: which area this belongs to
+  // is the most useful thing anyone has said by that point in the sheet.
+  const suggestions = useMemo(() => {
+    if (isEdit) return [];
+    const base = suggestionsForArea(area, scheduledTitles);
+    if (!goalIdea || scheduledTitles.includes(goalIdea.title)) return base;
+    return [{ ...goalIdea, forGoal: true }, ...base.filter(sg => sg.title !== goalIdea.title)].slice(0, 4);
+  }, [isEdit, area, scheduledTitles, goalIdea]);
+
+  const applySuggestion = (sg) => {
+    setTitle(sg.title);
+    if (sg.cadence) setCadence(sg.cadence);
   };
 
   const save = async () => {
@@ -357,6 +391,34 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
               placeholder="What are you scheduling?" placeholderTextColor={c.text4}
               autoFocus={!isEdit}
             />
+
+            {/* Suggestions for the life area picked below — tapping one fills
+                the title and the cadence it only makes sense at, both still
+                editable. Hidden once there's a title, so it never nags over
+                something the person is already typing. See
+                src/data/plannerSuggestions.js. */}
+            {suggestions.length > 0 && !title.trim() && (
+              <View>
+                <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>
+                  {AREAS[area]?.label || 'Life area'} ideas
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm }}>
+                  {suggestions.map(sg => (
+                    <TouchableOpacity
+                      key={sg.title}
+                      onPress={() => applySuggestion(sg)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Use suggestion: ${sg.title}, repeating ${sg.cadence}`}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: s.md, paddingVertical: 7, borderRadius: r.full, borderWidth: 1, borderStyle: 'dashed', borderColor: areaColor + '88', backgroundColor: areaColor + '10' }}
+                    >
+                      <Ionicons name={sg.forGoal ? 'flag' : 'add'} size={12} color={areaColor} />
+                      <Text style={{ fontSize: t.xs, color: c.text2, fontWeight: sg.forGoal ? t.bold : undefined }}>{sg.title}</Text>
+                      <Text style={{ fontSize: 10, color: areaColor, fontWeight: t.bold }}>{sg.cadence}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
 
             {/* Date */}
             <View>
@@ -1191,7 +1253,8 @@ export default function PlannerScreen() {
 
   // Re-read when the account changes, so signing in from the guest prompt
   // opens the planner without leaving the screen.
-  const { user: signedInUser } = useUserProgress();
+  const { user: signedInUser, profile: progressProfile } = useUserProgress();
+  const { activeObjective } = useAccess();
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUserId(user ? user.id : null);
@@ -1233,13 +1296,15 @@ export default function PlannerScreen() {
   const openAdd = () => { setEditInst(null); setModalDate(toISO(anchor)); setShowModal(true); };
   const openEdit = (inst) => { setEditInst(inst); setModalDate(inst.date); setShowModal(true); };
 
-  if (loading) return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.bg0 }}>
-      <ActivityIndicator color={c.teal} />
-    </View>
-  );
+  // NOTE: no full-screen loading gate. The first visit is the one with no
+  // cache behind it, so a spinner over the whole screen meant the header —
+  // and the <TourSpot id="planner-add"> in it — did not exist yet when the
+  // guide arrived pointing at Add. The spotlight had nothing to trace, so
+  // the highlight box simply never appeared, and only on the first visit,
+  // because every later one renders straight from cache. The header is
+  // static chrome anyway; only the agenda below it needs to wait.
 
-  if (!userId) return (
+  if (!loading && !userId) return (
     <SignInPrompt
       icon="calendar-outline"
       title="Your planner lives in your account"
@@ -1350,7 +1415,9 @@ export default function PlannerScreen() {
       </View>
 
       {/* ── Content ── */}
-      {view === 'Daily' ? (
+      {loading ? (
+        <ActivityIndicator color={c.teal} style={{ marginTop: 40 }} />
+      ) : view === 'Daily' ? (
         <DailyPage
           key={`daily-${toISO(anchor)}-${showingAll ? 'all' : 'one'}`}
           userId={userId} date={anchor}
@@ -1382,6 +1449,8 @@ export default function PlannerScreen() {
         instance={editInst}
         userId={userId}
         date={modalDate}
+        defaultArea={activeAreas.size === 1 ? [...activeAreas][0] : (progressProfile?.active_life_areas?.[0] || 'physical')}
+        goalIdea={activeObjective?.active && !activeObjective.complete ? (activeObjective.nextStep?.idea || null) : null}
         onSave={(saved) => {
           setShowModal(false);
           setRefresh(k => k + 1);

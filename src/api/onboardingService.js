@@ -67,10 +67,26 @@ export async function saveOnboardingFields(userId, partial) {
 // Device-local on purpose. A draft is worth exactly as long as the sitting
 // it belongs to; anything that matters past that is already a real row.
 
+// Stamped with the account it belongs to. One key per device meant a second
+// account signing up on the same phone opened at the first one's step 6,
+// with its persona and theme picks, having answered nothing.
+async function currentUserId() {
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data?.session?.user?.id || null;
+  } catch { return null; }
+}
+
 export async function loadOnboardingDraft() {
   try {
     const raw = await AsyncStorage.getItem(DRAFT_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const draft = JSON.parse(raw);
+    const uid = await currentUserId();
+    // A draft with no owner predates the stamp; only trust it on the same
+    // sitting's account, which we can no longer tell, so drop it.
+    if (!draft?.uid || draft.uid !== uid) return null;
+    return draft;
   } catch (e) {
     console.warn('onboarding: could not read draft', e?.message);
     return null;
@@ -79,7 +95,8 @@ export async function loadOnboardingDraft() {
 
 export async function saveOnboardingDraft(draft) {
   try {
-    await AsyncStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    const uid = await currentUserId();
+    await AsyncStorage.setItem(DRAFT_KEY, JSON.stringify({ ...draft, uid }));
   } catch (e) {
     console.warn('onboarding: could not save draft', e?.message);
   }

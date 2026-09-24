@@ -110,15 +110,22 @@ export default function CompassCard() {
   // here with one tap. The full list is still a tap away on the Compass.
   if (!live) {
     const suggestion = objectivesForPurpose(purposeKey).find(o => !completedObjectiveIds.includes(o.id));
+    // Once every goal for their purpose is done, the next best one comes from
+    // another purpose. It used to keep their purpose's label ("Learn a real
+    // skill" over a habits goal), so say whose it is, and that the set they
+    // were on is finished.
+    const crossover = !!suggestion && !!purposeKey && suggestion.purpose !== purposeKey;
+    const shown = crossover ? getPurpose(suggestion.purpose) : purpose;
     return (
       <View style={[s.card, { borderLeftColor: accent }]}>
         <TouchableOpacity onPress={goCompass} activeOpacity={0.85}>
           <Text style={[s.kicker, { color: accent }]}>
-            {showEmojis ? `${purpose?.emoji} ` : ''}{purpose?.label}
+            {showEmojis && shown?.emoji ? `${shown.emoji} ` : ''}{crossover ? `Next up · ${shown?.label || 'something new'}` : purpose?.label}
           </Text>
           <Text style={s.headline}>{suggestion ? suggestion.label : 'Pick one thing to finish'}</Text>
           {showSubtext && (
             <Text style={s.sub}>
+              {crossover ? `You've finished every "${purpose?.label}" goal. ` : ''}
               {suggestion?.promise || 'One objective at a time. Finishing it opens more of the app.'}
             </Text>
           )}
@@ -148,7 +155,24 @@ export default function CompassCard() {
   }
 
   /* ── Objective live ── */
-  const { objective, nextStep, done, total, complete } = activeObjective;
+  const { objective, nextStep, done, total, complete, steps = [] } = activeObjective;
+  // The whole goal lives on this one card: finished steps ticked above the
+  // next one, later ones greyed below it. There used to be a separate "Your
+  // steps" card with the same list, and the stage card quoted the next step
+  // as well, so a new account saw its first goal three times over.
+  const nextAt = steps.findIndex(st => st.id === nextStep?.id);
+  const before = nextAt >= 0 ? steps.slice(0, nextAt) : [];
+  const after = nextAt >= 0 ? steps.slice(nextAt + 1) : [];
+  const miniStep = (st) => (
+    <View key={st.id} style={s.miniRow}>
+      <Ionicons
+        name={st.done ? 'checkmark-circle' : 'ellipse-outline'}
+        size={15}
+        color={st.done ? c.success : c.text4}
+      />
+      <Text style={[s.miniLabel, st.done && s.miniDone]} numberOfLines={1}>{st.label}</Text>
+    </View>
+  );
   const unlocks = featuresUnlockedBy(objective.id);
   // Every finished goal opens the next stage, so say which one — the reason
   // worth saying out loud to someone who can only see a handful of tools.
@@ -189,6 +213,7 @@ export default function CompassCard() {
         </>
       ) : (
         <>
+          {before.map(miniStep)}
           <Text style={s.nextLabel}>Next step</Text>
           <View style={s.stepRow}>
             <TouchableOpacity
@@ -203,19 +228,34 @@ export default function CompassCard() {
               />
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
-              <Text style={s.stepLabel}>{nextStep.label}</Text>
+              <Text style={s.stepLabel}>
+                {nextStep.label}
+                {nextStep.needed ? ` · ${nextStep.count} of ${nextStep.needed}` : ''}
+              </Text>
               {showSubtext && !!nextStep.hint && <Text style={s.stepHint}>{nextStep.hint}</Text>}
+              {/* Most steps look after themselves. Saying so is the
+                  difference between a checklist and a chore list. */}
+              {showSubtext && (nextStep.locked || !!nextStep.signal) && !/ticks itself/i.test(nextStep.hint || '') && (
+                <Text style={s.autoNote}>Ticks itself when it is done.</Text>
+              )}
+              {/* A step the app can't see happen ("teach it to someone") is
+                  ticked by hand, and nothing said so: the square read as
+                  decoration next to steps that tick themselves. */}
+              {showSubtext && !nextStep.locked && !nextStep.signal && (
+                <Text style={s.autoNote}>Tick the box when you've done it.</Text>
+              )}
             </View>
             {nextStep.screen && (
               <TouchableOpacity
                 style={[s.goBtn, { borderColor: accent }]}
-                onPress={() => goToScreen(navigation, nextStep.screen)}
+                onPress={() => goToScreen(navigation, nextStep.screen, nextStep.params)}
                 activeOpacity={0.8}
               >
                 <Text style={[s.goText, { color: accent }]}>Open</Text>
               </TouchableOpacity>
             )}
           </View>
+          {after.length > 0 && <View style={{ marginTop: sp.sm }}>{after.map(miniStep)}</View>}
           {showSubtext && opensStage && (
             <Text style={s.stageHint}>Finish this goal to open: {opensStage}.</Text>
           )}
@@ -248,6 +288,9 @@ const makeStyles = (c, t, sp, r, ui) => StyleSheet.create({
   fill:     { height: 4, borderRadius: 2 },
 
   headline: { fontSize: t.md, fontWeight: '800', color: c.text1, marginTop: sp.sm, marginBottom: 4 },
+  miniRow:  { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 3 },
+  miniLabel:{ flex: 1, fontSize: t.xs, color: c.text3 },
+  miniDone: { textDecorationLine: 'line-through', color: c.text4 },
   sub:      { fontSize: t.xs, color: c.text3, lineHeight: 18 },
 
   ctaRow:   { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: sp.md },
@@ -257,6 +300,7 @@ const makeStyles = (c, t, sp, r, ui) => StyleSheet.create({
   stepRow:  { flexDirection: 'row', alignItems: 'center', gap: sp.md },
   stepLabel:{ fontSize: t.sm, fontWeight: '700', color: c.text1, lineHeight: 19 },
   stepHint: { fontSize: t.xs, color: c.text3, marginTop: 2, lineHeight: 17 },
+  autoNote: { fontSize: t.xs, color: c.text4, marginTop: 3, fontStyle: 'italic' },
   goBtn:    { borderWidth: 1, borderRadius: r.sm, paddingHorizontal: sp.md, paddingVertical: 6 },
   goText:   { fontSize: t.xs, fontWeight: '800' },
 

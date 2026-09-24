@@ -56,6 +56,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import TourSpot from './TourSpot';
 
 import FactorCraftGame from './FactorCraftGame';
 import CoinGame from './CoinGame';
@@ -297,7 +298,7 @@ const GameFeed = forwardRef(({ initialGame }, ref) => {
           vertical swipe often enough that moving to the next game felt
           broken. These always work, and say where you are. */}
       {pageHeight != null && (
-        <View style={styles.nav} pointerEvents="box-none">
+        <TourSpot id="play-switch" radius={20} style={styles.nav}>
           <TouchableOpacity
             style={[styles.navBtn, activeIndex === 0 && styles.navBtnOff]}
             disabled={activeIndex === 0}
@@ -317,7 +318,7 @@ const GameFeed = forwardRef(({ initialGame }, ref) => {
           >
             <Ionicons name="chevron-down" size={20} color="#eaf2ff" />
           </TouchableOpacity>
-        </View>
+        </TourSpot>
       )}
     </View>
   );

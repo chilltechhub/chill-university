@@ -17,14 +17,19 @@ import React from 'react';
 import { View, Text, Modal, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useUserProgress } from '../../context/UserProgressContext';
+import { useTour } from '../../context/TourContext';
 
 export default function LevelUpNotification() {
   const { colors: c } = useTheme();
   const { progressEvents, dismissProgressEvent } = useUserProgress();
   const s = makeStyles(c);
 
+  // Waits while the guide or a tour is talking: a Modal paints over the
+  // overlay, and "Level Up!" landed on top of the guide's "claim your goal"
+  // bubble. It shows the moment that walkthrough ends.
+  const { active: tourActive } = useTour();
   const event = progressEvents?.[0];
-  if (!event) return null;
+  if (!event || tourActive) return null;
 
   const isLevel = event.type === 'level';
 

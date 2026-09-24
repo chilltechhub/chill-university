@@ -41,8 +41,24 @@ export function experimentalOptedIn(profile) {
 // because a step that asks you to self-report a number the app is already
 // counting is either busywork or an invitation to fudge it.
 //   { streakDays, level, points, missionsToday, played }
+
+// How many times a step's `signal` has to fire before the step is done.
+// One unless objectives.js says otherwise.
+export function signalTarget(step) {
+  const n = Number(step?.signalCount);
+  return Number.isFinite(n) && n > 1 ? Math.floor(n) : 1;
+}
+
 export function stepSatisfied(step, checked = {}, stats = {}) {
-  if (checked[step.id]) return true;
+  const mark = checked[step.id];
+  // A step whose `signal` fires several times before it counts as done
+  // (objectives.js `signalCount`) stores a running number rather than a
+  // flag, so "capture five things" can tick itself at five and not at one.
+  // A hand tick still stores `true`, and so do all the older records, which
+  // is why plain truthiness is still the answer for everything else.
+  if (mark === true) return true;
+  if (typeof mark === 'number') return mark >= signalTarget(step);
+  if (mark) return true;
   if (!step.auto) return false;
 
   const { stat, value } = step.auto;
@@ -67,9 +83,15 @@ export function objectiveProgress(objectiveId, record = null, stats = {}) {
   const checked = record?.steps || {};
   const steps = objective.steps.map(step => {
     const done = stepSatisfied(step, checked, stats);
+    const mark = checked[step.id];
+    const target = signalTarget(step);
     return {
       ...step,
       done,
+      // How far a counted step has got, for "2 of 5" on the card. Null for
+      // every step that is simply done or not.
+      count: target > 1 ? (done ? target : (typeof mark === 'number' ? mark : 0)) : null,
+      needed: target > 1 ? target : null,
       // An auto step is never hand-tickable, in either direction. The
       // counter is the truth: ticking "reach a 3-day streak" on day one
       // would be lying to yourself with the app's help, and un-ticking it

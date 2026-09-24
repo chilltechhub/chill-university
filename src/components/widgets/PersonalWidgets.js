@@ -18,6 +18,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
+import useDrillPlan from '../../logic/useDrillPlan';
 import { getUserSubscriptions, getCustomItemAreas, getCompletionRate, AREAS } from '../../api/plannerService';
 import WidgetCard, { StatRow, Bar } from './WidgetCard';
 
@@ -128,40 +129,61 @@ export function LifeAreasWidget({ areas, onOpenArea, onOpenLibrary }) {
 // Training shows, surfaced on Home for the personas whose day is built
 // around it.
 
-export function DailyDrillsWidget({ missions, onOpenTraining }) {
+// Leads with the drill to do next and a button straight into a game that
+// counts, because "1 of 3" on its own says nothing about what to do. The
+// plan (how, which game, which is next) is shared with the drills list and
+// the "drill done" toast: src/logic/useDrillPlan.js.
+export function DailyDrillsWidget({ onOpenTraining, onOpenDrills, onPlay }) {
   const { colors: c, typography: t, spacing: s } = useTheme();
-  const list = missions || [];
-  const done = list.filter(m => m.completed || m.status === 'completed').length;
+  const { drills, next, doneCount, total } = useDrillPlan();
 
   return (
     <WidgetCard
       title="Today's drills" icon="checkmark-done-outline" accent={c.gold}
-      action="Training →" onAction={onOpenTraining}
-      empty={list.length === 0 ? {
-        text: "No drills generated for today yet. They appear once you've played a round or two so we know what to set.",
+      action="All drills →" onAction={onOpenDrills || onOpenTraining}
+      empty={total === 0 ? {
+        text: "Today's drills haven't been set yet. They appear the next time the app loads.",
         cta: 'Open Training', onPress: onOpenTraining,
       } : null}
     >
-      <StatRow label="Completed" value={`${done} of ${list.length}`} color={done === list.length ? c.success : c.text1} />
-      <Bar pct={list.length ? (done / list.length) * 100 : 0} color={c.gold} />
-      <View style={{ marginTop: s.md }}>
-        {list.slice(0, 3).map((m, i) => {
-          const isDone = m.completed || m.status === 'completed';
-          return (
-            <View key={m.id || i} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 3 }}>
-              <Ionicons
-                name={isDone ? 'checkmark-circle' : 'ellipse-outline'}
-                size={15}
-                color={isDone ? c.success : c.text4}
-              />
-              <Text
-                style={{ fontSize: t.sm, color: isDone ? c.text4 : c.text2, flex: 1, textDecorationLine: isDone ? 'line-through' : 'none' }}
-                numberOfLines={1}>
-                {m.missions?.title || m.title || 'Drill'}
+      <StatRow label="Done today" value={`${doneCount} of ${total}`} color={doneCount === total ? c.success : c.text1} />
+      <Bar pct={total ? (doneCount / total) * 100 : 0} color={c.gold} />
+
+      {next ? (
+        <View style={{ marginTop: s.md, padding: s.md, borderRadius: 10, borderWidth: 1, borderColor: c.gold + '66', backgroundColor: c.gold + '12' }}>
+          <Text style={{ fontSize: 9, fontWeight: '800', color: c.gold, letterSpacing: 1 }}>UP NEXT · {next.progress} / {next.target}</Text>
+          <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.text1, marginTop: 2 }}>{next.title}</Text>
+          <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2, lineHeight: 16 }}>{next.how}</Text>
+          {!!next.playGameId && (
+            <TouchableOpacity
+              onPress={() => onPlay?.(next.playGameId)}
+              accessibilityRole="button"
+              style={{ alignSelf: 'flex-start', marginTop: s.sm, backgroundColor: c.gold, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}
+            >
+              <Text style={{ fontSize: t.xs, fontWeight: '800', color: '#fff' /* style-ok: white on the gold button in both modes */ }}>
+                {next.games?.length === 1 ? `Play ${next.games[0].title} ▸` : 'Play a game ▸'}
               </Text>
-            </View>
-          );
-        })}
+            </TouchableOpacity>
+          )}
+        </View>
+      ) : total > 0 ? (
+        <Text style={{ fontSize: t.sm, color: c.success, marginTop: s.md, fontWeight: t.semibold }}>
+          All of today's drills are done. New ones at midnight.
+        </Text>
+      ) : null}
+
+      <View style={{ marginTop: s.sm }}>
+        {drills.filter(d => !d.upNext).map((m, i) => (
+          <View key={m.id || i} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 3 }}>
+            <Ionicons name={m.done ? 'checkmark-circle' : 'ellipse-outline'} size={15} color={m.done ? c.success : c.text4} />
+            <Text
+              style={{ fontSize: t.sm, color: m.done ? c.text4 : c.text2, flex: 1, textDecorationLine: m.done ? 'line-through' : 'none' }}
+              numberOfLines={1}>
+              {m.title || 'Drill'}
+            </Text>
+            {!m.done && <Text style={{ fontSize: t.xs, color: c.text4 }}>{m.progress}/{m.target}</Text>}
+          </View>
+        ))}
       </View>
     </WidgetCard>
   );

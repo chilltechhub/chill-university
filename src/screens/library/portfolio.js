@@ -14,6 +14,7 @@ import { supabase } from '../../api/profileScopedClient';
 import { cacheRead, cacheWrite, isOnline } from '../../api/offlineCache';
 import { useTheme } from '../../../context/ThemeContext';
 import { useUIPrefs } from '../../../context/UIPrefsContext';
+import { useAccess } from '../../../context/AccessContext';
 import TourSpot from '../../components/TourSpot';
 import FillWithAIButton from '../../components/FillWithAIButton';
 
@@ -142,6 +143,8 @@ const ic = StyleSheet.create({
 export default function PortfolioScreen() {
   const navigation = useNavigation();
   const { colors: rawColors } = useTheme();
+  // Putting something in the Portfolio is what ticks that step of a goal.
+  const { signalAction } = useAccess();
   const { showEmojis } = useUIPrefs();
   // Adapter: keeps every existing `th.xxx` reference below working unchanged,
   // now backed by the real app-wide theme instead of a screen-local copy.
@@ -300,6 +303,7 @@ export default function PortfolioScreen() {
         ...prev,
         [activeSection]: prev[activeSection].map(it => it.id === tempId ? { ...it, id: row.id } : it),
       }));
+      signalAction('portfolio-added', { section: activeSection });
     } catch (e) {
       console.warn('PortfolioScreen addItem', e);
       setData(prev => ({ ...prev, [activeSection]: prev[activeSection].filter(it => it.id !== tempId) }));

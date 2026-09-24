@@ -23,6 +23,9 @@ function withUnlock(option) {
 // template interpolation), so each image gets its own literal require —
 // see https://reactnative.dev/docs/images#static-image-resources.
 export const BACKGROUNDS = [
+  // Everyone starts blank; the scenes below are rewards to pick from
+  // Customize. First in the list, so it's DEFAULT_BACKGROUND_ID.
+  { id: 'plain', name: 'Blank', kind: 'plain', maxRank: 20 },
   {
     id: 'meadow', name: 'Sunny Meadow', kind: 'tile', maxRank: 20,
     sky: ['#8FD3F4', '#E8F9C9'],

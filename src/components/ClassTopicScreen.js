@@ -12,6 +12,7 @@ import { gamesForTopic, openGame } from '../data/skillLinks';
 import { CLASS_SUBJECTS, CLASS_SCREEN_MAP } from '../data/classCatalog';
 import { catalogCounts } from '../data/topicCatalog';
 import { Ionicons } from '@expo/vector-icons';
+import { useBandFraming, bandLabel } from '../logic/useGradeLevel';
 import { FONTS } from '../theme';
 
 const FONTS_MONO = FONTS.mono;
@@ -32,6 +33,7 @@ const FONTS_MONO = FONTS.mono;
 // src/logic/plusContent.js. Every other caller omits it.
 export default function ClassTopicScreen({ title, classKey, fallbackTopics, header, lockAfter = null }) {
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
+  const { adult } = useBandFraming();
   const navigation = useNavigation();
   const [openSections, setOpenSections] = useState({});
   const [topics, setTopics] = useState(fallbackTopics);
@@ -118,7 +120,7 @@ export default function ClassTopicScreen({ title, classKey, fallbackTopics, head
               <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: topic.color }}>{topic.title}</Text>
               {topic.grade && (
                 <Text style={{ fontSize: 10, fontWeight: '800', letterSpacing: 0.5, color: topic.color, marginTop: 2, opacity: 0.8 }}>
-                  GRADES {topic.grade}
+                  {adult ? `LEVEL · ${bandLabel(topic.grade, true).toUpperCase()}` : `GRADES ${topic.grade}`}
                 </Text>
               )}
             </View>

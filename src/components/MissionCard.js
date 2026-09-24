@@ -13,7 +13,11 @@ const CRITERIA_ICON = {
   play_subject:       '📚',
 };
 
-export default function MissionCard({ mission, onPress }) {
+// `how`, `upNext` and `onPlay` come from src/logic/useDrillPlan.js for a
+// daily drill: one line on how to do it (naming the game when there is one),
+// a marker on the one to do next, and a button straight into a game that
+// counts. Weekly and achievement cards just don't pass them.
+export default function MissionCard({ mission, onPress, how, upNext = false, onPlay, playLabel = 'Play' }) {
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
 
   // Works with BOTH normalized shape (from context) and raw shape (from Supabase)
@@ -30,7 +34,7 @@ export default function MissionCard({ mission, onPress }) {
   if (!title) return null;
 
   const pct         = target > 0 ? Math.min((progress / target) * 100, 100) : 0;
-  const isCompleted = status === 'completed';
+  const isCompleted = status === 'completed' || status === 'claimed';
   const isClaimed   = status === 'claimed';
   const isExpired   = status === 'expired';
   const almostThere = !isCompleted && !isExpired && pct >= 75;
@@ -42,6 +46,7 @@ export default function MissionCard({ mission, onPress }) {
     <TouchableOpacity
       style={[
         st.card,
+        upNext && !isCompleted && st.cardNext,
         isCompleted && st.cardCompleted,
         isExpired   && st.cardExpired,
       ]}
@@ -58,6 +63,7 @@ export default function MissionCard({ mission, onPress }) {
             <Text style={{ fontSize: 22 }}>{icon}</Text>
           </View>
           <View style={{ flex: 1 }}>
+            {upNext && !isCompleted && <Text style={st.upNext}>UP NEXT</Text>}
             <Text style={st.title} numberOfLines={1}>{title}</Text>
             <Text style={st.subjectLabel}>{cfg.name}</Text>
           </View>
@@ -73,8 +79,10 @@ export default function MissionCard({ mission, onPress }) {
           )}
         </View>
 
-        {/* Description */}
-        {description ? <Text style={st.description}>{description}</Text> : null}
+        {/* How to do it beats the template's own description, which was
+            written before the games it names existed ("math activities"). */}
+        {how ? <Text style={st.how}>{how}</Text>
+          : description ? <Text style={st.description}>{description}</Text> : null}
 
         {/* Progress */}
         <View style={st.progressRow}>
@@ -89,10 +97,21 @@ export default function MissionCard({ mission, onPress }) {
           <View style={[st.barFill, { width: `${pct}%`, backgroundColor: isCompleted ? c.teal : cfg.color }]} />
         </View>
 
-        {/* Rewards */}
-        <View style={st.rewardsRow}>
+        {/* Rewards, and the way in */}
+        <View style={[st.rewardsRow, { alignItems: 'center' }]}>
           <Text style={st.rewardPts}>⭐ {ptReward} pts</Text>
           <Text style={st.rewardXp}>✨ {xpReward} XP</Text>
+          <View style={{ flex: 1 }} />
+          {onPlay && !isCompleted && !isExpired && (
+            <TouchableOpacity
+              onPress={onPlay}
+              accessibilityRole="button"
+              accessibilityLabel={`${playLabel} for ${title}`}
+              style={[st.playBtn, upNext && st.playBtnNext]}
+            >
+              <Text style={[st.playText, upNext && { color: '#fff' }]}>{playLabel} ▸</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </TouchableOpacity>
@@ -110,6 +129,12 @@ const styles = (c, t, s, r) => StyleSheet.create({
     overflow: 'hidden',
   },
   cardCompleted: { borderColor: c.teal, borderWidth: 1 },
+  cardNext:      { borderColor: c.gold, borderWidth: 1.5 },
+  upNext:        { fontSize: 9, fontWeight: t.bold, color: c.gold, letterSpacing: 1, marginBottom: 1 },
+  how:           { fontSize: t.sm, color: c.text2, marginBottom: s.sm, lineHeight: 19 },
+  playBtn:       { borderWidth: 1, borderColor: c.gold, borderRadius: r.md, paddingHorizontal: 12, paddingVertical: 5 },
+  playBtnNext:   { backgroundColor: c.gold },
+  playText:      { fontSize: t.xs, fontWeight: t.bold, color: c.gold },
   cardExpired:   { opacity: 0.45 },
   accentBar: { width: 4 },
   body: { flex: 1, padding: s.lg },

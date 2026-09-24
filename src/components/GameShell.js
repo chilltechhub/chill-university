@@ -18,6 +18,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useUIPrefs } from '../../context/UIPrefsContext';
 import useGameFacts from '../logic/useGameFacts';
+import { useBandFraming } from '../logic/useGradeLevel';
 
 const DARK_G = {
   bg:       '#0e1a2e',
@@ -99,12 +100,21 @@ export default function GameShell({
   children,
   onQuit,
   gameId,          // powers the correct-answer fact toast below — see useGameFacts.js
-  disableFactToast = false, // games with their own pace-aware fact placement (RoundCompleteScreen, a Relaxed-mode fact box) set this so this toast doesn't ALSO fire
+  disableFactToast = true, // facts show at round/game end now; pass false to stream them mid-round. Games with their own pace-aware fact placement (RoundCompleteScreen, a Relaxed-mode fact box) set this so this toast doesn't ALSO fire
 }) {
   const navigation = useNavigation();
   const G = useGameTheme();
   const s = makeStyles(G);
   const { showEmojis } = useUIPrefs();
+  // Most games put the raw band key on the end of their subject line
+  // ("Health & Fitness · 9-12"). For an adult that reads as a school grade,
+  // so the key is swapped for the name the level picker showed them.
+  const { adult, bands } = useBandFraming();
+  const bandSubject = (text) => {
+    if (!adult || typeof text !== 'string') return text;
+    const band = bands.find(b => text.endsWith(` · ${b.key}`));
+    return band ? `${text.slice(0, -band.key.length)}${band.label}` : text;
+  };
 
   const handleQuit = () => {
     if (onQuit) onQuit();
@@ -129,7 +139,12 @@ export default function GameShell({
     // happens would otherwise keep showing on top of the new screen's own
     // fact box; clearing it here (not just skipping future ones) is what
     // actually prevents that double-fact stacking.
-    if (disableFactToast) {
+    // Facts wait for the end of a round (RoundCompleteScreen) or the game
+    // (GameOver) now: a fact sliding in after every right answer pulled
+    // attention off the next question. The toast machinery stays for any
+    // game that still asks for it by passing disableFactToast={false}...
+    // which none do, so it's off unless a game opts in explicitly.
+    if (disableFactToast !== false) {
       prevStreak.current = streak;
       if (toastTimer.current) { clearTimeout(toastTimer.current); toastTimer.current = null; }
       setToast(null);
@@ -167,7 +182,7 @@ export default function GameShell({
           )}
           <View>
             <Text style={s.title} numberOfLines={1}>{title}</Text>
-            {subject && <Text style={s.subject}>{subject}</Text>}
+            {subject && <Text style={s.subject}>{bandSubject(subject)}</Text>}
           </View>
         </View>
 

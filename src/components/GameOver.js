@@ -10,6 +10,8 @@ import { useNavigation } from '@react-navigation/native';
 import { useGameTheme } from './GameShell';
 import { useUIPrefs } from '../../context/UIPrefsContext';
 import useGameFacts from '../logic/useGameFacts';
+import { useAccess } from '../../context/AccessContext';
+import { lastRoundSignalAt } from './RoundCompleteScreen';
 import { lessonsForGame, openLessonScreen } from '../data/skillLinks';
 import { recordRun, accuracyFor, SKILL_THRESHOLDS } from '../logic/skillStats';
 
@@ -47,6 +49,14 @@ export default function GameOver({
 
   // Pick one fact for this results screen once the pool is in — a static
   // pick (not re-rolled on every render) since this screen doesn't loop.
+  // A finished game counts as a round for goal steps like "Finish three
+  // game rounds", unless its last round was just counted on
+  // RoundCompleteScreen.
+  const { signalAction } = useAccess();
+  useEffect(() => {
+    if (Date.now() - lastRoundSignalAt > 5000) signalAction?.('round-played');
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const { ready, next: nextFact } = useGameFacts(gameId);
   const [fact, setFact] = useState(null);
   useEffect(() => {

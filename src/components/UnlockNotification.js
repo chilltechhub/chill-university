@@ -18,6 +18,7 @@ import { useAccess } from '../../context/AccessContext';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { useTour } from '../../context/TourContext';
 import { hasScreenTutorial } from '../logic/screenTutorials';
+import { markScreensSeen } from '../logic/useFirstVisitTutorial';
 import { goToScreen } from '../logic/appRoutes';
 import { MAX_STAGE } from '../data/experienceStages';
 import { getFeature } from '../data/featureCatalog';
@@ -32,9 +33,13 @@ const VIA_COPY = {
 export default function UnlockNotification() {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: sp, radius: r } = useTheme();
-  const { unlockEvents, dismissUnlockEvent, stageEvents, dismissStageEvent } = useAccess();
+  const { unlockEvents, dismissUnlockEvent, dismissAllUnlockEvents, stageEvents, dismissStageEvent } = useAccess();
+  // Everything earned in the same moment goes on ONE card. Claiming a goal
+  // used to open a stage popup and then one "Unlocked" popup per feature the
+  // goal opened: three taps of "Later" before seeing what to do next.
+  const unlockedFeatures = (unlockEvents || []).map(e => e.feature).filter(Boolean);
   const { progressEvents } = useUserProgress();
-  const { startScreenTour } = useTour();
+  const { startScreenTour, active: tourActiveNow } = useTour();
 
   const s = makeStyles(c, t, sp, r);
 
@@ -49,12 +54,19 @@ export default function UnlockNotification() {
   // screen mount and its TourSpots measure.
   const openAndTeach = (screen) => {
     goToScreen(navigation, screen);
-    if (hasScreenTutorial(screen)) setTimeout(() => startScreenTour(screen), 900);
+    // Marked seen here, since this is the screen's walkthrough: without it
+    // the same tutorial ran again, from the top, on the next visit.
+    if (hasScreenTutorial(screen)) {
+      markScreensSeen([screen]);
+      setTimeout(() => startScreenTour(screen), 900);
+    }
   };
 
   // A new stage goes first: it's usually what just happened (every goal
   // finished and every level gained opens one), and it says what's new.
   // Stages open one at a time, so this is normally one thing, not a list.
+  // Same rule as LevelUpNotification: not over a running walkthrough.
+  if (tourActiveNow) return null;
   const stageEvent = stageEvents?.[0];
   if (stageEvent) {
     const stages = stageEvent.stages || [];
@@ -64,11 +76,15 @@ export default function UnlockNotification() {
       .flatMap(st => st.features || [])
       .map(id => getFeature(id))
       .find(f => f?.screen);
-    const close = () => dismissStageEvent();
+    const close = () => { dismissStageEvent(); dismissAllUnlockEvents?.(); };
     const show = () => {
-      dismissStageEvent();
+      close();
       if (target) openAndTeach(target.screen);
     };
+    const alsoOpen = [
+      ...stages.slice(0, -1).map(st => ({ key: st.key + st.n, label: st.label })),
+      ...unlockedFeatures.map(f => ({ key: 'f-' + f.id, label: f.label })),
+    ];
     return (
       <Modal transparent animationType="fade" visible onRequestClose={close}>
         <View style={s.overlay}>
@@ -79,12 +95,12 @@ export default function UnlockNotification() {
             <Text style={s.kicker}>New in your app · stage {stageEvent.to} of {MAX_STAGE}</Text>
             <Text style={s.title}>{latest?.label || 'More of the app is open'}</Text>
             {!!latest?.blurb && <Text style={s.blurb}>{latest.blurb}</Text>}
-            {stages.length > 1 && (
+            {alsoOpen.length > 0 && (
               <View style={s.list}>
-                {stages.slice(0, -1).map(st => (
-                  <View key={st.key + st.n} style={s.listRow}>
+                {alsoOpen.map(item => (
+                  <View key={item.key} style={s.listRow}>
                     <Ionicons name="checkmark" size={14} color={c.teal} style={{ marginTop: 2 }} />
-                    <Text style={s.listText}>Also open: {st.label}</Text>
+                    <Text style={s.listText}>Also open: {item.label}</Text>
                   </View>
                 ))}
               </View>
@@ -108,14 +124,16 @@ export default function UnlockNotification() {
   if (!event?.feature) return null;
 
   const { feature, via } = event;
+  const others = unlockedFeatures.slice(1);
+  const done = () => (others.length ? dismissAllUnlockEvents?.() : dismissUnlockEvent());
 
   const go = () => {
-    dismissUnlockEvent();
+    done();
     if (feature.screen) openAndTeach(feature.screen);
   };
 
   return (
-    <Modal transparent animationType="fade" visible onRequestClose={dismissUnlockEvent}>
+    <Modal transparent animationType="fade" visible onRequestClose={done}>
       <View style={s.overlay}>
         <View style={s.card}>
           <View style={s.iconBox}>
@@ -125,17 +143,27 @@ export default function UnlockNotification() {
           <Text style={s.title}>{feature.label}</Text>
           <Text style={s.blurb}>{feature.blurb}</Text>
           <Text style={s.via}>{VIA_COPY[via] || 'It’s yours now.'}</Text>
+          {others.length > 0 && (
+            <View style={s.list}>
+              {others.map(f => (
+                <View key={f.id} style={s.listRow}>
+                  <Ionicons name="checkmark" size={14} color={c.teal} style={{ marginTop: 2 }} />
+                  <Text style={s.listText}>Also unlocked: {f.label}</Text>
+                </View>
+              ))}
+            </View>
+          )}
 
           {feature.screen ? (
             <TouchableOpacity style={s.btn} onPress={go} activeOpacity={0.85}>
               <Text style={s.btnText}>Take a look</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={s.btn} onPress={dismissUnlockEvent} activeOpacity={0.85}>
+            <TouchableOpacity style={s.btn} onPress={done} activeOpacity={0.85}>
               <Text style={s.btnText}>Good</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={s.ghost} onPress={dismissUnlockEvent} activeOpacity={0.7}>
+          <TouchableOpacity style={s.ghost} onPress={done} activeOpacity={0.7}>
             <Text style={s.ghostText}>Later</Text>
           </TouchableOpacity>
         </View>

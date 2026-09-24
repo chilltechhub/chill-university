@@ -48,14 +48,30 @@ export function isAdultProfile(profile) {
 
 /**
  * Starting band before a player has picked one for a game. Adults start at
- * the top tier, teens at 6–8, and kids or unknown ages at 3–5 (the old
- * default for everyone). The adaptive tier moves them from there either way.
+ * Foundations, teens at 6–8, and kids or unknown ages at 3–5. The adaptive
+ * tier moves them from there either way.
+ *
+ * Adults used to start at the top tier, which put a brand-new account's
+ * very first round (the first goal's "play one game" step) on questions
+ * about VO2 max and periodization. A hot streak climbs out of Foundations
+ * within a round; a first round that feels like an exam is how the game
+ * gets closed.
  */
 export function defaultLevelFor(profile) {
   const band = knownAgeBand(profile);
   if (!band) return '3-5';
-  if (!isMinorBand(band)) return '9-12';
+  if (!isMinorBand(band)) return '3-5';
   return band === 'teen' ? '6-8' : '3-5';
+}
+
+/**
+ * How to name a band to this person: "Grades 3–5" for kids and teens,
+ * "Foundations" for an adult. `short` drops the "Grades" word (a chip).
+ */
+export function bandLabel(key, adult, { short = false } = {}) {
+  if (adult && ADULT_TIERS[key]) return ADULT_TIERS[key].label;
+  if (short) return key;
+  return GRADE_BANDS.find(b => b.key === key)?.label || key;
 }
 
 /** GRADE_BANDS, relabelled for adults. Same keys and tiers either way. */

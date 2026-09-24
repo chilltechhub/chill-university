@@ -35,30 +35,20 @@ const TourContext = createContext(null);
 const SEEN_KEY = '@cth_setting_tourSeen';
 const PERSONALIZATION_KEY = '@cth_setting_tourPersonalization';
 
-// Splices the personalized touches into the static spine — never mutates
-// TOUR_STEPS itself, so a tour started before personalization loads (or
-// with none saved at all) still gets the sensible generic copy.
-function buildSteps(personalization) {
-  if (!personalization) return TOUR_STEPS;
-  const { areaLabels, focusHub } = personalization;
-
-  let steps = TOUR_STEPS;
-  if (areaLabels?.length) {
-    steps = steps.map(step => step.id === 'library-life-areas'
-      ? { ...step, body: `${areaLabels.join(', ')} — the sectors you picked at setup. Check in on each and get tips tailored to it. Tap Add on the grid any time to bring in more.` }
-      : step);
-  }
-  if (focusHub) {
-    const idx = steps.findIndex(step => step.id === 'library-life-areas');
-    const extra = {
-      id: `hub-${focusHub.screen}`,
-      tab: 'Library',
-      title: focusHub.label,
-      body: focusHub.reason,
-    };
-    steps = [...steps.slice(0, idx + 1), extra, ...steps.slice(idx + 1)];
-  }
-  return steps;
+// The welcome tour (src/logic/tourSteps.js). It used to be personalised by
+// splicing the sectors picked at onboarding into one step and a whole extra
+// step for a Library hub in after it; the tour is now about getting around,
+// not a catalogue of features, so both splices went. `personalization` is
+// still stored for the tour's other readers (see setPersonalization below).
+//
+// The one thing that does change: the closing step. Right after onboarding
+// it hands over to the first goal; replayed later from Settings it can't
+// promise one.
+function buildSteps({ welcome = false } = {}) {
+  if (welcome) return TOUR_STEPS;
+  return TOUR_STEPS.map((step, i) => (i === TOUR_STEPS.length - 1
+    ? { ...step, body: "That's everything. You can replay this any time from Settings, and Screen Tutorial in your menu explains whichever screen you're on." }
+    : step));
 }
 
 export function TourProvider({ children }) {
@@ -107,14 +97,19 @@ export function TourProvider({ children }) {
     AsyncStorage.setItem(PERSONALIZATION_KEY, JSON.stringify(prefs));
   }, []);
 
+  const [welcomeRun, setWelcomeRun] = useState(false);
   const steps = useMemo(
-    () => scopedSteps || buildSteps(personalization),
-    [scopedSteps, personalization]
+    () => scopedSteps || buildSteps({ welcome: welcomeRun }),
+    [scopedSteps, welcomeRun]
   );
 
-  const registerNavigator = useCallback((fn, goTo) => {
+  // Which route is on screen, so a step marked `stay` can skip navigating
+  // when the person already got there themselves.
+  const currentRouteRef = useRef(() => null);
+  const registerNavigator = useCallback((fn, goTo, currentRoute) => {
     navigateRef.current = fn;
     if (goTo) goToRef.current = goTo;
+    if (currentRoute) currentRouteRef.current = currentRoute;
   }, []);
 
   const registerTarget = useCallback((id, rect) => {
@@ -133,26 +128,40 @@ export function TourProvider({ children }) {
   const goToStep = useCallback((index) => {
     const step = steps[index];
     if (!step) return;
-    if (step.go) goToRef.current?.(step.go, step.goParams);
+    if (step.go && !(step.stay && currentRouteRef.current?.() === step.go)) goToRef.current?.(step.go, step.goParams);
     else if (step.tab) navigateRef.current?.('MainTabs', { screen: step.tab });
     else if (step.screen) navigateRef.current?.(step.screen);
     setStepIndex(index);
   }, [steps]);
 
-  const start = useCallback(() => {
+  // `opts` is optional, and is a press event when this is wired straight to
+  // an onPress, so only a real { onEnd } is read from it.
+  //
+  // It no longer clears `targets`. The first steps point at things already
+  // on screen, whose TourSpots registered long ago and won't register again
+  // (onLayout doesn't re-fire and TourSpot skips an unchanged rect), so
+  // clearing left the first highlights blank. Spots on screens that unmount
+  // unregister themselves, which is all the clearing was ever for.
+  const start = useCallback((opts) => {
     endWith('replaced');
+    onEndRef.current = typeof opts?.onEnd === 'function' ? opts.onEnd : null;
+    setWelcomeRun(!!opts?.welcome);
     setScopedSteps(null); // the main tour always wins over a scoped one
-    setTargets({});
     setActive(true);
-    goToStep(0);
-  }, [goToStep]);
+    const first = TOUR_STEPS[0];
+    if (first?.go) goToRef.current?.(first.go, first.goParams);
+    setStepIndex(0);
+  }, [endWith]);
 
   // Single-screen walkthrough from the FAB's "Tutorial" action — same
   // overlay, a short list built from src/logic/screenTutorials.js instead
   // of the app-wide spine, and it never navigates (every one of its steps
   // omits `tab`/`screen`, so goToStep is a no-op on that front).
-  const startScreenTour = useCallback((routeName) => {
+  // `opts.onEnd(reason)` as for startLesson — useFirstVisitTutorial uses it
+  // to un-mark a screen whose tutorial was knocked off before anyone saw it.
+  const startScreenTour = useCallback((routeName, opts) => {
     endWith('replaced');
+    onEndRef.current = typeof opts?.onEnd === 'function' ? opts.onEnd : null;
     // Deliberately NOT clearing `targets` here (unlike start(), above): the
     // main tour clears because it's about to navigate to a fresh screen,
     // whose TourSpots mount from scratch and register themselves via their

@@ -50,12 +50,13 @@ import { cacheWrite } from '../src/api/offlineCache';
 import { FEATURES, getFeature, featureForScreen, featuresUnlockedBy } from '../src/data/featureCatalog';
 import { getObjective, getPurpose, suggestPurpose } from '../src/data/objectives';
 import { gradeTest } from '../src/data/competencyTests';
-import { evaluateAccess, objectiveProgress, planActive as planIsActive, rankForPurpose } from '../src/logic/featureAccess';
+import { evaluateAccess, objectiveProgress, planActive as planIsActive, rankForPurpose, signalTarget } from '../src/logic/featureAccess';
 import {
   stageFromProgress, resolveStage, openedAt, screenShownAtStage, visibleGameIdsFor,
   fabActionsFor, nextStageNeeds, stagesBetween, reteachBetween, firstGoalFor,
 } from '../src/logic/experienceStage';
 import { forgetSeenScreens } from '../src/logic/useFirstVisitTutorial';
+import { getEnabledGames } from '../src/services/gameRegistry';
 
 const AccessContext = createContext(null);
 
@@ -74,7 +75,7 @@ const DOOR_SETTING_KEYS = ['educatorMode'];
 const doorSettingKey = (key) => `@cth_setting_${key}`;
 
 export function AccessProvider({ children }) {
-  const { user, profile, level, points, streakDays, dailyMissions, gameplayStats, refreshProfile } = useUserProgress();
+  const { user, profile, level, points, streakDays, dailyMissions, gameplayStats, refreshProfile, setPlayableGames } = useUserProgress();
   // Which profile type is active decides WHICH path the stages walk.
   // Account-level progress decides HOW FAR along it — level and objectives
   // are shared across an account's profiles, so the stage is too.
@@ -181,6 +182,9 @@ export function AccessProvider({ children }) {
   }, []);
 
   const dismissUnlockEvent = useCallback(() => setUnlockEvents(q => q.slice(1)), []);
+  // UnlockNotification shows everything queued in one card, so it clears
+  // them all at once rather than one popup per feature.
+  const dismissAllUnlockEvents = useCallback(() => setUnlockEvents([]), []);
 
   /* ── Derived ───────────────────────────────────────────────────────────── */
 
@@ -194,7 +198,7 @@ export function AccessProvider({ children }) {
   // Daily drills finished today — the only auto-step counter that isn't a
   // lifetime figure straight off the profile.
   const missionsToday = useMemo(
-    () => (dailyMissions || []).filter(m => m.status === 'completed').length,
+    () => (dailyMissions || []).filter(m => m.status === 'completed' || m.status === 'claimed').length,
     [dailyMissions]
   );
 
@@ -378,6 +382,23 @@ export function AccessProvider({ children }) {
   );
   const visibleFabActions = useMemo(() => fabActionsFor(opened), [opened]);
 
+  // The games this account can play right now, for daily drills: a drill is
+  // only ever set (or kept) if one of these counts toward it. See
+  // src/logic/drills.js and UserProgressContext.setPlayableGames.
+  const playableGames = useMemo(
+    () => getEnabledGames()
+      .filter(g => isGameVisible(g.id))
+      .map(g => ({ id: g.id, title: g.name, subject: g.subject })),
+    [isGameVisible]
+  );
+  // Only once the stage is settled (progress, device prefs and the profile
+  // type all in): for a moment on launch every game reads as visible, and
+  // drills set against that would include locked ones.
+  const stageSettled = progressReady && prefsReady && !!persona;
+  useEffect(() => {
+    if (!loading && stageSettled && playableGames.length) setPlayableGames?.(playableGames);
+  }, [loading, stageSettled, playableGames, setPlayableGames]);
+
   // Class subjects: an adult track is an age question (1); another type's
   // track is a map question (3) that 'all-tools' answers.
   const isSubjectVisible = useCallback((subject) => {
@@ -488,7 +509,9 @@ export function AccessProvider({ children }) {
     if (!target || target.locked) return;
 
     const current = state.objectives[activeObjectiveId]?.steps || {};
-    const steps = { ...current, [stepId]: !current[stepId] };
+    // A counted step (objectives.js `signalCount`) stores a running number,
+    // so "tick it by hand" means jump to done rather than flip a flag.
+    const steps = { ...current, [stepId]: target.done ? false : true };
     if (!steps[stepId]) delete steps[stepId];
 
     applyLocal(prev => ({
@@ -506,16 +529,32 @@ export function AccessProvider({ children }) {
   // doing X is what finishes it (objectives.js `signal`), so a step gets done
   // by doing the thing rather than by remembering to tick a box afterwards.
   // `detail` narrows it: 'area-rated' with { area: 'financial' } also
-  // matches a step whose signal is 'area-rated:financial'.
-  const signalAction = useCallback(async (name, detail = {}) => {
+  // matches a step whose signal is 'area-rated:financial'. A step needing
+  // several occurrences (objectives.js `signalCount`) keeps a count instead
+  // of a flag until it gets there.
+  // `times` is for a batch — processing six inbox items at once is six
+  // occurrences, and six separate calls in one tick would each read the same
+  // pre-batch count and land as one.
+  const signalAction = useCallback(async (name, detail = {}, { times = 1 } = {}) => {
     if (!activeObjectiveId || !name) return;
     const objective = getObjective(activeObjectiveId);
     const names = new Set([name, ...Object.values(detail).map(v => `${name}:${v}`)]);
     const current = state.objectives[activeObjectiveId]?.steps || {};
-    const hits = (objective?.steps || []).filter(step => step.signal && names.has(step.signal) && !current[step.id]);
+    const hits = (objective?.steps || []).filter(step => (
+      step.signal && names.has(step.signal) && current[step.id] !== true
+        && !(typeof current[step.id] === 'number' && current[step.id] >= signalTarget(step))
+    ));
     if (!hits.length) return;
     const steps = { ...current };
-    hits.forEach(step => { steps[step.id] = true; });
+    hits.forEach(step => {
+      // Steps that need the thing done more than once (objectives.js
+      // `signalCount`, e.g. "capture five things") keep a count; everything
+      // else is a flag, the way it has always been.
+      const target = signalTarget(step);
+      if (target <= 1) { steps[step.id] = true; return; }
+      const next = (typeof current[step.id] === 'number' ? current[step.id] : 0) + Math.max(1, times);
+      steps[step.id] = next >= target ? true : next;
+    });
     applyLocal(prev => ({
       ...prev,
       objectives: {
@@ -643,6 +682,7 @@ export function AccessProvider({ children }) {
     claimPlanFeature,
     unlockEvents,
     dismissUnlockEvent,
+    dismissAllUnlockEvents,
 
     // 1. allowed
     age,
@@ -669,6 +709,7 @@ export function AccessProvider({ children }) {
     isGameVisible,
     isSubjectVisible,
     visibleGameIds,
+    playableGames,
     visibleFabActions,
     stageEvents,
     dismissStageEvent,
@@ -681,11 +722,11 @@ export function AccessProvider({ children }) {
     isPlus, experimentalOn, setExperimental, accessFor, isOpen, rankedFeatures,
     activeObjective, activeObjectiveId, completedObjectiveIds, startObjective,
     toggleStep, completeActiveObjective, abandonActiveObjective, submitTest,
-    claimPlanFeature, unlockEvents, dismissUnlockEvent,
+    claimPlanFeature, unlockEvents, dismissUnlockEvent, dismissAllUnlockEvents,
     age, isContentAllowed, isGameAllowed, doorSettings, setDoorSetting, plusOnSale,
     stage, derivedStage, nextStage, experienceMode, setExperienceMode, opened, can,
     firstGoal, startFirstGoal, isFeatureShown, isScreenVisible, isGameVisible,
-    isSubjectVisible, visibleGameIds, visibleFabActions, stageEvents, dismissStageEvent,
+    isSubjectVisible, visibleGameIds, playableGames, visibleFabActions, stageEvents, dismissStageEvent,
     signalAction,
     refresh, stats,
   ]);

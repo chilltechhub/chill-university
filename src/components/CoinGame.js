@@ -60,11 +60,17 @@ const generateQuestion = (level, tierKey) => {
       if (remaining === 0) break;
     }
   } else {
-    while (remaining > 0 && coinSet.length < maxCoins) {
+    // Bounded: with bills only, a remainder smaller than every bill could
+    // never be paid down and this looped forever.
+    for (let tries = 0; remaining > 0 && coinSet.length < maxCoins && tries < 200; tries++) {
       const coin = coins[Math.floor(Math.random() * coins.length)];
       if (coin <= remaining) { coinSet.push(coin); remaining -= coin; }
     }
   }
+  // The amount is what's actually on screen. The pile stops at maxCoins, so
+  // it could fall short of the amount picked above, and the game then said
+  // "has 18¢" over coins that added up to 17¢.
+  amount = coinSet.reduce((sum, c) => sum + c, 0);
 
   const names = ['Billy','Sally','Tom','Lucy','Mike','Emma','Jake','Olivia','Noah','Ava'];
   const items = ['popsicle','toy','candy','sticker','balloon','pencil','eraser','comic book','yo-yo','bookmark'];
@@ -188,8 +194,9 @@ export default function CoinGame({ onGameEnd }) {
       ? diff === 0 ? 'Exact amount — perfect!'
         : diff > 0 ? `${formatCents(diff)} more than needed ✓`
         : 'Not enough ✓ (correct answer)'
-      : diff >= 0 ? 'Actually has enough — try again'
-        : 'Actually doesn\'t have enough — try again';
+      // Wrong: no answer given away. The retry that follows asks them to
+      // count the coins, and telling them the total first gives it away.
+      : 'Count the coins again, then type the total.';
 
     setFeedback({ isCorrect, msg });
     const outOfLives = game.lives - (isCorrect ? 0 : 1) <= 0;
@@ -207,7 +214,7 @@ export default function CoinGame({ onGameEnd }) {
     const counted = parseInt(retryInput, 10);
     const isCorrect = counted === question.amount;
     game.answer(isCorrect);
-    setFeedback({ isCorrect, msg: isCorrect ? `✓ ${formatCents(question.amount)} — correct!` : `✗ It was ${formatCents(question.amount)}` });
+    setFeedback({ isCorrect, msg: isCorrect ? `✓ ${formatCents(question.amount)} — correct!` : 'Not that one. Take your time counting on the next.' });
     const outOfLives = game.lives - (isCorrect ? 0 : 1) <= 0;
     if (!isCorrect && outOfLives) {
       setTimeout(() => game.endGame(), 1800);
@@ -312,10 +319,14 @@ export default function CoinGame({ onGameEnd }) {
               {feedback.isCorrect ? '✓ Correct!' : '✗ Not quite!'}
             </Text>
             <Text style={s.feedbackMsg}>{feedback.msg}</Text>
-            <Text style={s.feedbackDetail}>
-              {question.name} has <Text style={{ color: G.gold }}>{formatCents(question.amount)}</Text> and the item costs{' '}
-              <Text style={{ color: G.gold }}>{formatCents(question.cost)}</Text>
-            </Text>
+            {/* The totals only once it's answered right: shown on a wrong
+                answer, they were the answer to the retry that comes next. */}
+            {feedback.isCorrect && (
+              <Text style={s.feedbackDetail}>
+                {question.name} has <Text style={{ color: G.gold }}>{formatCents(question.amount)}</Text> and the item costs{' '}
+                <Text style={{ color: G.gold }}>{formatCents(question.cost)}</Text>
+              </Text>
+            )}
           </View>
         )}
       </ScrollView>

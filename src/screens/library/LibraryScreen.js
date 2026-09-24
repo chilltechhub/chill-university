@@ -34,7 +34,7 @@ import { useFeatureGate } from '../../components/FeatureGate';
 import { useAccess } from '../../../context/AccessContext';
 import { featureForScreen } from '../../data/featureCatalog';
 import { unlockHint } from '../../logic/featureAccess';
-import { todayStr } from '../../logic/dateUtils';
+import { todayStr, daysBetween } from '../../logic/dateUtils';
 
 // Same icon/color-by-type map CaptureInbox and ImportScreen already share,
 // reused here for domain-filter result rows rather than a third copy.
@@ -116,6 +116,11 @@ function fmtTime(t24) {
 
 function daysSince(iso) {
   if (!iso) return null;
+  // A bare 'YYYY-MM-DD' (life_areas.last_check_date) is a local calendar
+  // date. new Date() reads it as UTC midnight, so a rating saved this
+  // evening in the US showed as "1d ago" within minutes. Count dates for
+  // those; elapsed time only for real timestamps.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(iso))) return Math.max(0, daysBetween(iso, todayStr()) ?? 0);
   return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000));
 }
 
@@ -307,7 +312,7 @@ export default function LibraryScreen() {
   const { colors: c, typography: t, spacing: s, radius: r, style: ui, accent } = useTheme();
   const { showEmojis, showSubtext } = useUIPrefs();
   const { level, points, rank, streakDays } = useUserProgress();
-  const { currentStep, active: tourActive } = useTour();
+  const { currentStep, active: tourActive, completeAction: completeTourAction } = useTour();
   const { background: playerBackground } = useCharacterLoadout({ level, points, rank, streakDays });
   // Set from Settings → Appearance, not on this screen itself.
   const [bgMode] = useSetting(SETTING_KEYS.LIBRARY_BACKGROUND, 'plain');
@@ -589,12 +594,15 @@ export default function LibraryScreen() {
   const tapRef = useRef({ id: null, timer: null });
   useEffect(() => () => { if (tapRef.current.timer) clearTimeout(tapRef.current.timer); }, []);
 
-  const openLifeArea = (area, saved, rating) =>
+  const openLifeArea = (area, saved, rating) => {
     navigation.navigate('LifeAreaScreen', {
       areaId: area.id,
       rating,
       lastCheck: saved?.last_check_date || null,
     });
+    // The welcome tour's "double-tap one now" step waits for exactly this.
+    completeTourAction();
+  };
 
   const handleDomainPress = (area, saved, rating) => {
     const pending = tapRef.current;
@@ -797,6 +805,7 @@ export default function LibraryScreen() {
         {/* ── Header — the title is the view switcher ── */}
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
+            <TourSpot id="library-views" style={{ alignSelf: 'flex-start' }}>
             <TouchableOpacity
               style={styles.titleBtn}
               onPress={() => setTabMenuOpen(o => !o)}
@@ -810,6 +819,7 @@ export default function LibraryScreen() {
                 style={{ marginTop: 5 }}
               />
             </TouchableOpacity>
+            </TourSpot>
             {/* The purpose, restated where the choosing happens. Tapping it
                 goes to the Compass, which is the only place that can change
                 what this screen leads with. */}

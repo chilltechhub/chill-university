@@ -367,6 +367,9 @@ function WardrobePreview({ tab, item }) {
       </View>
     );
   }
+  if (item.kind === 'plain') {
+    return <View style={{ width: 56, height: 32, borderRadius: 6, borderWidth: 1, borderStyle: 'dashed', borderColor: '#9aa3b5' /* style-ok: neutral outline for "no backdrop" in both modes */ }} />;
+  }
   return (
     <View style={{ width: 56, height: 32, borderRadius: 6, overflow: 'hidden', flexDirection: 'row' }}>
       <View style={{ flex: 1, backgroundColor: item.sky[0] }} />

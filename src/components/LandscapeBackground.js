@@ -11,11 +11,25 @@ import React from 'react';
 import { View, Image, StyleSheet } from 'react-native';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import SpriteIcon from './SpriteIcon';
+import { useTheme } from '../../context/ThemeContext';
 
 const TILE = 32;
 
 export default function LandscapeBackground({ background, height = 180, style, children }) {
   const cols = 12; // enough 32px tiles to cover any realistic card width
+  const { colors: c } = useTheme();
+
+  // 'plain': the blank backdrop everyone starts on. A card-coloured panel
+  // with a hairline floor for the character to stand on; scenes are
+  // something to unlock and pick, not the default.
+  if (!background || background.kind === 'plain') {
+    return (
+      <View style={[{ height, overflow: 'hidden', borderRadius: 16, backgroundColor: c.bg1, borderWidth: 0.5, borderColor: c.border }, style]}>
+        <View style={{ position: 'absolute', left: 0, right: 0, bottom: TILE, height: 1, backgroundColor: c.border }} />
+        {children}
+      </View>
+    );
+  }
 
   if (background.kind === 'image') {
     // Size the box itself to the scene's real 16:9 aspect ratio instead of

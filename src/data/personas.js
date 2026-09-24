@@ -11,8 +11,19 @@
 // database error they can't act on.
 
 // ─── defaultWidgets ─────────────────────────────────────────────────────────
-// Every type leads with the Compass (the goal in flight) and the desk (the
-// one next action). Stats, quotes and rings come after the thing to do.
+// Every type opens the same four, in this order, and differs after that:
+//
+//   hq          who you are — name, rank, and the Study/Play buttons
+//   stageSteps  where you are in the app and the two things that open more
+//   focus       today's focus, with the small calendar beside it
+//   compass     the goal in flight, then its steps under it
+//
+// It used to lead with the Compass. The stage card now comes first because
+// it answers the question that was actually being asked — "why can I only
+// see some of this?" — and quotes the goal's own next step while it does,
+// so nothing is lost by the Compass sitting one card lower.
+//
+// Stats, quotes and rings come after the things to do, as before.
 // The ORDERED list of Home widgets a new profile of this type gets, by key.
 // Anything not listed starts hidden (and is still one tap away in Home's
 // widget-edit tray) — see layoutForPersona in src/screens/HomeScreen.js.
@@ -36,19 +47,19 @@ export const PERSONAS = [
     short: 'Personal',
     emoji: '🌿',
     color: '#3AC860',
-    blurb: 'Habits, routines, time-blocking, life balance',
+    blurb: 'Build habits, plan your days, keep life in balance',
     questLine: 'Daily Mastery',
     // Shown on the onboarding persona step, so the choice is made with the
     // consequences visible rather than from a one-line blurb. Keep these
     // TRUE — every line is checkable against defaultWidgets below and the
     // persona filter in Classes.js.
     changes: [
-      'Home leads with your habit rings, life areas and today’s drills',
+      'Home adds your habit rings, life areas and today’s drills',
       'Academy shows the general and wellbeing subjects',
       'Sectors start as Physical, Mental and Social',
     ],
     adultOnly: false,
-    defaultWidgets: ['compass', 'goalSteps', 'desk', 'hq', 'lifeAreas', 'habitRings', 'dailyDrills', 'quests', 'wayfinder', 'focus', 'streak', 'wisdom'],
+    defaultWidgets: ['hq', 'stageSteps', 'focus', 'compass', 'goalSteps', 'desk', 'lifeAreas', 'habitRings', 'dailyDrills', 'quests', 'wayfinder', 'streak', 'wisdom'],
   },
   {
     key: 'STUDENT',
@@ -56,15 +67,15 @@ export const PERSONAS = [
     short: 'Student',
     emoji: '🎓',
     color: '#4A90E2',
-    blurb: 'Study blocks, grades, exams, academic growth',
+    blurb: 'Plan study time, keep up with classes, prep for exams',
     questLine: 'Knowledge Tree',
     changes: [
-      'Home leads with study blocks, subject progress and today’s drills',
+      'Home adds study blocks, subject progress and today’s drills',
       'Academy shows the full grade-level coursework',
       'Sectors start as Mental, Professional and Social',
     ],
     adultOnly: false,
-    defaultWidgets: ['compass', 'goalSteps', 'desk', 'hq', 'studyBlocks', 'dailyDrills', 'classProgress', 'quests', 'wayfinder', 'activities', 'focus', 'checkins', 'streak'],
+    defaultWidgets: ['hq', 'stageSteps', 'focus', 'compass', 'goalSteps', 'desk', 'studyBlocks', 'dailyDrills', 'classProgress', 'quests', 'wayfinder', 'activities', 'checkins', 'streak'],
   },
   {
     key: 'BUSINESS',
@@ -72,15 +83,15 @@ export const PERSONAS = [
     short: 'Business',
     emoji: '📈',
     color: '#E0A830',
-    blurb: 'Operational KPIs, team output, SOPs, revenue vs. burn',
+    blurb: 'Run a business you already have: routines, numbers, team',
     questLine: 'Empire Builder',
     changes: [
-      'Home leads with recurring ops, a systems check and your organization',
+      'Home adds recurring ops, a systems check and your organization',
       'Academy adds the business-operations subjects',
       'Sectors start as Professional, Financial and Digital',
     ],
     adultOnly: true,
-    defaultWidgets: ['compass', 'goalSteps', 'desk', 'hq', 'recurringOps', 'systemsCheck', 'builds', 'quests', 'orgSnapshot', 'focus', 'checkins', 'streak'],
+    defaultWidgets: ['hq', 'stageSteps', 'focus', 'compass', 'goalSteps', 'desk', 'recurringOps', 'systemsCheck', 'builds', 'quests', 'orgSnapshot', 'checkins', 'streak'],
   },
   {
     key: 'ENTREPRENEUR',
@@ -88,15 +99,15 @@ export const PERSONAS = [
     short: 'Entrepreneur',
     emoji: '🚀',
     color: '#8B4FC4',
-    blurb: 'Entity setup, business credit, funding readiness, scaling',
+    blurb: 'Start something new: from an idea to a real business',
     questLine: "Founder's Quest",
     changes: [
-      'Home leads with the founder quest, your vault and your targets',
+      'Home adds the founder quest, your vault and your targets',
       'Academy adds the entity, credit and funding tracks',
       'Sectors start as Financial, Professional and Creative',
     ],
     adultOnly: true,
-    defaultWidgets: ['compass', 'goalSteps', 'desk', 'hq', 'founderQuest', 'builds', 'vaultStatus', 'targetsReadiness', 'quests', 'ideas', 'checkins', 'streak'],
+    defaultWidgets: ['hq', 'stageSteps', 'focus', 'compass', 'goalSteps', 'desk', 'founderQuest', 'builds', 'vaultStatus', 'targetsReadiness', 'quests', 'ideas', 'checkins', 'streak'],
   },
 ];
 

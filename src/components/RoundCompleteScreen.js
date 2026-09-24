@@ -29,6 +29,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useGameTheme } from './GameShell';
 import { useUIPrefs } from '../../context/UIPrefsContext';
+import { useAccess } from '../../context/AccessContext';
 import { useUserProgress } from '../../context/UserProgressContext';
 
 // Grade tier (1=K-2 … 4=9-12) scales the whole prize pool down for younger
@@ -72,6 +73,10 @@ function rollPrizes(correct = 0, total = 1, tier = 2, funGame = false) {
   return values.sort(() => Math.random() - 0.5);
 }
 
+// Read by GameOver, which sends the same signal for games that have no
+// rounds; a round-based game's last round lands on both screens.
+export let lastRoundSignalAt = 0;
+
 export default function RoundCompleteScreen({
   roundNumber,
   correct,
@@ -87,8 +92,15 @@ export default function RoundCompleteScreen({
   const s = makeStyles(G);
   // Count this round now, so objectives like "Play one training game" tick
   // after one round instead of waiting for the whole run to end.
+  // `round-played` ticks goal steps that count rounds ("Finish three game
+  // rounds" on One Skill, Properly), which had no way to tick themselves.
   const { noteRoundPlayed } = useUserProgress();
-  useEffect(() => { noteRoundPlayed?.(total); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const { signalAction } = useAccess();
+  useEffect(() => {
+    noteRoundPlayed?.(total);
+    signalAction?.('round-played');
+    lastRoundSignalAt = Date.now();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const { showEmojis } = useUIPrefs();
   const [prizes] = useState(() => rollPrizes(correct, total, difficulty, funGame));
   const [picked, setPicked] = useState(null);

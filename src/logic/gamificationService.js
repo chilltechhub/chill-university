@@ -3,6 +3,7 @@ import { supabase } from '../api/supabaseClient';
 import { getRank } from './rankUtils';
 import { todayStr, daysBetween, addDays } from './dateUtils';
 import { QUEST_XP } from '../data/quests';
+import { drillCriteria, drillIsCounted, drillIsPlayable, drillCounts, pickDrills } from './drills';
 
 /* ─── Profile + missions loaders ─────────────────────────────────────────── */
 
@@ -71,7 +72,11 @@ const BUILTIN_WEEKLY = [
   { title: 'Marathon Trainer', description: 'Complete 5 training sessions this week.', criteria: { type: 'game_completed' }, target_value: 5, xp_reward: 120, point_reward: 60 },
 ];
 
-export async function generateDailyMissions(userId, subjects = ['math', 'language_arts', 'science']) {
+// `games` is what this account can play right now ([{ id, title, subject }],
+// from AccessContext). Without it (the very first load, before the stage is
+// known) only drills that any game counts toward are set: never one for a
+// subject or a game the account may not have. See src/logic/drills.js.
+export async function generateDailyMissions(userId, subjects = ['math', 'language_arts', 'science'], games = null) {
   // Expires at the end of today, i.e. the moment tomorrow's local date
   // starts. Building this by hand out of a Date and then serialising through
   // toISOString() re-introduced the UTC shift the local date string avoids.
@@ -82,7 +87,10 @@ export async function generateDailyMissions(userId, subjects = ['math', 'languag
     .from('missions').select('*').eq('type', 'daily').eq('active', true);
 
   const pool = templates?.length ? templates : BUILTIN_DAILY;
-  const picked = [...pool].sort(() => Math.random() - 0.5).slice(0, 3);
+  const anyGame = [{ id: '*', title: 'any game', subject: '__any__' }];
+  const picked = games?.length
+    ? pickDrills(pool, games, 3)
+    : pickDrills(pool.filter(t => drillIsCounted(drillCriteria(t)) && !drillCriteria(t).subject), anyGame, 3);
 
   const rows = picked.map(t => ({
     user_id:       userId,
@@ -91,7 +99,7 @@ export async function generateDailyMissions(userId, subjects = ['math', 'languag
     status:        'active',
     current_value: 0,
     target_value:  t.target_value || 10,
-    subject:       t.criteria?.subject || subjects[Math.floor(Math.random() * subjects.length)],
+    subject:       t.criteria?.subject || 'general',
     expires_at:    expiresAt,
     // Store title/desc inline so MissionCard works even without mission_id join
     _title:        t.title,
@@ -107,7 +115,10 @@ export async function generateDailyMissions(userId, subjects = ['math', 'languag
   if (error) console.error('generateDailyMissions', error);
 }
 
-export async function generateWeeklyMissions(userId, subjects = ['math', 'language_arts', 'science']) {
+// Same rule as daily drills (src/logic/drills.js): only challenges the app
+// can count and this account can play. "Answer 25 coin questions" could
+// never move: no event carries a game id.
+export async function generateWeeklyMissions(userId, subjects = ['math', 'language_arts', 'science'], games = null) {
   const now = new Date();
   const expiresAt = addDays(todayStr(), 7 - now.getDay());
 
@@ -115,7 +126,10 @@ export async function generateWeeklyMissions(userId, subjects = ['math', 'langua
     .from('missions').select('*').eq('type', 'weekly').eq('active', true);
 
   const pool = templates?.length ? templates : BUILTIN_WEEKLY;
-  const picked = [...pool].sort(() => Math.random() - 0.5).slice(0, 2);
+  const anyGame = [{ id: '*', title: 'any game', subject: '__any__' }];
+  const picked = games?.length
+    ? pickDrills(pool, games, 2)
+    : pickDrills(pool.filter(t => drillIsCounted(drillCriteria(t)) && !drillCriteria(t).subject), anyGame, 2);
 
   const rows = picked.map(t => ({
     user_id:       userId,
@@ -124,7 +138,7 @@ export async function generateWeeklyMissions(userId, subjects = ['math', 'langua
     status:        'active',
     current_value: 0,
     target_value:  t.target_value || 50,
-    subject:       t.criteria?.subject || subjects[Math.floor(Math.random() * subjects.length)],
+    subject:       t.criteria?.subject || 'general',
     expires_at:    expiresAt,
   }));
 
@@ -132,9 +146,56 @@ export async function generateWeeklyMissions(userId, subjects = ['math', 'langua
   if (error) console.error('generateWeeklyMissions', error);
 }
 
+/**
+ * Swaps any of today's untouched drills this account can't do for ones it
+ * can. For accounts handed a drill before its games were known (or before
+ * this check existed), and for the first load of a new account, which sets
+ * drills before AccessContext knows the stage. Only rows still at 0: a drill
+ * someone has started stays theirs. Resolves true if anything changed.
+ */
+export async function tailorDailyDrills(userId, games, type = 'daily') {
+  if (!userId || !games?.length) return false;
+  const today = todayStr();
+  const { data: rows } = await supabase
+    .from('user_missions').select('*, missions(*)')
+    .eq('user_id', userId).eq('type', type).eq('status', 'active')
+    .gt('expires_at', today);
+  const stuck = (rows || []).filter(r => (r.current_value || 0) === 0 && !drillIsPlayable(drillCriteria(r), games));
+  if (!stuck.length) return false;
+
+  const { data: templates } = await supabase
+    .from('missions').select('*').eq('type', type).eq('active', true);
+  const inUse = new Set((rows || []).map(r => r.mission_id));
+  const inUseTitles = new Set((rows || []).filter(r => !stuck.includes(r)).map(r => r.missions?.title));
+  const spare = pickDrills((templates || []).filter(t => !inUse.has(t.id) && !inUseTitles.has(t.title)), games, stuck.length);
+
+  let changed = false;
+  for (let i = 0; i < stuck.length && i < spare.length; i++) {
+    const t = spare[i];
+    const { error } = await supabase.from('user_missions').update({
+      mission_id:   t.id,
+      target_value: t.target_value || 5,
+      subject:      drillCriteria(t)?.subject || 'general',
+    }).eq('id', stuck[i].id);
+    if (error) console.warn('[tailorDailyDrills]', error.message);
+    else changed = true;
+  }
+  return changed;
+}
+
 /* ─── Core game event handler ────────────────────────────────────────────── */
 
-export async function handleGameEvent(event) {
+// One event at a time. Each one reads a mission's count and writes it back
+// plus one; answers a second or two apart used to overlap and overwrite each
+// other's increments.
+let eventQueue = Promise.resolve();
+export function handleGameEvent(event) {
+  const run = eventQueue.then(() => handleGameEventNow(event));
+  eventQueue = run.catch(() => {});
+  return run;
+}
+
+async function handleGameEventNow(event) {
   const {
     type, userId, gameId,
     subject = 'general',
@@ -164,9 +225,13 @@ export async function handleGameEvent(event) {
   });
   if (rpcError) console.error('[handleGameEvent] increment_user_progress', rpcError.message);
 
+  // updateSubjectProgress returns nothing. This used to destructure
+  // `{ error }` off its result, which throws on undefined, on every single
+  // answer, before advanceMissions below ever ran. The caller swallows the
+  // rejection, so no daily drill ever moved from playing a game.
   if (type === 'QUESTION_ANSWERED') {
-    const { error: spError } = await updateSubjectProgress(userId, subject, correct);
-    if (spError) console.error('[handleGameEvent] subject_progress', spError.message || spError);
+    try { await updateSubjectProgress(userId, subject, correct); }
+    catch (e) { console.error('[handleGameEvent] subject_progress', e?.message || e); }
   }
 
   await advanceMissions(userId, { type, subject, correct, gameId, accuracy: metadata.accuracy });
@@ -284,8 +349,7 @@ async function advanceMissions(userId, event) {
 
     const matchesSubject = !criteria.subject || criteria.subject === event.subject;
     const shouldCount =
-      (criteria.type === 'questions_answered' && event.type === 'QUESTION_ANSWERED' && matchesSubject) ||
-      (criteria.type === 'correct_answers'    && event.type === 'QUESTION_ANSWERED' && event.correct && matchesSubject) ||
+      drillCounts(criteria, event) ||
       (criteria.type === 'topic_completed'    && event.type === 'TOPIC_COMPLETED') ||
       (criteria.type === 'game_completed'     && event.type === 'GAME_COMPLETED' && matchesSubject) ||
       (criteria.type === 'perfect_game'       && event.type === 'GAME_COMPLETED' && event.accuracy === 100 && matchesSubject);
@@ -301,6 +365,16 @@ async function advanceMissions(userId, event) {
         completed_at:  completed ? new Date().toISOString() : null,
       }).eq('id', m.id)
     );
+    // The card has always shown "⭐ 15 pts ✨ 30 XP" and nothing ever paid
+    // it. Paid once, on the answer that finishes it (status leaves 'active',
+    // so this row is never picked up here again).
+    if (completed && (m.missions?.xp_reward || m.missions?.point_reward)) {
+      updates.push(supabase.rpc('increment_user_progress', {
+        p_user_id: userId,
+        p_xp:      m.missions.xp_reward || 0,
+        p_points:  m.missions.point_reward || 0,
+      }));
+    }
   }
 
   if (updates.length) await Promise.all(updates);

@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { goBackTo } from '../../logic/appRoutes';
 import { useTheme } from '../../../context/ThemeContext';
 import { useUIPrefs } from '../../../context/UIPrefsContext';
 import { supabase } from '../../api/profileScopedClient';
@@ -588,7 +589,14 @@ export default function AreaSectionScreen() {
       {/* Header */}
       <View style={{ backgroundColor: c.bg1, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
         <View style={{ padding: s.lg, paddingTop: s.xxl }}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: s.sm }}>
+          {/* Back means "back to this life area", whatever route happens to
+              be underneath — see goBackTo in src/logic/appRoutes.js. */}
+          <TouchableOpacity
+            onPress={() => goBackTo(navigation, 'LifeAreaScreen', { areaId: config.areaId })}
+            style={{ marginBottom: s.sm }}
+            accessibilityRole="button"
+            accessibilityLabel="Back to this life area"
+          >
             <Ionicons name="chevron-back" size={20} color={color} />
           </TouchableOpacity>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, marginBottom: s.sm }}>

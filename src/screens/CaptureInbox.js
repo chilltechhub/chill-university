@@ -1283,14 +1283,30 @@ export default function CaptureInbox() {
 
   const onRefresh = async () => { setRefreshing(true); if (userId) await loadAll(userId); setRefreshing(false); };
 
+  // Emptying the inbox is a goal step ("get the inbox to zero"), and
+  // archiving counts — deciding something does not matter is deciding. So
+  // this is checked after anything that takes a row out of the list, against
+  // the list that is about to be rendered rather than the one on screen.
+  // Removes rows and, if that emptied the inbox, says so. Kept out of the
+  // setState updater on purpose: React may run an updater twice, and a
+  // signal fired twice would count twice.
+  const dropCaptures = (gone) => {
+    const ids = new Set(Array.isArray(gone) ? gone : [gone]);
+    const next = captures.filter(cap => !ids.has(cap.id));
+    setCaptures(next);
+    if (!next.some(cap => cap.status === 'inbox')) signalAction('inbox-zero');
+  };
+
   const markDone = async (item) => {
-    setCaptures(prev => prev.filter(c => c.id !== item.id));
+    dropCaptures(item.id);
     await supabase.from('captures').update({ status: 'done' }).eq('id', item.id);
   };
 
   const onProcessed = (itemId, result) => {
-    setCaptures(prev => prev.filter(c => c.id !== itemId));
+    dropCaptures(itemId);
     setProcessing(null);
+    // Sending an item somewhere is what ticks "route three of them".
+    signalAction('inbox-processed');
   };
 
   // ── Multi-select ──────────────────────────────────────────────────────────
@@ -1313,7 +1329,7 @@ export default function CaptureInbox() {
 
   const bulkMarkDone = async () => {
     const ids = Array.from(selectedIds);
-    setCaptures(prev => prev.filter(c => !selectedIds.has(c.id)));
+    dropCaptures(ids);
     exitSelectMode();
     await supabase.from('captures').update({ status: 'done' }).in('id', ids);
   };
@@ -1332,9 +1348,10 @@ export default function CaptureInbox() {
   };
 
   const onBulkProcessed = (ids, { saved, skipped, destination }) => {
-    setCaptures(prev => prev.filter(c => !ids.includes(c.id)));
+    dropCaptures(ids);
     setBulkProcessing(false);
     exitSelectMode();
+    if (saved > 0) signalAction('inbox-processed', {}, { times: saved });
     if (skipped > 0) {
       Alert.alert('Mostly done', `${saved} sent to ${destination}, ${skipped} failed. Try the failed ones again individually.`);
     }

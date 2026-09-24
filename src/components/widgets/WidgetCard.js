@@ -36,9 +36,12 @@ export default function WidgetCard({
       borderTopWidth: 2, borderTopColor: edge,
     }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: s.md }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        {/* flexShrink + two lines at most: a long title ("Stage 3 of 10 · Three more
+            games and your first quest") used to push past the card's edge
+            and shove the action link off it. */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1, marginRight: action ? 8 : 0 }}>
           {icon && <Ionicons name={icon} size={14} color={edge} />}
-          <Text style={{ fontSize: ui.name === 'plain' ? t.sm : t.xs, color: ui.name === 'plain' ? c.text2 : c.text4, ...ui.sectionLabel }}>
+          <Text numberOfLines={2} style={{ flexShrink: 1, fontSize: ui.name === 'plain' ? t.sm : t.xs, color: ui.name === 'plain' ? c.text2 : c.text4, ...ui.sectionLabel }}>
             {title}
           </Text>
         </View>
