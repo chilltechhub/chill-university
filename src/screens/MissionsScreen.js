@@ -5,19 +5,21 @@ import {
   ScrollView, RefreshControl, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { useTheme } from '../../context/ThemeContext';
 import MissionCard from '../components/MissionCard';
+import useDrillPlan from '../logic/useDrillPlan';
 
 const TABS = [
-  { key: 'daily',    label: 'Daily',        emoji: '⚔️' },
-  { key: 'weekly',   label: 'Weekly',       emoji: '📅' },
+  { key: 'daily',    label: 'Daily drills', emoji: '⚔️' },
+  { key: 'weekly',   label: 'This week',    emoji: '📅' },
   { key: 'longterm', label: 'Achievements', emoji: '🏆' },
 ];
 
 const EMPTY = {
-  daily:    { emoji: '⚔️', title: 'No active objectives', sub: 'Daily objectives reset at midnight.' },
-  weekly:   { emoji: '📅', title: 'No weekly objectives',  sub: 'Keep training to unlock weekly challenges.' },
+  daily:    { emoji: '⚔️', title: 'No drills yet today', sub: "Today's three appear the next time the app loads. They reset at midnight." },
+  weekly:   { emoji: '📅', title: 'No weekly challenges',  sub: 'New ones start each week.' },
   longterm: { emoji: '🏆', title: 'No achievements yet',   sub: 'Complete objectives to earn achievement badges.' },
 };
 
@@ -35,7 +37,9 @@ function sortMissions(missions) {
   });
 }
 
-export default function MissionsScreen({ onClose, initialTab = 'daily' }) {
+// `onPlay(gameId)` opens a game that counts toward a drill; the caller
+// closes this sheet and navigates (GamesScreen shows it in a Modal).
+export default function MissionsScreen({ onClose, initialTab = 'daily', onPlay }) {
   const {
     dailyMissions, weeklyMissions, longtermMissions,
     loading, refreshDailyMissions, refreshWeeklyMissions,
@@ -45,6 +49,10 @@ export default function MissionsScreen({ onClose, initialTab = 'daily' }) {
   const [refreshing, setRefreshing] = useState(false);
 
   const styles = makeStyles(c, t, s, r);
+  // The sheet is a full-screen Modal. A SafeAreaView inside a Modal doesn't
+  // reliably get the status-bar inset, which left the close X up under the
+  // clock; the header takes the real inset itself instead.
+  const insets = useSafeAreaInsets();
 
   const rawMissions = {
     daily: dailyMissions || [],
@@ -52,7 +60,16 @@ export default function MissionsScreen({ onClose, initialTab = 'daily' }) {
     longterm: longtermMissions || [],
   }[activeTab];
 
-  const missions = useMemo(() => sortMissions(rawMissions), [rawMissions]);
+  // Daily drills come as a plan (src/logic/useDrillPlan.js): how to do each,
+  // the game to open, and which one is up next, which goes first.
+  const plan = useDrillPlan();
+  const missions = useMemo(() => {
+    if (activeTab !== 'daily') return sortMissions(rawMissions);
+    const byId = Object.fromEntries(plan.drills.map(d => [d.id, d]));
+    return sortMissions(rawMissions)
+      .map(m => byId[m.id] || m)
+      .sort((a, b) => (b.upNext ? 1 : 0) - (a.upNext ? 1 : 0));
+  }, [rawMissions, activeTab, plan]);
   const completedCount = missions.filter(m => m.status === 'completed' || m.status === 'claimed').length;
 
   const handleRefresh = async () => {
@@ -69,9 +86,9 @@ export default function MissionsScreen({ onClose, initialTab = 'daily' }) {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>🎯 Training Objectives</Text>
-        <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+      <View style={[styles.header, { paddingTop: insets.top + s.md }]}>
+        <Text style={styles.title}>{activeTab === 'daily' ? 'Daily drills' : activeTab === 'weekly' ? 'Weekly challenges' : 'Achievements'}</Text>
+        <TouchableOpacity onPress={onClose} style={styles.closeBtn} accessibilityLabel="Close" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="close" size={22} color={c.text3} />
         </TouchableOpacity>
       </View>
@@ -119,6 +136,18 @@ export default function MissionsScreen({ onClose, initialTab = 'daily' }) {
             </View>
           ) : (
             <>
+              {activeTab === 'weekly' && (
+                <Text style={styles.intro}>
+                  Bigger targets that run all week. Daily drills are today's three small ones; these add up
+                  over several days of playing.
+                </Text>
+              )}
+              {activeTab === 'daily' && (
+                <Text style={styles.intro}>
+                  Three small targets for today. Every game you play counts toward them on its own, no
+                  need to open this first. Finishing one also ticks any goal step that asks for a daily drill.
+                </Text>
+              )}
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryText}>
                   {completedCount} of {missions.length} complete
@@ -130,7 +159,15 @@ export default function MissionsScreen({ onClose, initialTab = 'daily' }) {
                 </View>
               </View>
               {missions.map(m => (
-                <MissionCard key={m.id} mission={m} onPress={() => {}} />
+                <MissionCard
+                  key={m.id}
+                  mission={m}
+                  onPress={() => {}}
+                  how={m.how}
+                  upNext={!!m.upNext}
+                  onPlay={activeTab === 'daily' && onPlay && m.playGameId ? () => onPlay(m.playGameId) : undefined}
+                  playLabel={m.games?.length === 1 ? `Play ${m.games[0].title}` : 'Play'}
+                />
               ))}
             </>
           )}
@@ -141,9 +178,9 @@ export default function MissionsScreen({ onClose, initialTab = 'daily' }) {
       <View style={styles.footer}>
         <Text style={styles.footerText}>
           {activeTab === 'daily'
-            ? '✦ Daily objectives reset at midnight'
+            ? '✦ New drills every day at midnight'
             : activeTab === 'weekly'
-            ? '✦ Weekly objectives reset each Sunday'
+            ? '✦ Weekly challenges reset each Sunday'
             : '✦ Achievements are earned through dedication'}
         </Text>
       </View>
@@ -178,6 +215,7 @@ const makeStyles = (c, t, s, r) => StyleSheet.create({
   },
   content: { padding: s.lg, paddingBottom: s.xxxl },
   summaryRow: { marginBottom: s.lg },
+  intro: { fontSize: t.sm, color: c.text2, lineHeight: 19, marginBottom: s.lg },
   summaryText: { fontSize: t.xs, color: c.text3, fontWeight: t.semibold, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 },
   summaryBarBg: { height: 5, backgroundColor: c.bg2, borderRadius: 3, overflow: 'hidden' },
   summaryBarFill: { height: 5, borderRadius: 3, backgroundColor: c.teal },

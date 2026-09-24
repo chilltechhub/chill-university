@@ -26,7 +26,8 @@ function walk(dir, out = []) {
   return out;
 }
 
-const files = [...walk(SRC), ...walk(CONTEXT)];
+// App.js too: the tab bar's spot (nav-tabbar) is rendered there.
+const files = [...walk(SRC), ...walk(CONTEXT), join(ROOT, 'App.js')];
 
 // ── Ids that TourSpots actually render ──────────────────────────────────────
 const literal = new Set();

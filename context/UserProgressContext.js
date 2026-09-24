@@ -6,6 +6,7 @@ import { getRank, getRankProgress, getRankLabel } from '../src/logic/rankUtils';
 import { getLevelUnlocks, getRankUnlocks, getPointUnlocks } from '../src/logic/unlockUtils';
 import { cacheRead, cacheWrite, isOnline } from '../src/api/offlineCache';
 import { todayStr, daysBetween } from '../src/logic/dateUtils';
+import { drillCriteria, drillCounts } from '../src/logic/drills';
 
 /* ─── Subject config ───────────────────────────────────────────────────────── */
 export const SUBJECT_CONFIG = {
@@ -30,12 +31,19 @@ const normalizeMission = row => ({
   id:           row.id,
   type:         row.type,
   status:       row.status,
-  subject:      row.subject,
+  // The drill's own subject, not the row's: rows used to be stamped with a
+  // random one of the profile's topics when the drill had none, so an
+  // "any game" drill showed up labelled "Language Arts".
+  subject:      row.missions?.criteria?.subject || (row.missions ? 'general' : row.subject),
   title:        row.missions?.title,
   description:  row.missions?.description,
   progress:     row.current_value  || 0,
   target:       row.target_value   || 0,
   criteriaType: row.missions?.criteria?.type,
+  // Kept whole so the drill card can say which games count, and so a
+  // drill can move on screen the moment an answer lands (noteDrillProgress).
+  criteria:     drillCriteria(row),
+  expiresAt:    row.expires_at || null,
   reward: {
     xp:     row.missions?.xp_reward     || 0,
     points: row.missions?.point_reward  || 0,
@@ -59,6 +67,13 @@ export function UserProgressProvider({ children }) {
   const [weeklyMissions,    setWeeklyMissions]    = useState([]);
   const [longtermMissions,  setLongtermMissions]  = useState([]);
   const [gameplayStats,     setGameplayStats]     = useState(null);
+  // "Drill done" notes, shown by DrillToast (src/components/DrillToast.js).
+  const [drillEvents,       setDrillEvents]       = useState([]);
+  // What this account can play right now, handed in by AccessContext, which
+  // sits below this provider and is the one that knows the stage. Used to
+  // set drills that can actually be done (src/logic/drills.js).
+  const playableRef = useRef(null);
+  const tailoredKeyRef = useRef(null);
 
   // ── Level-up / rank-up notification queue ────────────────────────────────
   // A queue (not a single value) since one profile refresh — e.g. right
@@ -142,6 +157,9 @@ export function UserProgressProvider({ children }) {
   }, []);
 
   function resetState() {
+    setDrillEvents([]);
+    tailoredKeyRef.current = null;
+    playableRef.current = null;
     setProfile(null);
     setSubjectProgress({});
     setDailyMissions([]);
@@ -267,18 +285,90 @@ export function UserProgressProvider({ children }) {
     ).map(s => String(s).trim()).filter(Boolean);
     const finalSubjects = subjects.length ? subjects : ['math', 'language_arts', 'science'];
 
-    const { data: existingDaily  } = await gamificationService.getUserMissions(userId, 'daily',  'active');
-    if (!existingDaily?.length)  await gamificationService.generateDailyMissions(userId, finalSubjects);
+    // "Any for today", not "any still active". Checking active only meant
+    // that finishing all three set three more the same day, forever.
+    const today = todayStr();
+    const current = (row) => !row.expires_at || row.expires_at > today;
+    const { data: allDaily } = await gamificationService.getUserMissions(userId, 'daily');
+    if (!(allDaily || []).some(r => r.status !== 'expired' && current(r))) {
+      await gamificationService.generateDailyMissions(userId, finalSubjects, playableRef.current);
+    }
 
     const { data: existingWeekly } = await gamificationService.getUserMissions(userId, 'weekly', 'active');
-    if (!existingWeekly?.length) await gamificationService.generateWeeklyMissions(userId, finalSubjects);
+    if (!existingWeekly?.length) await gamificationService.generateWeeklyMissions(userId, finalSubjects, playableRef.current);
 
-    const { data: fresh } = await gamificationService.getUserMissions(userId, null, 'active');
-    const normalized = (fresh || []).map(normalizeMission);
+    return loadMissionRows(userId);
+  }
 
+  // Active drills AND the ones finished this period. Only active ones used
+  // to load, so a finished drill vanished from the list instead of showing
+  // as done, and the Compass step "Finish a daily drill" (which counts the
+  // finished ones in this list) could never tick.
+  async function loadMissionRows(userId) {
+    const today = todayStr();
+    const { data: fresh } = await gamificationService.getUserMissions(userId);
+    const normalized = (fresh || [])
+      .filter(r => r.status === 'active'
+        || ((r.status === 'completed' || r.status === 'claimed') && (!r.expires_at || r.expires_at > today)))
+      .map(normalizeMission);
     applyMissions(normalized);
     return normalized;
   }
+
+  // Called by AccessContext whenever the playable games change. Swaps any
+  // untouched drill this account can't do for one it can, once per set.
+  const setPlayableGames = useCallback(async (games) => {
+    playableRef.current = games && games.length ? games : null;
+    const uid = user?.id;
+    if (!uid || !games?.length) return;
+    const key = uid + ':' + games.map(g => g.id).sort().join(',');
+    if (tailoredKeyRef.current === key) return;
+    tailoredKeyRef.current = key;
+    try {
+      const changedDaily = await gamificationService.tailorDailyDrills(uid, games, 'daily');
+      const changedWeekly = await gamificationService.tailorDailyDrills(uid, games, 'weekly');
+      const changed = changedDaily || changedWeekly;
+      if (changed) {
+        const missions = await loadMissionRows(uid);
+        if (missions) await cacheWrite(`missions_${uid}`, missions);
+      }
+    } catch (e) { console.warn('[setPlayableGames]', e?.message); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  // An answer just landed (useGame). The server counts it too, in order,
+  // via handleGameEvent; this is the same rule applied to what's on screen,
+  // so a drill ticks and the Compass step can react now, not at the next
+  // profile reload.
+  const dailyRef = useRef([]);
+  dailyRef.current = dailyMissions;
+  const weeklyRef = useRef([]);
+  weeklyRef.current = weeklyMissions;
+  const noteDrillProgress = useCallback((event) => {
+    const finished = [];
+    const bump = (list) => {
+      let changed = false;
+      const next = list.map(m => {
+        if (m.status !== 'active' || !drillCounts(m.criteria, { type: 'QUESTION_ANSWERED', ...event })) return m;
+        changed = true;
+        const progress = Math.min((m.progress || 0) + 1, m.target || 1);
+        const done = progress >= (m.target || 1);
+        if (done) finished.push(m);
+        return { ...m, progress, status: done ? 'completed' : 'active' };
+      });
+      return changed ? next : null;
+    };
+    const nextDaily = bump(dailyRef.current || []);
+    const dailyDone = finished.slice();
+    const nextWeekly = bump(weeklyRef.current || []);
+    if (nextDaily) { dailyRef.current = nextDaily; setDailyMissions(nextDaily); }
+    if (nextWeekly) { weeklyRef.current = nextWeekly; setWeeklyMissions(nextWeekly); }
+    if (dailyDone.length) {
+      setDrillEvents(q => [...q, ...dailyDone.map(m => ({ id: m.id, title: m.title, reward: m.reward }))]);
+    }
+  }, []);
+
+  const dismissDrillEvent = useCallback(() => setDrillEvents(q => q.slice(1)), []);
 
   // ── Guest game event (local only) ────────────────────────────────────────
   function recordGuestEvent({ correct = false, difficulty = 1 } = {}) {
@@ -377,6 +467,11 @@ export function UserProgressProvider({ children }) {
         // gameplay
         gameplayStats,
         noteRoundPlayed,
+        // daily drills
+        noteDrillProgress,
+        setPlayableGames,
+        drillEvents,
+        dismissDrillEvent,
         // level-up / rank-up notification queue
         progressEvents,
         dismissProgressEvent,

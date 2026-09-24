@@ -430,13 +430,16 @@ export default function LifeAreaScreen() {
                 search and from a goal's Open button, which pushes it on top
                 of whatever the Library tab last had open. See
                 src/logic/appRoutes.js. */}
+            <TourSpot id="lifearea-back" radius={20}>
             <TouchableOpacity
               onPress={() => goBackTo(navigation, 'LibraryScreen')}
               accessibilityRole="button"
               accessibilityLabel="Back to the Library"
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Ionicons name="chevron-back" size={22} color={color} />
             </TouchableOpacity>
+            </TourSpot>
             <FillWithAIButton target="life_areas" color={color} />
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: s.lg }}>
@@ -461,6 +464,12 @@ export default function LifeAreaScreen() {
                   <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: rating >= val ? '#fff' : color }}>{val}</Text>
                 </TouchableOpacity>
               ))}
+            </View>
+            {/* Which end is which. Without this, "1" read as either "top
+                priority" or "worst", depending on who was asked. */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+              <Text style={{ fontSize: 10, color: c.text4 }}>1 = struggling</Text>
+              <Text style={{ fontSize: 10, color: c.text4 }}>5 = going great</Text>
             </View>
             {ratingEntry && (ratingNoteSaved ? (
               <Text style={{ fontSize: t.xs, color: c.text3, marginTop: s.sm }}>Note saved with this rating.</Text>

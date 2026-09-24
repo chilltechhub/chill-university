@@ -100,9 +100,28 @@ export default function TourSpot({ id, style, radius, children }) {
   // list settling, an image or font landing, the keyboard opening — left
   // the spotlight drawn around wherever the element used to be. Cheap: a
   // measure every 400ms that only re-registers when the rect really moved.
+  //
+  // On web it also re-centres the spot if it has drifted out of view. The
+  // one scrollIntoView at step start can run before the cards above it have
+  // loaded; they then push it down, and the first goal's Finish button ended
+  // up under the tab bar with the dim blocking the scroll that would reveal
+  // it. Native has no scrollIntoView, same as above.
   useEffect(() => {
     if (!active || currentStep?.id !== id) return undefined;
-    const t = setInterval(measure, 400);
+    const t = setInterval(() => {
+      const node = ref.current;
+      if (typeof node?.scrollIntoView === 'function' && typeof node.getBoundingClientRect === 'function'
+          && typeof window !== 'undefined') {
+        const r = node.getBoundingClientRect();
+        const clearTop = 56;                      // top bar
+        const clearBottom = window.innerHeight - 64; // tab bar
+        const fits = r.height <= clearBottom - clearTop;
+        if (r.height > 0 && fits && (r.top < clearTop || r.bottom > clearBottom)) {
+          node.scrollIntoView({ block: 'center', behavior: 'auto' });
+        }
+      }
+      measure();
+    }, 400);
     return () => clearInterval(t);
   }, [active, currentStep?.id, id, measure]);
 

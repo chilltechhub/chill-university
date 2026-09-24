@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 // Aliased: this file already has its own `dateStr` (the long, human-readable
 // header date) and its own `todayStr` const further down.
-import { dateStr as toLocalDateStr } from '../logic/dateUtils';
+import { dateStr as toLocalDateStr, daysBetween, todayStr as localTodayStr } from '../logic/dateUtils';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, RefreshControl, Modal, KeyboardAvoidingView,
@@ -53,6 +53,11 @@ import { LIFE_AREAS } from './library/LifeAreaScreen';
 
 function daysSince(iso) {
   if (!iso) return null;
+  // A bare 'YYYY-MM-DD' (life_areas.last_check_date) is a local calendar
+  // date. new Date() reads it as UTC midnight, so a rating saved this
+  // evening in the US showed as "1d ago" within minutes. Count dates for
+  // those; elapsed time only for real timestamps.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(iso))) return Math.max(0, daysBetween(iso, localTodayStr()) ?? 0);
   return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000));
 }
 // A domain counts as "due" once it's been this long since its last rating —
@@ -168,6 +173,36 @@ const WIDGET_DEFS = [
   { key: 'quests',           title: 'Quests' },
 ];
 const WIDGET_KEYS = WIDGET_DEFS.map(w => w.key);
+
+// One line on what each widget shows, for the "new widget" offer. A title on
+// its own ("Systems Check") doesn't tell anyone whether they'd want it.
+const WIDGET_BLURBS = {
+  hq:               'Your name, level and the Play button.',
+  wisdom:           'A daily quote, plus your own affirmation if you set one.',
+  focus:            "Today's one focus and a jump into your calendar.",
+  activities:       'Everything scheduled for today, in time order.',
+  desk:             'The next thing to pick up from your projects, notes and ideas.',
+  ideas:            'The newest ideas in your Idea Garden.',
+  streak:           'Your streak and level at a glance.',
+  builds:           'Projects in progress and how far along each is.',
+  checkins:         'Life areas you have not rated in a while.',
+  wayfinder:        'Work out what you want, one small experiment at a time.',
+  compass:          'Your goal in flight and its next step.',
+  goalSteps:        'Every step of your current goal, ticked or not.',
+  stageSteps:       'What opens next in the app, and how to get there.',
+  habitRings:       'How often you kept each habit over the last week.',
+  lifeAreas:        'Your rating for each life area, most out of date first.',
+  dailyDrills:      "Today's three drills and the game for the next one.",
+  studyBlocks:      "Today's study blocks, done or not.",
+  classProgress:    'How far along you are in each class subject.',
+  orgSnapshot:      "Your school or team's latest, if you're in one.",
+  systemsCheck:     'Your ratings for the work and digital sides of life.',
+  recurringOps:     'Routines that repeat weekly or monthly, and what is due.',
+  vaultStatus:      'What is in your Vault and what needs filing.',
+  founderQuest:     'The next step on the founder track.',
+  targetsReadiness: 'Your targets and how ready the paperwork is.',
+  quests:           'The next ten-minute quest to try.',
+};
 
 // The layout a profile of this type starts with: its persona's ordered
 // widgets visible, everything else present but hidden (one tap away in the
@@ -745,7 +780,7 @@ function DeskTicker({ items, onItemPress, onAdd, c, t, s, r }) {
   }, []);
 
   useEffect(() => {
-    if (!setWidth || reduceMotion) return;
+    if (!setWidth || reduceMotion || items.length < 3) return;
     translateX.setValue(0);
     const loop = Animated.loop(
       Animated.timing(translateX, {
@@ -790,7 +825,10 @@ function DeskTicker({ items, onItemPress, onAdd, c, t, s, r }) {
     );
   };
 
-  if (reduceMotion) {
+  // One or two chips don't need to drift, and the loop draws every chip
+  // twice to wrap seamlessly, so a single item read as a duplicate: "note:
+  // Claim, evidence…" shown twice side by side. Those get the plain row.
+  if (reduceMotion || items.length < 3) {
     return (
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -s.lg }} contentContainerStyle={{ paddingHorizontal: s.lg }}>
         {items.map(item => chip(item, 'a'))}
@@ -906,6 +944,10 @@ export default function HomeScreen() {
   // the whole layout is written to Supabase once, on "Done" (exitWidgetEdit).
   const [widgetLayout,   setWidgetLayout]   = useState(() => layoutForPersona(activeType));
   const [editingWidgets, setEditingWidgets] = useState(false);
+  // True once this profile has a saved arrangement (loaded, or saved from
+  // Edit). Before the 'dashboard' stage it decides whether the board follows
+  // the stage's starter order or the person's own.
+  const [savedLayout,    setSavedLayout]    = useState(false);
 
   // STUDY / PLAY shortcuts — tap goes somewhere random, hold picks explicitly
   const [showStudyMenu, setShowStudyMenu] = useState(false);
@@ -1023,7 +1065,10 @@ export default function HomeScreen() {
       // Only consulted when there's no saved layout — an arranged dashboard
       // always wins.
       const exploring = stored ? false : await getWayfinderIntent();
-      if (alive) setWidgetLayout(reconcileWidgetLayout(stored, personaType, { exploring }));
+      if (alive) {
+        setWidgetLayout(reconcileWidgetLayout(stored, personaType, { exploring }));
+        setSavedLayout(!!stored);
+      }
     })();
     return () => { alive = false; };
   }, [activeProfile?.id, activeProfile?.type, activeProfile?.user_id]);
@@ -1033,14 +1078,34 @@ export default function HomeScreen() {
   // before 'dashboard' is no more a saved layout than the persona default
   // is. So an arranged dashboard is exactly as it was the day it reopens.
   const boardLayout = useMemo(() => {
-    if (!can('dashboard')) return starterWidgetLayout(opened, WIDGET_KEYS);
+    // Before the 'dashboard' stage the board is the widgets this stage has
+    // opened, and only those: that's the "limited choices" version of the
+    // editor (the Hidden tray lists only what's open). Once someone has
+    // arranged it, their own order and hides win for those widgets.
+    if (!can('dashboard')) {
+      const allowed = new Set(opened?.widgets || []);
+      const starter = starterWidgetLayout(opened, WIDGET_KEYS).filter(l => allowed.has(l.key));
+      if (!savedLayout) return starter;
+      const kept = widgetLayout.filter(l => allowed.has(l.key));
+      const have = new Set(kept.map(l => l.key));
+      return [...kept, ...starter.filter(l => !have.has(l.key))];
+    }
     if (!can('doors')) {
       // The editor's tray offers this type's own widgets, not all twenty.
       const offer = new Set(getPersona(activeType)?.defaultWidgets || []);
       return widgetLayout.filter(l => !l.hidden || offer.has(l.key));
     }
     return widgetLayout;
-  }, [can, opened, activeType, widgetLayout]);
+  }, [can, opened, activeType, widgetLayout, savedLayout]);
+  // "Your steps" repeats the list the Compass card now carries itself, so
+  // while the Compass is on the board it steps aside. Only outside editing:
+  // the editor still shows it, so it can be moved or hidden like any other,
+  // and nothing here is ever written back.
+  const shownBoardLayout = useMemo(() => {
+    if (editingWidgets) return boardLayout;
+    const compassShown = boardLayout.some(l => l.key === 'compass' && !l.hidden);
+    return compassShown ? boardLayout.filter(l => l.key !== 'goalSteps') : boardLayout;
+  }, [boardLayout, editingWidgets]);
   // The board only ever sees boardLayout, so what it hands back is missing
   // whatever the tray left out. Put those back, as they were.
   const changeBoardLayout = useCallback((next) => {
@@ -1049,7 +1114,9 @@ export default function HomeScreen() {
       return [...next, ...prev.filter(l => !inNext.has(l.key))];
     });
   }, []);
-  const canEditWidgets = can('dashboard');
+  // Always editable. Early on the choices are just the widgets that are
+  // open (see boardLayout); the 'dashboard' stage adds the rest.
+  const canEditWidgets = true;
 
   /* ── "A new widget is available" ──────────────────────────────────────────
      Finishing the steps of a goal opens a stage, and a stage usually brings
@@ -1062,7 +1129,11 @@ export default function HomeScreen() {
      So: offer them, once each, and take no for an answer. Adding is the
      user's call, not the app's. The "already offered" set is per profile and
      local — this is a nudge, not a record worth a column. */
-  const offeredKey = activeProfile?.id ? `@cth_widget_offered_${activeProfile.id}` : null;
+  // Keyed on widgets the stage has OPENED before, not on ones offered. It
+  // used to offer any open widget that was hidden and never offered, so
+  // removing a widget that had been on Home from the start made it look
+  // new, and the "new widget" popup appeared right after removing it.
+  const offeredKey = activeProfile?.id ? `@cth_widget_known_${activeProfile.id}` : null;
   const [widgetOffer, setWidgetOffer] = useState([]);   // WIDGET_DEFS entries
   const offeredRef = useRef(null);                      // Set, once loaded
 
@@ -1072,36 +1143,46 @@ export default function HomeScreen() {
     if (!offeredKey) return;
     let alive = true;
     AsyncStorage.getItem(offeredKey)
-      .then(raw => { if (alive) offeredRef.current = new Set(raw ? JSON.parse(raw) : []); })
-      .catch(() => { if (alive) offeredRef.current = new Set(); });
+      .then(raw => { if (alive) offeredRef.current = raw ? new Set(JSON.parse(raw)) : 'baseline'; })
+      .catch(() => { if (alive) offeredRef.current = 'baseline'; });
     return () => { alive = false; };
   }, [offeredKey]);
 
   useEffect(() => {
-    // Only once the board is the user's to arrange. Before that the stage
-    // decides the layout outright, so there is nothing to opt into.
-    if (!canEditWidgets || !offeredRef.current || widgetOffer.length) return;
-    const hidden = new Set(widgetLayout.filter(l => l.hidden).map(l => l.key));
-    const fresh = (opened?.widgets || [])
-      .filter(key => hidden.has(key) && !offeredRef.current.has(key))
+    if (!offeredRef.current || widgetOffer.length || editingWidgets) return;
+    const openNow = opened?.widgets || [];
+    const persist = (set) => {
+      offeredRef.current = set;
+      if (offeredKey) AsyncStorage.setItem(offeredKey, JSON.stringify([...set])).catch(() => {});
+    };
+    // First look at this profile: whatever is open already isn't news.
+    if (offeredRef.current === 'baseline') { persist(new Set(openNow)); return; }
+    const known = offeredRef.current;
+    const newlyOpen = openNow.filter(key => !known.has(key));
+    if (!newlyOpen.length) return;
+    persist(new Set([...known, ...newlyOpen]));
+    // Offered only if it didn't simply appear on the board by itself.
+    const shown = new Set(boardLayout.filter(l => !l.hidden).map(l => l.key));
+    const fresh = newlyOpen
+      .filter(key => !shown.has(key))
       .map(key => WIDGET_DEFS.find(w => w.key === key))
       .filter(Boolean);
     if (fresh.length) setWidgetOffer(fresh);
-  }, [canEditWidgets, opened, widgetLayout, widgetOffer.length]);
+  }, [opened, boardLayout, widgetOffer.length, editingWidgets, offeredKey]);
 
   const closeWidgetOffer = (add) => {
     const keys = widgetOffer.map(w => w.key);
     setWidgetOffer([]);
-    const seen = offeredRef.current || new Set();
-    keys.forEach(k => seen.add(k));
-    offeredRef.current = seen;
-    if (offeredKey) AsyncStorage.setItem(offeredKey, JSON.stringify([...seen])).catch(() => {});
     if (!add) return;
     // Un-hide in place, so they land where the layout already expects them
-    // rather than all at the bottom.
+    // rather than all at the bottom. Built from the board as it's shown, so
+    // this also works before the 'dashboard' stage.
     const wanted = new Set(keys);
-    const next = widgetLayout.map(l => (wanted.has(l.key) ? { ...l, hidden: false } : l));
+    const base = boardLayout.map(l => (wanted.has(l.key) ? { ...l, hidden: false } : l));
+    const inBase = new Set(base.map(l => l.key));
+    const next = [...base, ...widgetLayout.filter(l => !inBase.has(l.key))];
     setWidgetLayout(next);
+    setSavedLayout(true);
     persistWidgetLayout(next);
   };
 
@@ -1356,6 +1437,7 @@ export default function HomeScreen() {
   // Supabase once, when edit mode closes, via exitWidgetEdit below.
   const exitWidgetEdit = async () => {
     setEditingWidgets(false);
+    setSavedLayout(true);
     await persistWidgetLayout(widgetLayout);
   };
 
@@ -1705,7 +1787,7 @@ export default function HomeScreen() {
              handles + jiggle only live while editingWidgets. See
              WIDGET_DEFS above for what each key renders. ── */}
         <WidgetBoard
-          layout={boardLayout}
+          layout={shownBoardLayout}
           editing={editingWidgets && canEditWidgets}
           onChangeLayout={changeBoardLayout}
           c={c} t={t} s={s} r={r}
@@ -2020,7 +2102,13 @@ export default function HomeScreen() {
             },
             {
               key: 'dailyDrills', title: "Today's Drills",
-              render: () => <DailyDrillsWidget missions={dailyMissions} onOpenTraining={() => navigation.navigate('Training')} />,
+              render: () => (
+                <DailyDrillsWidget
+                  onOpenTraining={() => navigation.navigate('Training')}
+                  onOpenDrills={() => navigation.navigate('Training', { openDrills: true })}
+                  onPlay={(gameId) => navigation.navigate('Play', { gameId })}
+                />
+              ),
             },
             {
               key: 'studyBlocks', title: 'Study Blocks',
@@ -2103,7 +2191,11 @@ export default function HomeScreen() {
             },
             {
               key: 'stageSteps', title: 'Your stage',
-              render: () => <StageStepsWidget />,
+              render: () => (
+                <TourSpot id="home-stage">
+                  <StageStepsWidget />
+                </TourSpot>
+              ),
             },
           ]}
         />
@@ -2126,16 +2218,21 @@ export default function HomeScreen() {
               Want {widgetOffer.length === 1 ? 'it' : 'them'} on your dashboard?
             </Text>
             <Text style={{ fontSize: t.sm, color: c.text3, textAlign: 'center', marginTop: 6, lineHeight: 19 }}>
-              Finishing your steps opened {widgetOffer.length === 1 ? 'this' : 'these'}. Your dashboard stays
-              exactly as it is unless you say yes — and either way {widgetOffer.length === 1 ? "it's" : "they're"}{' '}
-              in Edit whenever you want {widgetOffer.length === 1 ? 'it' : 'them'}.
+              You just unlocked {widgetOffer.length === 1 ? 'this' : 'these'}. Nothing changes on Home unless you
+              say yes, and you can add or remove {widgetOffer.length === 1 ? 'it' : 'them'} any time with Edit at
+              the top of Home.
             </Text>
 
             <View style={{ marginTop: s.lg, gap: s.sm }}>
               {widgetOffer.map(w => (
-                <View key={w.key} style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border }}>
-                  <Ionicons name="add-circle-outline" size={16} color={c.teal} />
-                  <Text style={{ flex: 1, fontSize: t.sm, color: c.text1, fontWeight: t.semibold }}>{w.title}</Text>
+                <View key={w.key} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: s.sm, backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border }}>
+                  <Ionicons name="add-circle-outline" size={16} color={c.teal} style={{ marginTop: 1 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: t.sm, color: c.text1, fontWeight: t.semibold }}>{w.title}</Text>
+                    {!!WIDGET_BLURBS[w.key] && (
+                      <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2, lineHeight: 16 }}>{WIDGET_BLURBS[w.key]}</Text>
+                    )}
+                  </View>
                 </View>
               ))}
             </View>

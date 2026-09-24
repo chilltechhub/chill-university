@@ -44,6 +44,11 @@ export function ProfileAccountsProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const loadedForUser = useRef(null);
   const backfilledFor = useRef(null);
+  // Set only once listProfiles has actually come back for this user. The
+  // backfill below needs "there are no profiles", not "the list is empty
+  // because it hasn't loaded yet": the load effect's setLoading(true) and the
+  // backfill run in the same pass, so `loading` alone read false there.
+  const fetchedFor = useRef(null);
 
   // A guest never passed the age gate — LoginScreen's "Continue as guest"
   // resets straight into MainTabs, skipping onboarding and its birth-date
@@ -65,6 +70,7 @@ export function ProfileAccountsProvider({ children }) {
   const refresh = useCallback(async () => {
     if (!user) { setProfiles([]); setLoading(false); return []; }
     const rows = await listProfiles(user.id);
+    fetchedFor.current = user.id;
     setProfiles(rows);
     setLoading(false);
     return rows;
@@ -78,7 +84,7 @@ export function ProfileAccountsProvider({ children }) {
   useEffect(() => {
     if (!user) {
       setProfiles([]); setActiveId(null); setLoading(false);
-      loadedForUser.current = null; backfilledFor.current = null;
+      loadedForUser.current = null; backfilledFor.current = null; fetchedFor.current = null;
       return;
     }
     if (loadedForUser.current === user.id) return;
@@ -117,7 +123,7 @@ export function ProfileAccountsProvider({ children }) {
   // Guarded by a ref (once per user per session) and by the partial unique
   // index — if two devices race, one insert simply loses and re-reads.
   useEffect(() => {
-    if (!user || loading) return;
+    if (!user || loading || fetchedFor.current !== user.id) return;
     if (profiles.length > 0) { backfilledFor.current = user.id; return; }
     // Onboarding is in flight (or the profile row hasn't loaded yet). Its
     // finish() creates the master with the type the user actually picked.
@@ -133,6 +139,7 @@ export function ProfileAccountsProvider({ children }) {
           type,
           name: getPersona(type).short,
           isMaster: true,
+          onlyIfNone: true,
         });
       } catch (e) {
         // A duplicate-master race is expected and harmless; anything else is

@@ -12,6 +12,7 @@ import { useUIPrefs } from '../../context/UIPrefsContext';
 import { useTour } from '../../context/TourContext';
 import { useCommandPalette } from '../../context/CommandPaletteContext';
 import ProfileSwitcher from './ProfileSwitcher';
+import TourSpot from './TourSpot';
 import NotificationBell from './NotificationBell';
 import { RANK_LABELS } from '../theme';
 import LoginScreen from '../screens/LoginScreen';
@@ -98,19 +99,24 @@ export default function TopBar({ currentScreen }) {
         <View style={s.topRow}>
           {/* Crest — opens the Profile/Help/Tutorial/Settings/Search menu
               (Sign in instead of Profile for a guest). */}
+          <TourSpot id="topbar-menu">
           <TouchableOpacity
             style={s.crest}
             onPress={() => setShowCrestMenu(true)}
             activeOpacity={0.75}
+            accessibilityLabel="Menu: profile, help, settings, search"
           >
             <Text style={s.crestEmoji}>{rankInfo.emoji}</Text>
           </TouchableOpacity>
+          </TourSpot>
 
           {/* Which profile the app is currently rendering — "Day Job",
               "Halcyon", "Home". Here rather than on Home because switching
               has to be reachable from every screen, same reasoning as the
               FAB/command palette. */}
-          <ProfileSwitcher />
+          <TourSpot id="topbar-profile" radius={999}>
+            <ProfileSwitcher />
+          </TourSpot>
 
           <View style={{ flex: 1 }} />
 
@@ -121,9 +127,12 @@ export default function TopBar({ currentScreen }) {
               lived here too until it was pulled to cut down on header
               noise — still visible on Home and Profile. */}
           {user ? (
+            <TourSpot id="topbar-stats" radius={999} style={{ flexDirection: 'row', alignItems: 'center' }}>
             <TouchableOpacity style={s.statPill} onPress={() => navigation.navigate('Profile')} activeOpacity={0.7}>
               <Text style={s.statPillText} numberOfLines={1}>LV {level} · {points.toLocaleString()} PTS</Text>
             </TouchableOpacity>
+            <NotificationBell userId={user.id} />
+            </TourSpot>
           ) : (
             <TouchableOpacity style={s.signInBtn} onPress={() => setShowLogin(true)}>
               <Ionicons name="person-circle-outline" size={14} color={accent.onPrimary} />
@@ -134,7 +143,6 @@ export default function TopBar({ currentScreen }) {
           {/* Notification Center — reminders, what needs doing, app news.
               Signed-out people get app news there too, but the bell is for
               an account's own stuff, so it waits for sign-in. */}
-          {user && <NotificationBell userId={user.id} />}
 
           {/* Pending rewards */}
           {user && pendingRewards?.length > 0 && (

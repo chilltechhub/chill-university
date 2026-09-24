@@ -173,7 +173,7 @@ export const OBJECTIVES = [
     estimate: '3 days',
     steps: [
       { id: 'focus',   label: 'Set a focus for today',        hint: 'One line on Home. What today is actually for.', screen: 'Home', signal: 'focus-set' },
-      { id: 'mission', label: 'Finish a daily drill',          hint: 'Any game on the Training tab counts.', screen: 'Training', auto: { stat: 'missions', value: 1 } },
+      { id: 'mission', label: 'Finish a daily drill',          hint: "Open shows today's three and a game for each. Ticks itself when one is done.", screen: 'Training', params: { openDrills: true }, auto: { stat: 'missions', value: 1 } },
       { id: 'plan',    label: 'Put one thing in the Planner',  hint: 'Something real and dated, not a wish.', screen: 'PlannerScreen', signal: 'planner-item-added' },
       { id: 'streak',  label: 'Reach a 3-day streak',          hint: 'Ticks itself the day your streak hits three.', auto: { stat: 'streak', value: 3 } },
     ],
@@ -208,7 +208,7 @@ export const OBJECTIVES = [
     steps: [
       { id: 'pick',   label: 'Open a class and pick one topic',  hint: 'One. The other twenty will keep.', screen: 'ClassesStack', signal: 'class-opened' },
       { id: 'note',   label: 'Save a note or source to the Vault', hint: 'Something you would want again in a month.', screen: 'KnowledgeScreen', signal: 'vault-saved' },
-      { id: 'drill',  label: 'Play its training game three times', hint: 'Reps, not reading about reps.', screen: 'Training' },
+      { id: 'drill',  label: 'Finish three game rounds',          hint: 'Any game counts; a class topic often links its own. Ticks itself.', screen: 'Training', signal: 'round-played', signalCount: 3 },
       { id: 'level',  label: 'Reach level 3',                     hint: 'Ticks itself as your level comes up.', auto: { stat: 'level', value: 3 } },
     ],
     unlocks: ['import-hub', 'work-mode'],
@@ -307,7 +307,8 @@ export const OBJECTIVES = [
     steps: [
       { id: 'class', label: 'Open a class and pick a topic',     hint: 'Any subject. You can switch any time.', screen: 'ClassesStack', signal: 'class-opened' },
       { id: 'drill', label: 'Play one training game',            hint: 'Ticks itself when you finish a round.', screen: 'Training', auto: { stat: 'played', value: 1 } },
-      { id: 'block', label: 'Put one study block in the Planner', hint: 'Twenty minutes on a real day counts.', screen: 'PlannerScreen', signal: 'planner-item-added' },
+      { id: 'block', label: 'Put one study block in the Planner', hint: 'Twenty minutes on a real day counts.', screen: 'PlannerScreen', signal: 'planner-item-added',
+        idea: { title: 'Study block: 20 minutes', cadence: 'weekly', area: 'professional' } },
     ],
     unlocks: [],
     next: 'learn-one-skill',
@@ -323,7 +324,8 @@ export const OBJECTIVES = [
     estimate: 'About 15 minutes',
     steps: [
       { id: 'capture', label: 'Capture what is on your plate',     hint: 'The biggest thing this week. Speed over tidiness.', screen: 'CaptureInbox', signal: 'inbox-captured' },
-      { id: 'routine', label: 'Put one weekly routine in the Planner', hint: 'Payroll, a restock, a report: something that repeats.', screen: 'PlannerScreen', signal: 'planner-item-added' },
+      { id: 'routine', label: 'Put one weekly routine in the Planner', hint: 'Payroll, a restock, a report: something that repeats.', screen: 'PlannerScreen', signal: 'planner-item-added',
+        idea: { title: 'Weekly numbers check', cadence: 'weekly', area: 'professional' } },
       { id: 'drill',   label: 'Play one training game',            hint: 'Register Ready or Shift Manager is a good start. Ticks itself.', screen: 'Training', auto: { stat: 'played', value: 1 } },
     ],
     unlocks: [],

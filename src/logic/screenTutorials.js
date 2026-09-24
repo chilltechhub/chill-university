@@ -18,7 +18,18 @@ import { EXAMPLES } from '../config/chilltech';
 // Hand-authored, multi-feature walkthroughs for the screens people spend
 // the most time in. `id` matches a real <TourSpot id="..."> when one
 // already exists on that screen — omit it for a plain card.
+// Every way into a game lands on the same swipe feed (GameFeed.js), so
+// Play and PlayGame share one walkthrough. It replaced the SCREEN_HELP line
+// "A single training game in progress", which told nobody anything.
+const PLAY_STEPS = [
+  { title: 'Switch games', body: "Swipe up or down to move to the next game. Some games use swipes themselves, so these arrows always work too. The number shows which game you're on.", id: 'play-switch' },
+  { title: 'Your level', body: 'Each game asks your level first, then keeps adjusting as you play: a hot streak moves you up, a couple of misses ease you back down.' },
+  { title: 'Leaving', body: 'Tap X at the top left to go back. Every right answer is saved as you go, so leaving early loses nothing.' },
+];
+
 const SCREEN_FEATURES = {
+  Play: PLAY_STEPS,
+  PlayGame: PLAY_STEPS,
   Home: [
     { title: "Today's Wisdom", body: "A quote plus your own affirmation, if you've set one — tap + to write one that rotates in daily.", id: 'home-focus' },
     { title: "Today's Focus", body: "Pin the one thing that matters most today — it's the first thing you see when you open the app. Tap the date box next to it to jump into the calendar.", id: 'home-focus-input' },
@@ -28,7 +39,7 @@ const SCREEN_FEATURES = {
   ],
   Training: [
     { title: 'Where the points come from', body: "Rank, points and streak, all fed by what you finish here. The streak is the one that matters — it's the difference between using this app and having installed it.", id: 'training-stats' },
-    { title: 'Objectives & Daily Drills', body: "Objectives are longer missions; Daily Drills reset every day and are sized to be finishable. Clearing drills is the cheapest way to keep a streak alive on a busy day.", id: 'training-games' },
+    { title: 'Daily Drills & Challenges', body: "Daily Drills are three small targets that reset every day; any game you play counts toward them. Challenges are the bigger weekly ones and your achievements.", id: 'training-games' },
     { title: 'Pick a subject', body: "ENTER TRAINING opens the game picker — Math, Science, Language Arts and the rest. Every round feeds that subject's own progress as well as your overall rank.", id: 'training-enter' },
     { title: 'Try one now', body: "Genuinely — one round takes a couple of minutes, and the app can't recommend anything sensible until it has seen you play once.", id: 'training-enter' },
   ],
@@ -291,6 +302,9 @@ function personalize(routeName, steps, personalization) {
 const NAV_STEP_TAB = {
   title: 'Getting around',
   body: "Three tabs, bottom of the screen. Library is everything you're building and learning, Home is today, Training is games and drills. They're always there.",
+  // The real bar now (App.js wraps it in a TourSpot); navHint stays as the
+  // fallback rectangle if it hasn't measured yet.
+  id: 'nav-tabbar',
   navHint: 'tabbar',
 };
 
@@ -319,16 +333,18 @@ export function hasScreenTutorial(routeName) {
 const STARTER_FEATURES = {
   Home: [
     { title: 'Your first goal', body: "This card is the one thing to do right now. Each step has an Open button that takes you straight to it, and the whole goal takes a few minutes. Every goal you finish opens a little more of the app.", id: 'home-compass' },
-    { title: 'Play', body: "PLAY drops you straight into one of the games picked for you. Every round counts toward your streak and your points.", id: 'home-study-play' },
+    { title: 'What opens next', body: "The app opens up in stages. This card says what the next stage brings and the two ways to get there: finish your goal, or gain a level by playing.", id: 'home-stage' },
+    { title: 'Play', body: "PLAY drops you straight into one of the games picked for you. Press and hold it to choose the game yourself. Every round counts toward your streak and your points.", id: 'home-study-play' },
   ],
   LibraryScreen: [
     {
       title: 'Life Areas',
-      body: "Eight sides of a life, each with a ring showing how it's tracking. Tap one to check in and get a small thing to do about it.",
+      body: "Sides of your life, each with a ring showing how it's tracking. Tap one to filter the list below; double-tap or press and hold to open it, rate it and get a small thing to do about it.",
       id: 'library-life-areas',
       librarySubTab: 'domains',
     },
     { title: 'Capture', body: "Capture, top-right. Get a thought out of your head now and decide where it belongs later.", id: 'library-capture', librarySubTab: 'domains' },
+    { title: 'Three pages', body: "Life, Build and Knowledge. Swipe left or right anywhere on the page to switch, or tap the title at the top.", id: 'library-views' },
     { title: 'More on the way', body: "The Library starts with the tools that fit your profile. Each goal you finish and each level you gain opens a little more, here and across the app." },
   ],
 };

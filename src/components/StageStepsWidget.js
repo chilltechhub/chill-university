@@ -16,9 +16,8 @@
 //      quoted here rather than described
 //   2. gain a level — which is training, and nothing else
 //
-// Deliberately NOT a second copy of the goal checklist: that is GoalStepsWidget,
-// which usually sits right above this. This one quotes the next step and the
-// tally, and sends you to the real list for the rest.
+// Deliberately NOT a second copy of the goal: the Compass card has its steps
+// and the button for the next one. This one gives the tally and points there.
 
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
@@ -80,15 +79,13 @@ export default function StageStepsWidget() {
           key: 'goal',
           icon: 'flag-outline',
           label: activeObjective.objective.label,
+          // Just the tally. The goal card below has the steps and the
+          // button for the next one; quoting the next step here too made a
+          // new account's Home say the same thing three times.
           detail: activeObjective.complete
-            ? `All ${activeObjective.total} steps done — claim it on the Compass.`
-            : `${activeObjective.done} of ${activeObjective.total} steps. Next: ${activeObjective.nextStep?.label || 'keep going'}.`,
-          cta: activeObjective.complete ? 'Claim' : 'Open',
-          onPress: () => {
-            const screen = !activeObjective.complete && activeObjective.nextStep?.screen;
-            if (screen) goToScreen(navigation, screen);
-            else navigation.navigate('Compass');
-          },
+            ? `All ${activeObjective.total} steps done. Claim it on your goal card below.`
+            : `${activeObjective.done} of ${activeObjective.total} steps done. The steps are on your goal card below.`,
+          cta: null,
         }
       : {
           key: 'goal',
@@ -146,6 +143,7 @@ export default function StageStepsWidget() {
             <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1 }} numberOfLines={1}>{route.label}</Text>
             <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 1, lineHeight: 16 }}>{route.detail}</Text>
           </View>
+          {!!route.cta && (
           <TouchableOpacity
             onPress={route.onPress}
             accessibilityRole="button"
@@ -154,6 +152,7 @@ export default function StageStepsWidget() {
           >
             <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: accent.primary }}>{route.cta}</Text>
           </TouchableOpacity>
+          )}
         </View>
       ))}
     </WidgetCard>

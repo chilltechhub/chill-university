@@ -4,7 +4,8 @@ import { createStackNavigator, TransitionPresets } from '@react-navigation/stack
 import { useTheme } from '../../../context/ThemeContext';
 
 // Main screens
-import LibraryScreen   from './LibraryScreen';
+import LibraryScreen, { LIBRARY_HUBS } from './LibraryScreen';
+import { libraryStackRouter } from '../../logic/navRules';
 import LifeAreaScreen  from './LifeAreaScreen';
 import CaptureInbox    from '../CaptureInbox';
 import ImportScreen    from '../ImportScreen';
@@ -77,6 +78,19 @@ const GatedDebt          = gatedScreen('debt-credit',       AreaSectionScreen);
 
 const Stack = createStackNavigator();
 
+// The Library's top-level tools: everything on its hub cards, plus the ones
+// it links to directly. Each opens straight on top of the Library, so back
+// and swipe-back always return there (src/logic/navRules.js). Anything not
+// listed (a project, a life-area section, Work Mode) stacks on whatever
+// opened it, and back returns to that.
+const TOOL_SCREENS = new Set([
+  ...LIBRARY_HUBS.flatMap(hub => hub.items.map(item => item.screen)),
+  'LifeAreaScreen', 'PlannerScreen', 'CaptureInbox', 'KnowledgeScreen',
+  'NotesScreen', 'ResearchScreen', 'ResourcesToolsScreen', 'IdeaGardenScreen',
+  'ClassesStack', 'WeeklyReviewScreen', 'ImportScreen', 'AIBridgeScreen', 'LabsScreen',
+]);
+const libraryRouter = libraryStackRouter(TOOL_SCREENS);
+
 export default function LibraryNavigator() {
   const { colors: c } = useTheme();
 
@@ -90,6 +104,7 @@ export default function LibraryNavigator() {
 
   return (
     <Stack.Navigator
+      UNSTABLE_router={libraryRouter}
       screenOptions={{
         // Each Library screen owns its content header. This avoids a second,
         // oversized navigation bar above screens such as Projects, Notes, and Research.

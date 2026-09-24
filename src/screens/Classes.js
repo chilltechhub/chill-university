@@ -20,14 +20,18 @@ import { getGame } from '../services/gameRegistry';
 import { questsInOrder } from '../data/quests';
 import { catalogCounts } from '../data/topicCatalog';
 import { useQuestProgress } from '../logic/questProgress';
+import { useBandFraming, bandLabel } from '../logic/useGradeLevel';
 
 const GRADE_BAND_KEY = '@cth_academy_grade_band';
 const BANDS = ['All', 'K-2', '3-5', '6-8', '9-12'];
-const BAND_LABEL = { 'K-2': 'Grades K–2', '3-5': 'Grades 3–5', '6-8': 'Grades 6–8', '9-12': 'Grades 9–12' };
 
 export default function Classes() {
   const [open, setOpen] = useState({});
   const [band, setBand] = useState('All');
+  // Adults get the same four bands named Starter … Advanced, not school
+  // grades: an adult Student was browsing "Physics · K-2".
+  const { adult } = useBandFraming();
+  const bandName = (b) => (b && b !== 'All' ? bandLabel(b, adult) : null);
   // title -> { icon, color, description, comingSoon } from Supabase
   // (type='class_subject'). Only the subject CARD metadata is remote —
   // each subject's topic sublist (labels + grades) still comes from the
@@ -264,7 +268,7 @@ export default function Classes() {
             style={[styles.bandChip, band === b && { backgroundColor: c.teal, borderColor: c.teal }]}
           >
             <Text style={[styles.bandChipText, band === b && { color: '#fff', fontWeight: '800' }]}>
-              {b === 'All' ? 'All grades' : b}
+              {b === 'All' ? (adult ? 'All levels' : 'All grades') : bandLabel(b, adult, { short: true })}
             </Text>
           </TouchableOpacity>
         ))}
@@ -307,7 +311,7 @@ export default function Classes() {
       {/* Recommended for you */}
       {(recTopics.length > 0 || recGames.length > 0) && (
         <View style={styles.recSection}>
-          <Text style={styles.recTitle}>Recommended for {BAND_LABEL[band] || 'you'}</Text>
+          <Text style={styles.recTitle}>Recommended for {bandName(band) || 'you'}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recRow}>
             {recTopics.map((rec, i) => (
               <TouchableOpacity
@@ -390,7 +394,7 @@ export default function Classes() {
               <View style={styles.sublist}>
                 {showAuthoring && (
                   band === 'All' ? (
-                    <Text style={styles.noneForBand}>Pick a grade above, then tap "Build a Classroom Lesson" to put together a {item.title} lesson plan.</Text>
+                    <Text style={styles.noneForBand}>Pick a {adult ? 'level' : 'grade'} above, then tap "Build a Classroom Lesson" to put together a {item.title} lesson plan.</Text>
                   ) : (
                     <TouchableOpacity
                       onPress={() => navigation.navigate('LessonBuilder', { subjectTitle: item.title, gradeBand: band })}
@@ -399,14 +403,14 @@ export default function Classes() {
                     >
                       <Ionicons name="clipboard-outline" size={16} color={item.color} style={{ marginRight: 8 }} />
                       <Text style={[styles.lessonPlanCtaText, { color: item.color }]}>
-                        Build a Classroom Day Lesson Plan for {BAND_LABEL[band] || band}
+                        Build a Classroom Day Lesson Plan for {bandName(band) || band}
                       </Text>
                       <Ionicons name="chevron-forward" size={16} color={item.color} />
                     </TouchableOpacity>
                   )
                 )}
                 {matchingChildren.length === 0 ? (
-                  <Text style={styles.noneForBand}>No {BAND_LABEL[band] || band} content in this subject yet.</Text>
+                  <Text style={styles.noneForBand}>No {bandName(band) || band} content in this subject yet.</Text>
                 ) : (
                   matchingChildren.map((child, subIndex) => (
                     <TouchableOpacity
@@ -417,7 +421,7 @@ export default function Classes() {
                     >
                       <View style={[styles.subItemDot, { backgroundColor: item.color }]} />
                       <Text style={styles.subItem}>{child.label}</Text>
-                      <Text style={styles.subItemGrade}>{child.grade}</Text>
+                      <Text style={styles.subItemGrade}>{bandLabel(child.grade, adult, { short: true })}</Text>
                       <Ionicons name="chevron-forward" size={18} color={c.text4} />
                     </TouchableOpacity>
                   ))

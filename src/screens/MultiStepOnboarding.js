@@ -35,7 +35,7 @@ import { PRIVACY_POLICY_URL } from '../config/legal';
 import {
   View, Text, ScrollView, TouchableOpacity,
   TextInput, Animated, Dimensions, StyleSheet, Linking,
-  ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
+  ActivityIndicator, Alert, KeyboardAvoidingView, Platform, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -46,6 +46,7 @@ import { FONTS } from '../theme';
 import { supabase } from '../api/supabaseClient';
 import { generateRecommendations } from '../api/recommendationEngine';
 import { setWayfinderIntent } from '../api/wayfinderService';
+import { queueWelcomeTour } from '../logic/useWelcomeTour';
 import {
   saveOnboardingFields, loadOnboardingDraft, saveOnboardingDraft, clearOnboardingDraft,
 } from '../api/onboardingService';
@@ -111,6 +112,11 @@ export default function MultiStepOnboarding() {
   // ({c, t, s, r, sh, isDark}) — not the same shape as the raw context
   // value above, which uses the full property names.
   const theme = { c, t, s, r, sh, isDark };
+  // On web the stack's page is min-height 100% with no fixed height, so this
+  // screen grew to fit its content and Continue ended up below the fold.
+  // Capping it at the window lets the card's own ScrollView do the scrolling.
+  const { height: windowHeight } = useWindowDimensions();
+  const webFit = Platform.OS === 'web' ? { maxHeight: windowHeight } : null;
   // setPersonalization only — the tour is tailored here but no longer
   // started here. Landing straight in a twelve-step tour on top of a form
   // was two walkthroughs back to back; it's offered from the Getting
@@ -180,7 +186,11 @@ export default function MultiStepOnboarding() {
     display_name:      '',
     active_life_areas: PERSONA_AREA_DEFAULTS[DEFAULT_PERSONA],
     areas_touched:     false,
-    theme:             'dark',
+    // Whatever the app is showing right now. This used to be 'dark' while
+    // the wizard itself rendered light, so the Look step showed Dark ticked
+    // over a light screen, and finishing without touching it saved a theme
+    // the person never saw.
+    theme:             isDark ? 'dark' : 'light',
     hidden_sections:   [],
   });
   // The exact date the age gate stored, kept so finish() can derive
@@ -210,10 +220,19 @@ export default function MultiStepOnboarding() {
         // Whatever the two steps already wrote on a previous attempt —
         // paired with the AsyncStorage draft below, this is what makes
         // quitting mid-flow resume instead of restart.
-        if (profile?.display_name || profile?.active_life_areas?.length) {
+        // A new account's display_name is seeded from the email address
+        // ("jo.smith+test"), and this step says the name shows on the
+        // leaderboard, so someone tapping straight through would publish
+        // their email handle. Start blank instead; the name is optional.
+        const emailHandle = (user.email || '').split('@')[0].toLowerCase();
+        const savedName = profile?.display_name
+          && profile.display_name.trim().toLowerCase() !== emailHandle
+          && !profile.display_name.includes('@')
+          ? profile.display_name : '';
+        if (savedName || profile?.active_life_areas?.length) {
           setData(prev => ({
             ...prev,
-            display_name:      profile.display_name || prev.display_name,
+            display_name:      savedName || prev.display_name,
             active_life_areas: profile.active_life_areas?.length ? profile.active_life_areas : prev.active_life_areas,
             areas_touched:     !!profile.active_life_areas?.length,
           }));
@@ -415,14 +434,19 @@ export default function MultiStepOnboarding() {
   // STEPS.length - 1, and STEPS[step] is undefined on the next render.
   const advancing = useRef(false);
 
+  // Changes the step first, then slides the new card in. It used to wait
+  // for the spring's end callback to change the step, which (a) slid the
+  // OLD card back in and then swapped it, and (b) left Continue dead for
+  // good whenever that callback never came: animation frames pause in a
+  // hidden or backgrounded window, and `advancing` stayed true. The guard
+  // against double taps is released on a timer instead.
   const animateSlide = (dir, callback) => {
+    callback();
     slideAnim.setValue(dir * SW);
     Animated.spring(slideAnim, {
       toValue: 0, useNativeDriver: true, tension: 65, friction: 11,
-    }).start(() => {
-      advancing.current = false;
-      callback();
-    });
+    }).start();
+    setTimeout(() => { advancing.current = false; }, 350);
   };
 
   // Checkpoint on every advance. The columns go to `profiles`, the rest to
@@ -517,6 +541,10 @@ export default function MultiStepOnboarding() {
     // The persona's accent colour, once, and only if none is set yet —
     // Settings > Appearance owns it after that. Device-local; can't strand.
     await suggestAccentForPersona(data.active_persona || DEFAULT_PERSONA).catch(() => {});
+    // "Show me around" on landing: the tab bar, top bar, + button, Library
+    // pages and going back, before the first goal starts. Home reads this
+    // on its first render, so it has to be down before navigating.
+    await queueWelcomeTour(userId);
 
     // ── Out of the wizard, immediately ───────────────────────────────────
     // Saved is saved. Nothing below is worth holding someone on this
@@ -609,7 +637,7 @@ export default function MultiStepOnboarding() {
   // state + handlers above. Rendered before Step1 whenever phase !== 'main'.
   if (phase === 'age_gate') {
     return (
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={[{ flex: 1 }, webFit]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={cs.bg}>
           <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={gs.body} showsVerticalScrollIndicator={false}>
             <Text style={gs.title}>First, when's{'\n'}your birthday?</Text>
@@ -740,7 +768,7 @@ export default function MultiStepOnboarding() {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={[{ flex: 1 }, webFit]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={cs.bg}>
         {/* Top nav */}
         <View style={cs.topNav}>
@@ -755,8 +783,8 @@ export default function MultiStepOnboarding() {
             <Text style={cs.stepName}>{STEPS[step].subtitle}</Text>
           </View>
 
-          <TouchableOpacity onPress={skip} style={cs.navBtn}>
-            <Text style={cs.skipText}>Skip for now</Text>
+          <TouchableOpacity onPress={skip} style={cs.skipBtn}>
+            <Text style={cs.skipText} numberOfLines={1}>Skip for now</Text>
           </TouchableOpacity>
         </View>
 
@@ -786,7 +814,7 @@ export default function MultiStepOnboarding() {
             {saving
               ? <ActivityIndicator color="#fff" size="small" />
               : <>
-                  <Text style={cs.nextBtnText}>{isLast ? '🚀 Launch My Base' : 'Continue'}</Text>
+                  <Text style={cs.nextBtnText}>{isLast ? 'Finish and show me around' : 'Continue'}</Text>
                   {!isLast && <Ionicons name="chevron-forward" size={18} color="#fff" />}
                 </>
             }
@@ -802,6 +830,8 @@ const chromeStyles = ({ c, r }) => StyleSheet.create({
   bg:           { flex: 1, backgroundColor: c.bg0 },
   topNav:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 56, paddingBottom: 12 },
   navBtn:       { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  // Wider than navBtn: at 36px "Skip for now" wrapped onto three lines.
+  skipBtn:      { minWidth: 36, height: 36, alignItems: 'flex-end', justifyContent: 'center' },
   stepNum:      { fontSize: 11, color: c.text4, fontFamily: FONTS.mono, textTransform: 'uppercase', letterSpacing: 1 },
   stepName:     { fontSize: 14, color: c.text1, fontFamily: FONTS.displaySemibold, fontWeight: '600', marginTop: 2 },
   skipText:     { fontSize: 13, color: c.text4 },
@@ -811,7 +841,9 @@ const chromeStyles = ({ c, r }) => StyleSheet.create({
   dot:          { width: 6, height: 6, borderRadius: 3, backgroundColor: c.bg2 },
   dotActive:    { backgroundColor: c.teal, width: 20 },
   dotDone:      { backgroundColor: c.tealDim },
-  card:         { flex: 1, marginHorizontal: 16, backgroundColor: c.bg1, borderRadius: r.xxl, borderWidth: 0.5, borderColor: c.border, overflow: 'hidden' },
+  // minHeight 0 for the same reason on the other axis: without it, web let
+  // the card grow to its content and pushed Continue below the fold.
+  card:         { flex: 1, minHeight: 0, marginHorizontal: 16, backgroundColor: c.bg1, borderRadius: r.xxl, borderWidth: 0.5, borderColor: c.border, overflow: 'hidden' },
   bottomBar:    { padding: 20, paddingBottom: 40 },
   nextBtn:      { backgroundColor: c.teal, borderRadius: r.xl, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   nextBtnText:  { color: '#fff', fontWeight: '700', fontSize: 16 },
@@ -829,8 +861,10 @@ const gateStyles = ({ c, r }) => StyleSheet.create({
     padding: 14, marginBottom: 20, fontSize: 15, color: c.text1, backgroundColor: c.bg1,
   },
   dobRow: { flexDirection: 'row', gap: 12 },
-  dobInput: { flex: 1, textAlign: 'center' },
-  dobInputYear: { flex: 1.4, textAlign: 'center' },
+  // minWidth 0: on web a text input has an intrinsic width (~200px) that
+  // flex won't shrink below, which pushed the year box off a phone screen.
+  dobInput: { flex: 1, minWidth: 0, textAlign: 'center' },
+  dobInputYear: { flex: 1.4, minWidth: 0, textAlign: 'center' },
 
   choice: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

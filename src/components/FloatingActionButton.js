@@ -38,6 +38,7 @@ import {
   TextInput, KeyboardAvoidingView, ActivityIndicator, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import TourSpot from './TourSpot';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { useUserProgress } from '../../context/UserProgressContext';
@@ -428,17 +429,20 @@ export default function FloatingActionButton({ currentScreen }) {
         </TouchableOpacity>
       </Animated.View>
 
-      {/* Main FAB — icon only */}
+      {/* Main FAB — icon only. The TourSpot carries the positioning so the
+          welcome tour can light it up wherever it has been moved to. */}
+      <TourSpot id="fab" radius={FAB_SIZE / 2} style={[styles.fabSpot, sideStyle, fabVStyle]}>
       <TouchableOpacity
         onPress={toggle}
         activeOpacity={0.85}
         accessibilityLabel={open ? 'Close quick actions' : 'Open quick actions'}
-        style={[styles.fab, sh.lg, sideStyle, fabVStyle, { backgroundColor: c.teal }]}
+        style={[styles.fabBtn, sh.lg, { backgroundColor: c.teal }]}
       >
         <Animated.View style={{ transform: [{ rotate }] }}>
           <Ionicons name="add" size={28} color="#fff" />
         </Animated.View>
       </TouchableOpacity>
+      </TourSpot>
 
       {/* Calendar / Reminder */}
       <CalendarModal
@@ -485,11 +489,14 @@ export default function FloatingActionButton({ currentScreen }) {
 }
 
 const styles = StyleSheet.create({
-  fab: {
+  fabSpot: {
     position: 'absolute',
+    width: FAB_SIZE, height: FAB_SIZE,
+    zIndex: 20,
+  },
+  fabBtn: {
     width: FAB_SIZE, height: FAB_SIZE, borderRadius: FAB_SIZE / 2,
     alignItems: 'center', justifyContent: 'center',
-    zIndex: 20,
   },
   dial: {
     position: 'absolute',

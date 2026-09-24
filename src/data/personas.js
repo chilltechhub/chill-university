@@ -47,7 +47,7 @@ export const PERSONAS = [
     short: 'Personal',
     emoji: '🌿',
     color: '#3AC860',
-    blurb: 'Habits, routines, time-blocking, life balance',
+    blurb: 'Build habits, plan your days, keep life in balance',
     questLine: 'Daily Mastery',
     // Shown on the onboarding persona step, so the choice is made with the
     // consequences visible rather than from a one-line blurb. Keep these
@@ -67,7 +67,7 @@ export const PERSONAS = [
     short: 'Student',
     emoji: '🎓',
     color: '#4A90E2',
-    blurb: 'Study blocks, grades, exams, academic growth',
+    blurb: 'Plan study time, keep up with classes, prep for exams',
     questLine: 'Knowledge Tree',
     changes: [
       'Home adds study blocks, subject progress and today’s drills',
@@ -83,7 +83,7 @@ export const PERSONAS = [
     short: 'Business',
     emoji: '📈',
     color: '#E0A830',
-    blurb: 'Operational KPIs, team output, SOPs, revenue vs. burn',
+    blurb: 'Run a business you already have: routines, numbers, team',
     questLine: 'Empire Builder',
     changes: [
       'Home adds recurring ops, a systems check and your organization',
@@ -99,7 +99,7 @@ export const PERSONAS = [
     short: 'Entrepreneur',
     emoji: '🚀',
     color: '#8B4FC4',
-    blurb: 'Entity setup, business credit, funding readiness, scaling',
+    blurb: 'Start something new: from an idea to a real business',
     questLine: "Founder's Quest",
     changes: [
       'Home adds the founder quest, your vault and your targets',

@@ -1,5 +1,5 @@
 // src/logic/useGame.js
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { handleGameEvent } from './gamificationService';
 
@@ -15,7 +15,7 @@ export default function useGame({
   // scoring exactly as it always has.
   manualScoring = false,
 }) {
-  const { user, recordGuestEvent, refreshProfile } = useUserProgress();
+  const { user, recordGuestEvent, refreshProfile, noteDrillProgress } = useUserProgress();
 
   const [score,      setScore]    = useState(0);
   const [lives,      setLives]    = useState(3);
@@ -34,6 +34,23 @@ export default function useGame({
 
   const accuracy = attempted > 0 ? Math.round((correct / attempted) * 100) : 0;
 
+  // Every answer is already saved as it happens (QUESTION_ANSWERED below),
+  // but the header's level and points only re-read the profile in endGame().
+  // Leaving after a round or two, which is exactly what the first goal's
+  // "play one game" step asks for, kept showing LV 1 · 0 PTS over an account
+  // the server had already levelled up, and the level-up notice never came.
+  // So a game left early re-reads the profile on its way out.
+  const answeredRef = useRef(false);
+  const endedRef = useRef(false);
+  const refreshRef = useRef(refreshProfile);
+  refreshRef.current = refreshProfile;
+  useEffect(() => () => {
+    if (answeredRef.current && !endedRef.current) {
+      // A beat late: the last answer's save is still in flight on the way out.
+      setTimeout(() => { Promise.resolve(refreshRef.current?.()).catch(() => {}); }, 1500);
+    }
+  }, []);
+
   // Returns what the answer did, as of right now:
   //   { points, livesLeft, isOut }
   // `livesLeft`/`isOut` are the post-answer values, so a game can decide
@@ -45,6 +62,7 @@ export default function useGame({
     const elapsed = Date.now() - questionStart.current;
     questionTimes.current.push(elapsed);
     questionStart.current = Date.now();
+    answeredRef.current = true;
 
     setAttempt(a => a + 1);
 
@@ -59,8 +77,11 @@ export default function useGame({
       });
       setCorrect(c => c + 1);
 
-      // Save to Supabase if logged in, otherwise local guest tracking
+      // Save to Supabase if logged in, otherwise local guest tracking.
+      // noteDrillProgress moves today's drills on screen straight away; the
+      // server applies the same rule to the saved rows (src/logic/drills.js).
       if (user?.id) {
+        noteDrillProgress?.({ subject, correct: true });
         handleGameEvent({
           type: 'QUESTION_ANSWERED',
           userId: user.id,
@@ -80,6 +101,7 @@ export default function useGame({
       setStreak(0);
 
       if (user?.id) {
+        noteDrillProgress?.({ subject, correct: false });
         handleGameEvent({
           type: 'QUESTION_ANSWERED',
           userId: user.id,
@@ -94,7 +116,7 @@ export default function useGame({
 
       return { points: 0, livesLeft: livesRef.current, isOut: livesRef.current <= 0 };
     }
-  }, [streak, bestStreak, difficulty, user, subject, recordGuestEvent, skillLevel, manualScoring]);
+  }, [streak, bestStreak, difficulty, user, subject, recordGuestEvent, skillLevel, manualScoring, noteDrillProgress]);
 
   // For manualScoring games: called when a round-end prize is claimed.
   const addPoints = useCallback((n) => {
@@ -103,6 +125,7 @@ export default function useGame({
 
   const endGame = useCallback(() => {
     setDone(true);
+    endedRef.current = true;
 
     const times       = questionTimes.current;
     const totalSec    = Math.round((Date.now() - startTime.current) / 1000);
@@ -151,6 +174,7 @@ export default function useGame({
   const reset = useCallback(() => {
     setScore(0); setLives(3); livesRef.current = 3; setStreak(0);
     setBest(0); setCorrect(0); setAttempt(0); setDone(false);
+    endedRef.current = false;
     startTime.current     = Date.now();
     questionStart.current = Date.now();
     questionTimes.current = [];

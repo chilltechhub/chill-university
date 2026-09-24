@@ -2,7 +2,7 @@
 import React, { useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator, TransitionPresets } from '@react-navigation/stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createBottomTabNavigator, BottomTabBar } from '@react-navigation/bottom-tabs';
 import { View, Platform } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -29,6 +29,9 @@ import ShareIntentListener from './src/components/ShareIntentListener';
 import { flushQueue } from './src/api/offlineCache';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import TourOverlay from './src/components/TourOverlay';
+import TourSpot from './src/components/TourSpot';
+import { rootStackRouter } from './src/logic/navRules';
+import DrillToast from './src/components/DrillToast';
 
 import HomeScreen    from './src/screens/HomeScreen';
 import GamesScreen   from './src/screens/GamesScreen';
@@ -68,6 +71,7 @@ import { supabase } from './src/api/supabaseClient';
 import { needsSecondStep } from './src/api/mfa';
 import useFirstVisitTutorial from './src/logic/useFirstVisitTutorial';
 import useGuidedFirstGoal from './src/logic/useGuidedFirstGoal';
+import useWelcomeTour from './src/logic/useWelcomeTour';
 import { goToScreen } from './src/logic/appRoutes';
 
 // Compass-gated root routes. Built at module scope so the navigator gets a
@@ -124,6 +128,13 @@ function MainTabs() {
   return (
     <Tab.Navigator
       initialRouteName="Home"
+      // Wrapped so the welcome tour can light up the real bar rather than a
+      // guessed rectangle at the bottom of the screen.
+      tabBar={(props) => (
+        <TourSpot id="nav-tabbar" radius={0}>
+          <BottomTabBar {...props} />
+        </TourSpot>
+      )}
       screenOptions={({ route }) => ({
         headerShown: false,
         // Unset default is an instant hard cut between tabs — the most
@@ -151,7 +162,23 @@ function MainTabs() {
       })}
 
     >
-      <Tab.Screen name="Library"  component={LibraryNav} />
+      {/* The Library tab always opens on the Library itself, not on
+          whichever tool was last open inside it (a life area the guide
+          took you to, say). Tapping it while already there did this
+          before; tapping it from another tab now does too. */}
+      <Tab.Screen
+        name="Library"
+        component={LibraryNav}
+        listeners={({ navigation, route }) => ({
+          tabPress: (e) => {
+            const inner = route.state;
+            if (inner && inner.index > 0) {
+              e.preventDefault();
+              navigation.navigate('Library', { screen: 'LibraryScreen' });
+            }
+          },
+        })}
+      />
       <Tab.Screen name="Home"     component={HomeScreen} />
       <Tab.Screen name="Training" component={GamesScreen} />
     </Tab.Navigator>
@@ -206,8 +233,12 @@ function AppInner() {
   const { registerNavigator, startScreenTour, active: tourActive } = useTour();
   // The guide walks a new account through its first goal, and while it
   // does, screens don't also teach themselves (src/logic/useGuidedFirstGoal.js).
-  const { guiding } = useGuidedFirstGoal(currentRouteName);
-  const teachScreen = useFirstVisitTutorial({ tourActive, startScreenTour, paused: guiding });
+  // Before either of those, a new account gets the welcome tour: how to get
+  // around (src/logic/useWelcomeTour.js). Both wait for it.
+  const { holding: welcomeTourDue } = useWelcomeTour(currentRouteName);
+  const { guiding } = useGuidedFirstGoal(currentRouteName, { hold: welcomeTourDue });
+  const { user: tutorialUser } = useUserProgress();
+  const teachScreen = useFirstVisitTutorial({ tourActive, startScreenTour, paused: guiding || welcomeTourDue, userId: tutorialUser?.id });
   // A guest on an account-only screen sees a sign-in prompt, not the screen
   // its tutorial describes ("Your rank" pointing at nothing), so those wait
   // until there's an account. See src/components/SignInPrompt.js.
@@ -350,6 +381,7 @@ function AppInner() {
         registerNavigator(
           (routeName, params) => navigationRef.current?.navigate(routeName, params),
           (screen, params) => goToScreen(navigationRef.current, screen, params),
+          () => navigationRef.current?.getCurrentRoute()?.name,
         );
         maybeTeachScreen(name);
         flushPendingTarget();
@@ -366,6 +398,9 @@ function AppInner() {
         {showTopBar && <AnnouncementBanner />}
         <Stack.Navigator
           initialRouteName={initialRoute}
+          // "Go to X" returns to X when it's already open instead of
+          // stacking another copy (React Navigation 7). src/logic/navRules.js
+          UNSTABLE_router={rootStackRouter}
           screenOptions={{
             headerShown: false,
             gestureEnabled: true,
@@ -412,7 +447,11 @@ function AppInner() {
         <MissionsOverlay />
         <LevelUpNotification />
         <UnlockNotification />
-        {showTopBar && <FloatingActionButton currentScreen={currentRouteName} />}
+        {/* Not over a game: it sat on top of Start and the answer rows, and
+            nothing in it is something you'd reach for mid-round. */}
+        {showTopBar && currentRouteName !== 'Play' && currentRouteName !== 'PlayGame' && (
+          <FloatingActionButton currentScreen={currentRouteName} />
+        )}
         {/* Global search (Cmd/Ctrl+K, or the FAB's Search action). Sits
             beside the FAB for the same reason: it has to be reachable from
             every screen, and it navigates rather than belonging to any one
@@ -420,6 +459,7 @@ function AppInner() {
         {showTopBar && <CommandPalette />}
       </SafeAreaView>
       <TourOverlay />
+      <DrillToast />
       <ShareIntentListener navigationRef={navigationRef} />
     </NavigationContainer>
   );

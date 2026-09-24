@@ -125,7 +125,12 @@ function MiniCalendar({ value, onChange, color, c, t, s, r }) {
 }
 
 // ─── Add / Edit instance modal ────────────────────────────────────────────────
-function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onClose, c, t, s, r }) {
+// `defaultArea`: where a new item starts (the area being filtered to, else
+// the person's own first life area; it was always Physical, which a Student
+// who never picked Physical got as the default for a study block).
+// `goalIdea`: the running goal's Planner step can name one ({ title,
+// cadence, area } on the step in objectives.js), shown first in the ideas.
+function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onClose, defaultArea = 'physical', goalIdea = null, c, t, s, r }) {
   const { showEmojis } = useUIPrefs();
   const [title,       setTitle]       = useState('');
   const [area,        setArea]        = useState('physical');
@@ -196,13 +201,13 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
         setLinkLabel('');
       }
     } else {
-      setTitle(''); setArea('physical'); setCadence('daily');
+      setTitle(''); setArea(goalIdea?.area || defaultArea || 'physical'); setCadence(goalIdea?.cadence || 'daily');
       setSelectedDate(date ? new Date(date + 'T00:00:00') : new Date());
       setTimeVal(''); setDuration(''); setNotes(''); setReminder(false);
       setLinkType(null); setLinkScreen(null); setLinkId(null); setLinkLabel(''); setLinkSubject(null);
       setProjects(null);
     }
-  }, [instance, visible, date]);
+  }, [instance, visible, date]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Lazy-load the user's open projects the first time the Project link tab
   // is opened, instead of fetching on every modal open regardless of need.
@@ -251,10 +256,12 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
 
   // Re-offered every time the life area changes: which area this belongs to
   // is the most useful thing anyone has said by that point in the sheet.
-  const suggestions = useMemo(
-    () => (isEdit ? [] : suggestionsForArea(area, scheduledTitles)),
-    [isEdit, area, scheduledTitles]
-  );
+  const suggestions = useMemo(() => {
+    if (isEdit) return [];
+    const base = suggestionsForArea(area, scheduledTitles);
+    if (!goalIdea || scheduledTitles.includes(goalIdea.title)) return base;
+    return [{ ...goalIdea, forGoal: true }, ...base.filter(sg => sg.title !== goalIdea.title)].slice(0, 4);
+  }, [isEdit, area, scheduledTitles, goalIdea]);
 
   const applySuggestion = (sg) => {
     setTitle(sg.title);
@@ -404,8 +411,8 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
                       accessibilityLabel={`Use suggestion: ${sg.title}, repeating ${sg.cadence}`}
                       style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: s.md, paddingVertical: 7, borderRadius: r.full, borderWidth: 1, borderStyle: 'dashed', borderColor: areaColor + '88', backgroundColor: areaColor + '10' }}
                     >
-                      <Ionicons name="add" size={12} color={areaColor} />
-                      <Text style={{ fontSize: t.xs, color: c.text2 }}>{sg.title}</Text>
+                      <Ionicons name={sg.forGoal ? 'flag' : 'add'} size={12} color={areaColor} />
+                      <Text style={{ fontSize: t.xs, color: c.text2, fontWeight: sg.forGoal ? t.bold : undefined }}>{sg.title}</Text>
                       <Text style={{ fontSize: 10, color: areaColor, fontWeight: t.bold }}>{sg.cadence}</Text>
                     </TouchableOpacity>
                   ))}
@@ -1246,7 +1253,8 @@ export default function PlannerScreen() {
 
   // Re-read when the account changes, so signing in from the guest prompt
   // opens the planner without leaving the screen.
-  const { user: signedInUser } = useUserProgress();
+  const { user: signedInUser, profile: progressProfile } = useUserProgress();
+  const { activeObjective } = useAccess();
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUserId(user ? user.id : null);
@@ -1441,6 +1449,8 @@ export default function PlannerScreen() {
         instance={editInst}
         userId={userId}
         date={modalDate}
+        defaultArea={activeAreas.size === 1 ? [...activeAreas][0] : (progressProfile?.active_life_areas?.[0] || 'physical')}
+        goalIdea={activeObjective?.active && !activeObjective.complete ? (activeObjective.nextStep?.idea || null) : null}
         onSave={(saved) => {
           setShowModal(false);
           setRefresh(k => k + 1);

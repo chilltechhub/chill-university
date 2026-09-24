@@ -90,7 +90,7 @@ export default function GoalStepsWidget() {
             </View>
             {isNext && step.screen && (
               <TouchableOpacity
-                onPress={() => goToScreen(navigation, step.screen)}
+                onPress={() => goToScreen(navigation, step.screen, step.params)}
                 style={{ borderWidth: 1, borderColor: accent.primary, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 }}
                 accessibilityRole="button"
               >

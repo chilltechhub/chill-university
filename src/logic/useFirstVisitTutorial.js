@@ -26,6 +26,11 @@ import { hasScreenTutorial } from './screenTutorials';
 import { SETTING_KEYS } from './useSetting';
 
 const SEEN_KEY = '@cth_screen_tutorials_seen';
+// Per account. It was one key per device, so a second account signing up
+// on the same phone found Home, the Library and the rest already "seen"
+// and was taught nothing. Set by the hook below; the module functions use it.
+let activeUid = null;
+const seenKey = () => (activeUid ? `${SEEN_KEY}_${activeUid}` : SEEN_KEY);
 // Same storage key useSetting writes, read directly rather than through the
 // hook: useSetting is built on useFocusEffect, and the only caller (AppInner)
 // lives above NavigationContainer where there's no navigation context.
@@ -54,7 +59,7 @@ const NEVER = new Set(['Login', 'MultiStepOnboarding', 'ResetPassword', 'Wayfind
 
 export async function loadSeenScreens() {
   try {
-    const raw = await AsyncStorage.getItem(SEEN_KEY);
+    const raw = await AsyncStorage.getItem(seenKey());
     return new Set(raw ? JSON.parse(raw) : []);
   } catch {
     return new Set();
@@ -63,7 +68,7 @@ export async function loadSeenScreens() {
 
 // Exported for Settings' "show them all again".
 export async function resetSeenScreens() {
-  try { await AsyncStorage.removeItem(SEEN_KEY); } catch { /* nothing to do */ }
+  try { await AsyncStorage.removeItem(seenKey()); } catch { /* nothing to do */ }
 }
 
 // Lets a screen teach itself once more — used when a new experience stage
@@ -76,7 +81,7 @@ export async function forgetSeenScreens(routeNames = []) {
   try {
     const set = await loadSeenScreens();
     routeNames.forEach(n => set.delete(n));
-    await AsyncStorage.setItem(SEEN_KEY, JSON.stringify([...set]));
+    await AsyncStorage.setItem(seenKey(), JSON.stringify([...set]));
   } catch { /* the next launch just won't re-teach; not worth surfacing */ }
 }
 
@@ -89,7 +94,7 @@ export async function markScreensSeen(routeNames = []) {
   try {
     const set = await loadSeenScreens();
     routeNames.forEach(n => set.add(n));
-    await AsyncStorage.setItem(SEEN_KEY, JSON.stringify([...set]));
+    await AsyncStorage.setItem(seenKey(), JSON.stringify([...set]));
   } catch { /* worst case the screen teaches itself once; not worth surfacing */ }
 }
 
@@ -105,7 +110,7 @@ export async function markScreensSeen(routeNames = []) {
  *                   visited meanwhile aren't marked seen, so they still
  *                   teach themselves on a later visit.
  */
-export default function useFirstVisitTutorial({ tourActive, startScreenTour, paused = false }) {
+export default function useFirstVisitTutorial({ tourActive, startScreenTour, paused = false, userId = null }) {
   const seen = useRef(null);          // Set, once loaded
   const pending = useRef(null);       // timer handle
   // Route we're currently counting down to teach. Lets a fast navigation
@@ -113,6 +118,8 @@ export default function useFirstVisitTutorial({ tourActive, startScreenTour, pau
   const armedFor = useRef(null);
 
   useEffect(() => {
+    activeUid = userId || null;
+    seen.current = null;
     loadSeenScreens().then(set => { seen.current = set; });
     const forget = (names) => names.forEach(n => seen.current?.delete(n));
     const mark = (names) => names.forEach(n => seen.current?.add(n));
@@ -123,7 +130,7 @@ export default function useFirstVisitTutorial({ tourActive, startScreenTour, pau
       seenListeners.delete(mark);
       if (pending.current) clearTimeout(pending.current);
     };
-  }, []);
+  }, [userId]);
 
   // A tour starting for any reason (the Getting Started card, Settings'
   // replay, the FAB, the guide) cancels a pending auto-tutorial — two
@@ -141,7 +148,7 @@ export default function useFirstVisitTutorial({ tourActive, startScreenTour, pau
     set.add(routeName);
     seen.current = set;
     try {
-      await AsyncStorage.setItem(SEEN_KEY, JSON.stringify([...set]));
+      await AsyncStorage.setItem(seenKey(), JSON.stringify([...set]));
     } catch (e) {
       console.warn('screen tutorial: could not persist seen', e?.message);
     }
@@ -169,8 +176,14 @@ export default function useFirstVisitTutorial({ tourActive, startScreenTour, pau
       if (!(await tutorialsEnabled())) return;
       // Mark before showing, not after: if the user force-quits mid-tutorial
       // we'd rather they never see it again than see it every launch.
+      // But one that another walkthrough replaced straight away (an unlock
+      // sheet's "Show me", the guide) was never seen at all, and marking it
+      // anyway is how Compass and the Library ended up "seen" on a fresh
+      // account that had seen neither. Those get another go next visit.
       markSeen(routeName);
-      startScreenTour(routeName);
+      startScreenTour(routeName, {
+        onEnd: (reason) => { if (reason === 'replaced') forgetSeenScreens([routeName]); },
+      });
     }, SETTLE_MS);
   }, [tourActive, paused, startScreenTour, markSeen]);
 }

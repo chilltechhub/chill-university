@@ -28,14 +28,16 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAccess } from '../../context/AccessContext';
 import { useTour } from '../../context/TourContext';
-import { useProfiles } from '../../context/ProfileAccountsContext';
 import { useUserProgress } from '../../context/UserProgressContext';
-import { getGuide } from '../data/guides';
 import { FIRST_GOAL_GUIDE, CLAIM_STEP } from '../data/firstGoalGuide';
 import { markScreensSeen } from './useFirstVisitTutorial';
 
 const modeKey = (uid) => `@cth_first_goal_guide_${uid || 'guest'}`;
 const HUBS = new Set(['Home', 'Training', 'LibraryScreen']);
+// Where games run. Not calm in general (nobody gets pulled out of a game),
+// but once the last step is done the guide says so right there, as a note
+// that doesn't block the game, instead of saying nothing until they leave.
+const PLAY_ROUTES = new Set(['Play', 'PlayGame']);
 // Long enough for the screen's TourSpots to mount and measure, and for a
 // step that just ticked to register as done before the next bubble lands.
 const SETTLE_MS = 900;
@@ -53,11 +55,10 @@ const lowerFirst = (str = '') => str.charAt(0).toLowerCase() + str.slice(1);
  * Call once, from AppInner, with the current route name.
  * @returns {{ guiding: boolean }} true while a first goal is being guided
  */
-export default function useGuidedFirstGoal(routeName) {
+export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
   const { user, profile } = useUserProgress();
   const { activeObjective, loading } = useAccess();
   const { active: tourActive, startLesson, endTour } = useTour();
-  const { activeType } = useProfiles();
   const uid = user?.id || null;
 
   const intro = activeObjective?.active && activeObjective.objective?.intro ? activeObjective : null;
@@ -134,17 +135,19 @@ export default function useGuidedFirstGoal(routeName) {
     if (!g) return;
     const step = intro.steps.find(s => s.id === key);
     const n = intro.steps.findIndex(s => s.id === key) + 1;
-    const guideName = getGuide(activeType)?.name;
 
     const first = intro.done === 0 && !greetedRef.current;
     greetedRef.current = true;
+    // How to get there without the guide, said once per step. Being carried
+    // somewhere teaches nothing about finding it again.
+    const pathNote = g.path ? ` To find it yourself later: ${g.path}.` : '';
     const title = key === 'claim'
       ? `${intro.objective.label} · all ${intro.total} done`
       : `Step ${n} of ${intro.total} · ${step.label}`;
     const lead = key === 'claim'
       ? `That's all ${intro.total}. Nice work.`
       : first
-        ? `Hi, I'm ${guideName || 'your guide'}. Your first goal is ${intro.total} quick steps, and I'll show you each one. First: ${lowerFirst(step.label)}.`
+        ? `Your first goal is ${intro.total} quick steps, and I'll show you each one. First: ${lowerFirst(step.label)}.`
         : intro.done > 0
           ? `That's ${intro.done} of ${intro.total}. Next: ${lowerFirst(step.label)}.`
           : `Next: ${lowerFirst(step.label)}.`;
@@ -159,14 +162,32 @@ export default function useGuidedFirstGoal(routeName) {
       goParams,
       id: g.spot || undefined,
       passthrough: g.mode === 'tap' && !!g.spot,
+      // A 'point' step has nothing single to light up ("pick any subject
+      // below"), so it used to dim and block the very screen it asked
+      // them to use until they pressed Done. It's a note instead.
+      nonBlocking: g.mode === 'point' || (g.mode === 'tap' && !g.spot),
       skipLabel: 'Not now',
     };
     // Already there: one bubble. Otherwise say what's next first, and the
     // Next button takes them.
     const here = routeName === g.go;
+    // The "what's next" bubble doesn't block: the person may still be
+    // finishing up where they are (typing the optional note under a rating,
+    // or playing on after the round that ticked the step). Next is theirs
+    // to press when they're ready.
+    const inGame = PLAY_ROUTES.has(routeName);
+    setJustTicked(false);
     const lessonSteps = here
       ? [{ ...pointAt, body: `${lead} ${g.say}`, go: undefined }]
-      : [{ title, body: `${lead} I'll take you there.`, skipLabel: 'Not now' }, pointAt];
+      : [{
+          title,
+          body: inGame
+            ? `${lead} Keep playing if you like. When you're done, tap X at the top left, or tap Next and I'll take you back.`
+            : `${lead} I'll take you there.${pathNote}`,
+          skipLabel: 'Not now',
+          nonBlocking: true,
+          placement: inGame ? 'top' : undefined,
+        }, pointAt];
 
     // The guide just taught Home's one important card, so Home's own
     // first-visit tutorial would only repeat it.
@@ -186,16 +207,30 @@ export default function useGuidedFirstGoal(routeName) {
         setWaiting(key);
       },
     });
-  }, [intro, key, script, activeType, routeName, profile, startLesson, persistMode]);
+  }, [intro, key, script, routeName, profile, startLesson, persistMode]);
 
   // Start the next piece of guidance once things are calm.
   const scriptScreens = script ? Object.values(script).map(s => s.go) : [];
-  const calm = !!routeName && (HUBS.has(routeName) || scriptScreens.includes(routeName));
+  // A step that has just ticked gets its "next" note wherever the person is.
+  // It used to wait for a hub, so finishing "open a class" on the Physics
+  // page left them there with no word on what came next. The note doesn't
+  // block (nonBlocking), so this still never pulls anyone out of a task.
+  const [justTicked, setJustTicked] = useState(false);
+  const prevKeyRef = useRef(key);
   useEffect(() => {
-    if (!guiding || tourActive || !key || waiting || !calm) return;
+    const prev = prevKeyRef.current;
+    prevKeyRef.current = key;
+    if (prev && key && prev !== key) setJustTicked(true);
+  }, [key]);
+  useEffect(() => { if (tourActive) setJustTicked(false); }, [tourActive]);
+  const calm = !!routeName && (HUBS.has(routeName) || scriptScreens.includes(routeName)
+    || (key === 'claim' && PLAY_ROUTES.has(routeName))
+    || justTicked);
+  useEffect(() => {
+    if (!guiding || hold || tourActive || !key || waiting || !calm) return;
     const timer = setTimeout(begin, SETTLE_MS);
     return () => clearTimeout(timer);
-  }, [guiding, tourActive, key, waiting, calm, begin]);
+  }, [guiding, hold, tourActive, key, waiting, calm, begin]);
 
   return { guiding };
 }

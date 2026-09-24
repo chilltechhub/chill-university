@@ -43,22 +43,29 @@ const CLASS_SCREENS = new Set([
 export function goToScreen(navigation, screen, params) {
   if (!navigation || !screen) return;
 
+  // Every jump returns to a screen that's already open rather than stacking
+  // a copy (src/logic/navRules.js enforces the same at the router). Library
+  // screens pass `initial: false` so a first visit to the tab still has the
+  // Library underneath to go back to.
+  if (screen === 'Library') {
+    return navigation.navigate('MainTabs', { screen, params: params || { screen: 'LibraryScreen' } }, { pop: true });
+  }
   if (TAB_SCREENS.has(screen)) {
-    return navigation.navigate('MainTabs', { screen, params });
+    return navigation.navigate('MainTabs', { screen, params }, { pop: true });
   }
   if (ROOT_SCREENS.has(screen)) {
-    return navigation.navigate(screen, params);
+    return navigation.navigate(screen, params, { pop: true });
   }
   if (CLASS_SCREENS.has(screen)) {
     return navigation.navigate('MainTabs', {
       screen: 'Library',
-      params: { screen: 'ClassesStack', params: { screen, params } },
-    });
+      params: { screen: 'ClassesStack', initial: false, params: { screen, params } },
+    }, { pop: true });
   }
   return navigation.navigate('MainTabs', {
     screen: 'Library',
-    params: { screen, params },
-  });
+    params: { screen, params, initial: false },
+  }, { pop: true });
 }
 
 /** True when `screen` is one this resolver knows how to reach. */

@@ -355,7 +355,7 @@ export default function CompassScreen() {
                   {step.screen && !step.done && (
                     <TouchableOpacity
                       style={[s.goBtn, { borderColor: accent }]}
-                      onPress={() => goToScreen(navigation, step.screen)}
+                      onPress={() => goToScreen(navigation, step.screen, step.params)}
                       activeOpacity={0.8}
                     >
                       <Text style={[s.goText, { color: accent }]}>Open</Text>

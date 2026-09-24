@@ -54,7 +54,11 @@ export async function getMasterProfile(userId) {
   return data;
 }
 
-export async function createProfile(userId, { type, name, emoji, isMaster = false, baseline = {} }) {
+// `onlyIfNone` (the context's backfill): create the master if there isn't
+// one, and otherwise leave it exactly as it is. The backfill must never
+// retype an existing master: on 2026-09-24 it fired during a reload, before
+// the profile list had loaded, and turned a Student account into Personal.
+export async function createProfile(userId, { type, name, emoji, isMaster = false, baseline = {}, onlyIfNone = false }) {
   if (!userId) throw new Error('Not signed in');
   const def = getPersona(type);
   const clean = Object.fromEntries(
@@ -76,6 +80,7 @@ export async function createProfile(userId, { type, name, emoji, isMaster = fals
   // this account's master be this" — which is idempotent by nature.
   if (isMaster) {
     const current = await getMasterProfile(userId);
+    if (current && onlyIfNone) return current;
     if (current) {
       // NOTE: active_widgets is deliberately NOT set here. That column holds
       // the user's SAVED dashboard layout (an array of {key, hidden} written

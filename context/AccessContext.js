@@ -56,6 +56,7 @@ import {
   fabActionsFor, nextStageNeeds, stagesBetween, reteachBetween, firstGoalFor,
 } from '../src/logic/experienceStage';
 import { forgetSeenScreens } from '../src/logic/useFirstVisitTutorial';
+import { getEnabledGames } from '../src/services/gameRegistry';
 
 const AccessContext = createContext(null);
 
@@ -74,7 +75,7 @@ const DOOR_SETTING_KEYS = ['educatorMode'];
 const doorSettingKey = (key) => `@cth_setting_${key}`;
 
 export function AccessProvider({ children }) {
-  const { user, profile, level, points, streakDays, dailyMissions, gameplayStats, refreshProfile } = useUserProgress();
+  const { user, profile, level, points, streakDays, dailyMissions, gameplayStats, refreshProfile, setPlayableGames } = useUserProgress();
   // Which profile type is active decides WHICH path the stages walk.
   // Account-level progress decides HOW FAR along it — level and objectives
   // are shared across an account's profiles, so the stage is too.
@@ -181,6 +182,9 @@ export function AccessProvider({ children }) {
   }, []);
 
   const dismissUnlockEvent = useCallback(() => setUnlockEvents(q => q.slice(1)), []);
+  // UnlockNotification shows everything queued in one card, so it clears
+  // them all at once rather than one popup per feature.
+  const dismissAllUnlockEvents = useCallback(() => setUnlockEvents([]), []);
 
   /* ── Derived ───────────────────────────────────────────────────────────── */
 
@@ -194,7 +198,7 @@ export function AccessProvider({ children }) {
   // Daily drills finished today — the only auto-step counter that isn't a
   // lifetime figure straight off the profile.
   const missionsToday = useMemo(
-    () => (dailyMissions || []).filter(m => m.status === 'completed').length,
+    () => (dailyMissions || []).filter(m => m.status === 'completed' || m.status === 'claimed').length,
     [dailyMissions]
   );
 
@@ -377,6 +381,23 @@ export function AccessProvider({ children }) {
     [visibleGameIds, isGameAllowed]
   );
   const visibleFabActions = useMemo(() => fabActionsFor(opened), [opened]);
+
+  // The games this account can play right now, for daily drills: a drill is
+  // only ever set (or kept) if one of these counts toward it. See
+  // src/logic/drills.js and UserProgressContext.setPlayableGames.
+  const playableGames = useMemo(
+    () => getEnabledGames()
+      .filter(g => isGameVisible(g.id))
+      .map(g => ({ id: g.id, title: g.name, subject: g.subject })),
+    [isGameVisible]
+  );
+  // Only once the stage is settled (progress, device prefs and the profile
+  // type all in): for a moment on launch every game reads as visible, and
+  // drills set against that would include locked ones.
+  const stageSettled = progressReady && prefsReady && !!persona;
+  useEffect(() => {
+    if (!loading && stageSettled && playableGames.length) setPlayableGames?.(playableGames);
+  }, [loading, stageSettled, playableGames, setPlayableGames]);
 
   // Class subjects: an adult track is an age question (1); another type's
   // track is a map question (3) that 'all-tools' answers.
@@ -661,6 +682,7 @@ export function AccessProvider({ children }) {
     claimPlanFeature,
     unlockEvents,
     dismissUnlockEvent,
+    dismissAllUnlockEvents,
 
     // 1. allowed
     age,
@@ -687,6 +709,7 @@ export function AccessProvider({ children }) {
     isGameVisible,
     isSubjectVisible,
     visibleGameIds,
+    playableGames,
     visibleFabActions,
     stageEvents,
     dismissStageEvent,
@@ -699,11 +722,11 @@ export function AccessProvider({ children }) {
     isPlus, experimentalOn, setExperimental, accessFor, isOpen, rankedFeatures,
     activeObjective, activeObjectiveId, completedObjectiveIds, startObjective,
     toggleStep, completeActiveObjective, abandonActiveObjective, submitTest,
-    claimPlanFeature, unlockEvents, dismissUnlockEvent,
+    claimPlanFeature, unlockEvents, dismissUnlockEvent, dismissAllUnlockEvents,
     age, isContentAllowed, isGameAllowed, doorSettings, setDoorSetting, plusOnSale,
     stage, derivedStage, nextStage, experienceMode, setExperienceMode, opened, can,
     firstGoal, startFirstGoal, isFeatureShown, isScreenVisible, isGameVisible,
-    isSubjectVisible, visibleGameIds, visibleFabActions, stageEvents, dismissStageEvent,
+    isSubjectVisible, visibleGameIds, playableGames, visibleFabActions, stageEvents, dismissStageEvent,
     signalAction,
     refresh, stats,
   ]);

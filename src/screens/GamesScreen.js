@@ -7,13 +7,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import { useUserProgress, SUBJECT_CONFIG } from '../../context/UserProgressContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useUIPrefs } from '../../context/UIPrefsContext';
 import { RANK_LABELS, FONTS } from '../theme';
 import LevelRing from '../components/LevelRing';
 import MissionsScreen from './MissionsScreen';
+import useDrillPlan from '../logic/useDrillPlan';
 import { getEnabledGames, MECHANIC_META } from '../services/gameRegistry';
 import { getAllGradeLevels, useBandFraming } from '../logic/useGradeLevel';
 import useCharacterLoadout from '../logic/useCharacterLoadout';
@@ -102,6 +103,10 @@ export default function GamesScreen() {
     [isGameVisible]
   );
   const [activeTab, setActiveTab] = useState('Overview');
+  // Coming back to Training (out of a game, or from another tab) lands on
+  // the Overview: the "folder" level, with Enter Training and today's
+  // drills, rather than wherever in the game list it was left.
+  useFocusEffect(useCallback(() => { setActiveTab('Overview'); }, []));
   // Dropping back (switching "show me everything" off) while on a tab the
   // current stage doesn't have.
   useEffect(() => {
@@ -109,6 +114,18 @@ export default function GamesScreen() {
   }, [tabs, activeTab]);
   const [showMissions, setShowMissions] = useState(false);
   const [showTasks, setShowTasks] = useState(false);
+  const drillPlan = useDrillPlan();
+  // `openDrills` (from the Compass step "Finish a daily drill" and Home's
+  // drills widget) opens straight onto today's drills, rather than landing
+  // on Training and leaving the person to find the button. Cleared after,
+  // so coming back to the tab later doesn't pop the sheet again.
+  const route = useRoute();
+  useEffect(() => {
+    if (route.params?.openDrills) {
+      setShowTasks(true);
+      navigation.setParams({ openDrills: undefined });
+    }
+  }, [route.params?.openDrills, navigation]);
   const [gameFilter, setGameFilter] = useState('All');
   const [mechanicFilter, setMechanicFilter] = useState('All');
   const [skillLevels, setSkillLevels] = useState({});
@@ -188,7 +205,11 @@ export default function GamesScreen() {
             </TouchableOpacity>
 
             {/* Quick stat chips */}
-            <TourSpot id="training-stats">
+            {/* width on the TourSpots: the rows inside size themselves by
+                percentage, and an unsized wrapper collapsed them to their
+                content, which squeezed "Newcomer" out of its chip and the
+                two buttons below out of their borders. */}
+            <TourSpot id="training-stats" style={{ width: '100%' }}>
             <View style={styles.chipRow}>
               <QuickChip icon="✦" iconName="sparkles-outline" value={points?.toLocaleString() || '0'} label="Points" c={c} t={t} s={s} r={r} />
               <QuickChip icon="🔥" iconName="flame-outline" value={streakDays || 0} label="Streak" c={c} t={t} s={s} r={r} />
@@ -214,21 +235,23 @@ export default function GamesScreen() {
             </TourSpot>
 
             {/* Objectives + Drills */}
-            <TourSpot id="training-games">
+            <TourSpot id="training-games" style={{ width: '100%', alignItems: 'center' }}>
             <View style={styles.actionRow}>
               <TouchableOpacity
                 style={styles.actionBtn}
                 onPress={() => setShowMissions(true)}
               >
                 {showEmojis ? <Text style={styles.actionEmoji}>⚔️</Text> : <Ionicons name="flag-outline" size={18} color={c.gold} />}
-                <Text style={styles.actionText}>Objectives</Text>
+                <Text style={styles.actionText}>Challenges</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionBtn, styles.actionBtnTeal]}
                 onPress={() => setShowTasks(true)}
               >
                 {showEmojis ? <Text style={styles.actionEmoji}>📋</Text> : <Ionicons name="clipboard-outline" size={18} color={c.teal} />}
-                <Text style={[styles.actionText, { color: c.teal }]}>Daily Drills</Text>
+                <Text style={[styles.actionText, { color: c.teal }]}>
+                  Daily Drills{drillPlan.total ? ` ${drillPlan.doneCount}/${drillPlan.total}` : ''}
+                </Text>
               </TouchableOpacity>
             </View>
             </TourSpot>
@@ -240,7 +263,7 @@ export default function GamesScreen() {
             {showSubtext && (
               <Text style={styles.sectionIntro}>
                 {starter
-                  ? `${GAMES.length} drills picked for you to start with. The rest open up as you finish your first goal.`
+                  ? `${GAMES.length} drills picked for you to start with. More open up as you finish goals and level up.`
                   : trainedCount > 0
                     ? `You've trained in ${trainedCount} of ${GAMES.length} drills. Pick one to continue.`
                     : 'Pick a drill below and choose your grade level to begin.'}
@@ -433,14 +456,26 @@ export default function GamesScreen() {
       </ScrollView>
 
       <Modal visible={showMissions} animationType="slide" onRequestClose={() => setShowMissions(false)}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: c.bg0 }}>
-          <MissionsScreen onClose={() => setShowMissions(false)} />
-        </SafeAreaView>
+        <View style={{ flex: 1, backgroundColor: c.bg0 }}>
+          {/* "Challenges": the weekly ones and achievements. This button
+              used to say "Objectives" and open the same Daily tab as Daily
+              Drills beside it, so the two looked like one thing twice, and
+              "objectives" is also what the Compass calls goals. */}
+          <MissionsScreen
+            initialTab="weekly"
+            onClose={() => setShowMissions(false)}
+            onPlay={(gameId) => { setShowMissions(false); navigation.navigate('Play', { gameId }); }}
+          />
+        </View>
       </Modal>
       <Modal visible={showTasks} animationType="slide" onRequestClose={() => setShowTasks(false)}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: c.bg0 }}>
-          <MissionsScreen initialTab="daily" onClose={() => setShowTasks(false)} />
-        </SafeAreaView>
+        <View style={{ flex: 1, backgroundColor: c.bg0 }}>
+          <MissionsScreen
+            initialTab="daily"
+            onClose={() => setShowTasks(false)}
+            onPlay={(gameId) => { setShowTasks(false); navigation.navigate('Play', { gameId }); }}
+          />
+        </View>
       </Modal>
     </SafeAreaView>
   );

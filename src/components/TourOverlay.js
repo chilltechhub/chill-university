@@ -118,18 +118,26 @@ export default function TourOverlay() {
   }
 
   // ── Where the guide stands ──────────────────────────────────────────────
-  // Opposite the target, so they never stand in front of what they're
-  // pointing at. No target (opening/closing steps) puts them at the bottom.
-  const atTop = hole ? (hole.y + hole.h / 2) > SH / 2 : false;
-
+  // On whichever side of the target has more room, so they never stand in
+  // front of what they're pointing at. This used to be "opposite the
+  // target's centre", which for a tall card just below the middle (Home's
+  // stage card) put the bubble in a strip two lines high above it, with
+  // more room going spare below. No target puts them at the bottom.
+  //
   // Standing room at the bottom stops short of the tab bar. Without this the
   // character's feet overlap a dimmed tab bar, which reads as a layering
   // mistake rather than as someone standing on the screen.
   const bottomInset = insets.bottom + TAB_BAR_H + MARGIN_V;
-
-  const available = atTop
-    ? (hole.y - 16) - (insets.top + MARGIN_V)
-    : (SH - bottomInset) - (hole ? hole.y + hole.h + 16 : SH * 0.42);
+  const roomAbove = hole ? (hole.y - 16) - (insets.top + MARGIN_V) : 0;
+  const roomBelow = (SH - bottomInset) - (hole ? hole.y + hole.h + 16 : SH * 0.42);
+  // `placement: 'top'` pins a step up top whatever the target: a note shown
+  // inside a game, where the bottom half is the answers.
+  const atTop = currentStep.placement === 'top' || (hole ? roomAbove > roomBelow : false);
+  const available = atTop ? (hole ? roomAbove : SH * 0.5) : roomBelow;
+  // Tight on both sides, or a non-blocking note sitting over live content:
+  // a smaller guide, so the words get the room and less of the screen is
+  // covered.
+  const guideSize = currentStep.nonBlocking || available < BUBBLE_MIN + GUIDE_SIZE + TAIL_H + 40 ? 48 : GUIDE_SIZE;
 
   const blockStyle = {
     position: 'absolute',
@@ -137,7 +145,7 @@ export default function TourOverlay() {
     right: s.lg,
     // Cap the whole block (bubble + character) so the controls can't be
     // pushed off-screen by long copy; the bubble body scrolls instead.
-    maxHeight: Math.max(BUBBLE_MIN + GUIDE_SIZE + TAIL_H, available),
+    maxHeight: Math.max(BUBBLE_MIN + guideSize + TAIL_H, available),
     ...(atTop
       ? { top: insets.top + MARGIN_V }
       : { bottom: bottomInset }),
@@ -145,7 +153,11 @@ export default function TourOverlay() {
 
   // Touch absorbers: everything except the hole. A passthrough step leaves
   // the hole itself live so the highlighted control can actually be pressed.
-  const absorbers = hole
+  // A `nonBlocking` step is a note, not a lesson: no dim, nothing absorbed,
+  // so the screen under it stays fully usable (the guide saying "add a note
+  // if you like" while the note box is right there to type in).
+  const blocking = !currentStep.nonBlocking;
+  const absorbers = !blocking ? [] : hole
     ? [
         { left: 0, top: 0, right: 0, height: hole.y },
         { left: 0, top: hole.y + hole.h, right: 0, bottom: 0 },
@@ -156,7 +168,7 @@ export default function TourOverlay() {
 
   // Bubble tail — a small triangle on the underside of the bubble, sitting
   // above the character's head so the speech reads as coming from them.
-  const tailLeft = GUIDE_SIZE / 2 - TAIL_W / 2;
+  const tailLeft = guideSize / 2 - TAIL_W / 2;
   const tailPath = 'M0,0 L' + TAIL_W + ',0 L' + (TAIL_W / 2) + ',' + TAIL_H + ' Z';
 
   return (
@@ -165,6 +177,7 @@ export default function TourOverlay() {
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
         {/* ── Visual layer: dim + shaped hole + glow. No touch handling. ── */}
+        {blocking && (
         <Svg width={SW} height={SH} style={StyleSheet.absoluteFill} pointerEvents="none">
           <Defs>
             <Mask id="tour-hole">
@@ -197,10 +210,11 @@ export default function TourOverlay() {
             </>
           )}
         </Svg>
+        )}
 
         {/* ── Touch layer ── */}
         {absorbers.map((a, i) => <View key={i} style={[styles.absorb, a]} />)}
-        {hole && !currentStep.passthrough && (
+        {blocking && hole && !currentStep.passthrough && (
           <View style={{ position: 'absolute', left: hole.x, top: hole.y, width: hole.w, height: hole.h }} />
         )}
 
@@ -304,7 +318,7 @@ export default function TourOverlay() {
                 {/* An unanswered quiz withholds Next — otherwise the
                     obvious move is to skip past the question, which defeats
                     the point of asking it. */}
-                {!currentStep.passthrough && !(currentStep.quiz && quizAnswer === null) && (
+                {(!currentStep.passthrough || currentStep.allowNext) && !(currentStep.quiz && quizAnswer === null) && (
                   <TouchableOpacity onPress={nextStep} accessibilityRole="button" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                     <Text style={{ fontSize: 13, color: c.teal, fontWeight: '800' }}>
                       {isLastStep ? 'Done' : 'Next ›'}
@@ -321,8 +335,8 @@ export default function TourOverlay() {
               <Path d={tailPath} fill={c.bg1} stroke={c.teal + '55'} strokeWidth={1} />
             </Svg>
           </View>
-          <View style={{ height: GUIDE_SIZE, justifyContent: 'flex-end' }} pointerEvents="none">
-            <PlayerCharacter outfit={guide.outfit} size={GUIDE_SIZE} style={{ alignSelf: 'flex-start' }} />
+          <View style={{ height: guideSize, justifyContent: 'flex-end' }} pointerEvents="none">
+            <PlayerCharacter outfit={guide.outfit} size={guideSize} style={{ alignSelf: 'flex-start' }} />
           </View>
         </View>
       </View>
