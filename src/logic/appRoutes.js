@@ -65,3 +65,25 @@ export function goToScreen(navigation, screen, params) {
 export function isKnownScreen(screen) {
   return TAB_SCREENS.has(screen) || ROOT_SCREENS.has(screen) || CLASS_SCREENS.has(screen);
 }
+
+/**
+ * A back button that always lands somewhere known.
+ *
+ * `navigation.goBack()` pops whatever happens to be underneath, and inside
+ * the Library that is not always the screen the user came through. The tab
+ * keeps its own stack, so opening a Library screen from Home (or from a
+ * search result, a link, or a goal's "Open" button) pushes it on top of
+ * whatever was last open in that tab — and Back then returned to a screen
+ * the person had not visited in days, which reads as the app losing its
+ * place.
+ *
+ * So: go back only when the thing underneath really is `screen`; otherwise
+ * navigate to it. Either way the button means what it says.
+ */
+export function goBackTo(navigation, screen, params) {
+  if (!navigation || !screen) return;
+  const state = navigation.getState?.();
+  const prev = state?.routes?.[(state.index ?? 0) - 1];
+  if (prev && prev.name === screen) return navigation.goBack();
+  return navigation.navigate(screen, params);
+}

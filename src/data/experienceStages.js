@@ -101,10 +101,10 @@ export const PATHS = {
     {
       key: 'start',
       label: 'Getting started',
-      blurb: 'Home, your first goal, Life Areas, the Planner and three games.',
+      blurb: 'Home with your first goal, today’s focus and what opens next; Life Areas, the Planner and three games.',
       features: ['home-desk', 'compass', 'training', 'life-areas', 'planner'],
       screens: ['WayfinderScreen'],
-      widgets: ['hq', 'compass', 'goalSteps', 'lifeAreas'],
+      widgets: ['hq', 'stageSteps', 'focus', 'compass', 'goalSteps', 'lifeAreas'],
       games: ['mindgym', 'exercise', 'memory'],
       fab: ['reminder'],
     },
@@ -115,7 +115,7 @@ export const PATHS = {
       features: ['capture'],
       // The desk is where captured things turn into the next action, so it
       // arrives with the inbox rather than three stages later.
-      widgets: ['desk', 'focus'],
+      widgets: ['desk'],
       fab: ['note', 'inbox'],
     },
     {
@@ -142,7 +142,7 @@ export const PATHS = {
       blurb: 'Home, your first goal, Classes, the Planner and three games.',
       features: ['home-desk', 'compass', 'training', 'classes', 'planner'],
       screens: ['WayfinderScreen'],
-      widgets: ['hq', 'compass', 'goalSteps', 'studyBlocks'],
+      widgets: ['hq', 'stageSteps', 'focus', 'compass', 'goalSteps', 'studyBlocks'],
       games: ['factor', 'word', 'classify'],
       fab: ['calendar'],
     },
@@ -159,7 +159,7 @@ export const PATHS = {
       label: 'The Capture Inbox',
       blurb: 'Get a thought out of your head now, decide where it goes later.',
       features: ['capture'],
-      widgets: ['desk', 'focus', 'activities'],
+      widgets: ['desk', 'activities'],
       fab: ['inbox'],
     },
     {
@@ -178,7 +178,7 @@ export const PATHS = {
       label: 'Getting started',
       blurb: 'Home, your first goal, the Capture Inbox, the Planner and three games.',
       features: ['home-desk', 'compass', 'training', 'capture', 'planner'],
-      widgets: ['hq', 'compass', 'goalSteps', 'desk', 'recurringOps'],
+      widgets: ['hq', 'stageSteps', 'focus', 'compass', 'goalSteps', 'desk', 'recurringOps'],
       games: ['registerready', 'shiftmanager', 'people'],
       fab: ['reminder'],
     },
@@ -202,7 +202,6 @@ export const PATHS = {
       label: 'Academy Classes',
       blurb: 'The business operations and compliance tracks.',
       features: ['classes'],
-      widgets: ['focus'],
     },
     {
       key: 'areas',
@@ -221,7 +220,7 @@ export const PATHS = {
       label: 'Getting started',
       blurb: 'Home, your first goal, the Idea Garden, the Workshop and three games.',
       features: ['home-desk', 'compass', 'training', 'idea-garden', 'workshop'],
-      widgets: ['hq', 'compass', 'goalSteps', 'desk', 'founderQuest'],
+      widgets: ['hq', 'stageSteps', 'focus', 'compass', 'goalSteps', 'desk', 'founderQuest'],
       games: ['budget', 'survivemonth', 'trail'],
       fab: ['project'],
     },

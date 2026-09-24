@@ -35,6 +35,7 @@ import { useUIPrefs } from '../../../context/UIPrefsContext';
 import { LIFE_AREAS } from './LifeAreaScreen';
 import { RESEARCH_CATEGORIES, RESEARCH_CATALOG, RESOURCE_CATALOG, DISCOVER_AGE_BANDS, RESEARCH_AGE_BANDS } from '../../data/knowledgeCatalogs';
 import { useUserProgress } from '../../../context/UserProgressContext';
+import { useAccess } from '../../../context/AccessContext';
 import { ageBandFor, bandAllows } from '../../logic/profileResolver';
 import { notesToMarkdown, notesToCSV } from '../../logic/exportUtils';
 import useFolders from '../../logic/useFolders';
@@ -601,6 +602,8 @@ export default function KnowledgeScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { profile } = useUserProgress();
+  // A vault save is what ticks a goal's "write it down" step.
+  const { signalAction } = useAccess();
   const band = ageBandFor(profile);
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   const { showEmojis, showSubtext } = useUIPrefs();
@@ -787,7 +790,12 @@ export default function KnowledgeScreen() {
     // queued and replayed instead of being lost, which is what the Notes Desk
     // did (via captureService.addCapture) and what every kind gets now.
     const { row } = await offlineWrite(supabase, 'captures', item);
-    if (row) setEntries((prev) => [row, ...prev]);
+    if (row) {
+      setEntries((prev) => [row, ...prev]);
+      // Saving anything to the vault is what ticks the "write it down" step
+      // of a goal — a note, a source, a reflection. See src/data/objectives.js.
+      signalAction('vault-saved', { kind });
+    }
     return row;
   };
 

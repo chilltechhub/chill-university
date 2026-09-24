@@ -19,11 +19,28 @@
 // for focus is more app, rather than more app being the thing you have to
 // wade through first. src/data/featureCatalog.js names which.
 //
-// Steps are checked off by hand, except where `auto` names a number the app
-// already tracks honestly (streak days, level, points, missions). Those tick
-// themselves — asking someone to self-report a streak the app is already
-// counting is busywork, and inviting them to tick "kept a 3-day streak" on
-// day one is just an invitation to lie to themselves.
+// A step ticks itself wherever the app can honestly tell that it happened.
+// Two ways, and by hand only when neither fits:
+//
+//   `auto`        names a number the app already tracks (streak days, level,
+//                 points, missions, rounds played). Asking someone to
+//                 self-report a streak the app is already counting is
+//                 busywork, and inviting them to tick "kept a 3-day streak"
+//                 on day one is just an invitation to lie to themselves.
+//                 These steps can't be hand-ticked at all.
+//   `signal`      names an action a screen reports through
+//                 AccessContext.signalAction — 'inbox-captured',
+//                 'planner-item-added', 'vault-saved'. A colon narrows it:
+//                 'planner-item-added:physical' only counts a Physical one.
+//                 `signalCount` makes it take more than once ("capture five
+//                 things"), and the step keeps a running number until then.
+//
+// Only a step nothing can observe is left to a hand tick — "actually teach
+// it to someone", "decide it is ready to show". Those are judgements, not
+// events, and asking the app to guess at them would be worse than asking.
+//
+// Two steps of the SAME objective must not share a signal: one action would
+// tick both.
 
 /* ─── Purposes ────────────────────────────────────────────────────────────── */
 //
@@ -155,7 +172,7 @@ export const OBJECTIVES = [
     why: 'Nothing else in here works until turning up is boring. This is the smallest version of that.',
     estimate: '3 days',
     steps: [
-      { id: 'focus',   label: 'Set a focus for today',        hint: 'One line on Home. What today is actually for.', screen: 'Home' },
+      { id: 'focus',   label: 'Set a focus for today',        hint: 'One line on Home. What today is actually for.', screen: 'Home', signal: 'focus-set' },
       { id: 'mission', label: 'Finish a daily drill',          hint: 'Any game on the Training tab counts.', screen: 'Training', auto: { stat: 'missions', value: 1 } },
       { id: 'plan',    label: 'Put one thing in the Planner',  hint: 'Something real and dated, not a wish.', screen: 'PlannerScreen', signal: 'planner-item-added' },
       { id: 'streak',  label: 'Reach a 3-day streak',          hint: 'Ticks itself the day your streak hits three.', auto: { stat: 'streak', value: 3 } },
@@ -190,7 +207,7 @@ export const OBJECTIVES = [
     estimate: 'About a week',
     steps: [
       { id: 'pick',   label: 'Open a class and pick one topic',  hint: 'One. The other twenty will keep.', screen: 'ClassesStack', signal: 'class-opened' },
-      { id: 'note',   label: 'Save a note or source to the Vault', hint: 'Something you would want again in a month.', screen: 'KnowledgeScreen' },
+      { id: 'note',   label: 'Save a note or source to the Vault', hint: 'Something you would want again in a month.', screen: 'KnowledgeScreen', signal: 'vault-saved' },
       { id: 'drill',  label: 'Play its training game three times', hint: 'Reps, not reading about reps.', screen: 'Training' },
       { id: 'level',  label: 'Reach level 3',                     hint: 'Ticks itself as your level comes up.', auto: { stat: 'level', value: 3 } },
     ],
@@ -207,8 +224,8 @@ export const OBJECTIVES = [
     estimate: '1 week',
     steps: [
       { id: 'area',    label: 'Rate your Physical life area',    hint: 'Honestly. Nobody else sees it.', screen: 'LibraryScreen', signal: 'area-rated:physical' },
-      { id: 'agenda',  label: 'Schedule one movement block',     hint: 'Twenty minutes, on a day, in the Planner.', screen: 'PlannerScreen' },
-      { id: 'reflect', label: 'Write one reflection',            hint: 'What helped, what did not.', screen: 'KnowledgeScreen' },
+      { id: 'agenda',  label: 'Schedule one movement block',     hint: 'Twenty minutes, on a day, in the Planner. Tag it Physical and it ticks itself.', screen: 'PlannerScreen', signal: 'planner-item-added:physical' },
+      { id: 'reflect', label: 'Write one reflection',            hint: 'What helped, what did not.', screen: 'KnowledgeScreen', signal: 'vault-saved' },
       { id: 'streak',  label: 'Reach a 5-day streak',            hint: 'Ticks itself on day five.', auto: { stat: 'streak', value: 5 } },
     ],
     unlocks: ['weekly-review'],
@@ -225,8 +242,8 @@ export const OBJECTIVES = [
     steps: [
       { id: 'area',    label: 'Rate your Financial life area',    hint: 'Where it actually is today.', screen: 'LibraryScreen', signal: 'area-rated:financial' },
       { id: 'game',    label: 'Play Budget Balance once',         hint: 'A cheap way to find the gaps in what you know.', screen: 'Training' },
-      { id: 'capture', label: 'Capture your three biggest costs', hint: 'Rent-sized things, not coffee.', screen: 'CaptureInbox' },
-      { id: 'plan',    label: 'Schedule a monthly money review',  hint: 'Recurring, in the Planner. Half an hour.', screen: 'PlannerScreen' },
+      { id: 'capture', label: 'Capture your three biggest costs', hint: 'Rent-sized things, not coffee. Ticks itself at three.', screen: 'CaptureInbox', signal: 'inbox-captured', signalCount: 3 },
+      { id: 'plan',    label: 'Schedule a monthly money review',  hint: 'Recurring, in the Planner. Half an hour — tag it Financial and it ticks itself.', screen: 'PlannerScreen', signal: 'planner-item-added:financial' },
     ],
     unlocks: ['savings-investing', 'debt-credit'],
     next: null,
@@ -241,7 +258,7 @@ export const OBJECTIVES = [
     estimate: 'About a week',
     steps: [
       { id: 'area',    label: 'Rate your Professional life area', hint: 'Start from where you are, not where you would like to be.', screen: 'LibraryScreen', signal: 'area-rated:professional' },
-      { id: 'capture', label: 'Capture the role you are aiming at', hint: 'A title, a company, or a description of the work.', screen: 'CaptureInbox' },
+      { id: 'capture', label: 'Capture the role you are aiming at', hint: 'A title, a company, or a description of the work.', screen: 'CaptureInbox', signal: 'inbox-captured' },
       { id: 'project', label: 'Start a project that proves it',   hint: 'Something a stranger could look at.', screen: 'ProjectsScreen', signal: 'project-started' },
       { id: 'points',  label: 'Earn 250 points',                  hint: 'Ticks itself. Evidence that you kept at it.', auto: { stat: 'points', value: 250 } },
     ],
@@ -340,9 +357,9 @@ export const OBJECTIVES = [
     why: 'A capture inbox you never process is a to-do list wearing a disguise.',
     estimate: '2 days',
     steps: [
-      { id: 'capture', label: 'Capture five things',          hint: 'Anything on your mind. Speed over tidiness.', screen: 'CaptureInbox' },
-      { id: 'route',   label: 'Route three of them',          hint: 'To a project, a note, the planner — anywhere but back.', screen: 'CaptureInbox' },
-      { id: 'zero',    label: 'Get the inbox to zero',         hint: 'Archive counts. Deciding it does not matter is deciding.', screen: 'CaptureInbox' },
+      { id: 'capture', label: 'Capture five things',          hint: 'Anything on your mind. Speed over tidiness. Ticks itself at five.', screen: 'CaptureInbox', signal: 'inbox-captured', signalCount: 5 },
+      { id: 'route',   label: 'Route three of them',          hint: 'To a project, a note, the planner — anywhere but back. Ticks itself at three.', screen: 'CaptureInbox', signal: 'inbox-processed', signalCount: 3 },
+      { id: 'zero',    label: 'Get the inbox to zero',         hint: 'Archive counts. Deciding it does not matter is deciding.', screen: 'CaptureInbox', signal: 'inbox-zero' },
       { id: 'repeat',  label: 'Do it again the next day',     hint: 'Once is a tidy-up. Twice is a habit forming.', screen: 'CaptureInbox' },
     ],
     unlocks: ['import-hub'],
@@ -358,8 +375,8 @@ export const OBJECTIVES = [
     estimate: '2 days',
     steps: [
       { id: 'ship',      label: 'Have one shipped project',     hint: 'Open the build and tap SHIPPED at the top.', screen: 'ProjectsScreen', signal: 'project-shipped' },
-      { id: 'portfolio', label: 'Add it to your Portfolio',      hint: 'Title, one line on what it was.', screen: 'PortfolioScreen' },
-      { id: 'write',     label: 'Write what you learned',        hint: 'Two sentences. The part that surprised you.', screen: 'KnowledgeScreen' },
+      { id: 'portfolio', label: 'Add it to your Portfolio',      hint: 'Title, one line on what it was.', screen: 'PortfolioScreen', signal: 'portfolio-added' },
+      { id: 'write',     label: 'Write what you learned',        hint: 'Two sentences. The part that surprised you.', screen: 'KnowledgeScreen', signal: 'vault-saved' },
       { id: 'ready',     label: 'Decide it is ready to show',    hint: 'It is. Tick it.' },
     ],
     unlocks: ['discover'],
@@ -374,8 +391,8 @@ export const OBJECTIVES = [
     why: 'Teaching a thing is the fastest audit of whether you actually know it.',
     estimate: 'About a week',
     steps: [
-      { id: 'topic',  label: 'Pick the topic you know best',  hint: 'The one you would not need to look up.', screen: 'ClassesStack' },
-      { id: 'outline', label: 'Outline it in the Knowledge Vault', hint: 'Five bullets is a lesson plan.', screen: 'KnowledgeScreen' },
+      { id: 'topic',  label: 'Pick the topic you know best',  hint: 'The one you would not need to look up.', screen: 'ClassesStack', signal: 'class-opened' },
+      { id: 'outline', label: 'Outline it in the Knowledge Vault', hint: 'Five bullets is a lesson plan.', screen: 'KnowledgeScreen', signal: 'vault-saved' },
       { id: 'teach',  label: 'Actually teach it to someone',   hint: 'One person is a class.' },
       { id: 'revise', label: 'Note what you would change',     hint: 'The bit where they looked confused.', screen: 'KnowledgeScreen' },
     ],

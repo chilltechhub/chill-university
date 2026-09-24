@@ -928,7 +928,12 @@ export default function IdeaGardenScreen() {
     setProgressModal(false);
   };
 
-  if (loading) return <View style={styles.centered}><ActivityIndicator color={gc.green} size="large" /></View>;
+  // No full-screen loading gate: the top bar holds <TourSpot id="ideas-list">
+  // (the Plant button), and the guide arrives pointing at it on the one
+  // visit that has no cache to render from. A spinner over the whole screen
+  // meant that spot did not exist yet, so the spotlight had nothing to trace
+  // and the highlight never appeared — on the first visit only. The bar is
+  // static chrome; only the garden below it has to wait.
 
   const openCore = openItem?.type === 'core' ? openItem.data : null;
   const openPetal = openItem?.type === 'petal' ? openItem.data : null;
@@ -988,8 +993,12 @@ export default function IdeaGardenScreen() {
         </View>
       </View>
 
+      {loading && (
+        <View style={styles.centered}><ActivityIndicator color={gc.green} size="large" /></View>
+      )}
+
       {/* Map view — WebView canvas (native only, see the `view` default above) */}
-      {view === 'map' && Platform.OS === 'web' && (
+      {!loading && view === 'map' && Platform.OS === 'web' && (
         <View style={styles.canvasWrap}>
           <View style={styles.emptyGarden}>
             <Ionicons name="leaf-outline" size={28} color={gc.text3} style={{ marginBottom: 8 }} />
@@ -1002,7 +1011,7 @@ export default function IdeaGardenScreen() {
           </View>
         </View>
       )}
-      {view === 'map' && Platform.OS !== 'web' && (
+      {!loading && view === 'map' && Platform.OS !== 'web' && (
         <View style={styles.canvasWrap}>
           <ScrollView automaticallyAdjustKeyboardInsets
             style={{ flex: 1 }}
@@ -1033,7 +1042,7 @@ export default function IdeaGardenScreen() {
       )}
 
       {/* List view */}
-      {view === 'list' && (
+      {!loading && view === 'list' && (
         <ScrollView automaticallyAdjustKeyboardInsets style={styles.listView} contentContainerStyle={{ padding: 12, gap: 10 }}>
           {cores.map(core => {
             const pt = PLANT_TYPES.find(p => p.id === core.plant_type);

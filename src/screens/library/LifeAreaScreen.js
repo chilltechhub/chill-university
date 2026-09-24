@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
+import { goBackTo } from '../../logic/appRoutes';
 import { useTheme } from '../../../context/ThemeContext';
 import { useUIPrefs } from '../../../context/UIPrefsContext';
 import { supabase } from '../../api/profileScopedClient';
@@ -425,7 +426,15 @@ export default function LifeAreaScreen() {
         {/* ── Hero banner ── */}
         <View style={{ backgroundColor: color + '18', borderBottomWidth: 1, borderBottomColor: color + '33', padding: s.xl, paddingTop: s.xxl }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: s.md }}>
-            <TouchableOpacity onPress={() => navigation.goBack()}>
+            {/* goBackTo, not goBack: this screen gets opened from Home, from
+                search and from a goal's Open button, which pushes it on top
+                of whatever the Library tab last had open. See
+                src/logic/appRoutes.js. */}
+            <TouchableOpacity
+              onPress={() => goBackTo(navigation, 'LibraryScreen')}
+              accessibilityRole="button"
+              accessibilityLabel="Back to the Library"
+            >
               <Ionicons name="chevron-back" size={22} color={color} />
             </TouchableOpacity>
             <FillWithAIButton target="life_areas" color={color} />

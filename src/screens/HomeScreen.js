@@ -18,6 +18,7 @@ import { areaColor } from '../data/areaColors';
 import { CREST_COLORS as CREST_OPTIONS } from '../data/crestOptions';
 import { useUIPrefs } from '../../context/UIPrefsContext';
 import { useUserProgress } from '../../context/UserProgressContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../api/profileScopedClient';
 import { fetchContentPool } from '../api/remoteConfigService';
 import { getMyOpenAssignments, updateAssignmentStatus } from '../api/organizationService';
@@ -40,6 +41,7 @@ import { WayfinderWidget } from '../components/widgets/WayfinderWidget';
 import QuestWidget from '../components/widgets/QuestWidget';
 import CompassCard from '../components/CompassCard';
 import GoalStepsWidget from '../components/GoalStepsWidget';
+import StageStepsWidget from '../components/StageStepsWidget';
 import { getWayfinderIntent } from '../api/wayfinderService';
 import { useAccess } from '../../context/AccessContext';
 import { starterWidgetLayout } from '../logic/experienceStage';
@@ -146,6 +148,9 @@ const WIDGET_DEFS = [
   // The steps of the goal in flight, ticked or not — the Compass card
   // shows only the next one.
   { key: 'goalSteps',   title: 'Your steps' },
+  // Which stage the app is at, what the next one brings, and the two things
+  // that open it. See src/components/StageStepsWidget.js.
+  { key: 'stageSteps',  title: 'Your stage' },
   // Persona widgets — src/components/widgets/
   { key: 'habitRings',       title: 'Habits' },
   { key: 'lifeAreas',        title: 'Life Areas' },
@@ -203,7 +208,7 @@ function layoutForPersona(personaKey, { exploring = false } = {}) {
 // rearranges a dashboard someone has already set up. These are the
 // exceptions: ones that answer "what do I do next", which are no use
 // sitting switched off in the tray.
-const NEW_WIDGETS_SHOWN = new Set(['goalSteps']);
+const NEW_WIDGETS_SHOWN = new Set(['goalSteps', 'stageSteps']);
 
 function reconcileWidgetLayout(stored, personaKey, opts) {
   if (!Array.isArray(stored) || stored.length === 0) return layoutForPersona(personaKey, opts);
@@ -212,15 +217,20 @@ function reconcileWidgetLayout(stored, personaKey, opts) {
   const seen = new Set(kept.map(l => l.key));
   const added = WIDGET_DEFS.filter(w => !seen.has(w.key))
     .map(w => ({ key: w.key, hidden: !NEW_WIDGETS_SHOWN.has(w.key) }));
-  // 'goalSteps' goes straight under the Compass card it belongs to, rather
-  // than to the bottom of the board, where the checklist for the goal in
-  // flight would sit below everything it's meant to lead.
-  const stepsIdx = added.findIndex(l => l.key === 'goalSteps');
-  if (stepsIdx >= 0) {
-    const [steps] = added.splice(stepsIdx, 1);
+  // 'goalSteps' and 'stageSteps' go straight under the Compass card they
+  // belong to, rather than to the bottom of the board, where the checklist
+  // for the goal in flight — and the card saying what opens next — would sit
+  // below everything they're meant to lead.
+  const NEAR_COMPASS = ['goalSteps', 'stageSteps'];
+  const movers = [];
+  NEAR_COMPASS.forEach(key => {
+    const at = added.findIndex(l => l.key === key);
+    if (at >= 0) movers.push(...added.splice(at, 1));
+  });
+  if (movers.length) {
     const compassAt = kept.findIndex(l => l.key === 'compass');
     const out = [...kept];
-    out.splice(compassAt >= 0 ? compassAt + 1 : 0, 0, steps);
+    out.splice(compassAt >= 0 ? compassAt + 1 : 0, 0, ...movers);
     return [...out, ...added];
   }
   return [...kept, ...added];
@@ -1041,6 +1051,60 @@ export default function HomeScreen() {
   }, []);
   const canEditWidgets = can('dashboard');
 
+  /* ── "A new widget is available" ──────────────────────────────────────────
+     Finishing the steps of a goal opens a stage, and a stage usually brings
+     widgets with it. Those arrive HIDDEN (see NEW_WIDGETS_SHOWN) so an
+     update never rearranges a dashboard somebody has already set up — which
+     is right, and also meant they arrived invisibly: the only hint was a new
+     row in the edit tray, which nobody opens looking for something they
+     don't know exists.
+
+     So: offer them, once each, and take no for an answer. Adding is the
+     user's call, not the app's. The "already offered" set is per profile and
+     local — this is a nudge, not a record worth a column. */
+  const offeredKey = activeProfile?.id ? `@cth_widget_offered_${activeProfile.id}` : null;
+  const [widgetOffer, setWidgetOffer] = useState([]);   // WIDGET_DEFS entries
+  const offeredRef = useRef(null);                      // Set, once loaded
+
+  useEffect(() => {
+    offeredRef.current = null;
+    setWidgetOffer([]);
+    if (!offeredKey) return;
+    let alive = true;
+    AsyncStorage.getItem(offeredKey)
+      .then(raw => { if (alive) offeredRef.current = new Set(raw ? JSON.parse(raw) : []); })
+      .catch(() => { if (alive) offeredRef.current = new Set(); });
+    return () => { alive = false; };
+  }, [offeredKey]);
+
+  useEffect(() => {
+    // Only once the board is the user's to arrange. Before that the stage
+    // decides the layout outright, so there is nothing to opt into.
+    if (!canEditWidgets || !offeredRef.current || widgetOffer.length) return;
+    const hidden = new Set(widgetLayout.filter(l => l.hidden).map(l => l.key));
+    const fresh = (opened?.widgets || [])
+      .filter(key => hidden.has(key) && !offeredRef.current.has(key))
+      .map(key => WIDGET_DEFS.find(w => w.key === key))
+      .filter(Boolean);
+    if (fresh.length) setWidgetOffer(fresh);
+  }, [canEditWidgets, opened, widgetLayout, widgetOffer.length]);
+
+  const closeWidgetOffer = (add) => {
+    const keys = widgetOffer.map(w => w.key);
+    setWidgetOffer([]);
+    const seen = offeredRef.current || new Set();
+    keys.forEach(k => seen.add(k));
+    offeredRef.current = seen;
+    if (offeredKey) AsyncStorage.setItem(offeredKey, JSON.stringify([...seen])).catch(() => {});
+    if (!add) return;
+    // Un-hide in place, so they land where the layout already expects them
+    // rather than all at the bottom.
+    const wanted = new Set(keys);
+    const next = widgetLayout.map(l => (wanted.has(l.key) ? { ...l, hidden: false } : l));
+    setWidgetLayout(next);
+    persistWidgetLayout(next);
+  };
+
   // Applies a previously-cached (or freshly-fetched) desk snapshot to state.
   // Same shape either way, so a cold offline launch and a live load render
   // identically — nothing on Home has to know which one it got.
@@ -1235,6 +1299,8 @@ export default function HomeScreen() {
   // Focus handlers
   const saveFocus = async () => {
     setTodayFocus(focusDraft); setEditFocus(false);
+    // Setting a focus is what ticks "set a focus for today" on a goal.
+    if (focusDraft.trim()) signalAction('focus-set');
     if (!userId) return;
     const { error } = await supabase.from('daily_focus').upsert({ user_id: userId, focus_text: focusDraft, focus_date: todayStr });
     if (error) console.warn('HomeScreen: saveFocus', error.message);
@@ -1256,11 +1322,11 @@ export default function HomeScreen() {
     savePresets(next);
   };
 
-  // Dashboard widgets — WidgetBoard calls this locally on every reorder/
-  // hide/show (fast, no network); the layout only actually gets written to
-  // Supabase once, when edit mode closes, via exitWidgetEdit below.
-  const exitWidgetEdit = async () => {
-    setEditingWidgets(false);
+  // Writes the layout where it belongs and keeps the context's cached copy
+  // honest. Shared by exitWidgetEdit and the new-widget offer below, because
+  // "which of the two tables does this go to" is a rule, not a detail to
+  // re-derive at each call site.
+  const persistWidgetLayout = async (layout) => {
     if (!userId) return;
     try {
       // Per PROFILE, not per account. persona_profiles.active_widgets exists
@@ -1271,7 +1337,7 @@ export default function HomeScreen() {
       // yet (guest-ish states, or before the master exists).
       if (activeProfile?.id) {
         const { error } = await supabase.from('persona_profiles')
-          .update({ active_widgets: widgetLayout })
+          .update({ active_widgets: layout })
           .eq('id', activeProfile.id);
         if (error) throw error;
         // The context caches active_widgets. Without this its copy stays on
@@ -1279,11 +1345,20 @@ export default function HomeScreen() {
         // time anything reads it.
         await refreshProfiles();
       } else {
-        const { error } = await supabase.from('user_settings').upsert({ user_id: userId, home_widget_layout: widgetLayout });
+        const { error } = await supabase.from('user_settings').upsert({ user_id: userId, home_widget_layout: layout });
         if (error) throw error;
       }
     } catch (e) { console.warn('HomeScreen: save widget layout', e.message); }
   };
+
+  // Dashboard widgets — WidgetBoard calls this locally on every reorder/
+  // hide/show (fast, no network); the layout only actually gets written to
+  // Supabase once, when edit mode closes, via exitWidgetEdit below.
+  const exitWidgetEdit = async () => {
+    setEditingWidgets(false);
+    await persistWidgetLayout(widgetLayout);
+  };
+
 
   // Affirmation handlers
   const saveAffirmations = async (list) => {
@@ -2026,9 +2101,60 @@ export default function HomeScreen() {
               key: 'goalSteps', title: 'Your steps',
               render: () => <GoalStepsWidget />,
             },
+            {
+              key: 'stageSteps', title: 'Your stage',
+              render: () => <StageStepsWidget />,
+            },
           ]}
         />
       </ScrollView>
+
+      {/* ── "New widget available" ──
+           A door opening, not a fanfare: it names what arrived, says where
+           it came from, and the default is that nothing changes unless the
+           person says so. See the widgetOffer block above. */}
+      <Modal visible={widgetOffer.length > 0} transparent animationType="fade" onRequestClose={() => closeWidgetOffer(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center', padding: s.xl }}>
+          <View style={{ width: '100%', maxWidth: 380, backgroundColor: c.bg1, borderRadius: 20, padding: s.xl, borderWidth: ui.borderWidth, borderColor: c.border }}>
+            <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: c.teal + '22', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: s.md }}>
+              <Ionicons name="grid-outline" size={22} color={c.teal} />
+            </View>
+            <Text style={{ fontSize: t.xs, color: c.teal, ...ui.eyebrow, textAlign: 'center' }}>
+              {showEmojis ? '✨ ' : ''}{widgetOffer.length === 1 ? 'New widget' : `${widgetOffer.length} new widgets`}
+            </Text>
+            <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, textAlign: 'center', marginTop: 4 }}>
+              Want {widgetOffer.length === 1 ? 'it' : 'them'} on your dashboard?
+            </Text>
+            <Text style={{ fontSize: t.sm, color: c.text3, textAlign: 'center', marginTop: 6, lineHeight: 19 }}>
+              Finishing your steps opened {widgetOffer.length === 1 ? 'this' : 'these'}. Your dashboard stays
+              exactly as it is unless you say yes — and either way {widgetOffer.length === 1 ? "it's" : "they're"}{' '}
+              in Edit whenever you want {widgetOffer.length === 1 ? 'it' : 'them'}.
+            </Text>
+
+            <View style={{ marginTop: s.lg, gap: s.sm }}>
+              {widgetOffer.map(w => (
+                <View key={w.key} style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border }}>
+                  <Ionicons name="add-circle-outline" size={16} color={c.teal} />
+                  <Text style={{ flex: 1, fontSize: t.sm, color: c.text1, fontWeight: t.semibold }}>{w.title}</Text>
+                </View>
+              ))}
+            </View>
+
+            <TouchableOpacity
+              onPress={() => closeWidgetOffer(true)}
+              accessibilityRole="button"
+              style={{ marginTop: s.lg, backgroundColor: accent.primary, borderRadius: ui.buttonRadius, paddingVertical: s.md, alignItems: 'center' }}
+            >
+              <Text style={{ fontSize: t.md, color: accent.onPrimary, ...ui.buttonLabel }}>
+                Add to my dashboard
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => closeWidgetOffer(false)} style={{ paddingVertical: s.md, alignItems: 'center' }}>
+              <Text style={{ fontSize: t.sm, color: c.text4, fontWeight: t.semibold }}>Not now</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* ── Focus modal ── */}
       <FocusModal

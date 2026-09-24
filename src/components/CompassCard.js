@@ -203,8 +203,16 @@ export default function CompassCard() {
               />
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
-              <Text style={s.stepLabel}>{nextStep.label}</Text>
+              <Text style={s.stepLabel}>
+                {nextStep.label}
+                {nextStep.needed ? ` · ${nextStep.count} of ${nextStep.needed}` : ''}
+              </Text>
               {showSubtext && !!nextStep.hint && <Text style={s.stepHint}>{nextStep.hint}</Text>}
+              {/* Most steps look after themselves. Saying so is the
+                  difference between a checklist and a chore list. */}
+              {showSubtext && (nextStep.locked || !!nextStep.signal) && (
+                <Text style={s.autoNote}>Ticks itself when it is done.</Text>
+              )}
             </View>
             {nextStep.screen && (
               <TouchableOpacity
@@ -257,6 +265,7 @@ const makeStyles = (c, t, sp, r, ui) => StyleSheet.create({
   stepRow:  { flexDirection: 'row', alignItems: 'center', gap: sp.md },
   stepLabel:{ fontSize: t.sm, fontWeight: '700', color: c.text1, lineHeight: 19 },
   stepHint: { fontSize: t.xs, color: c.text3, marginTop: 2, lineHeight: 17 },
+  autoNote: { fontSize: t.xs, color: c.text4, marginTop: 3, fontStyle: 'italic' },
   goBtn:    { borderWidth: 1, borderRadius: r.sm, paddingHorizontal: sp.md, paddingVertical: 6 },
   goText:   { fontSize: t.xs, fontWeight: '800' },
 

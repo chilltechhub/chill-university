@@ -50,7 +50,7 @@ import { cacheWrite } from '../src/api/offlineCache';
 import { FEATURES, getFeature, featureForScreen, featuresUnlockedBy } from '../src/data/featureCatalog';
 import { getObjective, getPurpose, suggestPurpose } from '../src/data/objectives';
 import { gradeTest } from '../src/data/competencyTests';
-import { evaluateAccess, objectiveProgress, planActive as planIsActive, rankForPurpose } from '../src/logic/featureAccess';
+import { evaluateAccess, objectiveProgress, planActive as planIsActive, rankForPurpose, signalTarget } from '../src/logic/featureAccess';
 import {
   stageFromProgress, resolveStage, openedAt, screenShownAtStage, visibleGameIdsFor,
   fabActionsFor, nextStageNeeds, stagesBetween, reteachBetween, firstGoalFor,
@@ -488,7 +488,9 @@ export function AccessProvider({ children }) {
     if (!target || target.locked) return;
 
     const current = state.objectives[activeObjectiveId]?.steps || {};
-    const steps = { ...current, [stepId]: !current[stepId] };
+    // A counted step (objectives.js `signalCount`) stores a running number,
+    // so "tick it by hand" means jump to done rather than flip a flag.
+    const steps = { ...current, [stepId]: target.done ? false : true };
     if (!steps[stepId]) delete steps[stepId];
 
     applyLocal(prev => ({
@@ -506,16 +508,32 @@ export function AccessProvider({ children }) {
   // doing X is what finishes it (objectives.js `signal`), so a step gets done
   // by doing the thing rather than by remembering to tick a box afterwards.
   // `detail` narrows it: 'area-rated' with { area: 'financial' } also
-  // matches a step whose signal is 'area-rated:financial'.
-  const signalAction = useCallback(async (name, detail = {}) => {
+  // matches a step whose signal is 'area-rated:financial'. A step needing
+  // several occurrences (objectives.js `signalCount`) keeps a count instead
+  // of a flag until it gets there.
+  // `times` is for a batch — processing six inbox items at once is six
+  // occurrences, and six separate calls in one tick would each read the same
+  // pre-batch count and land as one.
+  const signalAction = useCallback(async (name, detail = {}, { times = 1 } = {}) => {
     if (!activeObjectiveId || !name) return;
     const objective = getObjective(activeObjectiveId);
     const names = new Set([name, ...Object.values(detail).map(v => `${name}:${v}`)]);
     const current = state.objectives[activeObjectiveId]?.steps || {};
-    const hits = (objective?.steps || []).filter(step => step.signal && names.has(step.signal) && !current[step.id]);
+    const hits = (objective?.steps || []).filter(step => (
+      step.signal && names.has(step.signal) && current[step.id] !== true
+        && !(typeof current[step.id] === 'number' && current[step.id] >= signalTarget(step))
+    ));
     if (!hits.length) return;
     const steps = { ...current };
-    hits.forEach(step => { steps[step.id] = true; });
+    hits.forEach(step => {
+      // Steps that need the thing done more than once (objectives.js
+      // `signalCount`, e.g. "capture five things") keep a count; everything
+      // else is a flag, the way it has always been.
+      const target = signalTarget(step);
+      if (target <= 1) { steps[step.id] = true; return; }
+      const next = (typeof current[step.id] === 'number' ? current[step.id] : 0) + Math.max(1, times);
+      steps[step.id] = next >= target ? true : next;
+    });
     applyLocal(prev => ({
       ...prev,
       objectives: {

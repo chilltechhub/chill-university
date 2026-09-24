@@ -60,7 +60,7 @@ import { useAccess } from '../../context/AccessContext';
 import { useFeatureFlag, useRemoteConfig } from '../../context/RemoteConfigContext';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import {
-  PersonaStep, StartModeStep, NameStep, SectorsStep, LookStep, PERSONA_AREA_DEFAULTS, pickFocusHub, buildRecommendations,
+  WelcomeStep, PersonaStep, StartModeStep, NameStep, SectorsStep, LookStep, PERSONA_AREA_DEFAULTS, pickFocusHub, buildRecommendations,
 } from './onboarding/steps';
 
 const { width: SW } = Dimensions.get('window');
@@ -92,6 +92,10 @@ const COUNTRY_CHOICES = [
 // scrolling. The persona card used to also hold the start mode, your name
 // and a baseline number, which made it the one long scrolling screen.
 const STEPS = [
+  // Asks nothing. Somebody who just signed up knows the name and nothing
+  // else, and four questions about a thing you cannot picture yet is how an
+  // app gets closed on day one. See WelcomeStep in ./onboarding/steps.js.
+  { component: WelcomeStep,    title: 'Welcome', subtitle: 'What this app is' },
   { component: PersonaStep,    title: 'Profile', subtitle: 'Your account type' },
   { component: StartModeStep,  title: 'Start',   subtitle: 'How much to start with' },
   { component: NameStep,       title: 'Name',    subtitle: 'What to call you' },

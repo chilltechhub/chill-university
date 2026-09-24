@@ -128,9 +128,13 @@ export function fabActionsFor(opened) {
 // Home before the 'dashboard' stage: the widgets the path has opened, in the
 // order it opened them, everything else hidden. Never persisted — it's
 // derived, like the persona default.
-// Whatever else a stage has opened, the goal in flight and the next action
-// lead Home — that's the whole promise of the first screen.
-const LEAD_WIDGETS = ['compass', 'goalSteps', 'desk'];
+// Whatever else a stage has opened, Home opens with the same four, in the
+// same order as every persona default (see defaultWidgets in
+// src/data/personas.js — the two have to agree, or the dashboard silently
+// rearranges itself the day the 'dashboard' stage arrives): who you are,
+// where you are in the app, today's focus, then the goal in flight and the
+// next action.
+const LEAD_WIDGETS = ['hq', 'stageSteps', 'focus', 'compass', 'goalSteps', 'desk'];
 
 export function starterWidgetLayout(opened, allKeys) {
   const known = new Set(allKeys);

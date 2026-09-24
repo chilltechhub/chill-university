@@ -238,6 +238,87 @@ const exploringChanges = (baseKey, ageBand) => [
     : `You start as a ${getPersona(baseKey).short} profile — you can change type any time`,
 ];
 
+// ─── Welcome ──────────────────────────────────────────────────────────────────
+// The first card, and the only one that asks nothing. Somebody who has just
+// made an account knows the name and nothing else: what it is, what it is
+// for, and what a normal week in it looks like. Four steps of setup with no
+// answer to "what am I setting up?" is how an app gets deleted on day one.
+//
+// Deliberately concrete rather than aspirational — each use case names the
+// real part of the app it maps to, so the words here stay checkable against
+// the thing that ships.
+const WELCOME_USES = [
+  {
+    emoji: '🎯',
+    icon: 'flag-outline',
+    title: 'Know what to do next',
+    body: 'One goal at a time, broken into a few small steps, on the front page. Finish it and a bit more of the app opens up.',
+  },
+  {
+    emoji: '🗓️',
+    icon: 'calendar-outline',
+    title: 'Run your days',
+    body: 'A planner for habits and one-offs, a desk for what is on your plate, and an inbox to dump a thought into at the moment you have it.',
+  },
+  {
+    emoji: '📚',
+    icon: 'school-outline',
+    title: 'Learn something properly',
+    body: 'Classes and short training games for the practice, and a vault for the notes, links and papers you want to keep.',
+  },
+  {
+    emoji: '🏗️',
+    icon: 'hammer-outline',
+    title: 'Build and keep track',
+    body: 'Grow an idea, turn it into a project with its own tasks and research, and keep an honest record of what you finished.',
+  },
+  {
+    emoji: '🌿',
+    icon: 'analytics-outline',
+    title: 'See how life is actually going',
+    body: 'Eight life areas — health, money, work, relationships and the rest — rated by you, with something practical to do in each.',
+  },
+];
+
+export function WelcomeStep({ theme }) {
+  const { c } = theme;
+  const st = stepStyles(theme);
+  return (
+    <View style={st.stepContent}>
+      <Text style={st.stepTitle}>Welcome to Deskartes</Text>
+      <Text style={st.stepSubtitle}>
+        It is one place for the things you are working on — your days, your learning, your projects and how
+        life is actually going. Most apps do one of those. The trade-off here is that it does several, so it
+        opens a little at a time instead of handing you everything at once.
+      </Text>
+
+      <SectionLabel label="What people use it for" theme={theme} />
+      {WELCOME_USES.map(use => (
+        <View
+          key={use.title}
+          style={{ flexDirection: 'row', gap: 12, backgroundColor: c.bg1, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: c.border }}
+        >
+          <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: c.teal + '22', alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ fontSize: 17 }}>{use.emoji}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 14, fontWeight: '700', color: c.text1, marginBottom: 3 }}>{use.title}</Text>
+            <Text style={{ fontSize: 12.5, color: c.text3, lineHeight: 18 }}>{use.body}</Text>
+          </View>
+        </View>
+      ))}
+
+      <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, padding: 12, borderRadius: 12, backgroundColor: c.gold + '14', borderWidth: 1, borderColor: c.gold + '44' }}>
+        <Ionicons name="time-outline" size={15} color={c.gold} style={{ marginTop: 1 }} />
+        <Text style={{ flex: 1, fontSize: 12.5, color: c.text2, lineHeight: 18 }}>
+          A few short questions next — about a minute. Nothing here is locked in; every answer can be
+          changed later in Settings.
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 export function PersonaStep({ data, set, theme, isMinor, ageBand }) {
   const { c } = theme;
   const st = stepStyles(theme);

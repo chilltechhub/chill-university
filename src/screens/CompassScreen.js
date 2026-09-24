@@ -37,6 +37,29 @@ import LockBadge from '../components/LockBadge';
 import UnlockSheet from '../components/UnlockSheet';
 import { FONTS } from '../theme';
 
+// The three words this screen runs on. Written out because "purpose",
+// "objective" and "stage" are three different things here and, read cold,
+// all three sound like "goal" — which is how somebody ends up asking what
+// the Compass is while standing on it.
+const EXPLAINER_TERMS = [
+  {
+    word: 'Purpose',
+    text: 'The one thing you are here for. Picked once, changeable any time. Everything the app leads with is ordered around it.',
+  },
+  {
+    word: 'Objective',
+    text: 'Your goal: one finishable achievement, a few steps, days rather than months. Exactly one runs at a time, because the whole point is that there is one answer to "what now".',
+  },
+  {
+    word: 'Steps',
+    text: 'What the goal breaks into. Most tick themselves the moment you actually do the thing — the rest are the handful nothing can honestly observe, so you tick those yourself.',
+  },
+  {
+    word: 'Stage',
+    text: 'How much of the app is on the map right now. It is not something you choose or work on; it opens as you finish goals and gain levels.',
+  },
+];
+
 export default function CompassScreen() {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: sp, radius: r } = useTheme();
@@ -52,6 +75,10 @@ export default function CompassScreen() {
   // Locked tools, Labs and Plus are the last stage's to show ('doors').
   const showAll = can('doors');
 
+  // null means "nobody has touched it": open while the first goal is still
+  // in front of them, collapsed once one is behind them. An explicit tap
+  // wins from then on.
+  const [explainerOpen, setExplainerOpen] = useState(null);
   const [pickingPurpose, setPickingPurpose] = useState(false);
   const [pickingObjective, setPickingObjective] = useState(false);
   const [gatedFeature, setGatedFeature] = useState(null);
@@ -87,6 +114,7 @@ export default function CompassScreen() {
   // Until a first goal is done, it's the only one offered — the full list
   // of fifteen is exactly the wall starting simple exists to avoid.
   const introDone = completedObjectiveIds.some(id => getObjective(id)?.intro);
+  const showExplainer = explainerOpen === null ? !introDone : explainerOpen;
   const objectiveChoices = useMemo(() => {
     const first = getObjective(firstGoalId);
     if (!introDone && first) return [first];
@@ -151,6 +179,49 @@ export default function CompassScreen() {
         <View style={s.header}>
           <Text style={s.headerTitle}>Compass</Text>
           {showSubtext && <Text style={s.headerSub}>One purpose, one objective, and what each one opens.</Text>}
+        </View>
+
+        {/* ── What this screen is ──
+            "What is the Compass?" and "is that the same thing as the
+            stages?" are the two questions this screen was getting asked,
+            which means it was answering neither. Open by default until a
+            first goal has been finished, collapsed after that — the
+            explanation earns its space once and then gets out of the way. */}
+        <View style={s.explainer}>
+          <TouchableOpacity
+            style={s.explainerHead}
+            onPress={() => setExplainerOpen(!showExplainer)}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: showExplainer }}
+          >
+            <Ionicons name="help-circle-outline" size={16} color={c.teal} />
+            <Text style={s.explainerTitle}>What is the Compass?</Text>
+            <Ionicons name={showExplainer ? 'chevron-up' : 'chevron-down'} size={15} color={c.text4} />
+          </TouchableOpacity>
+          {showExplainer && (
+            <View style={s.explainerBody}>
+              <Text style={s.explainerLead}>
+                The app can do a great many things, which is the problem this screen solves. It keeps one
+                answer to "what now" instead of handing you a directory.
+              </Text>
+              {EXPLAINER_TERMS.map(term => (
+                <View key={term.word} style={s.termRow}>
+                  <Text style={s.termWord}>{term.word}</Text>
+                  <Text style={s.termText}>{term.text}</Text>
+                </View>
+              ))}
+              <View style={s.explainerNote}>
+                <Ionicons name="git-compare-outline" size={13} color={c.gold} style={{ marginTop: 2 }} />
+                <Text style={s.explainerNoteText}>
+                  <Text style={{ fontWeight: '800', color: c.text2 }}>Stages are not goals.</Text>{' '}
+                  A goal is the thing you are doing. A stage is how much of the app is on the map while you
+                  do it. Finishing a goal — or gaining a level — opens the next stage, so the two move
+                  together, but you never pick a stage and you cannot work on one directly.
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
 
         {/* ── Where you are — so a short list reads as "not yet", not "that's all" ── */}
@@ -261,10 +332,24 @@ export default function CompassScreen() {
                     />
                   </TouchableOpacity>
                   <View style={{ flex: 1 }}>
-                    <Text style={[s.stepLabel, step.done && s.stepDone]}>{i + 1}. {step.label}</Text>
+                    <Text style={[s.stepLabel, step.done && s.stepDone]}>
+                      {i + 1}. {step.label}
+                      {step.needed && !step.done ? ` · ${step.count} of ${step.needed}` : ''}
+                    </Text>
                     {showSubtext && !!step.hint && <Text style={s.stepHint}>{step.hint}</Text>}
-                    {step.locked && !step.done && (
+                    {/* Which steps look after themselves, said out loud. It
+                        was only ever said for `auto` counter steps, so the
+                        far more common signal steps looked like chores
+                        somebody had to remember to come back and tick. */}
+                    {!step.done && step.locked && (
                       <Text style={s.autoNote}>Ticks itself — the app is already counting this one.</Text>
+                    )}
+                    {!step.done && !step.locked && !!step.signal && (
+                      <Text style={s.autoNote}>
+                        {step.needed
+                          ? `Ticks itself once you have done it ${step.needed} times.`
+                          : 'Ticks itself when you do it — no need to come back here.'}
+                      </Text>
                     )}
                   </View>
                   {step.screen && !step.done && (
@@ -506,6 +591,17 @@ const makeStyles = (c, t, sp, r) => StyleSheet.create({
   header:      { paddingHorizontal: sp.xl, marginBottom: sp.lg },
   headerTitle: { fontSize: t.xxxl, fontFamily: FONTS.display, fontWeight: '800', color: c.text1 },
   headerSub:   { fontSize: t.xs, color: c.text3, marginTop: 4, lineHeight: 18 },
+
+  explainer:      { marginHorizontal: sp.xl, marginBottom: sp.lg, backgroundColor: c.bg1, borderRadius: r.lg, borderWidth: 0.5, borderColor: c.border },
+  explainerHead:  { flexDirection: 'row', alignItems: 'center', gap: sp.sm, padding: sp.md },
+  explainerTitle: { flex: 1, fontSize: t.sm, fontWeight: '800', color: c.text1 },
+  explainerBody:  { paddingHorizontal: sp.md, paddingBottom: sp.md, gap: sp.sm },
+  explainerLead:  { fontSize: t.xs, color: c.text3, lineHeight: 18 },
+  termRow:        { borderLeftWidth: 2, borderLeftColor: c.teal, paddingLeft: sp.sm },
+  termWord:       { fontSize: 10, color: c.teal, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: '800', marginBottom: 2 },
+  termText:       { fontSize: t.xs, color: c.text2, lineHeight: 18 },
+  explainerNote:  { flexDirection: 'row', gap: 6, backgroundColor: c.gold + '12', borderRadius: r.md, padding: sp.sm, marginTop: 2 },
+  explainerNoteText: { flex: 1, fontSize: t.xs, color: c.text3, lineHeight: 18 },
 
   stageCard:   { marginHorizontal: sp.xl, marginBottom: sp.lg, backgroundColor: c.bg1, borderRadius: r.lg, borderWidth: 0.5, borderColor: c.border, padding: sp.md },
   stageKicker: { fontSize: 10, color: c.teal, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: '800', marginBottom: 4 },
