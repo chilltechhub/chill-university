@@ -617,6 +617,12 @@ export default function KnowledgeScreen() {
   // Discover keeps both curated catalogs — they group the same kind of thing
   // along two different, both-useful axes, so they stay two sources.
   const [discoverSource, setDiscoverSource] = useState('research');
+  // Which Discover card has its summary open. One at a time — a list where
+  // every card is expanded is the wall of text the short description exists
+  // to avoid.
+  const [expandedDiscover, setExpandedDiscover] = useState(null);
+  // The quick-note box, collapsed to one line until it's wanted.
+  const [composerOpen, setComposerOpen] = useState(false);
   const [catalog, setCatalog] = useState(RESOURCE_CATALOG);
 
   const [kindFilter, setKindFilter] = useState(route.params?.initialType || 'all');
@@ -683,6 +689,11 @@ export default function KnowledgeScreen() {
         setCatalog(rows.map((row) => ({
           id: row.id, areaId: row.key, emoji: row.meta?.emoji, title: row.title, url: row.meta?.url, desc: row.body,
           legacyId: row.meta?.legacy_id, ageBands: row.meta?.age_bands,
+          // Optional on the remote rows, so an entry added from the
+          // dashboard before anyone fills these in just shows the short
+          // description, exactly as every entry did before.
+          tags: Array.isArray(row.meta?.tags) ? row.meta.tags : null,
+          summary: row.meta?.summary || null,
         })));
       }
     });
@@ -908,8 +919,8 @@ export default function KnowledgeScreen() {
       kind: isPaperUrl(cat.url) ? 'paper' : 'bookmark',
       title: cat.title,
       url: cat.url,
-      body: cat.desc,
-      tags: [cat.catId],
+      body: cat.summary || cat.desc,
+      tags: [cat.catId, ...(cat.tags || [])],
       urlMeta: { emoji: cat.emoji, category: cat.catId, source: 'catalog' },
       source: 'catalog',
     });
@@ -922,8 +933,8 @@ export default function KnowledgeScreen() {
       kind: 'tool',
       title: cat.title,
       url: cat.url,
-      body: cat.desc,
-      tags: [],
+      body: cat.summary || cat.desc,
+      tags: [...(cat.tags || [])],
       areaId: cat.areaId,
       urlMeta: { emoji: cat.emoji, source: 'catalog' },
       source: 'catalog',
@@ -950,8 +961,14 @@ export default function KnowledgeScreen() {
 
   // Catalog category tags and life-area tags stay out of the chip row so it
   // reflects the user's own organization, the way the Research Vault's did.
+  // Saving from Discover now brings that entry's own tags along ('free',
+  // 'government', 'citations'), which are worth having on the row and worth
+  // searching, but are not the user's filing either — so a row saved from
+  // the catalog contributes nothing to this list.
   const allTags = useMemo(() => Array.from(new Set(
-    decorated.flatMap((e) => e.tags || [])
+    decorated
+      .filter((e) => e.url_meta?.source !== 'catalog')
+      .flatMap((e) => e.tags || [])
       .filter((tg) => !CATEGORY_MAP[tg] && !LIFE_AREAS.some((a) => a.id === tg))
   )), [decorated]);
 
@@ -981,11 +998,18 @@ export default function KnowledgeScreen() {
     return list;
   }, [decorated, kindFilter, areaFilter, folderFilter, selectedTag, search, sortBy]);
 
+  // Searching the catalog now covers what the cards show: the tags and the
+  // summary as well as the title and the one-liner. "free", "government" and
+  // "citations" are real ways people look for a tool.
+  const catalogMatches = (item, q) => !q || [
+    item.title, item.desc, item.summary, ...(item.tags || []),
+  ].some((v) => (v || '').toString().toLowerCase().includes(q));
+
   const researchDiscover = useMemo(() => withCategoryHeaders(
     RESEARCH_CATALOG.filter((item) => {
       const q = search.trim().toLowerCase();
       const matchCat = !catFilter || item.catId === catFilter;
-      const matchSearch = !q || item.title.toLowerCase().includes(q) || (item.desc || '').toLowerCase().includes(q);
+      const matchSearch = catalogMatches(item, q);
       const matchAge = bandAllows(RESEARCH_AGE_BANDS[item.id], band);
       return matchCat && matchSearch && matchAge;
     })
@@ -995,7 +1019,7 @@ export default function KnowledgeScreen() {
     catalog.filter((item) => {
       const q = search.trim().toLowerCase();
       const matchArea = !areaFilter || item.areaId === areaFilter;
-      const matchSearch = !q || item.title.toLowerCase().includes(q) || (item.desc || '').toLowerCase().includes(q);
+      const matchSearch = catalogMatches(item, q);
       // Age: the row's own tag if it has one, else the bundled floor.
       const matchAge = bandAllows(item.ageBands || DISCOVER_AGE_BANDS[item.legacyId || item.id], band);
       return matchArea && matchSearch && matchAge;
@@ -1018,25 +1042,61 @@ export default function KnowledgeScreen() {
     </View>
   );
 
+  // A Discover card used to be an emoji, a name and four words, which is
+  // not enough to decide whether a site is worth your afternoon — and the
+  // four words were hidden entirely for anyone with subtext off. The
+  // description is now always shown, the tags say what kind of thing it is
+  // (and, honestly, whether it costs money), and the summary — what it is
+  // actually for, and what to watch out for — is one tap away rather than
+  // making every card three times as tall. See src/data/knowledgeCatalogs.js.
   const renderDiscoverCard = (item, accentColor, accentIcon, onToggle) => {
     const saved = !!savedIdForUrl(item.url);
+    const key = item.id || item.url;
+    const open = expandedDiscover === key;
+    const tags = Array.isArray(item.tags) ? item.tags : [];
     return (
       <View style={[styles.card, { borderLeftColor: accentColor }]}>
         <View style={styles.cardHeader}>
           <View style={[styles.typeIconBox, { backgroundColor: `${accentColor}22` }]}>
             {showEmojis ? <Text style={{ fontSize: 17 }}>{item.emoji}</Text> : <Ionicons name={accentIcon} size={16} color={accentColor} />}
           </View>
-          <TouchableOpacity style={styles.cardTitleArea} onPress={() => Linking.openURL(item.url)}>
+          <TouchableOpacity
+            style={styles.cardTitleArea}
+            onPress={() => setExpandedDiscover(open ? null : key)}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: open }}
+            accessibilityLabel={`${item.title}. ${item.desc}. Tap for more.`}
+          >
             <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-            {showSubtext && <Text style={styles.cardBody} numberOfLines={2}>{item.desc}</Text>}
+            <Text style={styles.cardBody} numberOfLines={open ? undefined : 2}>{item.desc}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => Linking.openURL(item.url)} style={styles.iconBtn}>
+          <TouchableOpacity onPress={() => Linking.openURL(item.url)} style={styles.iconBtn} accessibilityLabel={`Open ${item.title}`}>
             <Ionicons name="open-outline" size={17} color={c.text3} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => onToggle(item)} style={styles.iconBtn}>
+          <TouchableOpacity onPress={() => onToggle(item)} style={styles.iconBtn} accessibilityLabel={saved ? `Remove ${item.title} from your vault` : `Save ${item.title} to your vault`}>
             <Ionicons name={saved ? 'bookmark' : 'bookmark-outline'} size={17} color={saved ? c.gold : c.text3} />
           </TouchableOpacity>
         </View>
+
+        {tags.length > 0 && (
+          <View style={styles.discoverTagRow}>
+            {tags.map((tg) => (
+              <View key={tg} style={[styles.discoverTag, { borderColor: `${accentColor}55`, backgroundColor: `${accentColor}12` }]}>
+                <Text style={[styles.discoverTagText, { color: accentColor }]}>{tg}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {!!item.summary && (
+          open ? (
+            <Text style={styles.discoverSummary}>{item.summary}</Text>
+          ) : (
+            <TouchableOpacity onPress={() => setExpandedDiscover(key)} accessibilityRole="button">
+              <Text style={styles.discoverMore}>What it's for →</Text>
+            </TouchableOpacity>
+          )
+        )}
       </View>
     );
   };
@@ -1217,13 +1277,29 @@ export default function KnowledgeScreen() {
             </TouchableOpacity>
           ) : null}
         </View>
-        {tab === 'vault' && (
+        {tab === 'vault' ? (
           <TouchableOpacity
             onPress={() => setShowFilters((v) => !v)}
             style={[styles.filterToggle, (showFilters || activeFilterCount > 0) && { borderColor: c.teal, backgroundColor: `${c.teal}18` }]}
+            accessibilityRole="button"
+            accessibilityLabel="Filters"
           >
             <Ionicons name="options-outline" size={16} color={activeFilterCount > 0 ? c.teal : c.text3} />
             {activeFilterCount > 0 && <Text style={styles.filterToggleCount}>{activeFilterCount}</Text>}
+          </TouchableOpacity>
+        ) : (
+          /* Two catalogs, one button, in the slot the Vault uses for its
+             filters. It was a row of its own above a second row of category
+             chips, which put four stacked bars between the screen title and
+             the first thing to read. */
+          <TouchableOpacity
+            onPress={() => { setDiscoverSource((v) => (v === 'research' ? 'areas' : 'research')); setCatFilter(null); setAreaFilter(null); }}
+            style={[styles.filterToggle, { borderColor: c.teal, backgroundColor: `${c.teal}18`, gap: 5 }]}
+            accessibilityRole="button"
+            accessibilityLabel={discoverSource === 'research' ? 'Showing research tools. Tap for life area picks.' : 'Showing life area picks. Tap for research tools.'}
+          >
+            <Ionicons name={discoverSource === 'research' ? 'flask-outline' : 'globe-outline'} size={16} color={c.teal} />
+            <Text style={styles.sourceToggleText}>{discoverSource === 'research' ? 'Tools' : 'Areas'}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -1354,8 +1430,23 @@ export default function KnowledgeScreen() {
             </>
           )}
 
-          {/* Quick note composer */}
+          {/* Quick note composer — collapsed until it's wanted.
+              Open, it is a text area and a button sitting under three other
+              bars, which is most of what made the top of this screen feel
+              like a control panel. Closed it is one slim line, and one tap
+              gets the same box with the cursor already in it. */}
           <TourSpot id="notes-input">
+            {!composerOpen && !input.trim() ? (
+              <TouchableOpacity
+                style={styles.composerClosed}
+                onPress={() => setComposerOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Write a note"
+              >
+                <Ionicons name="create-outline" size={15} color={c.text4} />
+                <Text style={styles.composerClosedText}>Write a note...</Text>
+              </TouchableOpacity>
+            ) : (
             <View style={styles.composer}>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <TextInput
@@ -1364,6 +1455,8 @@ export default function KnowledgeScreen() {
                   onChangeText={setInput}
                   placeholder="Write a note..."
                   placeholderTextColor={c.text4}
+                  onBlur={() => { if (!input.trim()) setComposerOpen(false); }}
+                  autoFocus
                   multiline
                 />
                 <TouchableOpacity
@@ -1388,31 +1481,14 @@ export default function KnowledgeScreen() {
                 />
               )}
             </View>
+            )}
           </TourSpot>
         </>
       ) : (
         <>
-          {/* Discover source switch */}
-          <View style={styles.filterBarContainer}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-              <TouchableOpacity
-                style={[styles.chip, discoverSource === 'research' && styles.chipActive]}
-                onPress={() => setDiscoverSource('research')}
-              >
-                <Ionicons name="flask-outline" size={12} color={discoverSource === 'research' ? c.text1 : c.text3} />
-                <Text style={[styles.chipText, discoverSource === 'research' && styles.chipTextActive]}>Research Tools</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.chip, discoverSource === 'areas' && styles.chipActive]}
-                onPress={() => setDiscoverSource('areas')}
-              >
-                <Ionicons name="globe-outline" size={12} color={discoverSource === 'areas' ? c.text1 : c.text3} />
-                <Text style={[styles.chipText, discoverSource === 'areas' && styles.chipTextActive]}>Life Area Picks</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-
-          {/* Category (research tools) or life area (curated sites) filter */}
+          {/* Category (research tools) or life area (curated sites) filter —
+              which catalog you're in is the Tools/Areas button up in the
+              search row. */}
           <View style={styles.filterBarContainer}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
               {discoverSource === 'research' ? (
@@ -1598,6 +1674,8 @@ const makeStyles = (c) => StyleSheet.create({
   tagChipTextActive: { color: c.financial, fontWeight: 'bold' },
 
   composer: { paddingHorizontal: 20, paddingVertical: 12, backgroundColor: c.bg1, borderTopWidth: 0.5, borderBottomWidth: 0.5, borderColor: c.border, gap: 8, marginBottom: 10 },
+  composerClosed: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 20, marginBottom: 10, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 10, borderWidth: 1, borderStyle: 'dashed', borderColor: c.border },
+  composerClosedText: { color: c.text4, fontSize: 13 },
   composerInput: { flex: 1, backgroundColor: c.bg0, borderRadius: 10, padding: 12, fontSize: 13, color: c.text1, borderWidth: 0.5, borderColor: c.border },
   composerBtn: { backgroundColor: c.teal, borderRadius: 10, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
   composerTags: { backgroundColor: c.bg0, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, fontSize: 11, color: c.text1, borderWidth: 0.5, borderColor: c.border },
@@ -1624,6 +1702,12 @@ const makeStyles = (c) => StyleSheet.create({
   cardNoteBody: { color: c.text1, fontSize: 13, lineHeight: 19 },
   cardUrl: { color: c.teal, fontSize: 11, marginTop: 2 },
   cardBody: { color: c.text2, fontSize: 12, lineHeight: 17, marginTop: 6 },
+  discoverTagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
+  discoverTag: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+  discoverTagText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.2 },
+  discoverSummary: { color: c.text2, fontSize: 12.5, lineHeight: 18, marginTop: 10 },
+  discoverMore: { color: c.teal, fontSize: 11, fontWeight: '700', marginTop: 10 },
+  sourceToggleText: { color: c.teal, fontSize: 12, fontWeight: '700' },
   citationInline: { color: c.text4, fontSize: 10.5, marginTop: 3, fontStyle: 'italic' },
   iconBtn: { padding: 6 },
 

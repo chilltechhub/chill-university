@@ -15,15 +15,52 @@
 // Only the handle bar starts a drag — not the whole card — so scrolling a
 // long note or tapping a button inside it never gets mistaken for a
 // reposition.
-import React, { useRef, useEffect } from 'react';
-import { View, Modal, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+//
+// With a keyboard up the card sits just above it rather than centring in
+// what's left, which is what kept throwing a short sheet up near the status
+// bar while the cursor was at the bottom of the screen.
+import React, { useRef, useEffect, useState } from 'react';
+import { View, Modal, TouchableOpacity, StyleSheet, Keyboard, Platform, ScrollView, Dimensions } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+
+// Gap between the bottom of the card and the top of the keyboard. Small on
+// purpose: the point is that what you're typing and the thing you're typing
+// into are near each other.
+const KEYBOARD_GAP = 10;
 
 export default function FloatingCard({ visible, onClose, children, c, width = '90%', maxWidth = 440, maxHeight = '82%' }) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const start = useRef({ x: 0, y: 0 });
+
+  // Where the keyboard is, tracked directly rather than through
+  // KeyboardAvoidingView. With `padding` behaviour and a centred card, the
+  // card re-centres in whatever space is LEFT, which on a phone throws it up
+  // near the status bar — a long way from the field the cursor is in. Sitting
+  // it just above the keyboard instead keeps the two together.
+  const [kbHeight, setKbHeight] = useState(0);
+  useEffect(() => {
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const onShow = (e) => setKbHeight(e?.endCoordinates?.height || 0);
+    const onHide = () => setKbHeight(0);
+    const subs = [Keyboard.addListener(showEvt, onShow), Keyboard.addListener(hideEvt, onHide)];
+    return () => subs.forEach(sub => sub.remove());
+  }, []);
+
+  // Closing resets it: on Android the hide event can land after the modal is
+  // already gone, leaving the next opening positioned for a keyboard that
+  // isn't there.
+  useEffect(() => { if (!visible) setKbHeight(0); }, [visible]);
+
+  const screenH = Dimensions.get('window').height;
+  const open = kbHeight > 0;
+  // With the keyboard up the card gets whatever is left above it, less the
+  // gap — so it can still scroll internally instead of being clipped.
+  const cardMaxHeight = open
+    ? Math.max(180, screenH - kbHeight - KEYBOARD_GAP * 2)
+    : maxHeight;
 
   // Re-center every time it opens — a card left in a corner from last time
   // would otherwise reopen there too, which reads as broken, not helpful.
@@ -56,15 +93,19 @@ export default function FloatingCard({ visible, onClose, children, c, width = '9
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.18)' }} />
       </TouchableOpacity>
 
-      <KeyboardAvoidingView
-        style={{ ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' }}
+      <View
+        style={{
+          ...StyleSheet.absoluteFillObject,
+          alignItems: 'center',
+          justifyContent: open ? 'flex-end' : 'center',
+          paddingBottom: open ? kbHeight + KEYBOARD_GAP : 0,
+        }}
         pointerEvents="box-none"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <Animated.View
           style={[
             {
-              width, maxWidth, maxHeight,
+              width, maxWidth, maxHeight: cardMaxHeight,
               backgroundColor: c.bg1, borderRadius: 18, overflow: 'hidden',
               borderWidth: 0.5, borderColor: c.border,
               shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.35, shadowRadius: 24, elevation: 20,
@@ -78,16 +119,28 @@ export default function FloatingCard({ visible, onClose, children, c, width = '9
             </View>
           </GestureDetector>
           {/* Scrolls internally rather than clipping against maxHeight —
-              content taller than 82% of the screen (Quick Capture's type
-              chips + textarea + tags, on a short device) still reaches its
-              Save button instead of getting cut off. A horizontal
-              ScrollView nested inside this vertical one (the type chips
-              row) is a normal, supported combination. */}
-          <ScrollView keyboardShouldPersistTaps="handled" bounces={false}>
+              content taller than the card (Quick Capture's type chips +
+              textarea + tags, on a short device, or anything at all with
+              the keyboard up) still reaches its Save button.
+
+              flexShrink is what makes that true, and it is not optional: a
+              ScrollView with no flex inside a maxHeight column sizes itself
+              to its content, overflows, and is then CLIPPED by the card's
+              `overflow: hidden`. The card looked right and simply would not
+              scroll — the bottom of a long sheet was unreachable.
+
+              A horizontal ScrollView nested inside this vertical one (the
+              type chips row) is a normal, supported combination. */}
+          <ScrollView
+            style={{ flexShrink: 1 }}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="none"
+            bounces={false}
+          >
             {children}
           </ScrollView>
         </Animated.View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }

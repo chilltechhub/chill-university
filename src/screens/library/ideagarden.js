@@ -1254,10 +1254,20 @@ export default function IdeaGardenScreen() {
         </View>
       )}
 
-      {/* Core modal */}
-      <Modal visible={coreModal} transparent animationType="slide">
-        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={styles.modalCard}>
+      {/* Core modal — centred, not a bottom sheet.
+           Planting an idea is the one thing this screen is for, and it was
+           arriving at the bottom edge with the garden still filling the
+           screen above it, reading as a detail panel rather than the main
+           event. Centred, with the card scrolling inside its own height so
+           "Plant it" stays reachable on a short screen. */}
+      <Modal visible={coreModal} transparent animationType="fade" onRequestClose={() => setCoreModal(false)}>
+        <KeyboardAvoidingView style={styles.modalOverlayCentered} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <ScrollView
+            style={styles.modalCardCentered}
+            contentContainerStyle={{ padding: 20 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <Text style={styles.modalTitle}>{editingCore ? 'Edit Plant' : 'Plant New Idea'}</Text>
               {editingCore && (
@@ -1315,7 +1325,7 @@ export default function IdeaGardenScreen() {
                   : <Text style={styles.modalSaveText}>{editingCore ? 'Update' : 'Plant it'}</Text>}
               </TouchableOpacity>
             </View>
-          </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
 
@@ -1471,6 +1481,8 @@ const makeStyles = (gc) => StyleSheet.create({
   panelBtnDanger: { backgroundColor: gc.dangerLight },
   panelBtnGold: { backgroundColor: gc.gold },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  modalOverlayCentered: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalCardCentered: { width: '100%', maxWidth: 440, maxHeight: '86%', backgroundColor: gc.bg0, borderRadius: 20, borderWidth: 0.5, borderColor: gc.border },
   modalCard: { backgroundColor: gc.bg0, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, borderTopWidth: 0.5, borderColor: gc.border },
   modalTitle: { fontSize: 17, fontWeight: '700', color: gc.text1, marginBottom: 14 },
   modalLabel: { fontSize: 11, fontWeight: '600', color: gc.text4, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
