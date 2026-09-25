@@ -1081,6 +1081,12 @@ export default function HomeScreen() {
   // widgetLayout above stays the one saved layout, and the fixed layout
   // before 'dashboard' is no more a saved layout than the persona default
   // is. So an arranged dashboard is exactly as it was the day it reopens.
+  // Widgets Home has already introduced (see "New on Home" below). They stay
+  // on the board whatever else changes: switching purpose on the Compass
+  // re-sorts the queue homeWidgetsAt draws from, and without this a widget
+  // someone had been using (Active Builds, say) vanished the moment they
+  // picked a different aim. Found 2026-09-25 walking every aim in a row.
+  const [keptWidgets, setKeptWidgets] = useState([]);
   const boardLayout = useMemo(() => {
     // Before the 'dashboard' stage the board is the widgets this stage has
     // opened, and only those: that's the "limited choices" version of the
@@ -1089,20 +1095,36 @@ export default function HomeScreen() {
     if (!can('dashboard')) {
       // homeWidgets, not widgets: Home takes on what the stages open a
       // couple at a time (homeWidgetsAt in src/logic/experienceStage.js).
-      const allowed = new Set(opened?.homeWidgets || opened?.widgets || []);
-      const starter = starterWidgetLayout(opened, WIDGET_KEYS).filter(l => allowed.has(l.key));
+      const home = [...new Set([...(opened?.homeWidgets || opened?.widgets || []), ...keptWidgets])];
+      const allowed = new Set(home);
+      const starter = starterWidgetLayout({ ...opened, homeWidgets: home }, WIDGET_KEYS).filter(l => allowed.has(l.key));
       if (!savedLayout) return starter;
       const kept = widgetLayout.filter(l => allowed.has(l.key));
       const have = new Set(kept.map(l => l.key));
       return [...kept, ...starter.filter(l => !have.has(l.key))];
     }
+    // The full dashboard is the persona's default layout until someone
+    // arranges it, and that default doesn't know what the early stages put
+    // on Home. Anything already introduced there stays showing (at the end,
+    // in the order it arrived) rather than vanishing the day the dashboard
+    // opens. A layout the person saved themselves is left exactly as is.
+    const withKept = savedLayout ? widgetLayout : (() => {
+      const kept = new Set(keptWidgets);
+      const shownNow = widgetLayout.filter(l => !l.hidden);
+      const add = keptWidgets.filter(k => !shownNow.some(l => l.key === k) && widgetLayout.some(l => l.key === k));
+      return [
+        ...shownNow,
+        ...add.map(key => ({ key, hidden: false })),
+        ...widgetLayout.filter(l => l.hidden && !kept.has(l.key)),
+      ];
+    })();
     if (!can('doors')) {
       // The editor's tray offers this type's own widgets, not all twenty.
-      const offer = new Set(getPersona(activeType)?.defaultWidgets || []);
-      return widgetLayout.filter(l => !l.hidden || offer.has(l.key));
+      const offer = new Set([...(getPersona(activeType)?.defaultWidgets || []), ...keptWidgets]);
+      return withKept.filter(l => !l.hidden || offer.has(l.key));
     }
-    return widgetLayout;
-  }, [can, opened, activeType, widgetLayout, savedLayout]);
+    return withKept;
+  }, [can, opened, activeType, widgetLayout, savedLayout, keptWidgets]);
   // "Your steps" repeats the list the Compass card now carries itself, so
   // while the Compass is on the board it steps aside. Only outside editing:
   // the editor still shows it, so it can be moved or hidden like any other,
@@ -1154,27 +1176,34 @@ export default function HomeScreen() {
     return () => { alive = false; };
   }, [offeredKey]);
 
+  const persistKnown = useCallback((set) => {
+    offeredRef.current = set;
+    if (offeredKey) AsyncStorage.setItem(offeredKey, JSON.stringify([...set])).catch(() => {});
+  }, [offeredKey]);
+
   useEffect(() => {
     if (!offeredRef.current || widgetOffer.length || editingWidgets) return;
     const openNow = opened?.homeWidgets || opened?.widgets || [];
-    const persist = (set) => {
-      offeredRef.current = set;
-      if (offeredKey) AsyncStorage.setItem(offeredKey, JSON.stringify([...set])).catch(() => {});
-    };
+    const persist = persistKnown;
     // First look at this profile: whatever is open already isn't news.
     if (offeredRef.current === 'baseline') { persist(new Set(openNow)); return; }
     const known = offeredRef.current;
     const newlyOpen = openNow.filter(key => !known.has(key));
     if (!newlyOpen.length) return;
-    persist(new Set([...known, ...newlyOpen]));
     // Offered only if it didn't simply appear on the board by itself.
     const shown = new Set(boardLayout.filter(l => !l.hidden).map(l => l.key));
     const fresh = newlyOpen
       .filter(key => !shown.has(key))
       .map(key => WIDGET_DEFS.find(w => w.key === key))
       .filter(Boolean);
+    // Only what's settled is recorded now. An offer is recorded when it's
+    // answered (closeWidgetOffer): it can wait a while for Home to be on
+    // screen, and recording it up front lost it for good if the app closed
+    // in between (found 2026-09-25).
+    const offered = new Set(fresh.map(w => w.key));
+    persist(new Set([...known, ...newlyOpen.filter(k => !offered.has(k))]));
     if (fresh.length) setWidgetOffer(fresh);
-  }, [opened, boardLayout, widgetOffer.length, editingWidgets, offeredKey]);
+  }, [opened, boardLayout, widgetOffer.length, editingWidgets, offeredKey, persistKnown]);
 
   /* ── "New on Home" ──────────────────────────────────────────────────────
      Widgets arrive on Home a couple per stage (homeWidgetsAt), and each one
@@ -1189,10 +1218,15 @@ export default function HomeScreen() {
   useEffect(() => {
     introducedRef.current = null;
     setIntroReady(false);
+    setKeptWidgets([]);
     if (!introKey) return undefined;
     let alive = true;
     AsyncStorage.getItem(introKey)
-      .then(raw => { if (alive) introducedRef.current = raw ? new Set(JSON.parse(raw)) : 'baseline'; })
+      .then(raw => {
+        if (!alive) return;
+        introducedRef.current = raw ? new Set(JSON.parse(raw)) : 'baseline';
+        if (raw) setKeptWidgets([...introducedRef.current]);
+      })
       .catch(() => { if (alive) introducedRef.current = 'baseline'; })
       .finally(() => { if (alive) setIntroReady(true); });
     return () => { alive = false; };
@@ -1204,6 +1238,7 @@ export default function HomeScreen() {
     const shown = shownBoardLayout.filter(l => !l.hidden).map(l => l.key);
     const persist = (set) => {
       introducedRef.current = set;
+      setKeptWidgets([...set]);
       if (introKey) AsyncStorage.setItem(introKey, JSON.stringify([...set])).catch(() => {});
     };
     if (introducedRef.current === 'baseline') { persist(new Set(shown)); return undefined; }
@@ -1231,6 +1266,7 @@ export default function HomeScreen() {
   const closeWidgetOffer = (add) => {
     const keys = widgetOffer.map(w => w.key);
     setWidgetOffer([]);
+    if (offeredRef.current instanceof Set) persistKnown(new Set([...offeredRef.current, ...keys]));
     if (!add) return;
     // Un-hide in place, so they land where the layout already expects them
     // rather than all at the bottom. Built from the board as it's shown, so
@@ -1238,7 +1274,13 @@ export default function HomeScreen() {
     const wanted = new Set(keys);
     const base = boardLayout.map(l => (wanted.has(l.key) ? { ...l, hidden: false } : l));
     const inBase = new Set(base.map(l => l.key));
-    const next = [...base, ...widgetLayout.filter(l => !inBase.has(l.key))];
+    // A widget that wasn't on the board at all (not this type's own, say a
+    // Student widget on an Entrepreneur dashboard) is added to the end of
+    // what's showing. It used to be put back hidden, so "Add to my
+    // dashboard" silently did nothing for it (found 2026-09-25).
+    const added = keys.filter(k => !inBase.has(k)).map(key => ({ key, hidden: false }));
+    const addedKeys = new Set(added.map(l => l.key));
+    const next = [...base, ...added, ...widgetLayout.filter(l => !inBase.has(l.key) && !addedKeys.has(l.key))];
     setWidgetLayout(next);
     setSavedLayout(true);
     persistWidgetLayout(next);
@@ -2263,7 +2305,10 @@ export default function HomeScreen() {
            A door opening, not a fanfare: it names what arrived, says where
            it came from, and the default is that nothing changes unless the
            person says so. See the widgetOffer block above. */}
-      <Modal visible={widgetOffer.length > 0} transparent animationType="fade" onRequestClose={() => closeWidgetOffer(false)}>
+      {/* Only on Home itself, and not over a walkthrough: Home stays mounted
+          behind other screens, and this used to pop up over the Academy
+          mid-guide when a goal elsewhere opened a widget. */}
+      <Modal visible={widgetOffer.length > 0 && homeFocused && !tourActive} transparent animationType="fade" onRequestClose={() => closeWidgetOffer(false)}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center', padding: s.xl }}>
           <View style={{ width: '100%', maxWidth: 380, backgroundColor: c.bg1, borderRadius: 20, padding: s.xl, borderWidth: ui.borderWidth, borderColor: c.border }}>
             <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: c.teal + '22', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: s.md }}>

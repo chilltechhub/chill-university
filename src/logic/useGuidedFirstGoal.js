@@ -57,7 +57,7 @@ const lowerFirst = (str = '') => str.charAt(0).toLowerCase() + str.slice(1);
  */
 export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
   const { user, profile } = useUserProgress();
-  const { activeObjective, loading, purpose } = useAccess();
+  const { activeObjective, loading, purpose, lastSignalDetail } = useAccess();
   const { active: tourActive, startLesson, endTour } = useTour();
   const uid = user?.id || null;
 
@@ -138,6 +138,8 @@ export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
     const g = key === 'claim' ? CLAIM_STEP : script?.[key];
     if (!g) return;
     const step = intro.steps.find(s => s.id === key);
+    // Part-way through a counted step: say how far, not just what.
+    const partway = step?.needed && step.count > 0 ? ` (${step.count} of ${step.needed} done)` : '';
     const n = intro.steps.findIndex(s => s.id === key) + 1;
 
     const first = intro.done === 0 && !greetedRef.current;
@@ -145,25 +147,33 @@ export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
     // How to get there without the guide, said once per step. Being carried
     // somewhere teaches nothing about finding it again.
     const pathNote = g.path ? ` To find it yourself later: ${g.path}.` : '';
+    // "all 2" reads oddly.
+    const allOf = intro.total === 2 ? 'both' : `all ${intro.total}`;
     const title = key === 'claim'
-      ? `${intro.objective.label} · all ${intro.total} done`
+      ? `${intro.objective.label} · ${allOf} done`
       : `Step ${n} of ${intro.total} · ${step.label}`;
     const lead = key === 'claim'
-      ? `That's all ${intro.total}. Nice work.`
+      ? `That's ${allOf}. Nice work.`
       : first
         // Said back in their words, so the first thing the guide does is
         // start on what they came for, not on a tour of the app.
         // (The welcome tour has just said "You came here to…", so this
         // doesn't say it again.)
-        ? `Your first goal: ${intro.total} quick steps${purpose?.you && purpose.key === intro.objective.purpose ? ` to ${purpose.you}` : ''}, and I'll show you each one. First: ${lowerFirst(step.label)}.`
+        ? `Your first goal: ${intro.total} quick steps${purpose?.you && purpose.key === intro.objective.purpose ? ` to ${purpose.you}` : ''}, and I'll show you each one. First: ${lowerFirst(step.label)}${partway}.`
         : intro.done > 0
-          ? `That's ${intro.done} of ${intro.total}. Next: ${lowerFirst(step.label)}.`
-          : `Next: ${lowerFirst(step.label)}.`;
+          ? `That's ${intro.done} of ${intro.total}. Next: ${lowerFirst(step.label)}${partway}.`
+          : `Next: ${lowerFirst(step.label)}${partway}.`;
 
+    const firstArea = (Array.isArray(profile?.active_life_areas) && profile.active_life_areas[0]) || 'physical';
+    // 'ratedArea': the area this person just rated (their pick), so a
+    // follow-up step lands on the same one; the first area otherwise.
     const goParams = g.params === 'firstArea'
-      ? { areaId: (Array.isArray(profile?.active_life_areas) && profile.active_life_areas[0]) || 'physical' }
+      ? { areaId: firstArea }
+      : g.params === 'ratedArea'
+      ? { areaId: lastSignalDetail?.('area-rated')?.area || firstArea }
       : (g.params && typeof g.params === 'object' ? g.params : undefined);
-    const pushed = g.go && !HUBS.has(g.go);
+    // Not in a game: games are left with the X, which the step says itself.
+    const pushed = g.go && !HUBS.has(g.go) && !PLAY_ROUTES.has(g.go);
     const backTip = pushed && !backTaughtRef.current
       ? ' When you are done, tap the arrow at the top left, or swipe right from the left edge, to go back.'
       : '';
@@ -180,6 +190,8 @@ export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
       // them to use until they pressed Done. It's a note instead.
       nonBlocking: g.mode === 'point' || (g.mode === 'tap' && !g.spot),
       skipLabel: 'Not now',
+      // In a game, out of the way of the answers.
+      placement: PLAY_ROUTES.has(g.go) ? 'top' : undefined,
     };
     // Already there: one bubble. Otherwise say what's next first, and the
     // Next button takes them.
@@ -196,7 +208,12 @@ export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
           title,
           body: inGame
             ? `${lead} Keep playing if you like. When you're done, tap X at the top left, or tap Next and I'll take you back.`
-            : `${lead} I'll take you there.${pathNote}`,
+            : key === 'claim'
+              // Said wherever the last step got done, often over something
+              // worth reading (a Wayfinder plan, a new project), so it must
+              // not hurry anyone off it.
+              ? `${lead} Take your time here. When you're ready, tap Next and I'll take you to Home to claim it.`
+              : `${lead} I'll take you there.${pathNote}`,
           skipLabel: 'Not now',
           nonBlocking: true,
           placement: inGame ? 'top' : undefined,
@@ -220,7 +237,28 @@ export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
         setWaiting(key);
       },
     });
-  }, [intro, key, script, routeName, profile, purpose, startLesson, persistMode]);
+  }, [intro, key, script, routeName, profile, purpose, lastSignalDetail, startLesson, persistMode]);
+
+  // A step that needs doing more than once ("rate three life areas") moves
+  // its count without changing `key`, so nothing above says anything, and
+  // the person is left on the page wondering whether it counted and what
+  // now. Say it, briefly, without blocking: "1 of 3 — two more".
+  const nextCount = intro?.nextStep?.count ?? null;
+  const countRef = useRef({ key: null, count: null });
+  useEffect(() => {
+    const prev = countRef.current;
+    countRef.current = { key, count: nextCount };
+    if (!guiding || tourActive || !intro?.nextStep?.needed || prev.key !== key) return;
+    if (nextCount == null || prev.count == null || nextCount <= prev.count) return;
+    const left = intro.nextStep.needed - nextCount;
+    const g = script?.[key];
+    startLesson([{
+      title: `${intro.nextStep.label} · ${nextCount} of ${intro.nextStep.needed}`,
+      body: `That one counted. ${left === 1 ? 'One more' : `${left} more`} to go.${g?.more ? ` ${g.more}` : ''}`,
+      nonBlocking: true,
+      hideSkip: true,
+    }]);
+  }, [key, nextCount, guiding, tourActive, intro, script, startLesson]);
 
   // Start the next piece of guidance once things are calm.
   const scriptScreens = script ? Object.values(script).map(s => s.go) : [];

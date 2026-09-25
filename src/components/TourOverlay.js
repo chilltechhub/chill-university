@@ -295,9 +295,12 @@ export default function TourOverlay() {
               flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
               marginTop: s.sm, paddingTop: s.sm, borderTopWidth: 0.5, borderTopColor: c.border,
             }}>
-              <TouchableOpacity onPress={skipTour} accessibilityRole="button" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Text style={{ fontSize: 12, color: c.text4, fontWeight: t.bold }}>{currentStep.skipLabel || 'Skip'}</Text>
-              </TouchableOpacity>
+              {/* `hideSkip`: a one-bubble note whose Done already says it all. */}
+              {currentStep.hideSkip ? <View /> : (
+                <TouchableOpacity onPress={skipTour} accessibilityRole="button" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <Text style={{ fontSize: 12, color: c.text4, fontWeight: t.bold }}>{currentStep.skipLabel || 'Skip'}</Text>
+                </TouchableOpacity>
+              )}
 
               {/* Step dots — position without the arithmetic of "3 OF 5". */}
               <View style={{ flexDirection: 'row', gap: 5 }}>

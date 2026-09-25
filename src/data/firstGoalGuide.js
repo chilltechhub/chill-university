@@ -15,6 +15,9 @@
 // it takes them. Keep it true to the Library's pages (Life / Build /
 // Knowledge, LIBRARY_HUBS in LibraryScreen.js) and the tab bar.
 //
+// `more` (optional, for a step with a signalCount) is added to the short
+// "1 of 3, two more to go" note after each one that counts.
+//
 // `go` is a route name (src/logic/appRoutes.js resolves it). `params`
 // 'firstArea' means "the person's first life area", filled in at run time.
 // Every `spot` must be a TourSpot rendered on its `go` screen;
@@ -55,7 +58,7 @@ export const FIRST_GOAL_GUIDE = {
     capture: {
       go: 'CaptureInbox', spot: 'inbox-capture', mode: 'tap',
       path: 'the + button, then Capture Inbox',
-      say: 'Tap + and write down the biggest thing on your plate this week. Speed over tidiness.',
+      say: 'Tap the lit-up + and write down the biggest thing on your plate this week. Speed over tidiness.',
     },
     routine: {
       go: 'PlannerScreen', spot: 'planner-add', mode: 'tap',
@@ -68,7 +71,7 @@ export const FIRST_GOAL_GUIDE = {
     seed: {
       go: 'IdeaGardenScreen', spot: 'ideas-list', mode: 'tap',
       path: 'the Library tab, swipe to the Knowledge page, then Idea Garden',
-      say: 'Tap + and plant your idea: one line on the problem it solves. Rough is fine.',
+      say: 'Tap the lit-up + and plant your idea: one line on the problem it solves. Rough is fine.',
     },
     project: {
       go: 'ProjectsScreen', spot: 'projects-add', mode: 'tap',
@@ -83,7 +86,7 @@ export const FIRST_GOAL_GUIDE = {
     seed: {
       go: 'IdeaGardenScreen', spot: 'ideas-list', mode: 'tap',
       path: 'the Library tab, swipe to the Knowledge page, then Idea Garden',
-      say: 'Tap + and plant your idea: one line on what it is or the problem it solves. Rough is fine; it only has to be written down.',
+      say: 'Tap the lit-up + and plant your idea: one line on what it is or the problem it solves. Rough is fine; it only has to be written down.',
     },
     project: {
       go: 'ProjectsScreen', spot: 'projects-add', mode: 'tap',
@@ -98,12 +101,12 @@ export const FIRST_GOAL_GUIDE = {
   },
   'first-direction': {
     map: {
-      go: 'WayfinderScreen', mode: 'point',
+      go: 'WayfinderScreen', params: { stage: 'core' }, mode: 'point',
       path: 'the Library tab, swipe to the Build page, then Wayfinder',
       say: 'Three short sets of questions: what you have done, what pulls you, and what matters to you. There are no wrong answers, and it saves as you go. At the end you get a map.',
     },
     try: {
-      go: 'WayfinderScreen', mode: 'point',
+      go: 'WayfinderScreen', params: { stage: 'map' }, mode: 'point',
       path: 'the Library tab, swipe to the Build page, then Wayfinder',
       say: 'Pick a path on your map that looks interesting and commit to one small experiment, something you could do this week. You come back afterwards and say how it felt, and the map learns from it.',
     },
@@ -112,7 +115,7 @@ export const FIRST_GOAL_GUIDE = {
     capture: {
       go: 'CaptureInbox', spot: 'inbox-capture', mode: 'tap',
       path: 'the + button, then Capture Inbox',
-      say: 'This is the inbox: somewhere to drop a thought before you lose it. Tap + and write anything on your mind. You sort it later.',
+      say: 'This is the inbox: somewhere to drop a thought before you lose it. Tap the lit-up + and write anything on your mind. You sort it later.',
     },
     plan: {
       go: 'PlannerScreen', spot: 'planner-add', mode: 'tap',
@@ -125,21 +128,23 @@ export const FIRST_GOAL_GUIDE = {
       say: 'This is the Knowledge Vault: notes, links and tools you want to find again. Tap here, type a note, and tap + to save it.',
     },
   },
+  // The person picks the area: that's the point of "improve parts of my
+  // life". The log step then goes back to the one they rated.
   'first-areas': {
     rate: {
-      go: 'LifeAreaScreen', params: 'firstArea', spot: 'lifearea-rating', mode: 'tap',
-      path: 'the Library tab, then double-tap a life area',
-      say: 'Tap the number that fits this part of your life right now. Honest beats flattering, and nobody else sees it.',
+      go: 'LibraryScreen', spot: 'library-life-areas', mode: 'point',
+      path: 'the Library tab',
+      say: 'Each circle is one part of your life. Double-tap the one you most want to improve, then tap the number that fits it right now. Nobody else sees it.',
     },
     log: {
-      go: 'LifeAreaScreen', params: 'firstArea', spot: 'lifearea-quicklog', mode: 'tap',
+      go: 'LifeAreaScreen', params: 'ratedArea', spot: 'lifearea-quicklog', mode: 'tap',
       path: 'the Library tab, then double-tap a life area',
       say: 'Tap one of these to log something you did for this area. Small counts: a walk, a call, a bill paid.',
     },
     plan: {
       go: 'PlannerScreen', spot: 'planner-add', mode: 'tap',
       path: 'the Library tab, swipe to the Knowledge page, then Planner',
-      say: 'Tap Add and plan one small thing for that area, on a real day. Pick that area on the form if there is a choice.',
+      say: 'Tap Add, pick the same area under Life Area, and plan one small thing for it on a real day.',
     },
   },
   'first-snapshot': {
@@ -147,11 +152,13 @@ export const FIRST_GOAL_GUIDE = {
       go: 'LibraryScreen', spot: 'library-life-areas', mode: 'point',
       path: 'the Library tab',
       say: 'Each circle is one part of your life. Double-tap one to open it, tap the number that fits, then come back and do two more. The step ticks itself at three.',
+      // Said after each one that counts, by the "1 of 3" note.
+      more: 'Tap the arrow at the top left to go back to your life areas, and double-tap the next one.',
     },
     weigh: {
       go: 'CaptureInbox', spot: 'inbox-capture', mode: 'tap',
       path: 'the + button, then Capture Inbox',
-      say: 'Tap + and write down what is weighing on you most right now, in a sentence. Getting it out of your head is the point.',
+      say: 'Tap the lit-up + and write down what is weighing on you most right now, in a sentence. Getting it out of your head is the point.',
     },
     situation: {
       go: 'WayfinderScreen', params: { stage: 'situation' }, mode: 'point',
@@ -163,7 +170,7 @@ export const FIRST_GOAL_GUIDE = {
     capture: {
       go: 'CaptureInbox', spot: 'inbox-capture', mode: 'tap',
       path: 'the + button, then Capture Inbox',
-      say: 'Tap + and drop something in: a to-do, a link, a thought. Speed over tidiness. The + button at the bottom of every screen gets you here too.',
+      say: 'Tap the lit-up + and drop something in: a to-do, a link, a thought. Speed over tidiness. The + button at the bottom of every screen gets you here too.',
     },
     note: {
       go: 'KnowledgeScreen', spot: 'notes-input', mode: 'tap',
@@ -185,7 +192,7 @@ export const FIRST_GOAL_GUIDE = {
     capture: {
       go: 'CaptureInbox', spot: 'inbox-capture', mode: 'tap',
       path: 'the + button, then Capture Inbox',
-      say: 'Tap + and write down the thing you keep trying to remember. Out of your head, into here. Sort it later.',
+      say: 'Tap the lit-up + and write down the thing you keep trying to remember. Out of your head, into here. Sort it later.',
     },
     focus: {
       go: 'Home', spot: 'home-focus-input', mode: 'tap',
@@ -202,9 +209,15 @@ export const FIRST_GOAL_GUIDE = {
     capture: {
       go: 'CaptureInbox', spot: 'inbox-capture', mode: 'tap',
       path: 'the + button, then Capture Inbox',
-      say: 'Tap + and write down your biggest monthly cost and roughly what it is. Rent-sized, not coffee.',
+      say: 'Tap the lit-up + and write down your biggest monthly cost and roughly how much it is, like "Rent, $1,200". Rent-sized, not coffee.',
     },
-    game: DRILL('Tap here, then swipe to Budget Balance and play a round. It shows the gaps in what you know about budgets.'),
+    // Straight into the game: with every game open, "swipe until you find
+    // it" could be twenty swipes.
+    game: {
+      go: 'Play', params: { gameId: 'budget' }, mode: 'point',
+      path: 'the Training tab, then Enter Training and swipe to Budget Balance',
+      say: 'This is Budget Balance. Pick a level (Starter is fine), then keep, swap or cut each cost until the month balances, and check your plan. One round is enough; tap X at the top left when you are done.',
+    },
   },
 };
 

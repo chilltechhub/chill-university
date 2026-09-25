@@ -102,6 +102,9 @@ function QuickNoteModal({ visible, userId, onSaved, onClose, c, t, s, r }) {
         body: body.trim(),
         tags: tagList,
         source: 'manual',
+        // A note, filed: it goes to the Knowledge Vault. "Capture Inbox",
+        // the action next to it, is the one for things to sort later.
+        status: 'active',
       });
       onSaved(saved);
       reset();

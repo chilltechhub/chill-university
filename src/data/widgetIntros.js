@@ -33,8 +33,8 @@ export const WIDGET_INTROS = {
   orgSnapshot:      'The latest from your school or team, if you have joined one.',
   systemsCheck:     'Your ratings for the work and digital sides of life, so you can see which system needs attention.',
   recurringOps:     'Routines that repeat weekly or monthly, and which ones are due.',
-  vaultStatus:      'The worksheets from your ownership lessons: what is filed and what still needs doing.',
+  vaultStatus:      'The worksheets you fill in as you go through the business lessons: which are done and which still need doing. Not the Knowledge Vault, which is your notes.',
   founderQuest:     'The next step on the founder track. Tap it to open the lesson.',
-  targetsReadiness: 'Your targets, and how ready the paperwork behind them is.',
+  targetsReadiness: 'Your monthly revenue target or venture stage, and how many of the funding-readiness worksheets from your business lessons are done. Tap Set a target to add one.',
   quests:           'A ten-minute quest: an idea, a bit of your own research, and one real thing to do. Tap it to start.',
 };

@@ -326,12 +326,18 @@ const GameFeed = forwardRef(({ initialGame }, ref) => {
 
 export default GameFeed;
 
+const NAV_GUTTER = 36;
+
 const styles = StyleSheet.create({
+  // The arrows get a gutter of their own (NAV_GUTTER, kept free on every
+  // page by pageContent). They used to float over the game, on the right
+  // edge where games put prices and totals: Budget Balance's $5 and $3 sat
+  // underneath them (found 2026-09-25).
   nav: {
-    position: 'absolute', right: 8, top: '38%', alignItems: 'center', gap: 6,
+    position: 'absolute', right: 3, top: '38%', alignItems: 'center', gap: 6,
   },
   navBtn: {
-    width: 38, height: 38, borderRadius: 19,
+    width: 32, height: 32, borderRadius: 16,
     backgroundColor: 'rgba(10,22,40,0.72)', borderWidth: 1, borderColor: 'rgba(234,242,255,0.22)',
     alignItems: 'center', justifyContent: 'center',
   },
@@ -345,6 +351,7 @@ const styles = StyleSheet.create({
   pageContent: {
     flex: 1,
     width: '100%',
+    paddingRight: NAV_GUTTER,
   },
   placeholder: {
     flex: 1,
