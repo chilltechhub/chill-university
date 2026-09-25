@@ -107,6 +107,12 @@ for (const [type, stages] of Object.entries(PATHS)) {
     }
   });
 }
+// Every widget is explained the first time it lands on Home, so every one
+// needs words (src/data/widgetIntros.js).
+const { WIDGET_INTROS } = await load('src/data/widgetIntros.js');
+for (const key of widgetKeys) {
+  if (!WIDGET_INTROS[key]) problems.push(`widgetIntros.js: widget '${key}' has no intro, so it would arrive on Home unexplained`);
+}
 const { PERSONAS } = await load('src/data/personas.js');
 for (const p of PERSONAS) {
   for (const key of p.defaultWidgets || []) {
@@ -182,6 +188,78 @@ for (const entry of TOPIC_CATALOG) {
           problems.push(`topicCatalog.js: ${tp.id} ${kind} screen '${link.screen}' isn't a registered class screen`);
         } else if (!(await topicKeysFor(link.screen)).has(link.topicKey)) {
           problems.push(`topicCatalog.js: ${tp.id} ${kind} topic '${link.topicKey}' isn't in ${link.screen}`);
+        }
+      }
+    }
+  }
+}
+
+// ── What did you come here for? ────────────────────────────────────────────
+// Onboarding's answer is a purpose; its first goal is walked through by the
+// guide, and AIM_OPENS puts what that goal needs on stage 1. Every account
+// type can pick every aim, so each first goal has to be doable on each
+// type's stage 1 plus that aim's openings. A step pointing at something
+// hidden would teach the person, in their first five minutes, that the app
+// hides the thing they came for.
+{
+  const { AIM_OPENS, STAGED_SCREENS } = await load('src/data/experienceStages.js');
+  const { PURPOSES, ONBOARDING_AIMS, AIM_PERSONA, OBJECTIVE_BY_ID } = await load('src/data/objectives.js');
+  const { FEATURES } = await load('src/data/featureCatalog.js');
+  const { FIRST_GOAL_GUIDE } = await load('src/data/firstGoalGuide.js');
+  const purposeKeys = new Set(PURPOSES.map(p => p.key));
+  const featureByScreen = Object.fromEntries(FEATURES.map(f => [f.screen, f]));
+  const featureById = Object.fromEntries(FEATURES.map(f => [f.id, f]));
+
+  for (const key of ONBOARDING_AIMS) {
+    if (!purposeKeys.has(key)) problems.push(`objectives.js: ONBOARDING_AIMS lists '${key}', which is not a purpose`);
+    if (!AIM_OPENS[key]) problems.push(`experienceStages.js: aim '${key}' has no AIM_OPENS entry`);
+  }
+  for (const [key, type] of Object.entries(AIM_PERSONA)) {
+    if (!PATHS[type]) problems.push(`objectives.js: AIM_PERSONA.${key} names unknown type '${type}'`);
+  }
+  for (const [aim, opens] of Object.entries(AIM_OPENS)) {
+    if (!purposeKeys.has(aim)) problems.push(`experienceStages.js: AIM_OPENS.${aim} is not a purpose`);
+    for (const id of opens.games || []) if (!GAME_REGISTRY[id]) problems.push(`experienceStages.js: AIM_OPENS.${aim} lists unknown game '${id}'`);
+    for (const k of opens.widgets || []) if (!widgetKeys.has(k)) problems.push(`experienceStages.js: AIM_OPENS.${aim} adds unknown widget '${k}'`);
+    for (const id of opens.features || []) if (!featureById[id]) problems.push(`experienceStages.js: AIM_OPENS.${aim} lists unknown feature '${id}'`);
+  }
+
+  // Every first goal the guide can be asked to lead has a script for each step.
+  for (const o of Object.values(OBJECTIVE_BY_ID)) {
+    if (!o.intro) continue;
+    const script = FIRST_GOAL_GUIDE[o.id];
+    if (!script) { problems.push(`firstGoalGuide.js: no script for first goal '${o.id}'`); continue; }
+    for (const step of o.steps) {
+      if (!script[step.id]) problems.push(`firstGoalGuide.js: '${o.id}' has no entry for step '${step.id}'`);
+    }
+  }
+
+  const shownOn = (stage1, screen) => {
+    if (!screen) return true;
+    const allTools = (stage1.caps || new Set()).has('all-tools');
+    const f = featureByScreen[screen];
+    if (f) return f.gate !== 'open' ? false : allTools || stage1.features.has(f.id);
+    const rule = STAGED_SCREENS[screen];
+    if (rule === undefined) return true;
+    if (typeof rule === 'string') return allTools || stage1.features.has(rule);
+    return allTools || stage1.screens.has(screen);
+  };
+  for (const p of PURPOSES) {
+    if (!p.firstGoal) continue;
+    const goal = OBJECTIVE_BY_ID[p.firstGoal];
+    if (!goal) { problems.push(`objectives.js: purpose '${p.key}' firstGoal '${p.firstGoal}' doesn't exist`); continue; }
+    if (!goal.intro) problems.push(`objectives.js: purpose '${p.key}' firstGoal '${p.firstGoal}' isn't marked intro`);
+    for (const id of p.path || []) if (!OBJECTIVE_BY_ID[id]) problems.push(`objectives.js: purpose '${p.key}' path names unknown objective '${id}'`);
+    for (const [type, stages] of Object.entries(PATHS)) {
+      const opens = AIM_OPENS[p.key] || {};
+      const stage1 = {
+        features: new Set([...(stages[0].features || []), ...(opens.features || [])]),
+        screens: new Set([...(stages[0].screens || []), ...(opens.screens || [])]),
+        caps: new Set([...(stages[0].caps || []), ...(opens.caps || [])]),
+      };
+      for (const step of goal.steps) {
+        if (!shownOn(stage1, step.screen)) {
+          problems.push(`${goal.id} step '${step.id}' opens ${step.screen}, which a ${type} profile that picked '${p.key}' can't see on stage 1 (add it to AIM_OPENS.${p.key})`);
         }
       }
     }

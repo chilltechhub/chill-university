@@ -340,6 +340,9 @@ export default function LifeAreaScreen() {
     }
     setNewNote('');
     setNoteModal(false);
+    // A quick-log chip or a note is "did something for this area", which is
+    // a step of the life-areas first goal (objectives.js first-areas).
+    signalAction('area-logged', { area: area.id });
   };
 
   const deleteNote = async (id) => {

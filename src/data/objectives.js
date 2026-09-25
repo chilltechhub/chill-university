@@ -49,9 +49,14 @@
 // suggestion is drawn from what someone actually said rather than asking
 // them the same question a seventh time.
 
+// `ask` is how onboarding's tile says it, in the person's own words, and
+// `you` is how the guide says it back ("You came here to build a project").
+
 export const PURPOSES = [
   {
     key: 'habits',
+    ask: 'Get my days in order',
+    you: 'get your days in order',
     label: 'Build a daily rhythm',
     short: 'Rhythm',
     emoji: '📅',
@@ -59,6 +64,7 @@ export const PURPOSES = [
     blurb: 'Small things, done most days, until they stop taking willpower.',
     leads: ['home-desk', 'planner', 'training'],
     starterObjective: 'hold-the-line',
+    firstGoal: 'first-rhythm',
     matches: {
       goals:       ['Build better habits', 'Feel more confident'],
       motivations: ['growth'],
@@ -67,6 +73,8 @@ export const PURPOSES = [
   },
   {
     key: 'build',
+    ask: 'Build a project',
+    you: 'build a project',
     label: 'Ship something real',
     short: 'Build',
     emoji: '🏗️',
@@ -74,6 +82,7 @@ export const PURPOSES = [
     blurb: 'You have an idea. The aim is that it exists by the end of the month.',
     leads: ['workshop', 'idea-garden', 'capture'],
     starterObjective: 'ship-first-build',
+    firstGoal: 'first-build',
     matches: {
       goals:       ['Start a project', 'Learn new skills'],
       motivations: ['creativity'],
@@ -82,6 +91,8 @@ export const PURPOSES = [
   },
   {
     key: 'learn',
+    ask: 'Keep learning',
+    you: 'keep learning',
     label: 'Learn a real skill',
     short: 'Learn',
     emoji: '🎓',
@@ -89,6 +100,7 @@ export const PURPOSES = [
     blurb: 'Pick one subject and get measurably better at it, not busier around it.',
     leads: ['classes', 'training', 'knowledge-vault'],
     starterObjective: 'learn-one-skill',
+    firstGoal: 'first-study-session',
     matches: {
       goals:       ['Learn new skills'],
       motivations: ['learning'],
@@ -97,6 +109,8 @@ export const PURPOSES = [
   },
   {
     key: 'wellbeing',
+    ask: 'Look after myself',
+    you: 'look after yourself',
     label: 'Look after myself',
     short: 'Wellbeing',
     emoji: '🌿',
@@ -112,6 +126,8 @@ export const PURPOSES = [
   },
   {
     key: 'money',
+    ask: 'Sort out my money',
+    you: 'sort out your money',
     label: 'Get my money right',
     short: 'Money',
     emoji: '💰',
@@ -119,6 +135,7 @@ export const PURPOSES = [
     blurb: 'Know what comes in, what goes out, and what you are doing about it.',
     leads: ['life-areas', 'planner', 'training'],
     starterObjective: 'money-baseline',
+    firstGoal: 'first-money-look',
     matches: {
       goals:       ['Grow financially'],
       motivations: ['finance'],
@@ -127,6 +144,8 @@ export const PURPOSES = [
   },
   {
     key: 'career',
+    ask: 'Move my career forward',
+    you: 'move your career forward',
     label: 'Move my career forward',
     short: 'Career',
     emoji: '🧭',
@@ -140,7 +159,100 @@ export const PURPOSES = [
       usage:       ['building', 'planning'],
     },
   },
+
+  // The five below came from asking what people actually open an app like
+  // this for (2026-09-24). They're the answers to onboarding's "What did you
+  // come here for?", alongside build, learn, habits and money above.
+  {
+    key: 'direction',
+    ask: 'Find my way',
+    you: 'find your way',
+    label: 'Find my way',
+    short: 'Direction',
+    emoji: '🧭',
+    accentKey: 'teal',
+    blurb: 'Not sure what you want yet. Work out what pulls you, then test it with small experiments.',
+    leads: ['compass', 'life-areas', 'career-map'],
+    firstGoal: 'first-direction',
+    path: ['map-your-career', 'steady-body'],
+    matches: {
+      goals:       ['Find my purpose'],
+      motivations: [],
+      usage:       ['reflecting'],
+    },
+  },
+  {
+    key: 'explore',
+    ask: 'Discover useful tools',
+    you: 'discover useful tools',
+    label: 'Discover useful tools',
+    short: 'Tools',
+    emoji: '🧰',
+    accentKey: 'gold',
+    blurb: 'See what is in here: a planner, an inbox, a vault, projects, classes and games. Keep what helps.',
+    leads: ['capture', 'planner', 'knowledge-vault'],
+    firstGoal: 'first-toolkit',
+    path: ['clear-the-inbox', 'learn-one-skill', 'ship-first-build'],
+    matches: { goals: [], motivations: ['all'], usage: [] },
+  },
+  {
+    key: 'areas',
+    ask: 'Improve parts of my life',
+    you: 'improve parts of your life',
+    label: 'Improve parts of my life',
+    short: 'Life areas',
+    emoji: '🌿',
+    accentKey: 'teal',
+    blurb: 'Health, money, work, people and more: rate where each one is and do one small thing for it.',
+    leads: ['life-areas', 'planner', 'home-desk'],
+    firstGoal: 'first-areas',
+    path: ['steady-body', 'money-baseline', 'hold-the-line'],
+    matches: { goals: ['Improve my health'], motivations: ['wellness'], usage: [] },
+  },
+  {
+    key: 'snapshot',
+    ask: 'See where I stand',
+    you: 'see where you stand',
+    label: 'See where I stand',
+    short: 'Snapshot',
+    emoji: '🔍',
+    accentKey: 'purple',
+    blurb: 'An honest picture of how things are going right now, and what needs you first.',
+    leads: ['life-areas', 'capture', 'weekly-review'],
+    firstGoal: 'first-snapshot',
+    path: ['money-baseline', 'clear-the-inbox', 'hold-the-line'],
+    matches: { goals: [], motivations: [], usage: ['reflecting'] },
+  },
+  {
+    key: 'store',
+    ask: 'Keep my info in one place',
+    you: 'keep your info in one place',
+    label: 'Keep my info in one place',
+    short: 'Storage',
+    emoji: '🗄️',
+    accentKey: 'purple',
+    blurb: 'Notes, links, ideas and to-dos, all somewhere you can find them again.',
+    leads: ['capture', 'knowledge-vault', 'import-hub'],
+    firstGoal: 'first-store',
+    path: ['clear-the-inbox', 'learn-one-skill'],
+    matches: { goals: [], motivations: [], usage: ['planning'] },
+  },
 ];
+
+// What onboarding asks, in this order: "What did you come here for?". Each
+// answer is a purpose, so the Compass, the first goal, and what stage 1 opens
+// (AIM_OPENS in experienceStages.js) all follow from the one pick. Career and
+// wellbeing stay pickable on the Compass; "Find my way" and "Improve parts of
+// my life" cover them for someone who has just arrived.
+export const ONBOARDING_AIMS = ['build', 'learn', 'direction', 'explore', 'areas', 'snapshot', 'store', 'habits', 'money'];
+
+// The account type an answer points at, when the person's age allows it
+// (personasFor in personas.js decides that). Only a suggestion: onboarding
+// pre-selects it on the next card, and any type can pick any aim.
+export const AIM_PERSONA = {
+  build: 'ENTREPRENEUR',
+  learn: 'STUDENT',
+};
 
 export const PURPOSE_BY_KEY = Object.fromEntries(PURPOSES.map(p => [p.key, p]));
 
@@ -349,6 +461,150 @@ export const OBJECTIVES = [
     next: 'ship-first-build',
   },
 
+  /* ── First goals by aim ──────────────────────────────────────────────────
+     What onboarding's "What did you come here for?" hands over (each
+     purpose's `firstGoal`). The four above are what an account with no
+     answer gets, by type. These go straight at the thing the person came
+     for: no warm-up game unless the game IS the point, and every step uses
+     the tool that serves that aim. AIM_OPENS in experienceStages.js makes
+     sure stage 1 shows each of them, for every account type;
+     scripts/check-wiring.mjs fails the build if one doesn't. */
+
+  {
+    id: 'first-build',
+    purpose: 'build',
+    intro: true,
+    label: 'Start Your Build',
+    promise: 'Get the idea out of your head and into a project with a real next move.',
+    why: 'A project with a next step is one you can pick up tomorrow. An idea in your head is not.',
+    estimate: 'About 10 minutes',
+    steps: [
+      { id: 'seed',    label: 'Plant the idea in the Idea Garden',  hint: 'One line on what it is or the problem it solves. Rough is fine.', screen: 'IdeaGardenScreen', signal: 'idea-planted' },
+      { id: 'project', label: 'Start it as a project',              hint: 'In the Workshop. Give it a name you would say out loud.', screen: 'ProjectsScreen', signal: 'project-started' },
+      { id: 'step',    label: 'Write its next step',                hint: 'The actual next move, not "work on it". There is a box for it when you start the project.', screen: 'ProjectsScreen', signal: 'project-next-set' },
+    ],
+    unlocks: [],
+    next: 'ship-first-build',
+  },
+
+  {
+    id: 'first-direction',
+    purpose: 'direction',
+    intro: true,
+    label: 'Find Your Direction',
+    promise: 'Three short sets of questions, a map of what pulls you, and one small thing to try this week.',
+    why: 'Nobody thinks their way to knowing what they want. You try small things and notice how they feel.',
+    estimate: 'About 15 minutes',
+    steps: [
+      { id: 'map', label: 'Answer the three Wayfinder questions', hint: 'What you have done, what pulls you, what matters. It saves as you go.', screen: 'WayfinderScreen', signal: 'wayfinder-map' },
+      { id: 'try', label: 'Pick one path and try it',             hint: 'Choose a small experiment you could do this week. Ticks itself when you commit.', screen: 'WayfinderScreen', signal: 'wayfinder-experiment' },
+    ],
+    unlocks: [],
+    next: 'map-your-career',
+  },
+
+  {
+    id: 'first-toolkit',
+    purpose: 'explore',
+    intro: true,
+    label: 'Try Three Tools',
+    promise: 'The three tools most people keep: an inbox, a planner and a vault. Use each one once.',
+    why: 'You can only tell if a tool helps by using it on something real.',
+    estimate: 'About 10 minutes',
+    steps: [
+      { id: 'capture', label: 'Drop a thought in the Capture Inbox', hint: 'Anything on your mind. Sort it later.', screen: 'CaptureInbox', signal: 'inbox-captured' },
+      { id: 'plan',    label: 'Put one thing in the Planner',       hint: 'Something real, on a real day.', screen: 'PlannerScreen', signal: 'planner-item-added' },
+      { id: 'vault',   label: 'Save a note to the Knowledge Vault', hint: 'Type it in the quick-note box and tap +.', screen: 'KnowledgeScreen', signal: 'vault-saved' },
+    ],
+    unlocks: [],
+    next: 'clear-the-inbox',
+  },
+
+  {
+    id: 'first-areas',
+    purpose: 'areas',
+    intro: true,
+    label: 'Tune Up One Area',
+    promise: 'Pick one part of your life, say where it is, and give it one small thing to do.',
+    why: 'Everything at once is how nothing changes. One area, one move.',
+    estimate: 'About 10 minutes',
+    steps: [
+      { id: 'rate', label: 'Rate one life area',                hint: 'Honestly. Nobody else sees it.', screen: 'LibraryScreen', signal: 'area-rated' },
+      { id: 'log',  label: 'Log one thing you did for it',      hint: 'Tap a quick-log chip on that area’s page. Small counts.', screen: 'LibraryScreen', signal: 'area-logged' },
+      { id: 'plan', label: 'Plan one small thing for it',       hint: 'In the Planner, on a real day.', screen: 'PlannerScreen', signal: 'planner-item-added' },
+    ],
+    unlocks: [],
+    next: 'steady-body',
+  },
+
+  {
+    id: 'first-snapshot',
+    purpose: 'snapshot',
+    intro: true,
+    label: 'Where You Stand',
+    promise: 'Rate a few parts of your life, get what is weighing on you written down, and name what is going on.',
+    why: 'You cannot fix what you have not looked at. This is the look.',
+    estimate: 'About 15 minutes',
+    steps: [
+      { id: 'rate',      label: 'Rate three life areas',            hint: 'Where each one actually is today. Ticks itself at three.', screen: 'LibraryScreen', signal: 'area-rated', signalCount: 3 },
+      { id: 'weigh',     label: 'Write down what is weighing on you', hint: 'In the Capture Inbox. The biggest thing, in a sentence.', screen: 'CaptureInbox', signal: 'inbox-captured' },
+      { id: 'situation', label: 'Say what is going on right now',   hint: 'Pick what fits in the Wayfinder and get a plan for it, one step at a time.', screen: 'WayfinderScreen', params: { stage: 'situation' }, signal: 'wayfinder-situation' },
+    ],
+    unlocks: [],
+    next: 'money-baseline',
+  },
+
+  {
+    id: 'first-store',
+    purpose: 'store',
+    intro: true,
+    label: 'One Place for Everything',
+    promise: 'Catch a thought, keep a note, and move one thing to where it belongs.',
+    why: 'Storage only works if putting things in is quick and finding them again is certain.',
+    estimate: 'About 10 minutes',
+    steps: [
+      { id: 'capture', label: 'Drop something in the Capture Inbox', hint: 'A to-do, a link, a thought. Speed over tidiness.', screen: 'CaptureInbox', signal: 'inbox-captured' },
+      { id: 'note',    label: 'Save a note to the Knowledge Vault',  hint: 'Something you would want again in a month.', screen: 'KnowledgeScreen', signal: 'vault-saved' },
+      { id: 'sort',    label: 'Sort one thing out of the inbox',     hint: 'Send it to a project, a note or the Planner. Archive counts too.', screen: 'CaptureInbox', signal: 'inbox-processed' },
+    ],
+    unlocks: [],
+    next: 'clear-the-inbox',
+  },
+
+  {
+    id: 'first-rhythm',
+    purpose: 'habits',
+    intro: true,
+    label: 'Set Up Your Day',
+    promise: 'One habit on repeat, your head emptied into the inbox, and a focus for today.',
+    why: 'A day with a plan and an empty head is a day you run, not one that runs you.',
+    estimate: 'About 10 minutes',
+    steps: [
+      { id: 'habit',   label: 'Put one small habit in the Planner', hint: 'Something you could do most days. Set it to repeat.', screen: 'PlannerScreen', signal: 'planner-item-added' },
+      { id: 'capture', label: 'Empty your head into the inbox',     hint: 'The thing you keep trying to remember. Sort it later.', screen: 'CaptureInbox', signal: 'inbox-captured' },
+      { id: 'focus',   label: 'Set a focus for today',              hint: 'One line on Home. What today is actually for.', screen: 'Home', signal: 'focus-set' },
+    ],
+    unlocks: [],
+    next: 'hold-the-line',
+  },
+
+  {
+    id: 'first-money-look',
+    purpose: 'money',
+    intro: true,
+    label: 'First Look at Your Money',
+    promise: 'Say where your money is, write down your biggest cost, and test yourself on a budget.',
+    why: 'Most money stress comes from not looking. Looking is the first step and the hardest one.',
+    estimate: 'About 15 minutes',
+    steps: [
+      { id: 'area',    label: 'Rate your Financial life area',  hint: 'Where it actually is today, not where it should be.', screen: 'LibraryScreen', signal: 'area-rated:financial' },
+      { id: 'capture', label: 'Write down your biggest monthly cost', hint: 'In the Capture Inbox. Rent-sized, not coffee.', screen: 'CaptureInbox', signal: 'inbox-captured' },
+      { id: 'game',    label: 'Play a round of Budget Balance', hint: 'It finds the gaps in what you know. Ticks itself when a round ends.', screen: 'Training', auto: { stat: 'played', value: 1 } },
+    ],
+    unlocks: [],
+    next: 'money-baseline',
+  },
+
   /* ── Follow-ons — not starter objectives, offered once you have one done ── */
 
   {
@@ -414,14 +670,22 @@ export function getObjective(id) {
 // Ordered rather than filtered: someone whose purpose is 'money' is still
 // allowed to go and ship a build.
 //
-// The first goals (`intro`) are left out: each belongs to one profile type
-// and is handed over at the start, not picked from a list of fifteen.
+// The first goals (`intro`) are left out: each is handed over at the start,
+// not picked from a list of fifteen.
+//
+// A purpose with a `path` (the aims onboarding asks about that have no
+// follow-on objectives of their own) lists what comes after its first goal,
+// in order, so finishing one goal hands over the next step on the same road
+// instead of something from another purpose.
 export function objectivesForPurpose(purposeKey) {
   const purpose = getPurpose(purposeKey);
   const starter = purpose?.starterObjective;
+  const path = purpose?.path || [];
   return OBJECTIVES.filter(o => !o.intro).sort((a, b) => score(b) - score(a));
 
   function score(o) {
+    const onPath = path.indexOf(o.id);
+    if (onPath !== -1) return 100 - onPath;
     if (o.id === starter) return 3;
     if (o.purpose === purposeKey) return 2;
     return 0;

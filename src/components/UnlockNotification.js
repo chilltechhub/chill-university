@@ -17,7 +17,8 @@ import { useTheme } from '../../context/ThemeContext';
 import { useAccess } from '../../context/AccessContext';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { useTour } from '../../context/TourContext';
-import { hasScreenTutorial } from '../logic/screenTutorials';
+import { buildScreenTutorial } from '../logic/screenTutorials';
+import { GAME_REGISTRY } from '../services/gameRegistry';
 import { markScreensSeen } from '../logic/useFirstVisitTutorial';
 import { goToScreen } from '../logic/appRoutes';
 import { MAX_STAGE } from '../data/experienceStages';
@@ -39,7 +40,7 @@ export default function UnlockNotification() {
   // goal opened: three taps of "Later" before seeing what to do next.
   const unlockedFeatures = (unlockEvents || []).map(e => e.feature).filter(Boolean);
   const { progressEvents } = useUserProgress();
-  const { startScreenTour, active: tourActiveNow } = useTour();
+  const { startLesson, active: tourActiveNow } = useTour();
 
   const s = makeStyles(c, t, sp, r);
 
@@ -49,17 +50,22 @@ export default function UnlockNotification() {
   // app unresponsive on iOS. The level-up shows first, this waits for it.
   if (progressEvents?.length) return null;
 
-  // "Show me" means show me: open the thing, then run its tutorial, even if
-  // that screen was visited before it was unlocked. The delay lets the
-  // screen mount and its TourSpots measure.
-  const openAndTeach = (screen) => {
+  // "Show me" means show me: take them to the thing, say what it is in one
+  // bubble, then the screen's basics (its first-visit steps, not the whole
+  // walkthrough — the user found those too long). The delay lets the
+  // screen mount and its TourSpots measure. Home is the exception: what
+  // arrives there is widgets, and Home explains each new one itself.
+  const openAndTeach = (screen, what) => {
     goToScreen(navigation, screen);
-    // Marked seen here, since this is the screen's walkthrough: without it
-    // the same tutorial ran again, from the top, on the next visit.
-    if (hasScreenTutorial(screen)) {
-      markScreensSeen([screen]);
-      setTimeout(() => startScreenTour(screen), 900);
-    }
+    if (screen === 'Home') return;
+    // Marked seen here, since this is the screen's introduction: without it
+    // the same basics would run again on the next visit.
+    markScreensSeen([screen]);
+    const basics = buildScreenTutorial(screen, null, { firstVisit: true })
+      .filter(step => step.id || !/No specific walkthrough/.test(step.body));
+    const lead = what ? [{ title: `New · ${what.title}`, body: what.body }] : [];
+    const steps = [...lead, ...basics];
+    if (steps.length) setTimeout(() => startLesson(steps), 900);
   };
 
   // A new stage goes first: it's usually what just happened (every goal
@@ -71,15 +77,23 @@ export default function UnlockNotification() {
   if (stageEvent) {
     const stages = stageEvent.stages || [];
     const latest = stages[stages.length - 1];
-    // Somewhere to go: the first tool the newest stage put on the map.
-    const target = stages
+    // Somewhere to go, always: the first tool the newest stage put on the
+    // map; else its new games, in Training; else Home, where anything new
+    // is a widget and gets explained there.
+    const feature = stages
       .flatMap(st => st.features || [])
       .map(id => getFeature(id))
       .find(f => f?.screen);
+    const games = stages.flatMap(st => st.games || []).map(id => GAME_REGISTRY[id]?.name).filter(Boolean);
+    const target = feature
+      ? { screen: feature.screen, label: feature.label, what: { title: feature.label, body: feature.blurb } }
+      : games.length
+        ? { screen: 'Training', label: 'the new games', what: { title: games.join(', '), body: `New in Training: ${games.join(', ')}. Tap Enter Training, then swipe up or down to find them.` } }
+        : { screen: 'Home', label: 'what’s new', what: null };
     const close = () => { dismissStageEvent(); dismissAllUnlockEvents?.(); };
     const show = () => {
       close();
-      if (target) openAndTeach(target.screen);
+      openAndTeach(target.screen, target.what);
     };
     const alsoOpen = [
       ...stages.slice(0, -1).map(st => ({ key: st.key + st.n, label: st.label })),
@@ -106,14 +120,12 @@ export default function UnlockNotification() {
               </View>
             )}
             <View style={{ height: sp.lg }} />
-            <TouchableOpacity style={s.btn} onPress={target ? show : close} activeOpacity={0.85}>
-              <Text style={s.btnText}>{target ? `Show me ${target.label}` : 'Got it'}</Text>
+            <TouchableOpacity style={s.btn} onPress={show} activeOpacity={0.85}>
+              <Text style={s.btnText}>{`Take me to ${target.label}`}</Text>
             </TouchableOpacity>
-            {target && (
-              <TouchableOpacity style={s.ghost} onPress={close} activeOpacity={0.7}>
-                <Text style={s.ghostText}>Later</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity style={s.ghost} onPress={close} activeOpacity={0.7}>
+              <Text style={s.ghostText}>Later</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -129,7 +141,7 @@ export default function UnlockNotification() {
 
   const go = () => {
     done();
-    if (feature.screen) openAndTeach(feature.screen);
+    if (feature.screen) openAndTeach(feature.screen, { title: feature.label, body: feature.blurb });
   };
 
   return (
@@ -156,7 +168,7 @@ export default function UnlockNotification() {
 
           {feature.screen ? (
             <TouchableOpacity style={s.btn} onPress={go} activeOpacity={0.85}>
-              <Text style={s.btnText}>Take a look</Text>
+              <Text style={s.btnText}>Take me there</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity style={s.btn} onPress={done} activeOpacity={0.85}>

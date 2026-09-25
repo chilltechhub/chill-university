@@ -26,6 +26,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Eyebrow } from './ui';
+import TourSpot from './TourSpot';
 
 const JIGGLE_DEG = 1.4;
 const JIGGLE_MS = 130;
@@ -194,7 +195,11 @@ export default function WidgetBoard({ layout, widgets, editing, onChangeLayout, 
               onSwap={handleSwap} onLayoutHeight={handleLayoutHeight} onHide={() => handleToggleHidden(key)}
               c={c} t={t} s={s} r={r}
             >
-              {widget.render()}
+              {/* So a widget that has just arrived on Home can be pointed at
+                  and explained (HomeScreen's "new on Home" note). */}
+              <TourSpot id={`widget-${key}`}>
+                {widget.render()}
+              </TourSpot>
             </DraggableWidget>
           );
         })}

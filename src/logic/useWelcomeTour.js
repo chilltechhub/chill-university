@@ -73,10 +73,10 @@ export default function useWelcomeTour(routeName) {
     if (reason === 'replaced') return;
     setState('done');
     AsyncStorage.setItem(key(uid), 'done').catch(() => {});
-    // The tour just covered these, so their own first-visit tutorials
-    // would open by repeating it. They still teach the deeper parts from
-    // Screen Tutorial in the menu.
-    markScreensSeen(['Home', 'LibraryScreen', 'Training']);
+    // Only Home: the tour is just the tab bar and the + button now, so the
+    // Library and Training still teach their basics (swiping pages, switching
+    // games) the first time someone gets there.
+    markScreensSeen(['Home']);
   }, [uid]);
 
   useEffect(() => {

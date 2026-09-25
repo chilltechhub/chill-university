@@ -76,9 +76,49 @@ games, or a widget or two.
   (`profiles.show_everything`), with a copy on the device.
 - The stage is worked out from progress, not stored.
 
+### What they came for comes first
+
+Onboarding's second card asks **"What did you come here for?"** (build a
+project, keep learning, find my way, discover tools, improve life areas, see
+where I stand, keep my info in one place, get my days in order, sort out my
+money). The answer is the Compass purpose (`profiles.purpose_key`), and it
+decides three things:
+
+- **The first goal.** Each purpose has a `firstGoal` in `objectives.js`; the
+  account type's `FIRST_GOALS` is only the fallback for an account that never
+  answered.
+- **What stage 1 shows.** `AIM_OPENS` in `experienceStages.js` adds the tools,
+  widgets, games and + actions that aim needs to stage 1, for every account
+  type, and its widgets sit on Home straight under the lead cards. "Discover
+  useful tools" opens `all-tools` from day one.
+- **What comes after.** A purpose's `path` lists the goals the Compass hands
+  over next, in order.
+
+Account type is asked after it, pre-selected from the answer, and decides the
+rest of the order. Changing the purpose on the Compass later re-tailors stage 1
+the same way. `scripts/check-wiring.mjs` fails if any aim's first goal points
+at something a type's stage 1 plus that aim's openings doesn't show.
+
+### Home fills in slowly, and says what's new
+
+Before the `dashboard` stage, Home shows three cards (your card, the goal,
+what's next) and takes on the widgets the stages open two per stage
+(`homeWidgetsAt` in `src/logic/experienceStage.js`): each stage's first-listed
+widget arrives with it, the rest queue behind what the aim and stage 1 opened.
+Each widget that arrives is pointed at and explained once
+(`src/data/widgetIntros.js`; `check-wiring` fails if one has no words).
+
+Teaching happens where things are used. The welcome tour is four bubbles
+(what you came for, the tab bar, the + button, done). A screen's first visit
+shows only its basics (`FIRST_VISIT` in `screenTutorials.js`), and the full
+walkthrough is Screen Tutorial in the menu. An unlock's "Take me to…" goes to
+the new tool (or Training for new games, or Home for new widgets) and says
+what it is in one bubble before the basics.
+
 ### The first goal is guided
 
-Onboarding starts the account type's first goal (`FIRST_GOALS`). The guide
+Onboarding starts the first goal for what the person came for (or, with no
+answer, the account type's `FIRST_GOALS`). The guide
 walks through it one step at a time (`src/logic/useGuidedFirstGoal.js`,
 scripts in `src/data/firstGoalGuide.js`):
 
@@ -92,7 +132,8 @@ guide is on, screens don't run their own first-visit tutorials. "Not now"
 pauses the guide until the person is back on Home. Pressing it twice turns the
 guide off, and the Compass card's "Show me how" brings it back.
 
-Every first-goal step must point at something stage 1 of that type shows.
+Every first-goal step must point at something stage 1 of that type shows
+(plus that aim's `AIM_OPENS`, for a goal picked by aim).
 
 ## 4. Kept?
 

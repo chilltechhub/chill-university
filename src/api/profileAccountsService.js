@@ -133,6 +133,18 @@ export async function createProfile(userId, { type, name, emoji, isMaster = fals
     })
     .select()
     .maybeSingle();
+  // Lost a race for the master slot. Onboarding's finish() refreshes the
+  // profile (start mode, purpose) before it gets here, which wakes
+  // ProfileAccountsContext's backfill, and the two can both see "no master"
+  // and both insert. Whichever loses: if this call is the one that means
+  // it (not the backfill's onlyIfNone), take the slot over as the update
+  // it would have been a moment later. Found 2026-09-25 when a fresh
+  // account that picked Entrepreneur came out Student — invisible before,
+  // because every earlier test picked the backfill's own default.
+  if (error && isMaster && (error.code === '23505' || /duplicate|unique/i.test(error.message || ''))) {
+    if (onlyIfNone) return getMasterProfile(userId);
+    return createProfile(userId, { type, name, emoji, isMaster, baseline, onlyIfNone: false });
+  }
   if (error) throw error;
   return data;
 }

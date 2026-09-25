@@ -30,6 +30,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TOUR_STEPS } from '../src/logic/tourSteps';
 import { buildScreenTutorial } from '../src/logic/screenTutorials';
 import { useAccess } from './AccessContext';
+import { getObjective } from '../src/data/objectives';
 
 const TourContext = createContext(null);
 const SEEN_KEY = '@cth_setting_tourSeen';
@@ -41,11 +42,31 @@ const PERSONALIZATION_KEY = '@cth_setting_tourPersonalization';
 // not a catalogue of features, so both splices went. `personalization` is
 // still stored for the tour's other readers (see setPersonalization below).
 //
-// The one thing that does change: the closing step. Right after onboarding
-// it hands over to the first goal; replayed later from Settings it can't
-// promise one.
-function buildSteps({ welcome = false } = {}) {
-  if (welcome) return TOUR_STEPS;
+// What does change: the ends. Right after onboarding the tour opens and
+// closes on what the person said they came for, and hands over to the first
+// goal that serves it — the tour is the minute of "how to get around" before
+// that, not the point. Replayed later from Settings it can't promise a goal.
+function buildSteps({ welcome = false, purpose = null, firstGoal = null } = {}) {
+  if (welcome) {
+    const last = TOUR_STEPS.length - 1;
+    return TOUR_STEPS.map((step, i) => {
+      if (i === 0 && purpose?.you) {
+        return {
+          ...step,
+          title: `You came here to ${purpose.you}`,
+          body: "So that's where we'll start. Two quick things first, so you can find your way back to it on your own. Tap Next › to move on, or Skip to go straight in.",
+        };
+      }
+      if (i === last && firstGoal) {
+        const n = firstGoal.steps.length;
+        return {
+          ...step,
+          body: `I'll show you the rest as you get to it. Next up is your first goal, ${firstGoal.label}: ${n} small steps${purpose?.you ? ` to ${purpose.you}` : ''}, and I'll walk you through each one.`,
+        };
+      }
+      return step;
+    });
+  }
   return TOUR_STEPS.map((step, i) => (i === TOUR_STEPS.length - 1
     ? { ...step, body: "That's everything. You can replay this any time from Settings, and Screen Tutorial in your menu explains whichever screen you're on." }
     : step));
@@ -55,7 +76,7 @@ export function TourProvider({ children }) {
   // Screen tutorials are written for what the current stage shows — early
   // on, Home and the Library get short ones (see STARTER_FEATURES in
   // screenTutorials.js).
-  const { can } = useAccess();
+  const { can, purpose, firstGoalId } = useAccess();
   const [active, setActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [targets, setTargets] = useState({});
@@ -99,8 +120,8 @@ export function TourProvider({ children }) {
 
   const [welcomeRun, setWelcomeRun] = useState(false);
   const steps = useMemo(
-    () => scopedSteps || buildSteps({ welcome: welcomeRun }),
-    [scopedSteps, welcomeRun]
+    () => scopedSteps || buildSteps({ welcome: welcomeRun, purpose, firstGoal: getObjective(firstGoalId) }),
+    [scopedSteps, welcomeRun, purpose, firstGoalId]
   );
 
   // Which route is on screen, so a step marked `stay` can skip navigating
@@ -173,7 +194,7 @@ export function TourProvider({ children }) {
     // which is why real content steps silently fell back to an
     // unspotlighted card while only the synthetic Navigation step (which
     // doesn't read the registry at all) ever lit up.
-    setScopedSteps(buildScreenTutorial(routeName, personalization, { can }));
+    setScopedSteps(buildScreenTutorial(routeName, personalization, { can, firstVisit: !!opts?.firstVisit }));
     setActive(true);
     setStepIndex(0);
   }, [personalization, can]);

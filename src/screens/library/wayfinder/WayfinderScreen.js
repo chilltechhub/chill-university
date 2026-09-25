@@ -33,6 +33,7 @@ import { supabase, unscoped } from '../../../api/profileScopedClient';
 import { upsertTask, completeTask } from '../../../api/captureService';
 import { saveOnboardingFields } from '../../../api/onboardingService';
 import { useProfiles } from '../../../../context/ProfileAccountsContext';
+import { useAccess } from '../../../../context/AccessContext';
 import {
   loadWayfinder, stampWayfinder, persistWayfinder, resetWayfinder, setWayfinderIntent,
 } from '../../../api/wayfinderService';
@@ -92,6 +93,9 @@ export default function WayfinderScreen() {
   // unknown) see all of them — see situationsFor().
   const { restricted, ageUnknown } = useProfiles();
   const confirmedMinor = !!restricted && !ageUnknown;
+  // Tells a goal step that's watching for it (objectives.js first-direction
+  // and first-snapshot) that the thing is done.
+  const { signalAction } = useAccess();
 
   const [userId, setUserId] = useState(null);
   const userIdRef = useRef(null);
@@ -236,6 +240,7 @@ export default function WayfinderScreen() {
       scrollRef.current?.scrollTo?.({ y: 0, animated: false });
       // They've got a map now — Home can stop leading with the invitation.
       setWayfinderIntent(false);
+      signalAction('wayfinder-map');
       return;
     }
     goStage(STEP_ORDER[stepIdx + 1]);
@@ -319,6 +324,7 @@ export default function WayfinderScreen() {
     const dueDate = addDays(todayStr(), rung.days);
     const exp = newExperiment({ pathId, rung: rungId, text, dueDate });
 
+    signalAction('wayfinder-experiment', { kind: 'path' });
     update(prev => ({
       experiments: [...prev.experiments, exp],
       // Trying something is a vote for it — keep it on the map.
@@ -358,6 +364,7 @@ export default function WayfinderScreen() {
     const rung = LIFE_RUNGS.find(x => x.id === rungId);
     if (!path || !rung) return;
     const text = path.steps[rungId];
+    signalAction('wayfinder-experiment', { kind: 'life' });
     const exp = newExperiment({ pathId, rung: rungId, text, dueDate: addDays(todayStr(), rung.days) });
     update(prev => ({ experiments: [...prev.experiments, exp] }));
     if (addTask) addExperimentTask(exp, { title: `${rung.label}: ${path.title}`, notes: text });
@@ -876,7 +883,10 @@ export default function WayfinderScreen() {
           <SituationStep options={situationsFor({ confirmedMinor })} selected={state.situations} onToggle={toggleSituation} />
           <StepNav
             onBack={() => goStage(homeStage)}
-            onNext={() => goStage(state.situations.length ? 'plan' : homeStage)}
+            onNext={() => {
+              if (state.situations.length) signalAction('wayfinder-situation');
+              goStage(state.situations.length ? 'plan' : homeStage);
+            }}
             nextLabel={state.situations.length ? 'See my plan' : 'Skip'}
           />
         </>
