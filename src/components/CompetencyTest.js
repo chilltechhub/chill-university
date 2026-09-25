@@ -26,6 +26,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useAccess } from '../../context/AccessContext';
 import { getTest } from '../data/competencyTests';
 import { FONTS } from '../theme';
+import { optionOrder } from '../logic/optionOrder';
 
 export default function CompetencyTest({ visible, featureId, feature, onClose, onPassed }) {
   const { colors: c, typography: t, spacing: sp, radius: r } = useTheme();
@@ -121,7 +122,8 @@ export default function CompetencyTest({ visible, featureId, feature, onClose, o
                   <View key={q.id} style={s.qBlock}>
                     <Text style={s.qNumber}>Question {qi + 1} of {test.questions.length}</Text>
                     <Text style={s.qPrompt}>{q.prompt}</Text>
-                    {q.options.map((opt, oi) => {
+                    {optionOrder(q.prompt, q.options.length).map((oi) => {
+                      const opt = q.options[oi];
                       const picked = answers[q.id] === oi;
                       return (
                         <TouchableOpacity

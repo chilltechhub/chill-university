@@ -14,6 +14,7 @@ import useGradeLevel, { levelForTier } from '../logic/useGradeLevel';
 import { createAdaptiveTier, nextAdaptiveTier, roundLength, STAGE_COUNT } from '../logic/difficultyAdapter';
 import { CAREER_BANK } from '../data/gameContent/careerCompass';
 import { rotatePick } from '../logic/questionRotation';
+import { shuffle } from '../logic/optionOrder';
 
 const BLURBS = {
   'K-2': 'Community jobs and why school matters.',
@@ -21,8 +22,6 @@ const BLURBS = {
   '6-8': 'Résumés, networking, and internships.',
   '9-12': 'Interviews, salary talk, and career paths.',
 };
-
-function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
 // Rotates through the whole pool across runs, see questionRotation.js.
 function pickNext(pool, avoid = []) {

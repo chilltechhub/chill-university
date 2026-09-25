@@ -15,8 +15,8 @@ const topics = [
       { heading: 'Extreme Weather', body: 'Sometimes weather gets very big and powerful, like thunderstorms, hurricanes, blizzards, and tornadoes. These extreme events can be dangerous, which is why scientists watch the sky closely and warn people ahead of time so they can stay safe.' },
     ],
     practice: [
-      { question: 'Which one describes climate rather than weather?', options: ['It is raining right now', 'Deserts are usually hot and dry', 'It is snowing today', 'There is a rainbow outside'], answerIndex: 1, explanation: 'Climate describes the usual, long-term pattern of weather in a place, not what is happening in one moment.' },
-      { question: 'Why do scientists track extreme weather like hurricanes?', options: ['For fun', 'To warn people and help keep them safe', 'To make it rain', 'To change the climate'], answerIndex: 1, explanation: 'Tracking extreme weather lets scientists warn people in advance so they can prepare and stay safe.' },
+      { question: 'Which one describes climate rather than weather?', options: ['It is raining right now', 'Deserts are usually dry', 'It is snowing today', 'There is a rainbow outside'], answerIndex: 1, explanation: 'Climate describes the usual, long-term pattern of weather in a place, not what is happening in one moment.' },
+      { question: 'Why do scientists track extreme weather like hurricanes?', options: ['For fun and for records', 'To warn people', 'To make it rain', 'To change the climate'], answerIndex: 1, explanation: 'Tracking extreme weather lets scientists warn people in advance so they can prepare and stay safe.' },
     ],
     apply: {
       prompt: 'Keep a simple weather journal for 5 days: write or draw whether it was sunny, rainy, cloudy, or windy each day.',
@@ -43,8 +43,8 @@ const topics = [
       { heading: 'From Rock to Soil', body: 'Weathering is the process of wind, water, ice, and plant roots slowly breaking big rocks into smaller and smaller pieces. Over a very long time, this broken-down rock mixes with dead plant and animal material to become soil, the loose ground that plants grow in.' },
     ],
     practice: [
-      { question: 'How does sedimentary rock typically form?', options: ['Melted rock cooling quickly', 'Layers of sediment pressing together over time', 'Sudden heat and pressure', 'Volcanic eruptions'], answerIndex: 1, explanation: 'Sedimentary rock builds up as layers of sand, mud, and other material get pressed together over long periods.' },
-      { question: 'What is weathering?', options: ['Rock forming underground', 'Wind, water, and ice breaking rock down', 'Rock melting into lava', 'Soil turning into rock'], answerIndex: 1, explanation: 'Weathering is the gradual breakdown of rock by forces like wind, water, ice, and plant roots.' },
+      { question: 'How does sedimentary rock typically form?', options: ['Melted rock cooling quickly', 'Sediment layers pressing', 'Sudden heat and pressure', 'Volcanic eruptions'], answerIndex: 1, explanation: 'Sedimentary rock builds up as layers of sand, mud, and other material get pressed together over long periods.' },
+      { question: 'What is weathering?', options: ['Rock forming underground', 'Rock broken down by nature', 'Rock melting into lava', 'Soil turning into rock'], answerIndex: 1, explanation: 'Weathering is the gradual breakdown of rock by forces like wind, water, ice, and plant roots.' },
     ],
     apply: {
       prompt: 'Collect 3 different rocks or pebbles from outside and examine them with a magnifying glass, noting their color, texture, and any visible layers or crystals.',
@@ -80,7 +80,7 @@ const topics = [
     ],
     practice: [
       { question: 'Which layer of Earth do we live on top of?', options: ['The mantle', 'The crust', 'The outer core', 'The inner core'], answerIndex: 1, explanation: 'The crust is the thin, rocky outermost layer where we live.' },
-      { question: "What does the movement of Earth's outer core help create?", options: ['Ocean tides', "Earth's magnetic field", 'Weather patterns', 'The atmosphere'], answerIndex: 1, explanation: "The spinning liquid metal outer core generates Earth's protective magnetic field." },
+      { question: "What does the movement of Earth's outer core help create?", options: ['Ocean tides', 'Earth\'s magnetic field', 'Weather patterns and wind', 'The ozone layer'], answerIndex: 1, explanation: "The spinning liquid metal outer core generates Earth's protective magnetic field." },
     ],
     apply: {
       prompt: 'Make a model of Earth\'s layers using a hard-boiled egg (or a drawing): the shell is the crust, the egg white is the mantle, and the yolk is the core.',

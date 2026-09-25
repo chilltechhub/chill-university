@@ -70,8 +70,8 @@ const topics = [
         question: 'What is the main thing a sole proprietorship does NOT give you?',
         options: [
           'The ability to earn revenue',
-          'Separation between business and personal liability',
-          'A way to file taxes',
+          'Separate personal liability',
+          'A way to file your taxes',
           'Permission to have customers',
         ],
         answerIndex: 1,
@@ -81,7 +81,7 @@ const topics = [
         question: 'An S-Corporation is best described as:',
         options: [
           'A type of entity you register with your state',
-          'A tax election an eligible entity can make with the IRS',
+          'A tax election made with the IRS',
           'A kind of business bank account',
           'A federal business license',
         ],
@@ -93,7 +93,7 @@ const topics = [
         options: [
           'A one-person landscaping business wanting liability protection',
           'A freelancer with $30k of annual profit',
-          'A startup planning to raise venture capital and issue employee stock options',
+          'A startup raising venture capital with stock options',
           'A rental property held for cash flow',
         ],
         answerIndex: 2,
@@ -102,10 +102,10 @@ const topics = [
       {
         question: 'What does "pass-through taxation" mean for a default LLC?',
         options: [
-          'The LLC pays tax, then owners pay again on distributions',
-          'The LLC pays no income tax itself; profit and loss land on the owners\' returns',
+          'The LLC pays tax, then owners pay again',
+          'Profit is taxed on the owners\' returns',
           'No tax is owed on the profit at all',
-          'Tax is deferred until the business is sold',
+          'Tax waits until the business is sold',
         ],
         answerIndex: 1,
         explanation: 'Pass-through means the entity is not a separate income taxpayer — the profit or loss flows to the owners and is taxed on their personal returns. It is not tax-free.',
@@ -161,8 +161,8 @@ const topics = [
         question: 'Why should you complete your state formation filing before applying for an EIN?',
         options: [
           'The IRS rejects applications filed on the same day',
-          'So the legal name on the EIN matches the name registered with the state',
-          'EINs expire after 30 days',
+          'So the EIN name matches the state record',
+          'EINs expire after 30 days if not used',
           'The state issues the EIN, not the IRS',
         ],
         answerIndex: 1,
@@ -223,9 +223,9 @@ const topics = [
       {
         question: 'If an LLC has no operating agreement, what governs how it works?',
         options: [
-          'Nothing — the members decide case by case',
+          'Nothing; the members decide case by case',
           'Federal LLC law',
-          'The default provisions in that state\'s LLC statute',
+          'The state\'s default LLC rules',
           'The IRS',
         ],
         answerIndex: 2,
@@ -234,10 +234,10 @@ const topics = [
       {
         question: 'Why does a single-member LLC still benefit from an operating agreement?',
         options: [
-          'It is federally required',
-          'It helps show the LLC is a genuinely separate entity, and banks and buyers ask for it',
-          'It reduces the tax rate',
-          'It replaces the need to register with the state',
+          'It is required by federal law',
+          'It shows the LLC is truly separate',
+          'It lowers the LLC\'s tax rate',
+          'It replaces state registration',
         ],
         answerIndex: 1,
         explanation: 'It is evidence of separateness if liability protection is ever challenged, and it gets requested in banking and diligence.',
@@ -298,10 +298,10 @@ const topics = [
       {
         question: 'What does a separate tax holdback account accomplish?',
         options: [
-          'It lowers the amount of tax owed',
-          'It keeps money set aside for taxes out of spendable operating balance',
-          'It is required by the IRS',
-          'It eliminates quarterly filings',
+          'It lowers the amount of tax you owe',
+          'It keeps tax money out of spending',
+          'It is required by the IRS for all LLCs',
+          'It removes the need for quarterly filings',
         ],
         answerIndex: 1,
         explanation: 'It changes nothing about what you owe — it changes whether the money is still there when it is due.',
@@ -320,10 +320,10 @@ const topics = [
       {
         question: 'Why connect the business account to bookkeeping software immediately?',
         options: [
-          'It is legally required',
-          'So records build automatically instead of being reconstructed later',
-          'It increases your credit limit',
-          'It replaces the need for a CPA',
+          'It is legally required for all LLCs',
+          'Records build as you go, not later',
+          'It increases your business credit limit',
+          'It replaces the need for an accountant',
         ],
         answerIndex: 1,
         explanation: 'Automatic capture from transaction one is the difference between clean books and a year-end reconstruction project.',
@@ -383,10 +383,10 @@ const topics = [
       {
         question: 'You need $500 from your business for a personal expense. The cleanest approach is:',
         options: [
-          'Pay the expense directly from the business account',
-          'Use the business debit card and note it later',
-          'Take a documented owner\'s draw to your personal account, then pay from there',
-          'Ask a customer to pay you personally',
+          'Pay the expense straight from the business account',
+          'Use the business card and sort it out later',
+          'Take a documented owner\'s draw, then pay',
+          'Ask a customer to pay you personally instead',
         ],
         answerIndex: 2,
         explanation: 'A documented draw keeps the separation intact and creates the paper trail. Paying personal costs directly from business funds is textbook commingling.',
@@ -394,10 +394,10 @@ const topics = [
       {
         question: 'Why document personal money you put INTO the business?',
         options: [
-          'To claim it twice as a deduction',
-          'So it is clearly a loan or a capital contribution, not unrecorded income',
-          'Because banks require it monthly',
-          'It is not necessary',
+          'So you can claim it twice as a deduction',
+          'So it\'s clearly a loan or a contribution',
+          'Because banks require a monthly report',
+          'It isn\'t needed if the amount is small',
         ],
         answerIndex: 1,
         explanation: 'Undocumented injections can be recharacterized — possibly as taxable revenue — and weaken the separateness record.',
@@ -458,10 +458,10 @@ const topics = [
       {
         question: 'What is a D-U-N-S number?',
         options: [
-          'A federal tax ID',
-          'A free business identifier from Dun & Bradstreet used in business credit reporting',
-          'A state license number',
-          'A type of business loan',
+          'A federal tax ID from the IRS',
+          'A business ID used in credit reports',
+          'A state license number for LLCs',
+          'A type of small business loan',
         ],
         answerIndex: 1,
         explanation: 'It is Dun & Bradstreet\'s identifier for a business, free to request, and the anchor for much business credit reporting. Distinct from an EIN.',
@@ -469,8 +469,8 @@ const topics = [
       {
         question: 'Why do Net-30 vendor accounts help a new business credit file?',
         options: [
-          'They are interest-free loans',
-          'They generate reported payment history from real purchases',
+          'They are interest-free loans from suppliers',
+          'They create reported payment history',
           'They replace the need for a business bank account',
           'They raise your personal credit score',
         ],
@@ -480,10 +480,10 @@ const topics = [
       {
         question: 'Why use exactly the same legal name, address, and phone everywhere?',
         options: [
-          'It is legally mandated',
-          'Bureaus match on those fields — variations can fragment one file into several thin ones',
-          'It lowers vendor prices',
-          'It speeds up EIN issuance',
+          'It is required by federal law',
+          'Credit bureaus match on those fields',
+          'Vendors give lower prices for it',
+          'It speeds up getting your EIN',
         ],
         answerIndex: 1,
         explanation: 'Inconsistent identity data splits your history across partial records instead of building one strong file.',
@@ -491,10 +491,10 @@ const topics = [
       {
         question: 'A service offers "$150k in business credit, guaranteed, in 14 days" for a $5,000 fee. The best read is:',
         options: [
-          'A good deal worth taking',
-          'Normal industry pricing',
-          'A warning sign — real payment history cannot be built in two weeks, and the risk lands on you',
-          'Required for building business credit',
+          'A good deal worth taking right away',
+          'Normal pricing in the industry',
+          'A warning sign: credit takes time',
+          'A required step to build business credit',
         ],
         answerIndex: 2,
         explanation: 'Speed and guarantees are the tell. Building a file takes months of reported activity, and any misstatement on an application is the owner\'s liability.',

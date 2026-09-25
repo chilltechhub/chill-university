@@ -66,9 +66,9 @@ export default {
         {
           question: 'Which statement best describes the difference between a worker and an owner?',
           options: [
-            'Owners are allowed to pay less tax because they earn more',
-            'Workers are taxed before the costs of earning income; owners are taxed after legitimate costs',
-            'Owners don\'t pay payroll taxes at all',
+            'Owners pay a lower tax rate because they earn more',
+            'Owners pay costs first, then tax on what\'s left',
+            'Owners skip payroll taxes that workers have to pay',
           ],
           answerIndex: 1,
           explain: 'It\'s about order, not status or income. A worker earns, is taxed, then spends. An owner earns, pays real costs of the business, then is taxed on the rest. Owners do pay payroll-type tax — as self-employment tax they pay both halves.',
@@ -76,9 +76,9 @@ export default {
         {
           question: 'An employee buys a $1,500 laptop they use to answer work emails at home. Their employer requires remote work but doesn\'t reimburse equipment. On a federal return, under current rules, what happens?',
           options: [
-            'It\'s deductible as a business expense',
-            'For most employees, nothing — it isn\'t deductible, though asking for reimbursement is worth doing',
-            'The employer is legally required to cover it in every state',
+            'It\'s deductible, since the job requires it',
+            'Usually nothing; ask your employer to repay it',
+            'Every state requires the employer to repay it',
           ],
           answerIndex: 1,
           explain: 'Most employees can\'t deduct unreimbursed work expenses on a federal return under current rules (reviewed 2026). A few states require employers to reimburse necessary expenses, so it depends where you work — but asking is free and often works.',
@@ -149,9 +149,9 @@ export default {
         {
           question: 'Which is the real constraint on how much a bank can lend today?',
           options: [
-            'A 10% reserve requirement',
-            'Capital requirements, regulation, profitability and demand for credit',
-            'There is no limit at all',
+            'A 10% reserve rule on every deposit',
+            'Capital rules, profit, and loan demand',
+            'The amount of cash sitting in its vault',
           ],
           answerIndex: 1,
           explain: 'The Federal Reserve cut reserve requirements to zero in March 2020 (reviewed 2026). Banks are constrained by the capital they must hold against risky loans, by regulators, by whether a loan is profitable, and by whether creditworthy borrowers want one.',
@@ -159,9 +159,9 @@ export default {
         {
           question: 'You can move $10,000 from a big bank paying almost nothing to an FDIC-insured online bank paying much more. What happens to your protection?',
           options: [
-            'It gets worse — smaller banks are riskier',
-            'It stays the same, up to the insured limit, as long as the bank is genuinely FDIC-insured',
-            'It disappears, because online banks aren\'t insured',
+            'It drops, since online banks carry more risk',
+            'It stays the same up to the insured limit',
+            'It ends, since online banks aren\'t covered',
           ],
           answerIndex: 1,
           explain: 'FDIC coverage is the same at any insured bank: $250,000 per depositor, per bank, per ownership category (reviewed 2026). Verify the institution on the FDIC\'s own site, not in an app\'s marketing.',
@@ -223,9 +223,9 @@ export default {
         {
           question: 'The Federal Reserve raises its target rate by half a point. You have a variable-rate credit card and a fixed-rate car loan. What happens?',
           options: [
-            'Both payments go up',
-            'The card rate typically rises within a cycle or two; the car loan rate stays the same',
-            'Nothing — the Fed only affects banks, not customers',
+            'Both payments rise at the next billing cycle',
+            'The card rate rises; the car loan stays put',
+            'Neither changes; the Fed only affects banks',
           ],
           answerIndex: 1,
           explain: 'Variable card APRs are usually prime plus a margin, and prime follows the fed funds target. A fixed loan keeps its rate for its whole life. That\'s why variable balances are the ones rate rises land on.',
@@ -233,9 +233,9 @@ export default {
         {
           question: 'Who generally benefits when interest rates are high?',
           options: [
-            'Everyone — high rates mean a strong economy',
-            'Savers with cash earning interest, while variable-rate borrowers pay more',
-            'Borrowers, because loans become easier to get',
+            'Everyone, since high rates signal a strong economy',
+            'Savers earn more; variable-rate borrowers pay more',
+            'Borrowers, since banks are more eager to lend',
           ],
           answerIndex: 1,
           explain: 'The same rate hurts one side and helps the other. High rates raise what deposits and Treasury bills pay, and raise what variable borrowing costs. Knowing which side you\'re on is the useful part.',
@@ -297,9 +297,9 @@ export default {
         {
           question: 'You\'re in the 22% bracket. Which is worth more: a $2,000 deduction or a $2,000 credit?',
           options: [
-            'The deduction',
-            'The credit — it reduces tax owed dollar for dollar',
-            'They\'re worth the same',
+            'The deduction, because it lowers your income',
+            'The credit, since it cuts tax dollar for dollar',
+            'Same either way, since both are worth $2,000',
           ],
           answerIndex: 1,
           explain: 'The deduction lowers taxable income by $2,000, saving 22% of it — $440. The credit removes $2,000 from the bill. A credit is worth several times a same-sized deduction.',

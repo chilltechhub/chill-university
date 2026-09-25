@@ -1,288 +1,290 @@
 // src/data/gameContent/budgetTrail.js
-// Budget Trail v2 — a real budgeting simulation, not a single checkbox
-// list compared against a threshold. Every round now has FIVE moving
-// parts instead of one:
-//   1. income      — cash arrives at the start of the round (a paycheck/
-//                    allowance) — v1 only ever spent down a starting
-//                    balance with nothing coming back in.
-//   2. required[]  — one OR TWO non-negotiable bills (v1 only ever had
-//                    one), so a tight round forces choosing which bill to
-//                    prioritize if both can't be covered.
-//   3. event       — randomly drawn each round from that band's pool
-//                    (see EVENT_POOLS below) — a windfall or a shock
-//                    applied automatically. Unlike v1's one hand-placed
-//                    "Uh Oh" round, this can hit ANY round, so a safe
-//                    route can't just be memorized.
-//   4. optional[]  — 2-3 discretionary wants (up from v1's 0-1) freely
-//                    toggled on/off.
-//   5. a SAVINGS choice — Skip / Save some / Save a lot (see saveTiers).
-//      This is the real addition: money saved moves into a separate
-//      emergency fund that can bail out a bad round later (see
-//      BudgetTrailGame.js's resolution logic) and is what the journey is
-//      actually scored against at the end — not just "did you go
-//      negative," but "did you build a real cushion."
+// Budget Trail — a multi-round budget with money coming in, bills going out,
+// surprises, and a savings goal. Each round:
+//   1. income arrives, plus any `payback` earned by earlier choices, minus
+//      any `skipCost` coming due from something skipped last round
+//   2. a random event from the band's pool (windfall or shock)
+//   3. required bills
+//   4. optional items, freely toggled. They are NOT all the same kind:
+//        plain wants          cost money, nothing else
+//        payback: n           an investment: +$n income every later round
+//                             (a bigger lemonade sign, a bike for a paper
+//                             route). Worth it early, pointless late.
+//        skipCost: {cost,label}  cheap maintenance now; skip it and a
+//                             bigger bill arrives next round (fix the
+//                             leaky tire before it blows out)
+//      Nothing on screen says which is which: the flavor line describes the
+//      item honestly and the player has to judge. The round's feedback
+//      reveals what each choice did.
+//   5. a savings choice (Skip / Some / A lot). Money saved goes into an
+//      emergency fund that covers a shortfall later and is what the
+//      journey is scored against at the end.
 //
-// Required + chosen optional + chosen savings costing more than what's on
-// hand no longer means instant game over the first time it happens — the
-// shortfall is drawn from savings first (if there's enough saved up), and
-// ONLY ends the journey if savings can't cover it either. That's the
-// actual lesson: an emergency fund exists to absorb a shock; spending
-// every dollar the moment it arrives leaves nothing to absorb one.
+// A shortfall is drawn from savings first and only ends the journey when
+// savings can't cover it either.
 //
-// Required costs and event severity both scale up round over round within
-// a band, on top of the band-to-band scaling — a safe route through round
-// 1 doesn't stay safe by round 4.
+// scripts/check-games.mjs plays every band thousands of times with fixed
+// strategies and fails if the easy ones work:
+//   buy everything         must usually miss the goal
+//   buy nothing            must usually miss the goal (skipping the
+//                          investments and repairs costs more than it saves)
+//   invest + fix, no wants must usually reach it
 
 const EVENT_POOLS = {
   'K-2': [
-    { label: 'A kind neighbor tips you extra!', delta: 3 },
-    { label: 'A customer paid with a shiny coin — a keepsake, not spendable.', delta: -1 },
-    { label: 'A cup cracked and needs replacing.', delta: -2 },
-    { label: 'Nothing unusual happens this time.', delta: 0 },
+    { label: 'A neighbor tips you extra!', delta: 3 },
+    { label: 'Your pitcher cracked. You need a new one.', delta: -2 },
+    { label: 'A few lemons went bad.', delta: -1 },
+    { label: 'A normal day.', delta: 0 },
+    { label: 'A normal day.', delta: 0 },
   ],
   '3-5': [
-    { label: 'You found a $5 bill in your coat pocket!', delta: 5 },
-    { label: 'You helped a neighbor and earned a little extra.', delta: 4 },
-    { label: 'You lost your library book and owe a fee.', delta: -4 },
-    { label: 'Your favorite pencil case broke.', delta: -3 },
-    { label: 'A quiet week — nothing unusual happens.', delta: 0 },
+    { label: 'You found $5 in your coat pocket!', delta: 5 },
+    { label: 'You helped a neighbor and earned a little extra.', delta: 3 },
+    { label: 'You lost a library book and owe a fee.', delta: -4 },
+    { label: 'Your pencil case broke.', delta: -3 },
+    { label: 'A quiet week.', delta: 0 },
   ],
   '6-8': [
-    { label: 'You picked up an extra shift and earned a bonus.', delta: 15 },
-    { label: 'A relative sent you birthday money.', delta: 12 },
-    { label: 'Your bike got a flat tire — repair time.', delta: -14 },
+    { label: 'You picked up an extra shift.', delta: 20 },
+    { label: 'A relative sent birthday money.', delta: 15 },
     { label: 'You left your jacket somewhere and had to replace it.', delta: -18 },
-    { label: 'A normal week — nothing unusual happens.', delta: 0 },
+    { label: 'Your phone screen cracked. Repair time.', delta: -25 },
+    { label: 'A normal week.', delta: 0 },
   ],
   '9-12': [
     { label: 'A small tax refund shows up.', delta: 120 },
-    { label: 'You picked up overtime this pay period.', delta: 90 },
-    { label: "Your car's check-engine light means an unplanned repair.", delta: -160 },
-    { label: 'A medical copay you weren\'t expecting.', delta: -95 },
-    { label: 'Your landlord waives a small fee — nice surprise.', delta: 40 },
-    { label: 'A normal pay period — nothing unusual happens.', delta: 0 },
+    { label: 'You picked up overtime.', delta: 90 },
+    { label: 'An unexpected medical copay.', delta: -95 },
+    { label: 'Your laptop charger died.', delta: -70 },
+    { label: 'A normal month.', delta: 0 },
   ],
 };
 
 export const TRAIL_BANK = {
   'K-2': {
     title: 'Lemonade Stand Summer',
-    startingBalance: 10,
-    savingsGoal: 10,
-    saveTiers: [0, 2, 4],
+    startingBalance: 3,
+    savingsGoal: 12,
+    saveTiers: [0, 3, 6],
     eventPool: EVENT_POOLS['K-2'],
     rounds: [
       {
         title: 'Opening Day',
         story: 'Your lemonade stand is open for business!',
-        income: 6,
-        required: [{ label: 'Cups', cost: 3 }],
-        optional: [
-          { label: 'Sticker decorations', cost: 3, flavor: 'Makes your stand look cool' },
-          { label: 'Bigger sign', cost: 2, flavor: 'More customers might stop by' },
-        ],
-      },
-      {
-        title: 'Restocking',
-        story: 'You need more lemons and sugar to keep selling.',
-        income: 7,
-        required: [{ label: 'Lemons', cost: 3 }, { label: 'Sugar', cost: 2 }],
-        optional: [
-          { label: 'Fancy pitcher', cost: 4, flavor: 'Looks nice, pours the same' },
-          { label: 'Ice for cold lemonade', cost: 2, flavor: 'Customers like it cold' },
-        ],
-      },
-      {
-        title: 'Big Weekend Sale',
-        story: 'A big event is coming — everyone will be thirsty!',
         income: 8,
-        required: [{ label: 'Extra cups', cost: 3 }, { label: 'Extra sugar', cost: 3 }],
+        required: [{ label: 'Lemons & sugar', cost: 3 }],
         optional: [
-          { label: 'Balloons for the stand', cost: 3, flavor: 'Festive, but not needed' },
-          { label: 'A helper for the day', cost: 4, flavor: 'Could sell more, costs more' },
+          { label: 'Bigger sign', cost: 2, flavor: 'More people will see your stand from the street', payback: 3 },
+          { label: 'Sparkly stickers', cost: 3, flavor: 'Makes your stand look cool' },
+        ],
+      },
+      {
+        title: 'Hot Weekend',
+        story: 'It is going to be really hot this weekend.',
+        income: 8,
+        required: [{ label: 'Cups', cost: 2 }, { label: 'Lemons', cost: 3 }],
+        optional: [
+          { label: 'Bag of ice', cost: 2, flavor: 'On hot days, people want it cold', payback: 4 },
+          { label: 'Tape for the wobbly table', cost: 1, flavor: 'One leg wiggles when you pour', skipCost: { cost: 5, label: 'The table tipped over. Spilled lemonade and cups' } },
+          { label: 'Fancy pitcher', cost: 4, flavor: 'Pours the same as your old one' },
+        ],
+      },
+      {
+        title: 'Last Big Day',
+        story: 'Summer is almost over. One more busy day!',
+        income: 8,
+        required: [{ label: 'Cups', cost: 2 }, { label: 'Lemons', cost: 3 }],
+        optional: [
+          { label: 'Balloons', cost: 3, flavor: 'Fun to look at' },
+          { label: 'Toy from the store', cost: 4, flavor: 'Something just for you' },
         ],
       },
     ],
-    lesson: 'Saving a little bit each round means you have something ready when a surprise cost shows up.',
+    lesson: 'Some spending helps you earn more, like a sign people can see. Other spending is just for fun. Saving a little each time adds up.',
   },
 
   '3-5': {
-    title: 'School Year Budget',
-    startingBalance: 25,
-    savingsGoal: 20,
-    saveTiers: [0, 3, 6],
+    title: 'Dog-Walking Business',
+    startingBalance: 5,
+    savingsGoal: 30,
+    saveTiers: [0, 5, 10],
     eventPool: EVENT_POOLS['3-5'],
     rounds: [
       {
-        title: 'First Week',
-        story: "It's the first week of school.",
+        title: 'Getting Started',
+        story: 'You walk dogs for neighbors after school.',
         income: 12,
-        required: [{ label: 'Backpack', cost: 8 }],
+        required: [{ label: 'Poop bags', cost: 3 }],
         optional: [
-          { label: 'Trendy lunchbox', cost: 5, flavor: 'Looks cool, works the same as any other' },
-          { label: 'Extra notebooks', cost: 3, flavor: 'Nice to have spares' },
+          { label: 'Flyers for the neighborhood', cost: 4, flavor: 'More neighbors will know you walk dogs', payback: 5 },
+          { label: 'Cool sunglasses', cost: 5, flavor: 'You would look great on walks' },
         ],
       },
       {
-        title: 'Getting Ready',
-        story: 'You need books and supplies for class.',
-        income: 14,
-        required: [{ label: 'Textbooks', cost: 9 }, { label: 'Pencils & folders', cost: 4 }],
-        optional: [
-          { label: 'New video game', cost: 8, flavor: "Fun, but doesn't help at school" },
-          { label: 'Art supplies', cost: 4, flavor: 'For a project you actually have' },
-        ],
-      },
-      {
-        title: 'Field Trip',
-        story: 'Your class is going on a trip.',
+        title: 'Rainy Week',
+        story: 'It rained all week. Your sneakers have a small hole.',
         income: 12,
-        required: [{ label: 'Field trip fee', cost: 10 }],
+        required: [{ label: 'Poop bags', cost: 3 }, { label: 'Dog treats', cost: 3 }],
         optional: [
-          { label: 'Souvenir', cost: 5, flavor: "A keepsake, but it's not the trip itself" },
-          { label: 'Snack money', cost: 3, flavor: 'A little extra for the day' },
+          { label: 'Shoe patch kit', cost: 2, flavor: 'Fixes the hole before it gets bigger', skipCost: { cost: 12, label: 'The hole ripped open. New sneakers' } },
+          { label: 'Video game', cost: 8, flavor: 'Something fun for rainy days' },
         ],
       },
       {
-        title: 'Science Fair',
-        story: 'Surprise! You need supplies for the science fair.',
-        income: 14,
-        required: [{ label: 'Science fair supplies', cost: 12 }, { label: 'Poster board', cost: 4 }],
+        title: 'Busy Season',
+        story: 'Lots of families are going on vacation.',
+        income: 13,
+        required: [{ label: 'Poop bags', cost: 3 }, { label: 'Dog treats', cost: 3 }],
         optional: [
-          { label: 'Fancy display stand', cost: 6, flavor: 'Extra polish, not required to enter' },
+          { label: 'Second leash', cost: 3, flavor: 'Walk two dogs at once', payback: 6 },
+          { label: 'Snack after walks', cost: 3, flavor: 'Yummy after a long walk' },
+        ],
+      },
+      {
+        title: 'Last Week of Summer',
+        story: 'School starts soon.',
+        income: 13,
+        required: [{ label: 'Poop bags', cost: 3 }, { label: 'Dog treats', cost: 3 }],
+        optional: [
+          { label: 'Movie with friends', cost: 7, flavor: 'A fun way to end summer' },
+          { label: 'Stickers', cost: 3, flavor: 'For your notebook' },
         ],
       },
     ],
-    lesson: "Unplanned costs come up — keeping some money saved means a surprise doesn't sink you.",
+    lesson: 'Spending that helps you earn, like flyers, can pay for itself. Fixing small problems early costs less than fixing big ones later.',
   },
 
   '6-8': {
-    title: 'Summer Job Budget',
-    startingBalance: 60,
-    savingsGoal: 85,
-    saveTiers: [0, 10, 20],
+    title: 'Summer Lawn-Mowing Job',
+    startingBalance: 20,
+    savingsGoal: 180,
+    saveTiers: [0, 25, 50],
     eventPool: EVENT_POOLS['6-8'],
     rounds: [
       {
-        title: 'Getting to Work',
-        story: 'You need a bus pass for your summer job.',
-        income: 90,
-        required: [{ label: 'Bus pass', cost: 20 }],
+        title: 'First Customers',
+        story: 'You mow lawns on your street.',
+        income: 70,
+        required: [{ label: 'Gas for the mower', cost: 15 }],
         optional: [
-          { label: 'New sneakers', cost: 30, flavor: 'Your old ones still work fine' },
-          { label: 'Coffee runs', cost: 15, flavor: 'Adds up fast over a month' },
+          { label: 'Edge trimmer', cost: 25, flavor: 'Neater lawns, so you can charge more per yard', payback: 18 },
+          { label: 'New sneakers', cost: 35, flavor: 'Your old ones still work fine' },
         ],
       },
       {
-        title: 'Staying Connected',
-        story: 'Your phone bill is due.',
-        income: 95,
-        required: [{ label: 'Phone bill', cost: 25 }, { label: 'Bus pass renewal', cost: 20 }],
+        title: 'Blade Trouble',
+        story: 'The mower blade is getting dull.',
+        income: 70,
+        required: [{ label: 'Gas for the mower', cost: 15 }, { label: 'Phone bill', cost: 20 }],
         optional: [
-          { label: 'Concert ticket', cost: 35, flavor: "A real want — you'll love it, but it's not free" },
-          { label: 'Streaming subscription', cost: 12, flavor: 'Small, but it repeats every round' },
+          { label: 'Blade sharpening', cost: 10, flavor: 'A dull blade strains the mower engine', skipCost: { cost: 70, label: 'The mower overheated. Repair shop' } },
+          { label: 'Concert ticket', cost: 35, flavor: 'A band you really like' },
         ],
       },
       {
-        title: 'Back to School Prep',
-        story: 'You need supplies for the coming school year.',
-        income: 100,
-        required: [{ label: 'School supplies', cost: 22 }, { label: 'Bus pass renewal', cost: 20 }],
+        title: 'Word Gets Around',
+        story: 'Neighbors are asking about your service.',
+        income: 70,
+        required: [{ label: 'Gas for the mower', cost: 15 }, { label: 'Phone bill', cost: 20 }],
         optional: [
-          { label: 'New clothes', cost: 28, flavor: 'Nice to have, not urgent' },
-          { label: 'New headphones', cost: 18, flavor: "Your current pair still works" },
+          { label: 'Printed business cards', cost: 12, flavor: 'Hand them out after each job', payback: 15 },
+          { label: 'Streaming subscription', cost: 12, flavor: 'Shows to watch at night' },
         ],
       },
       {
-        title: 'A Big Ask',
-        story: 'Your family needs help with a car insurance down payment.',
-        income: 90,
-        required: [{ label: 'Car insurance help', cost: 40 }, { label: 'Bus pass renewal', cost: 20 }],
+        title: 'Heat Wave',
+        story: 'It is really hot, and grass grows slower.',
+        income: 70,
+        required: [{ label: 'Gas for the mower', cost: 15 }, { label: 'Phone bill', cost: 20 }],
         optional: [
-          { label: "A friend's birthday gift", cost: 15, flavor: 'Thoughtful, but optional this round' },
+          { label: 'New headphones', cost: 25, flavor: 'Yours still work' },
+          { label: 'Pizza night with friends', cost: 15, flavor: 'A fun break' },
         ],
       },
       {
-        title: "Summer's End",
-        story: 'One last stretch before summer job season wraps up.',
-        income: 95,
-        required: [{ label: 'Phone bill', cost: 25 }, { label: 'Bus pass renewal', cost: 20 }],
+        title: 'End of Summer',
+        story: 'One more stretch before school starts.',
+        income: 70,
+        required: [{ label: 'Gas for the mower', cost: 15 }, { label: 'Phone bill', cost: 20 }],
         optional: [
-          { label: 'End-of-summer trip with friends', cost: 40, flavor: 'A big want, and it shows in the price' },
-          { label: 'New backpack for fall', cost: 20, flavor: 'Yours is getting worn out, but it can wait' },
+          { label: 'Trip with friends', cost: 40, flavor: 'A big want, and the price shows it' },
+          { label: 'New backpack', cost: 20, flavor: 'Yours is worn, but it can last a bit longer' },
         ],
       },
     ],
-    lesson: "The rounds you can't predict are exactly why you keep a cushion instead of spending everything that comes in.",
+    lesson: 'The best spending pays you back: tools that let you charge more, and upkeep that stops a costly breakdown.',
   },
 
   '9-12': {
-    title: 'First Apartment Budget',
-    startingBalance: 400,
-    savingsGoal: 500,
-    saveTiers: [0, 50, 100],
+    title: 'First Apartment',
+    startingBalance: 300,
+    savingsGoal: 1100,
+    saveTiers: [0, 125, 250],
     eventPool: EVENT_POOLS['9-12'],
     rounds: [
       {
         title: 'Move-In',
-        story: 'Your first month of rent is due.',
-        income: 1800,
-        required: [{ label: 'Rent', cost: 900 }, { label: 'Utility deposit', cost: 150 }],
+        story: 'First month in your own place. You work retail full time.',
+        income: 1900,
+        required: [{ label: 'Rent', cost: 1150 }, { label: 'Utilities', cost: 140 }, { label: 'Groceries', cost: 310 }, { label: 'Car payment', cost: 200 }],
         optional: [
-          { label: 'Nice furniture upgrade', cost: 300, flavor: 'Basic furniture would work fine' },
-          { label: 'Premium cable package', cost: 80, flavor: 'A cheaper plan covers the basics' },
+          { label: 'Online certification course', cost: 250, flavor: 'Qualifies you for a shift-lead role that pays more', payback: 150 },
+          { label: 'Nice furniture set', cost: 300, flavor: 'The secondhand couch works fine' },
         ],
       },
       {
         title: 'Settling In',
-        story: 'Time to stock the fridge and get the utilities running.',
-        income: 1800,
-        required: [{ label: 'Rent', cost: 900 }, { label: 'Utilities', cost: 120 }],
+        story: 'Your car has a slow leak in one tire.',
+        income: 1900,
+        required: [{ label: 'Rent', cost: 1150 }, { label: 'Utilities', cost: 140 }, { label: 'Groceries', cost: 310 }, { label: 'Car payment', cost: 200 }],
         optional: [
-          { label: 'Dining out', cost: 150, flavor: 'Cooking at home costs a fraction of this' },
-          { label: 'New TV', cost: 250, flavor: "Your laptop screen works for now" },
+          { label: 'Tire repair', cost: 40, flavor: 'The leak is getting worse', skipCost: { cost: 220, label: 'Blowout on the highway. New tire and a tow' } },
+          { label: 'New TV', cost: 280, flavor: 'Your laptop works for now' },
         ],
       },
       {
         title: 'Staying Covered',
-        story: 'Your insurance premium and groceries are both due.',
-        income: 1850,
-        required: [{ label: 'Rent', cost: 900 }, { label: 'Insurance premium', cost: 180 }, { label: 'Groceries', cost: 220 }],
+        story: 'Your car insurance is due along with everything else.',
+        income: 1900,
+        required: [{ label: 'Rent', cost: 1150 }, { label: 'Car insurance', cost: 180 }, { label: 'Groceries', cost: 310 }, { label: 'Car payment', cost: 200 }],
         optional: [
-          { label: 'Gym membership', cost: 60, flavor: 'A home workout is free' },
+          { label: 'Meal-prep containers & cookbook', cost: 40, flavor: 'Cook for the week on Sundays', payback: 60 },
+          { label: 'Dining out', cost: 150, flavor: 'A few dinners with friends' },
         ],
       },
       {
         title: 'A Rough Month',
-        story: 'Bills keep coming whether or not anything went wrong this month.',
-        income: 1800,
-        required: [{ label: 'Rent', cost: 900 }, { label: 'Utilities', cost: 130 }, { label: 'Groceries', cost: 220 }],
+        story: 'Bills keep coming whether or not anything goes wrong.',
+        income: 1900,
+        required: [{ label: 'Rent', cost: 1150 }, { label: 'Utilities', cost: 140 }, { label: 'Groceries', cost: 310 }, { label: 'Car payment', cost: 200 }],
         optional: [
-          { label: 'Weekend trip', cost: 250, flavor: 'Memorable, but not cheap' },
+          { label: 'Weekend trip', cost: 250, flavor: 'Memorable, and not cheap' },
+          { label: 'Gym membership', cost: 50, flavor: 'Free workouts at home are an option' },
         ],
       },
       {
         title: 'Staying On Track',
-        story: 'Another routine month — rent, insurance, and groceries.',
-        income: 1850,
-        required: [{ label: 'Rent', cost: 900 }, { label: 'Insurance premium', cost: 180 }, { label: 'Groceries', cost: 220 }],
+        story: 'Another month: rent, insurance, groceries.',
+        income: 1900,
+        required: [{ label: 'Rent', cost: 1150 }, { label: 'Car insurance', cost: 180 }, { label: 'Groceries', cost: 310 }, { label: 'Car payment', cost: 200 }],
         optional: [
-          { label: 'New phone upgrade', cost: 300, flavor: 'Your current phone still works' },
-          { label: 'Concert tickets', cost: 140, flavor: "A fun want, not a need" },
+          { label: 'Phone upgrade', cost: 300, flavor: 'Your phone still works' },
+          { label: 'Concert tickets', cost: 140, flavor: 'A night out' },
         ],
       },
       {
         title: 'Rent Again',
-        story: 'Another month, another rent payment — this is the real rhythm of it.',
-        income: 1800,
-        required: [{ label: 'Rent', cost: 900 }, { label: 'Utilities', cost: 130 }],
+        story: 'Another month, another rent payment. This is the real rhythm of it.',
+        income: 1900,
+        required: [{ label: 'Rent', cost: 1150 }, { label: 'Utilities', cost: 140 }, { label: 'Groceries', cost: 310 }, { label: 'Car payment', cost: 200 }],
         optional: [
-          { label: 'Furniture for the guest room', cost: 280, flavor: 'Nice, but no guests booked yet' },
-          { label: 'Dining out', cost: 150, flavor: 'A treat, not a requirement' },
+          { label: 'Guest-room furniture', cost: 280, flavor: 'No guests booked yet' },
+          { label: 'Dining out', cost: 150, flavor: 'A treat' },
         ],
       },
     ],
-    lesson: 'Rent comes back every single month — an emergency fund is what keeps one bad month from becoming a crisis.',
+    lesson: 'Rent comes back every month. An emergency fund keeps one bad month from becoming a crisis, and skills and upkeep often pay for themselves.',
   },
 };
 

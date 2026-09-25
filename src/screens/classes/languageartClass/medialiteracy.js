@@ -24,13 +24,13 @@ const topics = [
       practice: [
         {
           question: 'What is the purpose of most advertisements?',
-          options: ['To provide unbiased news', 'To persuade you to buy something', 'To entertain with no other goal', 'To teach history'],
+          options: ['To provide unbiased news', 'To persuade you to buy', 'To entertain with no other goal', 'To teach history'],
           answerIndex: 1,
           explanation: 'Advertisements are created primarily to persuade viewers to purchase a product or service.',
         },
         {
           question: 'Which is a sign that a media message might be biased?',
-          options: ['It presents multiple perspectives equally', 'It uses loaded, emotional language for one side only', 'It cites its sources clearly', 'It includes statistics from research studies'],
+          options: ['It presents several perspectives equally', 'It uses loaded words for one side', 'It cites its sources clearly', 'It includes statistics from studies'],
           answerIndex: 1,
           explanation: 'Using emotional or loaded language for only one side is a common sign of bias.',
         },
@@ -73,7 +73,7 @@ const topics = [
       practice: [
         {
           question: 'Which question helps you evaluate whether a source is credible?',
-          options: ["Is the website's font size large?", 'Who wrote it and what is their expertise?', 'Is the article long?', 'Does it have colorful pictures?'],
+          options: ['Is the website\'s font size large?', 'Who wrote it, and are they an expert?', 'Is the article long and very detailed?', 'Does it have lots of colorful pictures?'],
           answerIndex: 1,
           explanation: "Checking the author's identity and expertise is a key step in evaluating credibility.",
         },
@@ -124,13 +124,13 @@ const topics = [
       practice: [
         {
           question: 'What is the main goal of integrating multiple media types in a project?',
-          options: ['To make the project as long as possible', 'To have each element add something unique to the message', 'To use every media type available regardless of fit', 'To avoid using any text at all'],
+          options: ['To make the project as long as possible', 'So each element adds something', 'To use every media type available', 'To avoid using any text at all'],
           answerIndex: 1,
           explanation: 'Good multimedia integration is purposeful—each element should contribute something the others cannot.',
         },
         {
           question: 'What is a risk of adding too much unrelated media to a project?',
-          options: ['It always makes the project more persuasive', 'It can distract from the message and weaken impact', 'It automatically improves credibility', 'It has no effect on the audience'],
+          options: ['It always makes the project more persuasive', 'It can distract from the message', 'It automatically improves credibility', 'It has no effect on the audience'],
           answerIndex: 1,
           explanation: 'Unrelated or excessive media can distract the audience and dilute the overall message.',
         },
@@ -174,13 +174,13 @@ const topics = [
       practice: [
         {
           question: 'What is a storyboard used for in digital storytelling?',
-          options: ['To publish the final story online', 'To plan out scenes before creating the digital story', "To edit video after it's filmed", 'To choose background music only'],
+          options: ['To publish the final story online', 'To plan the scenes before making it', 'To edit the video after filming', 'To choose the background music'],
           answerIndex: 1,
           explanation: 'A storyboard maps out each scene in advance, helping creators plan before producing their story.',
         },
         {
           question: 'Which combination best describes digital storytelling?',
-          options: ['Only spoken narration with no visuals', 'Traditional story elements combined with digital tools like images and audio', 'A story written only on paper', 'A story with no plot or characters'],
+          options: ['Spoken narration with no visuals', 'A story told with digital tools', 'A story written only on paper', 'A story with no plot or characters'],
           answerIndex: 1,
           explanation: 'Digital storytelling blends narrative elements like character and plot with digital media tools.',
         },

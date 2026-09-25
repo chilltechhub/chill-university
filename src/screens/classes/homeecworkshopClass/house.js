@@ -15,8 +15,8 @@ const topics = [
         { heading: 'Time Management Uses Simple Tools', body: 'A daily or weekly checklist helps break big chores into small, manageable steps, and doing a little bit each day (like making your bed or tidying one shelf) is easier than one huge cleaning session. Setting a timer for a task, like 10 minutes of tidying, can make chores feel less overwhelming.' },
       ],
       practice: [
-        { question: 'What does it mean to give an item a "home" in an organized space?', options: ['Throwing it away', 'Giving it one designated spot it always returns to', 'Hiding it in a random drawer', 'Buying a new one each time'], answerIndex: 1, explanation: 'A designated spot for each item makes it quick to find and easy to put away, keeping spaces tidy.' },
-        { question: 'What is one benefit of using a timer for a cleaning task?', options: ['It makes the task take longer', 'It can make the task feel more manageable and less overwhelming', 'It has no effect', 'It replaces the need to clean'], answerIndex: 1, explanation: 'Breaking a chore into a short, timed burst makes it feel achievable rather than overwhelming.' },
+        { question: 'What does it mean to give an item a "home" in an organized space?', options: ['Throwing it away', 'One spot it always goes back to', 'Hiding it in a random drawer', 'Buying a new one each time you need it'], answerIndex: 1, explanation: 'A designated spot for each item makes it quick to find and easy to put away, keeping spaces tidy.' },
+        { question: 'What is one benefit of using a timer for a cleaning task?', options: ['It makes the task take much longer', 'It makes the task feel manageable', 'It has no effect on cleaning at all', 'It replaces the need to clean'], answerIndex: 1, explanation: 'Breaking a chore into a short, timed burst makes it feel achievable rather than overwhelming.' },
       ],
       apply: {
         prompt: 'Pick one messy area at home (a desk, drawer, or shelf) and organize it in 15 minutes, giving each item a designated spot.',
@@ -48,8 +48,8 @@ const topics = [
         { heading: 'Housing Options Have Tradeoffs', body: 'Renting an apartment offers flexibility and fewer maintenance responsibilities, while owning a house builds equity but comes with property taxes, repairs, and a bigger upfront cost. Comparing housing options means weighing cost, location, space needs, and long-term goals.' },
       ],
       practice: [
-        { question: 'What should be considered first when arranging furniture in a room?', options: ['Wall paint color', 'How the room will be used and traffic flow', 'The most expensive furniture piece', 'Matching curtains'], answerIndex: 1, explanation: 'Function and traffic flow should guide furniture placement before decorative choices are made.' },
-        { question: 'What is one advantage of renting over owning a home?', options: ['Building equity', 'More flexibility and fewer maintenance responsibilities', 'Lower total lifetime cost', 'Unlimited customization'], answerIndex: 1, explanation: 'Renters typically are not responsible for major repairs and can move more easily than homeowners.' },
+        { question: 'What should be considered first when arranging furniture in a room?', options: ['The wall paint color', 'How the room will be used', 'The most expensive piece first', 'Matching the curtains'], answerIndex: 1, explanation: 'Function and traffic flow should guide furniture placement before decorative choices are made.' },
+        { question: 'What is one advantage of renting over owning a home?', options: ['Building equity', 'More flexibility', 'Lower lifetime cost', 'Unlimited customization'], answerIndex: 1, explanation: 'Renters typically are not responsible for major repairs and can move more easily than homeowners.' },
       ],
       apply: {
         prompt: 'Sketch a simple floor plan for your bedroom or living room, showing furniture placement that keeps at least 30 inches of walking space in the main path.',

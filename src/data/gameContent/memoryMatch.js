@@ -12,8 +12,8 @@ export const MEMORY_BANK = {
     { term: '❄️ Winter', definition: 'The coldest season' },
     { term: '🍎 Apple', definition: 'A fruit that can be red or green' },
     { term: '⭕ Circle', definition: 'A round shape with no corners' },
-    { term: '🍎 Teacher', definition: 'Person who helps you learn at school' },
-    { term: '🌙 Moon', definition: 'Object that orbits the Earth at night' },
+    { term: '🧑‍🏫 Teacher', definition: 'Person who helps you learn at school' },
+    { term: '🌙 Moon', definition: 'Orbits the Earth and lights up the night sky' },
     { term: '🐟 Fish', definition: 'Animal that breathes with gills' },
   ],
 

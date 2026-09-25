@@ -16,7 +16,7 @@ const topics = [
     ],
     practice: [
       { question: 'How long should you wash your hands with soap and water?', options: ['5 seconds', '20 seconds', '2 minutes', 'You don\'t need soap'], answerIndex: 1, explanation: 'About 20 seconds — roughly the time it takes to sing "Happy Birthday" twice — is long enough to remove germs.' },
-      { question: 'Which of these is a good time to wash your hands?', options: ['Only in the morning', 'Before eating and after the bathroom', 'Only if hands look dirty', 'Once a week'], answerIndex: 1, explanation: 'Handwashing matters most before eating and after the bathroom, coughing, or playing outside — even if hands look clean.' },
+      { question: 'Which of these is a good time to wash your hands?', options: ['Only in the morning', 'Before eating', 'Only if hands look dirty', 'Once a week'], answerIndex: 1, explanation: 'Handwashing matters most before eating and after the bathroom, coughing, or playing outside — even if hands look clean.' },
     ],
     apply: {
       prompt: 'Wash your hands properly while singing a 20-second song, then check off a hygiene tracking sheet for today.',
@@ -66,7 +66,7 @@ const topics = [
     ],
     practice: [
       { question: 'If you count 12 heartbeats in 10 seconds while resting, what is your heart rate in beats per minute (BPM)?', options: ['12 BPM', '60 BPM', '72 BPM', '120 BPM'], answerIndex: 2, explanation: '12 beats in 10 seconds × 6 = 72 BPM.' },
-      { question: 'What type of exercise is best known for strengthening the heart over time?', options: ['Stretching', 'Aerobic exercise like running or swimming', 'Sitting still', 'Sleeping'], answerIndex: 1, explanation: 'Aerobic (cardio) exercise conditions the heart muscle to pump more efficiently.' },
+      { question: 'What type of exercise is best known for strengthening the heart over time?', options: ['Stretching and yoga', 'Aerobic, like running', 'Lifting heavy weights', 'Balancing on one foot'], answerIndex: 1, explanation: 'Aerobic (cardio) exercise conditions the heart muscle to pump more efficiently.' },
     ],
     apply: {
       prompt: 'Measure and record your resting heart rate. Do 30 jumping jacks, measure your heart rate again immediately, and compare the two numbers.',

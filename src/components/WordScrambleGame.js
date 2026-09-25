@@ -15,6 +15,7 @@ import useGradeLevel, { tierForLevel } from '../logic/useGradeLevel';
 import { roundLength, STAGE_COUNT } from '../logic/difficultyAdapter';
 import { SCRAMBLE_BANK } from '../data/gameContent/wordScramble';
 import { rotatePick } from '../logic/questionRotation';
+import { shuffle } from '../logic/optionOrder';
 
 // Stage lengths come from the same roundLength() curve every round-based
 // game shares (short first, longer as you clear more) — the opening stage
@@ -31,8 +32,6 @@ const BLURBS = {
   '6-8': 'Longer academic vocabulary.',
   '9-12': 'Advanced, multi-syllable words.',
 };
-
-function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
 function scrambleWord(word) {
   const letters = word.split('').map((letter, i) => ({ id: `${i}-${letter}`, letter }));

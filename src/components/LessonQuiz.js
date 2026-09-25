@@ -16,6 +16,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { FONTS } from '../theme';
+import { optionOrder } from '../logic/optionOrder';
 
 export default function LessonQuiz({ questions = [], color }) {
   const { colors: c, radius: r } = useTheme();
@@ -40,7 +41,8 @@ export default function LessonQuiz({ questions = [], color }) {
         return (
           <View key={qi} style={[st.question, qi > 0 && st.questionGap]}>
             <Text style={st.qText}>{q.question}</Text>
-            {q.options.map((opt, oi) => {
+            {optionOrder(q.question, q.options.length).map((oi) => {
+              const opt = q.options[oi];
               const isAnswer = oi === q.answerIndex;
               const isPicked = oi === picked;
               let border = c.border, bg = c.bg1, icon = null, iconColor = c.text4;

@@ -66,9 +66,9 @@ export default {
         {
           question: 'A raise moves part of your income into a higher tax bracket. What happens to your take-home pay from federal income tax alone?',
           options: [
-            'It falls, because all your income is now taxed at the higher rate',
-            'It rises — only the dollars above the threshold are taxed at the higher rate',
-            'It stays exactly the same',
+            'It falls, since all of your pay is taxed at the higher rate',
+            'It rises; only dollars above the line get the higher rate',
+            'It stays the same, since the two effects cancel out',
           ],
           answerIndex: 1,
           explain: 'Brackets apply only to the income inside them. Your earlier dollars are taxed exactly as before. In the income tax system alone, earning more always means keeping more.',
@@ -76,9 +76,9 @@ export default {
         {
           question: 'Is there any real situation where earning a little more can leave a household worse off?',
           options: [
-            'No, never',
-            'Yes — if the extra income causes a means-tested benefit like a childcare subsidy or Medicaid to stop',
-            'Yes — whenever you move into a new tax bracket',
+            'No, earning more always leaves you better off',
+            'Yes, if it makes you lose a benefit like Medicaid',
+            'Yes, any time you move up into a new tax bracket',
           ],
           answerIndex: 1,
           explain: 'That\'s the benefits cliff. It\'s caused by programs that phase out at income limits, not by tax brackets. Knowing your programs\' limits lets you plan the jump rather than be surprised by it.',
@@ -141,9 +141,9 @@ export default {
         {
           question: 'Your employer matches 100% of contributions up to 5% of pay. You contribute 3%. What\'s happening?',
           options: [
-            'You\'re getting the full match',
-            'You\'re leaving 2% of your pay in employer money unclaimed every year',
-            'The employer only matches if you contribute more than 5%',
+            'You\'re getting the full match already',
+            'You\'re leaving 2% of pay unclaimed',
+            'You get no match until you reach 5%',
           ],
           answerIndex: 1,
           explain: 'The match follows your contribution up to the cap. At 3% you get 3% matched; contributing 5% would bring in another 2% of your salary from your employer every year — an immediate 100% return on that money.',
@@ -151,9 +151,9 @@ export default {
         {
           question: 'Two job offers: $58,000 with no retirement match and a costly health plan, or $54,000 with a 4% match and an employer that covers most of your health premium. Which pays more?',
           options: [
-            'The $58,000 one — the salary is higher',
-            'It depends on total compensation, and the $54,000 offer may well be worth more',
-            'They\'re always equal once taxes are counted',
+            'The $58,000 one, since salary is what counts',
+            'It depends; the $54,000 one may be worth more',
+            'They come out equal once taxes are counted',
           ],
           answerIndex: 1,
           explain: 'A 4% match on $54,000 is $2,160 a year, and employer health premium contributions are often worth thousands more. Salary alone can make the lower-value offer look like the better one.',
@@ -217,9 +217,9 @@ export default {
         {
           question: 'Your employer pays you a salary of $50,000 and says that means you don\'t get overtime. Is that automatically true?',
           options: [
-            'Yes — salaried employees are always exempt',
-            'No — exemption also depends on your actual job duties meeting specific legal tests',
-            'Yes, as long as your job title says "manager"',
+            'Yes, being salaried always makes you exempt',
+            'No, your actual duties must pass legal tests',
+            'Yes, as long as your title says "manager"',
           ],
           answerIndex: 1,
           explain: 'Overtime exemption needs both a salary above the threshold and duties that qualify. Neither a salary on its own nor a title decides it. Misapplying this is one of the most common wage violations.',
@@ -227,8 +227,8 @@ export default {
         {
           question: 'A company sets your hours, supervises how you work and provides your equipment, but calls you an independent contractor. What decides whether you\'re really an employee?',
           options: [
-            'Whatever your signed contract says',
-            'How the work is actually controlled and performed',
+            'Whatever the contract you signed says',
+            'How the work is actually controlled',
             'Whether you asked to be a contractor',
           ],
           answerIndex: 1,
@@ -296,9 +296,9 @@ export default {
         {
           question: 'Your manager says there\'s no budget for a salary increase this year. What\'s the most useful next move?',
           options: [
-            'Accept it and ask again next year',
-            'Negotiate other parts of total compensation — training, extra match, flexibility, a written review date',
-            'Quit immediately',
+            'Accept it and bring it up again next year',
+            'Negotiate other perks and a review date',
+            'Start interviewing elsewhere right away',
           ],
           answerIndex: 1,
           explain: 'A fixed salary budget often leaves other levers free. Training and credentials raise your future market rate, and a written review date turns a vague "later" into a commitment.',
@@ -306,9 +306,9 @@ export default {
         {
           question: 'Why does raising income matter for more than just monthly spending?',
           options: [
-            'It doesn\'t — only monthly budget matters',
-            'Lenders use debt-to-income ratio, so higher income raises how much you can borrow and on what terms',
-            'Higher income automatically improves your credit score',
+            'It doesn\'t; the monthly budget is all that matters',
+            'Lenders weigh debt-to-income when you borrow',
+            'Higher income raises your credit score directly',
           ],
           answerIndex: 1,
           explain: 'Credit scores don\'t include income, but lenders\' debt-to-income limits do. For a worker, earning power sets a ceiling on borrowing power — for a home, a car, or eventually a business.',

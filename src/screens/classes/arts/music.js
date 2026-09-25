@@ -16,8 +16,8 @@ const topics = [
         { heading: 'Singing Together vs. Singing Alone', body: "In a choir, singers blend their voice with everyone else's — matching pitch, dynamics, and breathing together, and listening as much as singing. As a soloist, a singer instead has full freedom to shape their own interpretation." },
       ],
       practice: [
-        { question: 'What does "sight-singing" mean?', options: ['Singing with your eyes closed', 'Singing written music accurately without having heard it before', 'Singing only songs you memorized', 'Singing a duet'], answerIndex: 1, explanation: 'Sight-singing is reading notated music and singing it correctly on the first try.' },
-        { question: 'In a choir, why is "blending" your voice with others important?', options: ['So one voice can be heard over everyone else', 'So the group sounds unified rather than like separate individual voices', "Blending isn't important in choir", 'To sing louder than the accompaniment'], answerIndex: 1, explanation: 'Blending means matching pitch, tone, and dynamics with the group so the ensemble sounds like one unified voice.' },
+        { question: 'What does "sight-singing" mean?', options: ['Singing with your eyes closed to focus', 'Singing written music you\'ve never heard', 'Singing songs you memorized by ear', 'Singing along with a recording'], answerIndex: 1, explanation: 'Sight-singing is reading notated music and singing it correctly on the first try.' },
+        { question: 'In a choir, why is "blending" your voice with others important?', options: ['So one voice can be heard over everyone', 'So the group sounds like one voice', 'So each singer can be picked out clearly', 'To sing louder than the accompaniment'], answerIndex: 1, explanation: 'Blending means matching pitch, tone, and dynamics with the group so the ensemble sounds like one unified voice.' },
       ],
       apply: {
         prompt: 'Learn a simple 4-8 measure melody (from a method book or app) using solfège (do-re-mi), then record yourself singing it and check your pitch accuracy against a piano or tuner app.',
@@ -74,8 +74,8 @@ const topics = [
         { heading: 'Rehearsing as a Team', body: 'Efficient chamber rehearsal means isolating tricky passages, agreeing on tempo and dynamics as a group, and deciding together who is "leading" a phrase at any given moment — all through communication rather than one designated leader.' },
       ],
       practice: [
-        { question: 'What is a key feature of chamber music ensembles?', options: ['They always have more than 50 performers', 'They have no conductor and usually one performer per part', 'They only play electronic music', 'They never rehearse together'], answerIndex: 1, explanation: 'Chamber ensembles are small groups, typically with one player per part, and perform without a conductor.' },
-        { question: 'Without a conductor, how do chamber musicians stay together during a performance?', options: ['They ignore each other and play independently', 'They listen closely and use eye contact and cues to coordinate', 'They use a metronome the whole time instead of listening', 'They take turns stopping to check in'], answerIndex: 1, explanation: "Chamber musicians rely on active listening and visual cues to stay synchronized since there's no conductor." },
+        { question: 'What is a key feature of chamber music ensembles?', options: ['They always have more than 50 performers', 'No conductor, one player per part', 'They only play music written before 1800', 'A conductor leads every rehearsal'], answerIndex: 1, explanation: 'Chamber ensembles are small groups, typically with one player per part, and perform without a conductor.' },
+        { question: 'Without a conductor, how do chamber musicians stay together during a performance?', options: ['They follow a click track in their earpieces', 'They listen and cue each other with eye contact', 'They use a metronome the whole time instead', 'They take turns stopping to check in'], answerIndex: 1, explanation: "Chamber musicians rely on active listening and visual cues to stay synchronized since there's no conductor." },
       ],
       apply: {
         prompt: "With 2-4 classmates or friends, rehearse a short piece or rhythm pattern together without a conductor, deciding as a group who cues the start and how you'll stay in sync.",
@@ -100,7 +100,7 @@ const topics = [
         { heading: 'Stage Presence Beyond the Notes', body: 'A confident walk-on and walk-off, good posture, eye contact with the audience, and handling mistakes smoothly instead of stopping or panicking all shape how a performance is received, separate from technical accuracy.' },
       ],
       practice: [
-        { question: 'Why might two performers playing the exact same written piece sound noticeably different?', options: ['One of them is using different notes', 'Performers make different interpretive choices about dynamics, tempo, and tone', 'Sheet music sounds different depending on who reads it', 'It is impossible for this to happen'], answerIndex: 1, explanation: 'The notes may be identical, but performers make personal choices about expression, dynamics, and pacing that shape interpretation.' },
+        { question: 'Why might two performers playing the exact same written piece sound noticeably different?', options: ['One of them is using different notes', 'They make different choices about tempo and tone', 'Sheet music sounds different depending on who reads it', 'It is impossible for this to happen'], answerIndex: 1, explanation: 'The notes may be identical, but performers make personal choices about expression, dynamics, and pacing that shape interpretation.' },
         { question: 'If you make a small mistake during a solo recital, what is generally the best response?', options: ['Stop and restart the piece from the beginning', 'Keep going smoothly as if nothing happened', 'Apologize out loud to the audience', 'Leave the stage immediately'], answerIndex: 1, explanation: 'Skilled performers keep going and recover smoothly; stopping or drawing attention to a small error disrupts the performance more than the mistake itself.' },
       ],
       apply: {
@@ -127,7 +127,7 @@ const topics = [
         { heading: 'Reading Rhythm', body: 'Note shapes tell you how long to hold a sound, not just which pitch to play. In common (4/4) time, a whole note lasts 4 beats, a half note lasts 2 beats, and a quarter note lasts 1 beat — the time signature tells you how many beats fit in each measure.' },
       ],
       practice: [
-        { question: 'What does the treble clef tell a musician?', options: ['How loud to play', 'Which pitches the lines and spaces of the staff represent', 'How fast to play', 'Which instrument to use'], answerIndex: 1, explanation: 'A clef establishes which pitch each line and space on the staff corresponds to.' },
+        { question: 'What does the treble clef tell a musician?', options: ['How loud or soft to play', 'Which pitches the staff lines mean', 'How fast to play the music', 'Which instrument should play it'], answerIndex: 1, explanation: 'A clef establishes which pitch each line and space on the staff corresponds to.' },
         { question: 'In 4/4 time, how many beats does a quarter note get?', options: ['4 beats', '2 beats', '1 beat', 'Half a beat'], answerIndex: 2, explanation: 'A quarter note equals one beat in 4/4 time, where the bottom "4" means the quarter note is the beat unit.' },
       ],
       apply: {
@@ -157,7 +157,7 @@ const topics = [
       ],
       practice: [
         { question: 'A basic triad chord is built by stacking which scale degrees?', options: ['Every other white key on a piano', 'The root, third, and fifth', 'Every note in the scale', 'Only the root note repeated'], answerIndex: 1, explanation: 'A triad stacks the root (1st), third, and fifth notes of a scale.' },
-        { question: 'What is the main difference between melody and harmony?', options: ['Melody is a single line of notes; harmony is notes played together', 'They are the same thing', 'Harmony only exists in singing', 'Melody is always faster than harmony'], answerIndex: 0, explanation: 'Melody is a sequence of single notes (the tune); harmony is the combination of notes sounding together, like chords.' },
+        { question: 'What is the main difference between melody and harmony?', options: ['Melody is one line; harmony is notes together', 'Harmony is the words; melody is the tune', 'Harmony is always played by the bass part', 'Melody is always faster than harmony'], answerIndex: 0, explanation: 'Melody is a sequence of single notes (the tune); harmony is the combination of notes sounding together, like chords.' },
       ],
       apply: {
         prompt: 'Pick a simple major scale on an instrument or keyboard app, build the triad chord on the 1st, 4th, and 5th scale degrees, and play a short 4-chord progression using them under a simple melody.',
@@ -215,8 +215,8 @@ const topics = [
         { heading: 'Arranging vs. Composing', body: 'Composing means creating original musical material — melody, harmony, and structure. Arranging means taking existing music and reshaping it for a different setting, like turning a solo piano piece into a full band arrangement.' },
       ],
       practice: [
-        { question: 'What is the difference between composing and arranging?', options: ['They are the same thing', 'Composing creates original music; arranging reshapes existing music for a different setting', 'Arranging always comes before composing', 'Only classical musicians arrange music'], answerIndex: 1, explanation: 'Composing generates new musical material, while arranging takes existing music and adapts it for different instruments or styles.' },
-        { question: 'How do most composers typically begin writing a piece?', options: ['By writing the entire piece perfectly in one sitting from start to finish', 'By sketching small ideas like motifs or chord progressions, then developing them', 'By only using a computer to generate the music', 'Composers never start with small ideas'], answerIndex: 1, explanation: 'Composers commonly begin with small sketched ideas — a motif, a chord progression, a rhythm — that they then develop and connect.' },
+        { question: 'What is the difference between composing and arranging?', options: ['They mean the same thing in music', 'Composing creates; arranging reshapes', 'Arranging always comes before composing', 'Only classical musicians arrange music'], answerIndex: 1, explanation: 'Composing generates new musical material, while arranging takes existing music and adapts it for different instruments or styles.' },
+        { question: 'How do most composers typically begin writing a piece?', options: ['By writing the entire piece perfectly in one sitting', 'By sketching small ideas, then developing them', 'By only using a computer to generate the music', 'By choosing the instruments before any notes'], answerIndex: 1, explanation: 'Composers commonly begin with small sketched ideas — a motif, a chord progression, a rhythm — that they then develop and connect.' },
       ],
       apply: {
         prompt: 'Compose a short 8-measure original melody or beat (using an instrument, voice, or a free DAW/app like GarageBand), starting from one small musical idea (a motif) that you repeat and develop.',
@@ -274,7 +274,7 @@ const topics = [
       ],
       practice: [
         { question: 'What is a pentatonic scale?', options: ['A scale with 12 notes', 'A scale with 5 notes', 'A scale used only in Western classical music', 'A rhythm pattern, not a scale'], answerIndex: 1, explanation: 'A pentatonic scale uses 5 notes and is found widely in folk and traditional music around the world.' },
-        { question: 'Why might a traditional instrument be tied closely to its culture of origin?', options: ['Instruments have no connection to culture', "Its materials, construction, and playing role often reflect that culture's history and values", 'All traditional instruments sound identical', "Cultural context doesn't affect music"], answerIndex: 1, explanation: 'Traditional instruments are often shaped by locally available materials and carry specific cultural or ceremonial roles.' },
+        { question: 'Why might a traditional instrument be tied closely to its culture of origin?', options: ['Instruments are chosen at random by each culture', 'Its materials and role reflect that culture', 'All traditional instruments sound the same', 'Culture only affects the songs, not instruments'], answerIndex: 1, explanation: 'Traditional instruments are often shaped by locally available materials and carry specific cultural or ceremonial roles.' },
       ],
       apply: {
         prompt: 'Choose one non-Western instrument or musical tradition (for example, sitar, djembe, gamelan, or mariachi) to research, then try to recreate a simple pattern from it using household objects or an instrument you have.',
@@ -302,7 +302,7 @@ const topics = [
       ],
       practice: [
         { question: 'Which genre is especially known for musicians improvising, or making up solos on the spot?', options: ['Jazz', 'Classical', 'Hip-hop', 'Electronic'], answerIndex: 0, explanation: 'Improvisation, especially solos over chord changes, is a defining feature of jazz.' },
-        { question: 'Hip-hop originated in which city in the 1970s?', options: ['New Orleans', 'The Bronx, New York City', 'Nashville', 'Los Angeles'], answerIndex: 1, explanation: 'Hip-hop began in the Bronx in New York City in the 1970s, with DJs and MCs performing over beats.' },
+        { question: 'Hip-hop originated in which city in the 1970s?', options: ['New Orleans, Louisiana', 'The Bronx, New York City', 'Nashville, Tennessee', 'Compton, Los Angeles'], answerIndex: 1, explanation: 'Hip-hop began in the Bronx in New York City in the 1970s, with DJs and MCs performing over beats.' },
       ],
       apply: {
         prompt: 'Listen to one short song from 2 different genres (for example, jazz and hip-hop), and make a chart comparing the instruments, rhythm feel, and vocal style (or lack of vocals) in each.',
@@ -331,8 +331,8 @@ const topics = [
         { heading: 'Major vs. Minor Chords by Ear', body: 'Major chords generally sound bright or happy while minor chords sound darker or sadder, because of a lowered third note. A trained ear can often tell major from minor apart within a couple of seconds, without ever seeing the notation.' },
       ],
       practice: [
-        { question: 'What is a musical "interval"?', options: ['A pause between songs', 'The distance between 2 pitches', 'A type of chord only', 'A tempo marking'], answerIndex: 1, explanation: 'An interval is the distance in pitch between two notes.' },
-        { question: 'Which best describes the typical emotional character difference between major and minor chords?', options: ['Major sounds sad, minor sounds happy', 'Major typically sounds bright/happy, minor typically sounds darker/sadder', 'They always sound identical', 'Only minor chords exist in music'], answerIndex: 1, explanation: 'Because of the lowered third in a minor chord, major chords tend to sound brighter and minor chords tend to sound darker or more melancholy.' },
+        { question: 'What is a musical "interval"?', options: ['A pause between two songs', 'The distance between 2 pitches', 'A type of chord with three notes', 'A tempo marking in the score'], answerIndex: 1, explanation: 'An interval is the distance in pitch between two notes.' },
+        { question: 'Which best describes the typical emotional character difference between major and minor chords?', options: ['Major sounds sad, minor sounds happy', 'Major sounds brighter, minor darker', 'Major is louder, minor is softer', 'Minor chords are only used in jazz'], answerIndex: 1, explanation: 'Because of the lowered third in a minor chord, major chords tend to sound brighter and minor chords tend to sound darker or more melancholy.' },
       ],
       apply: {
         prompt: 'Using a piano app or real piano, have a friend play a major chord and a minor chord back to back 5 times without you looking, and try to identify each one by ear only.',
@@ -358,8 +358,8 @@ const topics = [
         { heading: 'Texture and Timbre', body: 'Texture describes how many "layers" are happening at once — monophonic is a single line, homophonic is a melody with accompaniment, and polyphonic is multiple independent melodic lines at once. Timbre is the unique tone color that lets you tell instruments or voices apart even at the same pitch and volume.' },
       ],
       practice: [
-        { question: 'What does "musical form" refer to?', options: ['How loud a piece is', 'The overall structural organization of a piece, such as verse-chorus', 'The tempo marking', 'The instrument used'], answerIndex: 1, explanation: 'Form describes the large-scale structure of a piece — how its sections are organized and relate to each other.' },
-        { question: 'What is "timbre"?', options: ['The speed of a piece', 'The tone color or quality that distinguishes instruments or voices from each other', 'The loudness of a note', 'The key signature'], answerIndex: 1, explanation: 'Timbre is the distinct tone quality that lets you tell a violin from a flute even when playing the same pitch and volume.' },
+        { question: 'What does "musical form" refer to?', options: ['How loud or soft a piece is overall', 'The overall structure, like verse-chorus', 'The tempo marking at the start', 'Which instruments play the piece'], answerIndex: 1, explanation: 'Form describes the large-scale structure of a piece — how its sections are organized and relate to each other.' },
+        { question: 'What is "timbre"?', options: ['The speed of a piece of music', 'The tone color of a sound', 'The loudness of a single note', 'The pitch of a note you hear'], answerIndex: 1, explanation: 'Timbre is the distinct tone quality that lets you tell a violin from a flute even when playing the same pitch and volume.' },
       ],
       apply: {
         prompt: 'Listen closely to one song and map out its form (for example, Intro-Verse-Chorus-Verse-Chorus-Bridge-Chorus), noting the timestamp where each section starts.',
@@ -386,8 +386,8 @@ const topics = [
         { heading: 'Mic Placement Matters', body: "Where you place a microphone relative to the sound source changes the recording dramatically. Too close can cause distortion or overly boomy bass (called the proximity effect); too far picks up more room echo and noise. Different mic types, like condenser versus dynamic, suit different situations." },
       ],
       practice: [
-        { question: 'What is "signal flow" in recording?', options: ['The tempo of the song being recorded', 'The path sound travels from source through mic and equipment into the recording', 'The volume of the mix', 'A type of microphone'], answerIndex: 1, explanation: 'Signal flow describes the path an audio signal takes from its source through the microphone, preamp, and interface into the recording software.' },
-        { question: 'What can happen if a microphone is placed too close to a sound source?', options: ['Nothing changes', 'It can cause distortion or an overly boomy bass sound (proximity effect)', 'The recording becomes silent', 'It automatically improves audio quality'], answerIndex: 1, explanation: 'Placing a mic too close can trigger the proximity effect, causing excess bass buildup or distortion.' },
+        { question: 'What is "signal flow" in recording?', options: ['The tempo of the song being recorded', 'The path sound takes into the recording', 'The overall volume level of the final mix', 'The type of microphone being used for it'], answerIndex: 1, explanation: 'Signal flow describes the path an audio signal takes from its source through the microphone, preamp, and interface into the recording software.' },
+        { question: 'What can happen if a microphone is placed too close to a sound source?', options: ['Nothing changes in the recording', 'It can distort or get too boomy', 'The recording becomes very quiet', 'It automatically sounds clearer'], answerIndex: 1, explanation: 'Placing a mic too close can trigger the proximity effect, causing excess bass buildup or distortion.' },
       ],
       apply: {
         prompt: 'Using a phone or any microphone, record the same short phrase (spoken or sung) at 3 different distances from the mic, then listen back and describe how the sound changed.',
@@ -414,7 +414,7 @@ const topics = [
       ],
       practice: [
         { question: 'What does DAW stand for?', options: ['Digital Audio Workstation', 'Direct Audio Wire', 'Digital Amplifier Wave', 'Data Audio Web'], answerIndex: 0, explanation: 'DAW stands for Digital Audio Workstation, the software used to record, edit, and mix music.' },
-        { question: 'What is a key difference between a MIDI track and an audio track?', options: ['They are identical', 'MIDI stores playing instructions (note, length, velocity) rather than recorded sound', 'Audio tracks cannot be edited', 'MIDI only works with drums'], answerIndex: 1, explanation: 'MIDI records performance data like which notes were played and how, so it can later be changed or reassigned to a different instrument sound, unlike a recorded audio waveform.' },
+        { question: 'What is a key difference between a MIDI track and an audio track?', options: ['They are identical, just saved differently', 'MIDI stores notes, not recorded sound', 'Audio tracks can\'t be edited at all', 'MIDI only works with drum sounds'], answerIndex: 1, explanation: 'MIDI records performance data like which notes were played and how, so it can later be changed or reassigned to a different instrument sound, unlike a recorded audio waveform.' },
       ],
       apply: {
         prompt: 'Using a free DAW (GarageBand, BandLab, or similar), create a short 8-16 bar track combining at least one recorded audio track and one MIDI/virtual instrument track.',
@@ -440,7 +440,7 @@ const topics = [
       ],
       practice: [
         { question: 'What are the four stages of a typical synthesizer envelope, known as ADSR?', options: ['Attack, Decay, Sustain, Release', 'Start, Middle, End, Fade', 'Loud, Soft, Fast, Slow', 'Bass, Mid, Treble, Volume'], answerIndex: 0, explanation: "ADSR stands for Attack, Decay, Sustain, and Release — the four stages describing how a sound's volume changes over time." },
-        { question: 'What is the main difference between synthesis and sampling?', options: ['They are the same technique', 'Synthesis generates sound electronically from scratch; sampling reuses recorded sound', 'Sampling can only be used for drums', 'Synthesis always uses real instrument recordings'], answerIndex: 1, explanation: 'Synthesis builds sound from basic waveforms, while sampling takes and manipulates pre-recorded audio.' },
+        { question: 'What is the main difference between synthesis and sampling?', options: ['They are the same technique', 'Synthesis makes sound; sampling reuses it', 'Sampling can only be used for drums, not melody', 'Synthesis always uses real instrument recordings'], answerIndex: 1, explanation: 'Synthesis builds sound from basic waveforms, while sampling takes and manipulates pre-recorded audio.' },
       ],
       apply: {
         prompt: "Using a free synth app or a DAW's built-in synthesizer, create one original sound by adjusting the waveform, filter, and ADSR envelope, then separately import or record a short sample and manipulate it (pitch, loop, or chop) in the same project.",

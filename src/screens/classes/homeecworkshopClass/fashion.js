@@ -16,7 +16,7 @@ const topics = [
       ],
       practice: [
         { question: 'Which fabric property describes how a fabric hangs or falls on the body?', options: ['Strength', 'Drape', 'Texture', 'Color'], answerIndex: 1, explanation: 'Drape describes how fluidly or stiffly a fabric falls, which affects the silhouette of a garment.' },
-        { question: 'Why would a swimsuit fabric need to have good stretch?', options: ['To make it stiffer', 'So it moves with the body and fits snugly', 'To make it heavier', 'It does not need stretch'], answerIndex: 1, explanation: 'Stretch allows the fabric to move with the body and maintain a snug, flexible fit while swimming.' },
+        { question: 'Why would a swimsuit fabric need to have good stretch?', options: ['To make it stiffer', 'So it moves with you', 'To make it heavier', 'So it dries more slowly'], answerIndex: 1, explanation: 'Stretch allows the fabric to move with the body and maintain a snug, flexible fit while swimming.' },
       ],
       apply: {
         prompt: 'Collect three different fabric scraps or clothing items at home. Test and record their strength, stretch, and texture by hand.',
@@ -50,7 +50,7 @@ const topics = [
         { heading: 'Seams Hold It Together', body: 'A seam is where two fabric pieces are joined, and seam allowance (usually 1/2 to 5/8 inch) is the extra fabric left beyond the stitch line so the seam doesn\'t pull apart. Garment construction follows an order — like sewing darts and shoulder seams before side seams — so the piece keeps its shape.' },
       ],
       practice: [
-        { question: 'What is a "seam allowance"?', options: ['The color of the thread', 'Extra fabric left beyond the stitch line to prevent the seam from pulling apart', 'The type of needle used', 'A decorative stitch'], answerIndex: 1, explanation: 'Seam allowance is the margin of fabric between the stitch line and the raw edge, which keeps the seam secure.' },
+        { question: 'What is a "seam allowance"?', options: ['The color of the thread', 'Extra fabric past the stitch line', 'The type of needle you use', 'A decorative stitch on the edge'], answerIndex: 1, explanation: 'Seam allowance is the margin of fabric between the stitch line and the raw edge, which keeps the seam secure.' },
         { question: 'Which hand stitch is generally stronger and better for stressed seams?', options: ['Running stitch', 'Backstitch', 'Loose basting stitch', 'None, they are all equal'], answerIndex: 1, explanation: 'A backstitch overlaps each stitch, making it much sturdier than a simple running stitch.' },
       ],
       apply: {
@@ -84,7 +84,7 @@ const topics = [
         { heading: 'Design Principles Guide Choices', body: 'Elements like line, shape, color, and texture combine with principles like balance, proportion, and emphasis to create a cohesive outfit or collection. For example, a bold accessory can create "emphasis" that draws the eye, while repeating a color creates visual "harmony" across a look.' },
       ],
       practice: [
-        { question: 'What does it mean when a fashion trend "cycles back"?', options: ['It disappears forever', 'A past style becomes popular again years later', 'It only happens once', 'It refers to recycling old clothes'], answerIndex: 1, explanation: 'Many fashion trends fade and later resurface as popular again, often reinterpreted for a new era.' },
+        { question: 'What does it mean when a fashion trend "cycles back"?', options: ['It disappears forever', 'An old style comes back', 'It only happens once', 'It refers to recycling old clothes'], answerIndex: 1, explanation: 'Many fashion trends fade and later resurface as popular again, often reinterpreted for a new era.' },
         { question: 'Using a bold accessory to draw the eye to one part of an outfit is an example of which design principle?', options: ['Balance', 'Emphasis', 'Repetition', 'Rhythm'], answerIndex: 1, explanation: 'Emphasis is the design principle used to create a focal point that draws attention.' },
       ],
       apply: {
@@ -118,7 +118,7 @@ const topics = [
       ],
       practice: [
         { question: 'What does a washtub symbol with an X through it on a care label mean?', options: ['Wash in hot water', 'Do not machine wash', 'Iron on high heat', 'Dry clean only'], answerIndex: 1, explanation: 'An X through the washtub symbol means the item should not be machine washed.' },
-        { question: 'Why should sweaters usually be folded instead of hung on a hanger?', options: ['Folding uses less space', 'Hanging can stretch out the shoulders over time', 'Folded sweaters look nicer', 'It does not matter'], answerIndex: 1, explanation: 'The weight of a sweater pulling on a hanger can stretch and distort the shoulder shape over time.' },
+        { question: 'Why should sweaters usually be folded instead of hung on a hanger?', options: ['Folding uses less space', 'Hangers stretch shoulders', 'Folded sweaters look nicer', 'Hanging makes them fade'], answerIndex: 1, explanation: 'The weight of a sweater pulling on a hanger can stretch and distort the shoulder shape over time.' },
       ],
       apply: {
         prompt: 'Find three clothing items at home and check their care labels. Write down what each symbol tells you about how to wash or dry it.',

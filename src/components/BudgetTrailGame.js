@@ -1,14 +1,14 @@
 // src/components/BudgetTrailGame.js
-// Budget Trail v2 — a real budgeting simulation, not a single checkbox
-// list compared against a threshold (see the design notes at the top of
-// data/gameContent/budgetTrail.js for the full rationale). Every round
-// now has income arriving, a randomly-drawn event already applied before
-// you decide anything, one or two required bills, several optional wants,
-// and a savings choice — and overspending draws from your emergency fund
-// before ending the journey, instead of ending it the instant you're $1
-// short. Solvability (every journey survivable playing safe, the savings
-// goal reachable but not free) is verified by simulation — see the
-// scratchpad script this was built with, not shipped in the repo.
+// Budget Trail — a multi-round budget (design notes at the top of
+// data/gameContent/budgetTrail.js). Every round has income arriving, a
+// randomly-drawn event already applied before you decide anything, bills,
+// optional items, and a savings choice. Some optional items are investments
+// (`payback`, more income every later round) and some are cheap upkeep
+// (`skipCost`, a bigger bill next round if skipped); the screen doesn't
+// say which, and the round's feedback reveals it. Overspending draws from
+// the emergency fund before ending the journey. scripts/check-games.mjs
+// simulates each journey to keep "buy everything" and "buy nothing" from
+// reaching the savings goal.
 
 import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
@@ -23,10 +23,10 @@ import useGradeLevel, { tierForLevel } from '../logic/useGradeLevel';
 import { TRAIL_BANK } from '../data/gameContent/budgetTrail';
 
 const BLURBS = {
-  'K-2': 'A 3-round lemonade stand — paychecks, surprises, and your first savings jar.',
-  '3-5': 'A 4-round school year — an allowance, surprise costs, and building up savings.',
-  '6-8': 'A 5-round summer job — real paychecks, real surprises, real savings goals.',
-  '9-12': 'A 6-round apartment budget — rent, bills, emergencies, and an emergency fund that matters.',
+  'K-2': 'A 3-round lemonade stand. Some spending helps you sell more.',
+  '3-5': 'A 4-round dog-walking business. Spend smart, fix things early, save.',
+  '6-8': 'A 5-round lawn-mowing job. Tools, upkeep, and a savings goal.',
+  '9-12': 'A 6-round first apartment. Rent, repairs, and an emergency fund.',
 };
 
 const SAVE_TIER_LABELS = ['Skip saving', 'Save some', 'Save a lot'];
@@ -48,6 +48,8 @@ export default function BudgetTrailGame({ onGameEnd }) {
   const [cash, setCash] = useState(0);
   const [savings, setSavings] = useState(0);
   const [event, setEvent] = useState(null);
+  const [bonus, setBonus] = useState(0);   // income added by earlier investments
+  const [due, setDue] = useState([]);      // skipCost bills landing this round
   const [selected, setSelected] = useState([]);
   const [saveTierIdx, setSaveTierIdx] = useState(0);
   const [feedback, setFeedback] = useState(null);
@@ -57,11 +59,14 @@ export default function BudgetTrailGame({ onGameEnd }) {
 
   const game = useGame({ subject: 'finance', difficulty: 2, skillLevel: level, onGameEnd, manualScoring: true });
 
-  const loadRound = (j, idx, cashOnHand) => {
+  const loadRound = (j, idx, cashOnHand, bonusNow = 0, dueNow = []) => {
     const round = j.rounds[idx];
     const drawn = drawEvent(j.eventPool);
     setEvent(drawn);
-    setCash(cashOnHand + round.income + drawn.delta);
+    setBonus(bonusNow);
+    setDue(dueNow);
+    const dueTotal = dueNow.reduce((a, d) => a + d.cost, 0);
+    setCash(cashOnHand + round.income + bonusNow + drawn.delta - dueTotal);
     setSelected(round.optional.map(() => false));
     setSaveTierIdx(0);
     setFeedback(null);
@@ -94,6 +99,14 @@ export default function BudgetTrailGame({ onGameEnd }) {
     const speed = (Date.now() - startTime) / 1000;
 
     let outcome, newCash, newSavings, msg, isCorrect;
+
+    // What the optional choices did, revealed now that they're locked in.
+    const effects = [];
+    round.optional.forEach((o, i) => {
+      if (selected[i] && o.payback) effects.push({ good: true, text: `${o.label}: +$${o.payback} income every round from now on.` });
+      if (selected[i] && o.skipCost) effects.push({ good: true, text: `${o.label}: fixed early, so no $${o.skipCost.cost} bill later.` });
+      if (!selected[i] && o.skipCost) effects.push({ good: false, text: `Skipped ${o.label.toLowerCase()}. That will cost more next round.` });
+    });
 
     if (cash >= wantsTotal + saveAmount) {
       // Best case — covered bills, wants, AND the savings contribution.
@@ -132,7 +145,7 @@ export default function BudgetTrailGame({ onGameEnd }) {
     game.answer(isCorrect, { speedBonus: speed < 20 ? 5 : 0 });
     setCash(newCash);
     setSavings(newSavings);
-    setFeedback({ isCorrect, outcome, msg });
+    setFeedback({ isCorrect, outcome, msg, effects });
 
     setTimeout(() => {
       setFeedback(null);
@@ -144,8 +157,8 @@ export default function BudgetTrailGame({ onGameEnd }) {
       const nextIdx = roundIndex + 1;
       const isLastStage = nextIdx >= journey.rounds.length;
       setRoundComplete({ correct: 1, total: 1, roundNumber: roundIndex + 1, isLastStage });
-    }, 2600);
-  }, [feedback, round, journey, cash, wantsTotal, saveAmount, savings, game, roundIndex, startTime]);
+    }, effects.length ? 4200 : 2600);
+  }, [feedback, round, journey, cash, wantsTotal, saveAmount, savings, game, roundIndex, startTime, selected]);
 
   const handleClaimPrize = useCallback(() => {
     setRoundComplete(null);
@@ -154,9 +167,13 @@ export default function BudgetTrailGame({ onGameEnd }) {
       return;
     }
     const nextIdx = roundIndex + 1;
+    const nextBonus = bonus + round.optional.reduce((a, o, i) => a + (selected[i] && o.payback ? o.payback : 0), 0);
+    const nextDue = round.optional
+      .filter((o, i) => !selected[i] && o.skipCost)
+      .map(o => ({ label: o.skipCost.label, cost: o.skipCost.cost }));
     setRoundIndex(nextIdx);
-    loadRound(journey, nextIdx, cash);
-  }, [game, roundComplete, roundIndex, journey, cash]);
+    loadRound(journey, nextIdx, cash, nextBonus, nextDue);
+  }, [game, roundComplete, roundIndex, journey, cash, bonus, round, selected]);
 
   if (!started) {
     return (
@@ -242,6 +259,16 @@ export default function BudgetTrailGame({ onGameEnd }) {
 
         <View style={s.eventRow}>
           <Text style={s.eventText}>{emojiPrefix('💰', showEmojis)}Income this round: +${round.income}</Text>
+          {bonus > 0 && (
+            <Text style={[s.eventText, { color: G.success }]}>
+              {emojiPrefix('📈', showEmojis)}Earned by your investments: +${bonus}
+            </Text>
+          )}
+          {due.map(d => (
+            <Text key={d.label} style={[s.eventText, { color: G.error }]}>
+              {emojiPrefix('🔧', showEmojis)}{d.label} (-${d.cost})
+            </Text>
+          ))}
           {event.delta !== 0 && (
             <Text style={[s.eventText, { color: event.delta > 0 ? G.success : G.error }]}>
               {emojiPrefix(event.delta > 0 ? '✨' : '⚡', showEmojis)}{event.label} ({event.delta > 0 ? '+' : ''}${event.delta})
@@ -314,6 +341,9 @@ export default function BudgetTrailGame({ onGameEnd }) {
               {feedback.outcome === 'great' ? '✓ ' : feedback.outcome === 'okay' ? '~ ' : feedback.outcome === 'dipped' ? '⚠ ' : '✗ '}
               {feedback.msg}
             </Text>
+            {feedback.effects?.map(e => (
+              <Text key={e.text} style={[s.effectText, { color: e.good ? G.success : G.error }]}>{e.text}</Text>
+            ))}
             {(feedback.outcome === 'dipped' || feedback.outcome === 'fail') && (
               <Text style={s.lessonText}>{emojiPrefix('💡', showEmojis)}{journey.lesson}</Text>
             )}
@@ -340,6 +370,7 @@ const makeStyles = (G) => StyleSheet.create({
   story:          { fontSize: 13, color: G.muted, lineHeight: 18 },
   eventRow:       { backgroundColor: G.card, borderRadius: 10, padding: 10, marginBottom: 12, gap: 4 },
   eventText:      { fontSize: 12, color: G.cream, fontWeight: '600' },
+  effectText:     { fontSize: 12, marginTop: 6, lineHeight: 17 },
   sectionLabel:   { fontSize: 11, color: G.muted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 },
   requiredRow:    { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: G.tealL, borderRadius: 10, padding: 12, borderWidth: 0.5, borderColor: G.teal, marginBottom: 8 },
   requiredLabel:  { fontSize: 13, color: G.teal, fontWeight: '700' },

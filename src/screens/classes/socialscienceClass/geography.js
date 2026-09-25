@@ -47,8 +47,8 @@ const topics = [
       { heading: 'Flags and Culture', body: 'Every country has its own flag, made of colors and symbols that stand for its history or values. Culture is the food, language, holidays, and traditions that people in a place share — and it can be different even between countries that are neighbors.' },
     ],
     practice: [
-      { question: 'What is a border?', options: ['A type of flag', 'The line that separates one country from another', 'A kind of ocean', 'A tall mountain'], answerIndex: 1, explanation: 'A border is the line that marks where one country ends and another begins.' },
-      { question: 'What does "culture" include?', options: ['Only a country\'s flag', 'Food, language, and traditions people share', 'Only the weather', 'Only the money used'], answerIndex: 1, explanation: 'Culture includes the shared food, language, holidays, and traditions of a group of people.' },
+      { question: 'What is a border?', options: ['A type of flag', 'A line between countries', 'A kind of ocean', 'A tall mountain'], answerIndex: 1, explanation: 'A border is the line that marks where one country ends and another begins.' },
+      { question: 'What does "culture" include?', options: ['Only a country\'s flag', 'Food, language, traditions', 'Only the weather', 'Only the money used'], answerIndex: 1, explanation: 'Culture includes the shared food, language, holidays, and traditions of a group of people.' },
     ],
     apply: {
       prompt: 'Pick one country that is not the one you live in. Find its flag and write down 2 things about its culture (like a food, language, or holiday).',
@@ -79,7 +79,7 @@ const topics = [
       { heading: 'Scale: From World to Address', body: 'Geography works at every scale, from the whole planet down to your street address. A continent contains countries, countries contain cities, and cities contain neighborhoods — each level connects to the ones above and below it.' },
     ],
     practice: [
-      { question: 'What does human geography study?', options: ['Only mountains and rivers', 'How people live, move, and use the land', 'Only weather patterns', 'Only oceans'], answerIndex: 1, explanation: 'Human geography focuses on people — where they settle, how populations move, and how they shape the land.' },
+      { question: 'What does human geography study?', options: ['Only mountains and rivers', 'How people use the land', 'Only weather patterns', 'Only the oceans'], answerIndex: 1, explanation: 'Human geography focuses on people — where they settle, how populations move, and how they shape the land.' },
       { question: 'Which is an example of physical geography?', options: ['A city\'s population size', 'A mountain range', 'A country\'s government', 'A local language'], answerIndex: 1, explanation: 'Mountain ranges are natural landforms, which is what physical geography studies.' },
     ],
     apply: {

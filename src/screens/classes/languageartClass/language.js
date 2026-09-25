@@ -122,7 +122,7 @@ const topics = [
       practice: [
         {
           question: 'What is a good strategy for spelling an unfamiliar word?',
-          options: ['Guess without thinking', 'Say it slowly and listen for each sound', 'Skip the word entirely', 'Write a different word instead'],
+          options: ['Guess and keep on writing', 'Say it slowly, sound by sound', 'Skip the word entirely', 'Write a different word instead'],
           answerIndex: 1,
           explanation: 'Sounding out a word slowly helps you identify each letter sound to spell it.',
         },
@@ -173,13 +173,13 @@ const topics = [
       practice: [
         {
           question: 'Which situation calls for a formal register?',
-          options: ['Texting a close friend', 'Writing a cover letter for a job', 'Posting a casual comment online', 'Chatting with a sibling'],
+          options: ['Texting a close friend', 'Writing a cover letter', 'Posting a casual comment online', 'Chatting with a sibling'],
           answerIndex: 1,
           explanation: 'A cover letter is a professional document requiring formal language and tone.',
         },
         {
           question: "What does 'register' mean in the context of language?",
-          options: ['The pitch of your voice', 'The level of formality used for a given audience and purpose', 'The number of words in a sentence', 'A type of punctuation mark'],
+          options: ['The pitch of your voice', 'How formal your language is', 'How many words are in a sentence', 'A type of punctuation mark'],
           answerIndex: 1,
           explanation: 'Register describes how formal or informal language is, adjusted for audience and purpose.',
         },
@@ -217,13 +217,13 @@ const topics = [
       practice: [
         {
           question: 'What is a compound sentence?',
-          options: ['A single independent clause', 'Two independent clauses joined by a conjunction', 'A sentence with no verb', 'A question with two parts'],
+          options: ['One independent clause with a list', 'Two clauses joined by a conjunction', 'A sentence that asks two questions', 'A sentence with two subjects and verbs'],
           answerIndex: 1,
           explanation: "A compound sentence joins two independent clauses, often with a conjunction like 'and' or 'but.'",
         },
         {
           question: 'Why should writers use a mix of sentence types?',
-          options: ['To make the essay longer', 'To create rhythm and avoid choppy or confusing writing', 'Because teachers require exactly 3 types', 'To use every punctuation mark at least once'],
+          options: ['To make the essay longer', 'To create rhythm and flow', 'Teachers require exactly three types', 'To use every punctuation mark once'],
           answerIndex: 1,
           explanation: 'Varying sentence types creates rhythm and keeps readers engaged.',
         },
@@ -312,7 +312,7 @@ const topics = [
       practice: [
         {
           question: "What is 'connotation'?",
-          options: ["A word's dictionary definition", 'The feeling or association a word carries beyond its literal meaning', 'A type of punctuation', 'The number of syllables in a word'],
+          options: ['A word\'s dictionary definition', 'The feeling a word carries', 'A type of punctuation mark', 'How many syllables a word has'],
           answerIndex: 1,
           explanation: 'Connotation refers to the emotional or cultural associations attached to a word.',
         },

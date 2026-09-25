@@ -173,7 +173,7 @@ const topics = [
       ],
       practice: [
         { question: 'Which of these numbers is irrational?', options: ['3/4', '0.5', '√2', '-7'], answerIndex: 2, explanation: '√2 cannot be written as a ratio of integers and its decimal never ends or repeats, so it is irrational.' },
-        { question: 'Why is 0.333... (repeating) a rational number?', options: ['It is negative', 'It can be written as the fraction 1/3', 'It has a decimal point', 'It is greater than 1'], answerIndex: 1, explanation: 'Any repeating decimal can be written as a ratio of two integers, which is the definition of rational.' },
+        { question: 'Why is 0.333... (repeating) a rational number?', options: ['It is negative', 'It equals 1/3', 'It has a decimal point', 'It is greater than 1'], answerIndex: 1, explanation: 'Any repeating decimal can be written as a ratio of two integers, which is the definition of rational.' },
       ],
       apply: {
         prompt: 'Draw a number line from -3 to 3 on paper. Plot these six numbers on it in the correct order: -2, 1/2, π, -1.5, √2, and 7/4. Label each point as rational or irrational.',

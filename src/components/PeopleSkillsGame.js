@@ -14,6 +14,7 @@ import useGradeLevel, { levelForTier } from '../logic/useGradeLevel';
 import { createAdaptiveTier, nextAdaptiveTier, roundLength, STAGE_COUNT } from '../logic/difficultyAdapter';
 import { PEOPLE_BANK } from '../data/gameContent/peopleSkills';
 import { rotatePick } from '../logic/questionRotation';
+import { shuffle } from '../logic/optionOrder';
 
 const BLURBS = {
   'K-2': 'Sharing, manners, and being a good friend.',
@@ -21,8 +22,6 @@ const BLURBS = {
   '6-8': 'Assertiveness, peer pressure, and empathy.',
   '9-12': 'Negotiation and professional communication.',
 };
-
-function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
 // Rotates through the whole pool across runs, see questionRotation.js.
 function pickNext(pool, avoid = []) {

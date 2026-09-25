@@ -14,6 +14,7 @@ import useGradeLevel, { levelForTier } from '../logic/useGradeLevel';
 import { createAdaptiveTier, nextAdaptiveTier, roundLength, STAGE_COUNT } from '../logic/difficultyAdapter';
 import { LINGO_BANK } from '../data/gameContent/lingoMatch';
 import { rotatePick } from '../logic/questionRotation';
+import { shuffle } from '../logic/optionOrder';
 
 const BLURBS = {
   'K-2': 'Colors, animals, numbers — basic Spanish words.',
@@ -21,8 +22,6 @@ const BLURBS = {
   '6-8': 'Present-tense verb conjugation & question words.',
   '9-12': 'Past tense, idioms, and the subjunctive mood.',
 };
-
-function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
 // Rotates through the whole pool across runs, see questionRotation.js.
 function pickNext(pool, avoid = []) {

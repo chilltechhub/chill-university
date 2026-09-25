@@ -10,7 +10,8 @@ import RoundCompleteScreen from './RoundCompleteScreen';
 import useGame from '../logic/useGame';
 import useGradeLevel, { levelForTier } from '../logic/useGradeLevel';
 import { createAdaptiveTier, nextAdaptiveTier, STAGE_COUNT } from '../logic/difficultyAdapter';
-import { RECIPE_BANK } from '../data/gameContent/recipeBuilder';
+import { RECIPE_BANK, blockingStep } from '../data/gameContent/recipeBuilder';
+import { shuffle } from '../logic/optionOrder';
 
 const BLURBS = {
   'K-2': 'No-stove recipes — toast, cereal, sandwiches (4 steps).',
@@ -18,8 +19,6 @@ const BLURBS = {
   '6-8': 'Real cooking with safety tips (6-7 steps).',
   '9-12': 'Real technique — roux, marinating, food safety temps (7-8 steps).',
 };
-
-function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
 // `avoid` is every recipe name served already this run — kept until the
 // whole tier's pool has been seen once, so a session doesn't repeat a
@@ -68,8 +67,10 @@ export default function RecipeBuilderGame({ onGameEnd }) {
 
   const handlePlace = useCallback((step) => {
     if (feedback || !recipe) return;
-    const expectedOrder = placed.length + 1;
-    const isCorrect = step.order === expectedOrder;
+    // Some steps can go either way round (see recipeBuilder.js), so the
+    // question is "is anything still waiting that has to come first?"
+    const blocker = blockingStep(step, shuffled);
+    const isCorrect = !blocker;
     game.answer(isCorrect);
 
     const nextAdaptiveState = nextAdaptiveTier(adaptive, isCorrect);
@@ -78,7 +79,7 @@ export default function RecipeBuilderGame({ onGameEnd }) {
     if (isCorrect) {
       const newPlaced = [...placed, step];
       setPlaced(newPlaced);
-      setShuffled(prev => prev.filter(s => s.order !== step.order));
+      setShuffled(prev => prev.filter(s => s !== step));
 
       if (newPlaced.length === recipe.steps.length) {
         setFeedback({ isCorrect: true, msg: `✓ ${recipe.name} complete!`, tip: recipe.tip, done: true });
@@ -101,10 +102,10 @@ export default function RecipeBuilderGame({ onGameEnd }) {
       }
     } else {
       setRoundMisses(m => m + 1);
-      setFeedback({ isCorrect: false, msg: `✗ That's step ${step.order}, not step ${expectedOrder}`, done: false });
-      setTimeout(() => setFeedback(null), 1200);
+      setFeedback({ isCorrect: false, msg: `✗ Not yet. First: ${blocker.text.charAt(0).toLowerCase()}${blocker.text.slice(1)}`, done: false });
+      setTimeout(() => setFeedback(null), 1800);
     }
-  }, [feedback, placed, recipe, game, adaptive, completedCount, roundMisses]);
+  }, [feedback, placed, shuffled, recipe, game, adaptive, completedCount, roundMisses]);
 
   const handleClaimPrize = useCallback(() => {
     if (roundComplete?.isLastStage) {
@@ -175,7 +176,7 @@ export default function RecipeBuilderGame({ onGameEnd }) {
           <View style={s.placedSection}>
             <Text style={s.sectionLabel}>Steps so far</Text>
             {placed.map((step, i) => (
-              <View key={step.order} style={s.placedStep}>
+              <View key={step.text} style={s.placedStep}>
                 <View style={s.stepNum}><Text style={s.stepNumText}>{i + 1}</Text></View>
                 <Text style={s.placedText}>{step.text}</Text>
                 <Text style={{ color: G.success, fontSize: 16 }}>✓</Text>
@@ -194,7 +195,7 @@ export default function RecipeBuilderGame({ onGameEnd }) {
         <View style={s.available}>
           {shuffled.map(step => (
             <TouchableOpacity
-              key={step.order}
+              key={step.text}
               style={[s.stepCard, feedback && feedback.isCorrect === false && s.stepCardShake]}
               onPress={() => handlePlace(step)}
               disabled={!!feedback}

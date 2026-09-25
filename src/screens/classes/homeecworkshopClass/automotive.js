@@ -16,7 +16,7 @@ const topics = [
       ],
       practice: [
         { question: 'What are the four strokes of a standard car engine cycle, in order?', options: ['Exhaust, compression, intake, combustion', 'Intake, compression, combustion, exhaust', 'Combustion, intake, exhaust, compression', 'Compression, exhaust, intake, combustion'], answerIndex: 1, explanation: 'The four-stroke cycle runs intake, compression, combustion, then exhaust, in that repeating order.' },
-        { question: 'Why does motor oil need to be changed regularly?', options: ['It changes color for fun', 'It breaks down over time and loses its ability to lubricate properly', 'Cars run better with less oil', 'It has no real function'], answerIndex: 1, explanation: 'Oil degrades with heat and use, so regular changes keep engine parts properly lubricated and protected.' },
+        { question: 'Why does motor oil need to be changed regularly?', options: ['It changes color, which looks bad', 'It breaks down and stops protecting', 'Cars run better with less oil', 'It gets heavier the longer it sits'], answerIndex: 1, explanation: 'Oil degrades with heat and use, so regular changes keep engine parts properly lubricated and protected.' },
       ],
       apply: {
         prompt: 'With an adult, check your family car\'s owner\'s manual (or look up the model online) to find the recommended oil change interval and what type of oil it uses.',
@@ -49,7 +49,7 @@ const topics = [
         { heading: 'Suspension and Steering Work Together', body: 'The suspension system (springs, shocks, and struts) absorbs bumps in the road and keeps tires in contact with the pavement, while the steering system translates the driver turning the wheel into the front tires actually turning. Worn suspension parts can cause a bouncy ride or uneven tire wear, both signs it\'s time for an inspection.' },
       ],
       practice: [
-        { question: 'What happens when disc brakes are applied?', options: ['A caliper squeezes pads against a rotor to create friction', 'The engine automatically shuts off', 'The steering wheel locks', 'Nothing physical happens'], answerIndex: 0, explanation: 'Disc brakes work by squeezing pads against a spinning rotor, using friction to slow the wheel.' },
+        { question: 'What happens when disc brakes are applied?', options: ['A caliper squeezes pads on a rotor', 'The engine cuts power to the wheels', 'The steering wheel locks in place', 'Shoes press outward inside a drum'], answerIndex: 0, explanation: 'Disc brakes work by squeezing pads against a spinning rotor, using friction to slow the wheel.' },
         { question: 'What is one common sign that a car\'s suspension may be worn?', options: ['A perfectly smooth, quiet ride', 'A bouncy ride or uneven tire wear', 'Better fuel economy', 'Brighter headlights'], answerIndex: 1, explanation: 'Worn suspension components often cause a bouncy ride and can lead to uneven tire wear over time.' },
       ],
       apply: {
@@ -86,7 +86,7 @@ const topics = [
         { heading: 'Diagnosing Starts with a Multimeter', body: 'Technicians use a multimeter to check voltage at the battery and connections, helping pinpoint whether a problem is a dead battery, a bad connection (like corroded terminals), or a failing alternator. Following wiring diagrams carefully matters because auto electrical systems carry enough current to cause sparks, burns, or damage if shorted incorrectly.' },
       ],
       practice: [
-        { question: 'What is the main job of the alternator in a car\'s electrical system?', options: ['To start the engine only', 'To recharge the battery and power electronics while the engine runs', 'To steer the car', 'To cool the engine'], answerIndex: 1, explanation: 'The alternator generates electricity while the engine runs, recharging the battery and powering the car\'s electrical systems.' },
+        { question: 'What is the main job of the alternator in a car\'s electrical system?', options: ['To start the engine, and nothing else', 'To recharge the battery while running', 'To help steer the car at low speed', 'To cool the engine on hot days'], answerIndex: 1, explanation: 'The alternator generates electricity while the engine runs, recharging the battery and powering the car\'s electrical systems.' },
         { question: 'What tool do technicians commonly use to check a car\'s electrical voltage?', options: ['A wrench', 'A multimeter', 'A tire gauge', 'A screwdriver'], answerIndex: 1, explanation: 'A multimeter measures voltage, current, and resistance, making it the standard tool for diagnosing electrical issues.' },
       ],
       apply: {

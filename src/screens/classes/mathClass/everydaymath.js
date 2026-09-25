@@ -74,7 +74,7 @@ const topics = [
     practice: [
       { question: 'Imagine 12 oz for $3.60, or 18 oz for $5.04. Which is cheaper per ounce?', options: ['12 oz for $3.60', 'They cost the same per ounce', '18 oz for $5.04', 'You can\'t tell without the brand'], answerIndex: 2, explanation: '$3.60 ÷ 12 = $0.30 an ounce. $5.04 ÷ 18 = $0.28 an ounce.' },
       { question: 'Imagine one tag says $0.25 per ounce and another says $3.60 per pound. Which is cheaper?', options: ['$0.25 per ounce', '$3.60 per pound', 'They are the same', 'They can\'t be compared'], answerIndex: 1, explanation: '$3.60 ÷ 16 ounces = $0.225 an ounce, which is less than $0.25.' },
-      { question: 'The bulk bag is cheaper per unit, but half of it usually goes bad before you use it. What does that do to the real price?', options: ['Nothing: unit price is unit price', 'Roughly doubles what you pay for each unit you actually use', 'Halves it', 'Makes it free'], answerIndex: 1, explanation: 'You paid the full price for twice what you used. A deal only counts for what gets used.' },
+      { question: 'The bulk bag is cheaper per unit, but half of it usually goes bad before you use it. What does that do to the real price?', options: ['Nothing: unit price is unit price', 'About doubles your real cost per use', 'Halves it, since you bought in bulk', 'Makes it free after the first half'], answerIndex: 1, explanation: 'You paid the full price for twice what you used. A deal only counts for what gets used.' },
     ],
     apply: {
       prompt: 'At a store or on a grocery site, find one product sold in two or more sizes. Work out the unit price of each and see which is really cheaper.',
@@ -183,7 +183,7 @@ const topics = [
     practice: [
       { question: 'You\'re fencing a yard 15 m by 20 m. How much fencing?', options: ['35 m', '300 m', '70 m', '600 m'], answerIndex: 2, explanation: 'Fencing goes around the edge: 2 × (15 + 20) = 70 m.' },
       { question: 'You\'re tiling a kitchen floor 15 ft by 20 ft. How many square feet of tile?', options: ['70 sq ft', '300 sq ft', '35 sq ft', '150 sq ft'], answerIndex: 1, explanation: 'Tiles cover the surface: 15 × 20 = 300 square feet.' },
-      { question: 'Which job needs perimeter, not area?', options: ['Carpeting a bedroom', 'Painting a ceiling', 'Putting baseboard trim around a room', 'Laying sod on a lawn'], answerIndex: 2, explanation: 'Trim runs along the edge of the floor. The others cover a surface.' },
+      { question: 'Which job needs perimeter, not area?', options: ['Carpeting a bedroom', 'Painting a ceiling', 'Trim around a room', 'Laying sod on a lawn'], answerIndex: 2, explanation: 'Trim runs along the edge of the floor. The others cover a surface.' },
     ],
     apply: {
       prompt: 'Measure a room at home. Work out how much baseboard trim and how much flooring it would need.',
@@ -473,7 +473,7 @@ const topics = [
     practice: [
       { question: 'Data: 2, 3, 3, 4, 100. What describes a typical value best?', options: ['The mean, 22.4', 'The median, 3', 'The largest, 100', 'The range, 98'], answerIndex: 1, explanation: 'The 100 drags the mean far above every other value. The median ignores it.' },
       { question: 'What is the median of 4, 8, 6, 10?', options: ['6', '8', '7', '7.5'], answerIndex: 2, explanation: 'In order: 4, 6, 8, 10. The middle two are 6 and 8, so the median is 7.' },
-      { question: 'Why do reports on pay often give the median income?', options: ['It is always bigger', 'A few very high earners pull the mean up', 'The mean is not allowed', 'It is easier to work out'], answerIndex: 1, explanation: 'A small number of huge incomes lift the mean above what most people earn. The median stays with the middle.' },
+      { question: 'Why do reports on pay often give the median income?', options: ['It is always bigger', 'High earners skew the mean', 'The mean is not allowed', 'It is easier to work out'], answerIndex: 1, explanation: 'A small number of huge incomes lift the mean above what most people earn. The median stays with the middle.' },
     ],
     apply: {
       prompt: 'Take 5 to 10 numbers from your own life: game scores, daily steps, minutes of screen time. Work out the mean and the median. Is there an outlier?',
@@ -498,7 +498,7 @@ const topics = [
     practice: [
       { question: 'What is the chance of drawing an ace from a full deck of 52 cards?', options: ['1/52', '1/13', '1/4', '4/13'], answerIndex: 1, explanation: '4 aces out of 52 cards: 4/52 = 1/13, about 7.7%.' },
       { question: 'A fair coin lands heads five times in a row. The chance of heads on the next flip is…', options: ['less than 1/2, because tails is due', 'more than 1/2, because it\'s on a streak', 'exactly 1/2', '1/32'], answerIndex: 2, explanation: 'Each flip is independent. The coin doesn\'t know what happened before.' },
-      { question: 'The forecast says a 40% chance of rain. What does that mean?', options: ['Rain for 40% of the day', 'Rain over 40% of the area', 'A 40% chance of at least a little rain at the forecast location', 'Definite rain, but light'], answerIndex: 2, explanation: 'That is the National Weather Service\'s own definition: the chance of at least 0.01 inch at that point.' },
+      { question: 'The forecast says a 40% chance of rain. What does that mean?', options: ['Rain for 40% of the day', 'Rain over 40% of the area', 'A 40% chance of any rain here', 'Definite rain, but only light'], answerIndex: 2, explanation: 'That is the National Weather Service\'s own definition: the chance of at least 0.01 inch at that point.' },
     ],
     apply: {
       prompt: 'Flip a coin or roll a die 30 times and record the results. Compare what happened with what probability predicts. Then check tomorrow\'s forecast and what its percentage means.',
@@ -554,7 +554,7 @@ const topics = [
     practice: [
       { question: 'Roughly how many ping-pong balls fit in a school bus?', options: ['About 6,000', 'Hundreds of thousands', 'About 60 million', 'About 600'], answerIndex: 1, explanation: 'About 2.5 million cubic inches ÷ about 4 cubic inches a ball ≈ 600,000.' },
       { question: 'The classic question: how many piano tuners work in Chicago? The Fermi answer is on the order of…', options: ['10', '100', '10,000', '1,000,000'], answerIndex: 1, explanation: 'Working from population, pianos per household and tunings per year lands at around a hundred.' },
-      { question: 'What makes an estimate a good Fermi estimate?', options: ['It is exactly right', 'It is within about a factor of ten, with the assumptions written down', 'It uses lots of decimal places', 'It avoids guessing'], answerIndex: 1, explanation: 'The goal is the right order of magnitude, with reasoning someone else can check.' },
+      { question: 'What makes an estimate a good Fermi estimate?', options: ['It is exactly right', 'Close enough, assumptions shown', 'It uses lots of decimal places', 'It avoids guessing entirely'], answerIndex: 1, explanation: 'The goal is the right order of magnitude, with reasoning someone else can check.' },
     ],
     apply: {
       prompt: 'Pick a question with no easy answer: how many words you read in a year, or how many slices of pizza your town eats a week. Estimate it Fermi-style and write down every assumption.',

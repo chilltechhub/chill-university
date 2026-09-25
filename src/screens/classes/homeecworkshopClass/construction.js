@@ -15,7 +15,7 @@ const topics = [
         { heading: 'Sketching Plans Before Building', body: 'Hand sketches let builders and designers quickly explore layout ideas before committing to a formal, precise blueprint, using simple tools like graph paper, a ruler, and a pencil. Getting comfortable sketching to scale — even roughly — helps you catch spacing problems early, before construction begins.' },
       ],
       practice: [
-        { question: 'On a blueprint, what does a dashed line typically represent?', options: ['A visible wall', 'A hidden feature, like something behind another structure', 'The scale of the drawing', 'A colored accent'], answerIndex: 1, explanation: 'Dashed lines are a standard blueprint convention showing features that are hidden from the current view.' },
+        { question: 'On a blueprint, what does a dashed line typically represent?', options: ['A visible wall', 'A hidden feature', 'The drawing\'s scale', 'A colored accent'], answerIndex: 1, explanation: 'Dashed lines are a standard blueprint convention showing features that are hidden from the current view.' },
         { question: 'What does a blueprint scale of 1/4 inch = 1 foot tell you?', options: ['The drawing is full size', 'Every 1/4 inch on paper represents 1 real foot', 'The building is 1/4 foot tall', 'It has no relationship to real measurements'], answerIndex: 1, explanation: 'A scale defines the ratio between the drawing\'s measurements and the actual size of the structure.' },
       ],
       apply: {
@@ -49,7 +49,7 @@ const topics = [
       ],
       practice: [
         { question: 'What is the typical spacing for wall studs in standard framing?', options: ['16 inches apart', '10 feet apart', '1 inch apart', 'There is no standard spacing'], answerIndex: 0, explanation: '16 inches on center is a very common standard spacing for wall studs in residential framing.' },
-        { question: 'What is the purpose of a header above a door or window opening?', options: ['Decoration only', 'To redirect structural load around the opening', 'To block sound', 'To hold up the roof shingles'], answerIndex: 1, explanation: 'A header is a strong beam that carries the load from above and transfers it around the opening to the studs on either side.' },
+        { question: 'What is the purpose of a header above a door or window opening?', options: ['Decoration only', 'Carrying load around it', 'Blocking outside sound', 'Holding up the shingles'], answerIndex: 1, explanation: 'A header is a strong beam that carries the load from above and transfers it around the opening to the studs on either side.' },
       ],
       apply: {
         prompt: 'Look at a wall in your home (or photos of a house under construction) and try to identify where studs likely are, using the standard 16-inch spacing as a guide (you can look for outlet or switch locations as clues).',
@@ -82,8 +82,8 @@ const topics = [
         { heading: 'Finishing Work Is the Final Layer', body: 'Flooring and trim carpentry (like baseboards and door casings) are usually the last steps in a project because they finish and protect the edges where other materials meet. Choosing flooring means balancing durability, water resistance, and cost — vinyl and tile handle moisture well, while hardwood offers a classic look but needs more care.' },
       ],
       practice: [
-        { question: 'Why do drywall installers apply joint compound in several thin coats instead of one thick coat?', options: ['To waste material', 'Thin coats dry and sand more evenly, preventing seams from showing later', 'It is required by law', 'Thick coats are illegal'], answerIndex: 1, explanation: 'Multiple thin coats dry more evenly and sand smoother, which prevents visible seams once painted.' },
-        { question: 'Why is trim carpentry like baseboards usually installed near the end of a project?', options: ['It has to go first', 'It finishes and covers the edges where other materials meet', 'Trim is never actually needed', 'It has nothing to do with other materials'], answerIndex: 1, explanation: 'Trim covers transitions and gaps between materials like flooring and walls, so it goes on after those are in place.' },
+        { question: 'Why do drywall installers apply joint compound in several thin coats instead of one thick coat?', options: ['To use less material overall', 'Thin coats dry and sand evenly', 'Building codes require three coats', 'Thick coats are too heavy to lift'], answerIndex: 1, explanation: 'Multiple thin coats dry more evenly and sand smoother, which prevents visible seams once painted.' },
+        { question: 'Why is trim carpentry like baseboards usually installed near the end of a project?', options: ['It has to go in first, before walls', 'It covers the edges where materials meet', 'Trim isn\'t really needed in most rooms', 'It has nothing to do with other materials'], answerIndex: 1, explanation: 'Trim covers transitions and gaps between materials like flooring and walls, so it goes on after those are in place.' },
       ],
       apply: {
         prompt: 'Compare two flooring materials (like vinyl and hardwood) for a room in your home, noting which handles moisture better and which costs more.',

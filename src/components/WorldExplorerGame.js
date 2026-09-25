@@ -14,6 +14,7 @@ import useGradeLevel, { levelForTier } from '../logic/useGradeLevel';
 import { createAdaptiveTier, nextAdaptiveTier, roundLength, STAGE_COUNT } from '../logic/difficultyAdapter';
 import { WORLD_BANK } from '../data/gameContent/worldExplorer';
 import { rotatePick } from '../logic/questionRotation';
+import { shuffle } from '../logic/optionOrder';
 
 const BLURBS = {
   'K-2': 'Community helpers, U.S. symbols, and maps.',
@@ -21,8 +22,6 @@ const BLURBS = {
   '6-8': 'Branches of government and key moments in history.',
   '9-12': 'Civics, economics, and psychology of decision-making.',
 };
-
-function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
 // Rotates through the whole pool across runs, see questionRotation.js.
 function pickNext(pool, avoid = []) {

@@ -1,11 +1,11 @@
 // src/components/WildSurvivalGame.js
 // A multi-round survival scenario (Science) — not a quiz. Your stamina
-// carries over between rounds; picking the wise option costs less than
-// picking the risky one, and stamina hitting zero ends the run
-// immediately. Verified by simulation in wildSurvival.js: the wise path
-// always makes it to the end, the risky path always runs out first.
+// carries over between rounds; the good option costs least, and stamina
+// hitting zero ends the run immediately. Each round's three options are
+// shuffled (the good one used to always be the top button), and the
+// reason for the pick is shown after, right or wrong.
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import GameShell, { useGameTheme } from './GameShell';
@@ -16,6 +16,7 @@ import RoundCompleteScreen from './RoundCompleteScreen';
 import useGame from '../logic/useGame';
 import useGradeLevel, { tierForLevel } from '../logic/useGradeLevel';
 import { SURVIVAL_BANK } from '../data/gameContent/wildSurvival';
+import { shuffle } from '../logic/optionOrder';
 
 const BLURBS = {
   'K-2': 'A gentle 5-round backyard camping trip.',
@@ -49,11 +50,15 @@ export default function WildSurvivalGame({ onGameEnd }) {
     setStarted(true);
   };
 
-  const handleChoice = useCallback((choiceKey) => {
+  // Shuffled once per round, so the order doesn't jump on re-render.
+  const options = useMemo(
+    () => (journey ? shuffle(journey.rounds[roundIndex].options) : []),
+    [journey, roundIndex],
+  );
+
+  const handleChoice = useCallback((choice) => {
     if (feedback || !journey) return;
-    const round = journey.rounds[roundIndex];
-    const choice = round[choiceKey];
-    const isCorrect = choiceKey === 'wise';
+    const isCorrect = !!choice.good;
     game.answer(isCorrect);
 
     const newStamina = Math.min(100, stamina + choice.delta);
@@ -61,6 +66,7 @@ export default function WildSurvivalGame({ onGameEnd }) {
     setFeedback({
       isCorrect,
       msg: `${choice.label} (${choice.delta > 0 ? '+' : ''}${choice.delta} stamina)`,
+      why: choice.why,
       survived: newStamina > 0,
     });
 
@@ -77,7 +83,7 @@ export default function WildSurvivalGame({ onGameEnd }) {
         roundNumber: roundIndex + 1,
         isLastStage: nextIdx >= journey.rounds.length,
       });
-    }, 2000);
+    }, 3200);
   }, [feedback, journey, roundIndex, stamina, game]);
 
   const handleClaimPrize = useCallback(() => {
@@ -152,17 +158,17 @@ export default function WildSurvivalGame({ onGameEnd }) {
         </View>
 
         <View style={s.choices}>
-          <TouchableOpacity style={s.choiceBtn} onPress={() => handleChoice('wise')} disabled={!!feedback}>
-            <Text style={s.choiceText}>{round.wise.label}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={s.choiceBtn} onPress={() => handleChoice('risky')} disabled={!!feedback}>
-            <Text style={s.choiceText}>{round.risky.label}</Text>
-          </TouchableOpacity>
+          {options.map(opt => (
+            <TouchableOpacity key={opt.label} style={s.choiceBtn} onPress={() => handleChoice(opt)} disabled={!!feedback}>
+              <Text style={s.choiceText}>{opt.label}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
         {feedback && (
           <View style={[s.feedback, { borderColor: feedback.isCorrect ? G.success : G.warning }]}>
             <Text style={[s.feedbackText, { color: feedback.isCorrect ? G.success : G.warning }]}>{feedback.msg}</Text>
+            {!!feedback.why && <Text style={s.whyText}>{feedback.why}</Text>}
             {!feedback.survived && <Text style={s.lessonText}>{showEmojis ? '💡 ' : ''}{journey.lesson}</Text>}
           </View>
         )}
@@ -187,5 +193,6 @@ const makeStyles = (G) => StyleSheet.create({
   choiceText:    { fontSize: 14, color: G.cream, textAlign: 'center', fontWeight: '600' },
   feedback:      { backgroundColor: G.card, borderWidth: 1, borderRadius: 12, padding: 14 },
   feedbackText:  { fontSize: 14, fontWeight: '700', textAlign: 'center', marginBottom: 6 },
+  whyText:       { fontSize: 13, color: G.cream, lineHeight: 18, textAlign: 'center', marginBottom: 4 },
   lessonText:    { fontSize: 13, color: G.gold, lineHeight: 18, textAlign: 'center' },
 });

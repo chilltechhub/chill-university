@@ -16,7 +16,7 @@ const topics = [
       ],
       practice: [
         { question: 'Which kind of line usually feels calm and orderly?', options: ['A wavy line', 'A straight line', 'A zigzag line', 'A scribble'], answerIndex: 1, explanation: 'Straight lines tend to feel neat and steady; wavy and zigzag lines feel more playful or energetic.' },
-        { question: 'If you wanted to draw a simple house, which shapes would you combine?', options: ['Only circles', 'A square/rectangle and a triangle', 'Only zigzag lines', 'Only dots'], answerIndex: 1, explanation: 'A rectangle for the walls and a triangle for the roof is the classic combination.' },
+        { question: 'If you wanted to draw a simple house, which shapes would you combine?', options: ['Only circles and ovals', 'A square and a triangle', 'Only zigzag lines', 'Only dots and curves'], answerIndex: 1, explanation: 'A rectangle for the walls and a triangle for the roof is the classic combination.' },
       ],
       apply: {
         prompt: 'Draw a picture (a house, animal, or robot) using only circles, squares, triangles, and rectangles. Then trace over your favorite line in a different color.',
@@ -78,7 +78,7 @@ const topics = [
         { heading: 'Additive vs. Subtractive', body: 'There are two main approaches to sculpting: additive, where you build up a form by adding material (like stacking clay or welding metal), and subtractive, where you carve away material from a larger block (like wood or stone) until the form emerges.' },
       ],
       practice: [
-        { question: 'What makes sculpture different from drawing or painting?', options: ["It's always made of clay", 'It exists in three dimensions and can be viewed from many angles', "It can't have color", 'It is only used for statues of people'], answerIndex: 1, explanation: 'Sculpture is three-dimensional, so unlike a flat drawing, it must be considered from all sides.' },
+        { question: 'What makes sculpture different from drawing or painting?', options: ['It is always made of clay or stone', 'It is 3D and seen from many angles', 'It can never be painted or colored', 'It is only used for statues of people'], answerIndex: 1, explanation: 'Sculpture is three-dimensional, so unlike a flat drawing, it must be considered from all sides.' },
         { question: 'Carving a figure out of a block of wood is an example of which sculpting method?', options: ['Additive', 'Subtractive', 'Modeling', 'Casting'], answerIndex: 1, explanation: 'Carving removes material from a larger block, which is the subtractive method — the opposite of building up with clay.' },
       ],
       apply: {
@@ -165,7 +165,7 @@ const topics = [
       ],
       practice: [
         { question: 'Which of these is part of the "exposure triangle" that controls how bright or dark a photo is?', options: ['Shutter speed', 'Filter', 'Crop', 'Filename'], answerIndex: 0, explanation: 'Shutter speed, along with aperture and ISO, is one of the three settings that control a photo\'s exposure.' },
-        { question: 'According to the rule of thirds, where should the main subject of a photo usually be placed?', options: ['Always dead center', 'Along imaginary lines or intersections dividing the frame into thirds', 'In the very top corner', "It doesn't matter"], answerIndex: 1, explanation: 'The rule of thirds suggests placing key elements along the grid lines or their intersections for a more balanced composition.' },
+        { question: 'According to the rule of thirds, where should the main subject of a photo usually be placed?', options: ['Always dead center in the frame', 'On lines dividing the frame in thirds', 'In the very top corner of the frame', 'Wherever the light is brightest'], answerIndex: 1, explanation: 'The rule of thirds suggests placing key elements along the grid lines or their intersections for a more balanced composition.' },
       ],
       apply: {
         prompt: 'Take 5 photos of the same object or scene using the rule of thirds instead of centering it, then pick your favorite and adjust its brightness or contrast in a free photo editor.',
@@ -195,7 +195,7 @@ const topics = [
         { heading: 'Art That Responds to Space', body: 'Installation and site-specific art is created for, and responds to, a particular location. The artist considers how viewers move through and experience the space itself, not just how a flat piece looks on a wall.' },
       ],
       practice: [
-        { question: 'What defines "mixed media" artwork?', options: ['Art made only with paint', 'Art that combines two or more different materials or techniques', 'Art displayed only in museums', 'Art that must be digital'], answerIndex: 1, explanation: 'Mixed media art deliberately combines multiple materials or techniques, such as paint, paper, and found objects, within one piece.' },
+        { question: 'What defines "mixed media" artwork?', options: ['Art made only with paint', 'Art that combines materials', 'Art displayed only in museums', 'Art that must be digital'], answerIndex: 1, explanation: 'Mixed media art deliberately combines multiple materials or techniques, such as paint, paper, and found objects, within one piece.' },
         { question: 'What makes a work "site-specific"?', options: ['It is created to be displayed anywhere', 'It is designed for and responds to a particular location', 'It can only be made of clay', 'It has no relationship to its surroundings'], answerIndex: 1, explanation: 'Site-specific art is conceived for a particular place and takes that location\'s space, history, or context into account.' },
       ],
       apply: {
@@ -249,7 +249,7 @@ const topics = [
         { heading: 'The Four Steps of Art Criticism', body: 'Formal art criticism follows four steps, in order: description (what do you literally see), analysis (how are elements and principles used), interpretation (what does it mean), and judgment (how well does it succeed). Skipping straight to judgment leads to shallow opinions.' },
       ],
       practice: [
-        { question: 'Why do art historians group artworks into "movements" like Impressionism or Cubism?', options: ['Because all artists in a movement used the same brand of paint', 'Because these groupings reflect shared ideas, techniques, or historical context of a time period', 'Movements are randomly assigned by museums', 'Movements only apply to sculpture'], answerIndex: 1, explanation: 'Art movements group works that share stylistic approaches or ideas, often shaped by the historical or cultural moment they came from.' },
+        { question: 'Why do art historians group artworks into "movements" like Impressionism or Cubism?', options: ['All artists in a movement used the same paint', 'They share ideas, techniques, or a time period', 'Museums assign movements to artists at random', 'Movements only apply to sculpture, not painting'], answerIndex: 1, explanation: 'Art movements group works that share stylistic approaches or ideas, often shaped by the historical or cultural moment they came from.' },
         { question: 'In the four steps of art criticism, what comes right before "judgment"?', options: ['Interpretation', 'Nothing — judgment comes first', 'Framing', 'Pricing'], answerIndex: 0, explanation: 'The standard order is description, analysis, interpretation, then judgment — forming an opinion should come only after understanding the work.' },
       ],
       apply: {

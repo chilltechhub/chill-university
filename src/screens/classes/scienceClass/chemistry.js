@@ -43,7 +43,7 @@ const topics = [
       { heading: 'Molecules Are Combinations', body: 'When two or more atoms bond together, they form a molecule. Some molecules are made of one element, like O2 (two oxygen atoms), while others are compounds made of different elements bonded together, like H2O (water), which is two hydrogen atoms and one oxygen atom.' },
     ],
     practice: [
-      { question: 'What is an element?', options: ['A mix of different atoms', 'A pure substance made of one type of atom', 'A type of molecule only', 'A liquid'], answerIndex: 1, explanation: 'An element is a pure substance made up of only one kind of atom.' },
+      { question: 'What is an element?', options: ['A mix of different atoms', 'One kind of atom only', 'A type of molecule only', 'Any liquid substance'], answerIndex: 1, explanation: 'An element is a pure substance made up of only one kind of atom.' },
       { question: 'What does the formula H2O tell you?', options: ['1 hydrogen atom and 2 oxygen atoms', '2 hydrogen atoms and 1 oxygen atom', '2 hydrogen molecules', 'Pure oxygen'], answerIndex: 1, explanation: 'H2O means each water molecule is made of two hydrogen atoms bonded to one oxygen atom.' },
     ],
     apply: {
@@ -75,8 +75,8 @@ const topics = [
       { heading: 'Predicting Properties', body: 'Because of its organization, the periodic table lets scientists predict how an element will behave before ever testing it — for example, elements in the leftmost column (alkali metals) are all highly reactive with water. Metals, nonmetals, and metalloids each occupy their own regions of the table.' },
     ],
     practice: [
-      { question: 'What determines an element\'s position (atomic number) on the periodic table?', options: ['Its color', 'The number of protons in its atoms', 'Its melting point', 'Its weight in grams'], answerIndex: 1, explanation: 'Atomic number is defined by the number of protons in an atom, and elements are arranged in order of this number.' },
-      { question: 'Why do elements in the same column of the periodic table behave similarly?', options: ['They are the same size', 'They have similar outer electron arrangements', 'They are all metals', 'They were discovered together'], answerIndex: 1, explanation: 'Elements in the same group share a similar number of outer-shell electrons, which drives similar chemical behavior.' },
+      { question: 'What determines an element\'s position (atomic number) on the periodic table?', options: ['Its color', 'Its proton count', 'Its melting point', 'Its weight in grams'], answerIndex: 1, explanation: 'Atomic number is defined by the number of protons in an atom, and elements are arranged in order of this number.' },
+      { question: 'Why do elements in the same column of the periodic table behave similarly?', options: ['They are the same size', 'Similar outer electrons', 'They are all metals', 'They were found together'], answerIndex: 1, explanation: 'Elements in the same group share a similar number of outer-shell electrons, which drives similar chemical behavior.' },
     ],
     apply: {
       prompt: 'Pick 3 elements from different regions of the periodic table (a metal, a nonmetal, and a noble gas) and research one real-world use for each.',

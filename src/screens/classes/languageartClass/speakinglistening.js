@@ -128,7 +128,7 @@ const topics = [
         },
         {
           question: "Which is the clearest answer to 'What did you eat for breakfast?'",
-          options: ['Cereal.', 'I ate cereal for breakfast.', 'Yes.', 'Maybe.'],
+          options: ['Cereal.', 'I had cereal.', 'Yes.', 'Maybe.'],
           answerIndex: 1,
           explanation: 'A full sentence answer clearly tells the listener exactly what was eaten.',
         },
@@ -173,7 +173,7 @@ const topics = [
       practice: [
         {
           question: 'What should the introduction of an oral presentation do?',
-          options: ['List every source you used', 'Introduce the topic and grab attention', 'Restate the conclusion', 'Ask the audience to leave'],
+          options: ['List every source you used', 'Introduce the topic', 'Restate the conclusion', 'Thank the audience at length'],
           answerIndex: 1,
           explanation: "An introduction should clearly state the topic and hook the audience's interest.",
         },
@@ -223,7 +223,7 @@ const topics = [
         },
         {
           question: 'Why do dramatic readers use gestures?',
-          options: ['To confuse the audience', 'To add meaning and expression without extra words', 'To end the story early', 'Because it is required by law'],
+          options: ['To keep the audience guessing', 'To add meaning without words', 'To end the story early', 'Because the script requires it'],
           answerIndex: 1,
           explanation: 'Gestures add expression and help convey meaning beyond the words alone.',
         },
@@ -261,13 +261,13 @@ const topics = [
       practice: [
         {
           question: 'What is the main purpose of a visual aid in a presentation?',
-          options: ['To replace the need for speaking', 'To support and clarify the spoken message', 'To fill time', 'To distract the audience'],
+          options: ['To replace the need for speaking', 'To support the spoken message', 'To fill time during a talk', 'To keep the audience busy'],
           answerIndex: 1,
           explanation: 'Visual aids should reinforce and clarify what the speaker is saying, not replace it.',
         },
         {
           question: 'Which slide design mistake most commonly disengages an audience?',
-          options: ['Using one clear image per slide', 'Cramming dense paragraphs of text onto a slide', 'Using a large, readable font', 'Including a simple, relevant chart'],
+          options: ['Using one clear image per slide', 'Cramming paragraphs onto a slide', 'Using a large, readable font', 'Including a simple, relevant chart'],
           answerIndex: 1,
           explanation: 'Dense text forces the audience to read instead of listen, disengaging them from the speaker.',
         },

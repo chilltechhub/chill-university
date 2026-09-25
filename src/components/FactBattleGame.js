@@ -1,7 +1,10 @@
 // src/components/FactBattleGame.js
 // A Top-Trumps-style card battle (Science: animal stats) — draw a card,
-// pick which stat to bet on before your rival's card is revealed, then
-// see who wins that stat. Every deck's stat values are all distinct
+// see WHICH animal you're up against (its numbers stay hidden), and pick
+// the stat you know your animal beats it on. Showing the rival's name is
+// what makes this a fact game: with a fully hidden rival it was a coin
+// flip that cost lives. Every matchup has a stat that wins and one that
+// loses, so there's always a right answer and a real choice. Every deck's stat values are all distinct
 // (verified in factBattle.js), so there's never an ambiguous tie.
 
 import React, { useState, useCallback, useRef } from 'react';
@@ -30,13 +33,24 @@ const BLURBS = {
 // the exact same two cards) could repeat multiple times in one session.
 // Falls back to the full deck once every card's been seen, same pattern
 // as every other game's pickNext().
+// A fair matchup: the player's card wins at least one stat and loses at
+// least one, so there's a right answer and it takes knowing the animals.
+function isFair(player, rival) {
+  const wins = STATS.filter(st => player.stats[st] > rival.stats[st]).length;
+  return wins > 0 && wins < STATS.length;
+}
+
 function drawRound(deck, avoid = []) {
   const freshChoices = deck.filter(c => !avoid.includes(c.name));
   const playerPool = freshChoices.length ? freshChoices : deck;
-  const player = playerPool[Math.floor(Math.random() * playerPool.length)];
+  // Only players that have at least one fair rival in the deck.
+  const playable = playerPool.filter(p => deck.some(r => r !== p && isFair(p, r)));
+  const pool = playable.length ? playable : playerPool;
+  const player = pool[Math.floor(Math.random() * pool.length)];
 
-  const rivalChoices = deck.filter(c => c.name !== player.name && !avoid.includes(c.name));
-  const rivalPool = rivalChoices.length ? rivalChoices : deck.filter(c => c.name !== player.name);
+  const fair = deck.filter(c => c.name !== player.name && isFair(player, c));
+  const rivalChoices = fair.filter(c => !avoid.includes(c.name));
+  const rivalPool = rivalChoices.length ? rivalChoices : fair.length ? fair : deck.filter(c => c.name !== player.name);
   const rival = rivalPool[Math.floor(Math.random() * rivalPool.length)];
   return { player, rival };
 }
@@ -155,7 +169,7 @@ export default function FactBattleGame({ onGameEnd }) {
     >
       <ScrollView contentContainerStyle={s.scroll}>
         <Text style={s.progress}>Round {asked + 1} of {STAGE_COUNT}</Text>
-        <Text style={s.instruction}>Pick a stat where your card wins — your rival's card is hidden!</Text>
+        <Text style={s.instruction}>Which stat does your {round.player.name} beat the {round.rival.name} on?</Text>
 
         <View style={s.cardsRow}>
           <View style={s.card}>
@@ -189,9 +203,16 @@ export default function FactBattleGame({ onGameEnd }) {
                 ))}
               </>
             ) : (
-              <View style={s.mystery}>
-                <Text style={s.mysteryText}>?</Text>
-              </View>
+              <>
+                <Text style={s.cardEmoji}>{round.rival.emoji}</Text>
+                <Text style={s.cardName}>{round.rival.name}</Text>
+                {STATS.map(stat => (
+                  <View key={stat} style={s.statRow}>
+                    <Text style={s.statLabel}>{STAT_LABELS[stat].emoji} {stat}</Text>
+                    <Text style={s.statValue}>?</Text>
+                  </View>
+                ))}
+              </>
             )}
           </View>
         </View>
@@ -220,8 +241,6 @@ const makeStyles = (G) => StyleSheet.create({
   cardLabel:   { fontSize: 10, color: G.muted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 },
   cardEmoji:   { fontSize: 40, marginBottom: 4 },
   cardName:    { fontSize: 13, fontWeight: '700', color: G.cream, marginBottom: 10, textAlign: 'center' },
-  mystery:     { width: '100%', height: 150, alignItems: 'center', justifyContent: 'center' },
-  mysteryText: { fontSize: 48, color: G.faint, fontWeight: '800' },
   statRow:     { flexDirection: 'row', justifyContent: 'space-between', width: '100%', backgroundColor: G.bg, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 10, marginBottom: 6, borderWidth: 1, borderColor: G.border },
   statRowPicked: { borderColor: G.gold, backgroundColor: G.goldL },
   statRowDisabled: { opacity: 0.7 },
