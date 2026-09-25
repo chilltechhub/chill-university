@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../api/supabaseClient';
 import { useProfiles } from '../../context/ProfileAccountsContext';
 import { saveVaultDocument, listVaultDocuments } from '../api/personaService';
+import { optionOrder } from '../logic/optionOrder';
 
 function LearnCards({ learn, color, c, t, s, r }) {
   return (
@@ -46,7 +47,8 @@ function PracticeQuiz({ practice, color, c, t, s, r }) {
         return (
           <View key={qi} style={{ marginBottom: 10, padding: 10, borderRadius: r.md, backgroundColor: c.bg1 }}>
             <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1, marginBottom: 6 }}>{q.question}</Text>
-            {(q.options || []).map((opt, oi) => {
+            {optionOrder(q.question, (q.options || []).length).map((oi) => {
+              const opt = q.options[oi];
               const isCorrect = oi === q.answerIndex;
               const isPicked = oi === picked;
               let bg = 'transparent';

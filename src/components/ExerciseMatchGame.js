@@ -14,15 +14,14 @@ import useGradeLevel, { levelForTier } from '../logic/useGradeLevel';
 import { createAdaptiveTier, nextAdaptiveTier, roundLength, STAGE_COUNT } from '../logic/difficultyAdapter';
 import { EXERCISE_BANK, EXERCISE_CAT_COLORS } from '../data/gameContent/exerciseMatch';
 import { rotatePick } from '../logic/questionRotation';
+import { shuffle } from '../logic/optionOrder';
 
 const BLURBS = {
-  'K-2': 'Common exercises and their obvious benefits.',
+  'K-2': 'Everyday exercises and what each one does.',
   '3-5': 'Core work, rowing, burpees — less obvious matches.',
   '6-8': 'Exercise science — aerobic vs anaerobic, overload, recovery.',
   '9-12': 'Sports physiology — VO2 max, periodization, muscle fiber types.',
 };
-
-function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
 // Rotates through the whole pool across runs, see questionRotation.js.
 function pickNext(pool, avoid = []) {
@@ -201,7 +200,7 @@ export default function ExerciseMatchGame({ onGameEnd }) {
           <View style={[s.catBadge, { borderColor: catColor, backgroundColor: catColor + '22' }]}>
             <Text style={[s.catText, { color: catColor }]}>{q.category}</Text>
           </View>
-          <Text style={s.question}>What is the main benefit?</Text>
+          <Text style={s.question}>Which one describes it?</Text>
         </View>
 
         <RushTimerBar active={pace === 'rush' && !feedback} durationMs={4000} resetKey={q} onExpire={() => handleAnswer('__TIMEOUT__')} />

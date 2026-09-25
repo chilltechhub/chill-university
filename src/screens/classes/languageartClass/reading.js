@@ -117,7 +117,7 @@ const topics = [
       ],
       practice: [
         { question: 'Which of these best describes a fluent reader?', options: ['Reads very slowly and stops on every word', 'Reads smoothly, accurately, and with expression', 'Only reads silently', 'Skips words they do not know'], answerIndex: 1, explanation: 'Fluency means accurate, smooth reading with expression, not just fast reading.' },
-        { question: 'Why does re-reading the same story help fluency?', options: ['It makes the story shorter', 'It helps word recognition become automatic', 'It changes the words', 'It is required by teachers'], answerIndex: 1, explanation: 'Repeated reading builds automatic word recognition, which frees attention for meaning and expression.' },
+        { question: 'Why does re-reading the same story help fluency?', options: ['It makes the story shorter', 'Words become automatic', 'It changes the words', 'Teachers require it'], answerIndex: 1, explanation: 'Repeated reading builds automatic word recognition, which frees attention for meaning and expression.' },
       ],
       apply: {
         prompt: 'Choose a short page from a favorite book. Read it aloud three times, trying to sound more smooth and expressive each time — like a character talking, not a robot.',
@@ -146,7 +146,7 @@ const topics = [
         { heading: 'How They Work Together', body: 'The setting can shape what problems characters face, and the plot usually follows a pattern: a problem starts the story, events build tension, and a resolution wraps it up.' },
       ],
       practice: [
-        { question: 'In a story, the "setting" refers to...', options: ['The main character', 'The time and place the story happens', 'The problem in the story', 'The ending'], answerIndex: 1, explanation: 'Setting is the when and where of a story.' },
+        { question: 'In a story, the "setting" refers to...', options: ['The main character', 'Where and when it happens', 'The problem in the story', 'How the story ends'], answerIndex: 1, explanation: 'Setting is the when and where of a story.' },
         { question: 'The series of events in a story, including the problem and how it is solved, is called the...', options: ['Setting', 'Theme', 'Plot', 'Genre'], answerIndex: 2, explanation: 'Plot is the sequence of events that make up the story, centered on a problem and its resolution.' },
       ],
       apply: {
@@ -206,7 +206,7 @@ const topics = [
         { heading: 'Symbolism', body: 'Symbolism is when an object, person, or color represents an idea beyond its literal meaning — a dove often symbolizes peace, and a storm often symbolizes conflict or turmoil in a story.' },
       ],
       practice: [
-        { question: 'Which sentence contains a simile?', options: ['Her smile was sunshine.', 'Her smile was as bright as sunshine.', 'The sunshine smiled.', 'She never smiled.'], answerIndex: 1, explanation: 'A simile uses "like" or "as" to compare two things; this sentence uses "as."' },
+        { question: 'Which sentence contains a simile?', options: ['Her smile was pure sunshine.', 'Her smile was like sunshine.', 'The sunshine smiled at her.', 'She never smiled at all.'], answerIndex: 1, explanation: 'A simile uses "like" or "as" to compare two things; this sentence uses "as."' },
         { question: 'A dove appearing at the end of a war story most likely symbolizes...', options: ['Danger', 'Peace', 'Hunger', 'Speed'], answerIndex: 1, explanation: 'Doves are a traditional symbol for peace, especially after conflict.' },
       ],
       apply: {
@@ -237,8 +237,8 @@ const topics = [
         { heading: 'Supporting Details', body: 'Supporting details are the facts, examples, and explanations that back up the main idea. A good way to find the main idea is to ask, "What do all these details have in common?"' },
       ],
       practice: [
-        { question: 'The main idea of a paragraph is best described as...', options: ['A random fact', 'The most important point the paragraph makes', 'The last sentence only', 'The title of the book'], answerIndex: 1, explanation: 'The main idea is the central point that everything else in the paragraph supports.' },
-        { question: 'Supporting details in a paragraph mainly serve to...', options: ['Confuse the reader', 'Back up and explain the main idea', 'Replace the main idea', 'End the paragraph'], answerIndex: 1, explanation: 'Supporting details provide evidence and explanation for the main idea.' },
+        { question: 'The main idea of a paragraph is best described as...', options: ['A random fact from the text', 'The paragraph\'s key point', 'The last sentence, always', 'The title of the book'], answerIndex: 1, explanation: 'The main idea is the central point that everything else in the paragraph supports.' },
+        { question: 'Supporting details in a paragraph mainly serve to...', options: ['Confuse the reader', 'Back up the main idea', 'Replace the main idea', 'End the paragraph'], answerIndex: 1, explanation: 'Supporting details provide evidence and explanation for the main idea.' },
       ],
       apply: {
         prompt: 'Read a short nonfiction paragraph (from a book, magazine, or website). Write the main idea in one sentence, then list two supporting details from the text.',
@@ -352,7 +352,7 @@ const topics = [
         { heading: 'Why Learning Them Helps', body: 'Once you know that "bio" means life and "-ology" means study of, you can figure out that "biology" means the study of life — and unlock dozens of related words without memorizing each one separately.' },
       ],
       practice: [
-        { question: 'The root "spect" means "to look." What does "inspect" most likely mean?', options: ['To look inside/closely at', 'To listen', 'To run away', 'To build'], answerIndex: 0, explanation: '"In-" (into) + "spect" (look) suggests looking closely at or into something.' },
+        { question: 'The root "spect" means "to look." What does "inspect" most likely mean?', options: ['To look closely at', 'To listen for', 'To run away from', 'To build again'], answerIndex: 0, explanation: '"In-" (into) + "spect" (look) suggests looking closely at or into something.' },
         { question: 'Which prefix means "not" or "opposite of," as in "unhappy"?', options: ['re-', 'un-', 'pre-', '-ful'], answerIndex: 1, explanation: 'The prefix "un-" reverses or negates a word\'s meaning.' },
       ],
       apply: {
@@ -411,7 +411,7 @@ const topics = [
         { heading: 'Text Evidence + Background Knowledge', body: 'A strong inference always has two parts: specific evidence from the text and a piece of your own knowledge or reasoning that connects the dots — "the text says X, and I know Y, so I can infer Z."' },
       ],
       practice: [
-        { question: 'An inference is best described as...', options: ['A fact directly stated in the text', 'A conclusion drawn from clues plus background knowledge', 'A random guess with no evidence', 'The title of the passage'], answerIndex: 1, explanation: 'Inferences combine textual evidence with prior knowledge to reach a logical conclusion.' },
+        { question: 'An inference is best described as...', options: ['A fact stated in the text', 'A conclusion from clues', 'A random guess', 'The passage title'], answerIndex: 1, explanation: 'Inferences combine textual evidence with prior knowledge to reach a logical conclusion.' },
         { question: 'If a character "slammed the door and threw her backpack on the floor," you can infer she is probably feeling...', options: ['Relaxed', 'Angry or upset', 'Sleepy', 'Bored'], answerIndex: 1, explanation: 'Slamming a door and throwing a backpack are actions that suggest frustration, even though the text never says "angry."' },
       ],
       apply: {
@@ -440,7 +440,7 @@ const topics = [
       ],
       practice: [
         { question: 'A good summary should...', options: ['Include every single detail', 'Retell the main points in your own words, briefly', 'Give your personal opinion of the story', 'Be longer than the original text'], answerIndex: 1, explanation: 'Summaries are brief restatements of the most important ideas, not full retellings or opinions.' },
-        { question: 'In the "Somebody-Wanted-But-So" strategy, the "But" stands for...', options: ['The setting', 'The character\'s problem', 'The ending', 'The title'], answerIndex: 1, explanation: '"But" identifies the obstacle or problem that gets in the way of what the character wanted.' },
+        { question: 'In the "Somebody-Wanted-But-So" strategy, the "But" stands for...', options: ['The setting', 'The problem', 'The ending', 'The title'], answerIndex: 1, explanation: '"But" identifies the obstacle or problem that gets in the way of what the character wanted.' },
       ],
       apply: {
         prompt: 'Read a short story. Write a 3-4 sentence summary using the Somebody-Wanted-But-So-Then structure, without copying full sentences from the original text.',

@@ -1,16 +1,19 @@
 // src/data/gameContent/surviveMonth.js
 // Survive the Month — a Reigns-style day-by-day budget survival game.
 // Each round is a short run of days (see difficultyAdapter.js's
-// roundLength() — same "start short, grow longer" curve every other
-// round-based game uses); one card is dealt per day from that band's
-// pool, sampled WITHOUT replacement so a round never repeats a card, and
-// each card offers 2-3 options trading Cash against Stress against
-// Future Value. There's no "correct" option in the trivia sense — good
-// options build Future Value and keep Stress in check at some cost;
-// tempting options relieve Stress or feel free right now but usually
-// cost more in the end. `good: true/false` on each option is what the
-// round's "correct/total" score (and therefore its prize) is measured
-// against, not whether cash went up or down.
+// roundLength()); one card is dealt per day from that band's pool, sampled
+// without replacement, and each card offers 2-3 options trading Cash
+// against Stress. `good: true/false` on each option is what the round's
+// correct/total score is measured against.
+//
+// "Good" is NOT "spend the least". Roughly half the cards reward spending:
+// fixing something before it gets worse, paying a small debt, the sturdier
+// version that lasts, a planned bit of fun. And the wrong answer is often
+// the too-cheap one: skipping sunscreen, riding on bad brakes, never going
+// out with friends. The game shuffles each card's options when it's dealt.
+// scripts/check-games.mjs fails if "always pick the cheapest" or "always
+// pick the longest answer" starts working again, or if playing every good
+// option could overdraft a week.
 
 export const SURVIVE_BANK = {
   'K-2': {
@@ -21,98 +24,101 @@ export const SURVIVE_BANK = {
     cardPool: [
       {
         id: 'lost_toy',
-        prompt: 'You lost your favorite little toy at the park!',
+        prompt: 'You lost your favorite toy at the park!',
         options: [
-          { label: 'Buy a new one right away', cash: -4, stress: -8, good: false, tip: 'It might still turn up — buying a replacement right away can waste money.' },
-          { label: 'Wait a few days to look for it', cash: 0, stress: 6, good: true, tip: 'Waiting before replacing something lost is a simple way to save money.' },
+          { label: 'Buy a new one right away', cash: -4, stress: -5, good: false, tip: 'It might still turn up. Look before you buy again.' },
+          { label: 'Go back and look for it first', cash: 0, stress: 3, good: true, tip: 'Looking first is free. Lost things turn up a lot.' },
         ],
       },
       {
-        id: 'friend_treat',
-        prompt: 'A friend is buying a treat and asks if you want one too.',
+        id: 'friend_party',
+        prompt: "Your best friend's birthday party is on Saturday.",
         options: [
-          { label: 'Buy one too', cash: -3, stress: -3, good: false, tip: 'Buying something just because a friend did is called peer pressure spending.' },
-          { label: 'Say no thanks this time', cash: 0, stress: 2, good: true, tip: 'You can still have fun with friends without spending every time.' },
+          { label: 'Skip the party so you spend nothing', cash: 0, stress: 8, good: false, tip: 'Friends matter too. A small gift or a card is plenty.' },
+          { label: 'Make a card and bring a small gift', cash: -2, stress: -4, good: true, tip: 'A small gift and a card you made show you care.' },
+          { label: 'Buy the biggest toy in the store', cash: -6, stress: -2, good: false, tip: 'A gift does not have to be the biggest one to be a good one.' },
+        ],
+      },
+      {
+        id: 'floppy_shoe',
+        prompt: 'The bottom of your shoe is coming loose.',
+        options: [
+          { label: 'Keep wearing it the way it is', cash: 0, stress: 6, good: false, tip: 'A floppy sole can trip you, and the rip gets bigger.' },
+          { label: 'Buy glue and fix it with a grown-up', cash: -1, stress: -2, good: true, tip: 'Fixing something early is cheap. Waiting makes it worse.' },
         ],
       },
       {
         id: 'chore_bonus',
-        prompt: 'You did an extra chore and earned a small bonus!',
+        prompt: 'You did an extra chore and earned $3!',
         options: [
-          { label: 'Save all of it', cash: 3, stress: 0, good: true, tip: 'Extra money you save adds up faster than you might think.' },
-          { label: 'Spend it right away', cash: 0, stress: -2, good: false, tip: 'Spending money the moment you get it means there\'s never any left over.' },
+          { label: 'Save it for something you really want', cash: 3, stress: 0, good: true, tip: 'Saved money grows into something bigger.' },
+          { label: 'Spend all of it on candy today', cash: 0, stress: -2, good: false, tip: 'Money spent right away is gone before it can add up.' },
         ],
       },
       {
-        id: 'broken_pencil',
-        prompt: 'Your favorite pencil broke.',
+        id: 'sunscreen',
+        prompt: "It's swim day at camp, and you are out of sunscreen.",
         options: [
-          { label: 'Buy a fancy new one', cash: -3, stress: -4, good: false, tip: 'A basic replacement does the same job as a fancy one for less.' },
-          { label: 'Buy a simple one', cash: -1, stress: 3, good: true, tip: 'Choosing the simple option instead of the fancy one saves money.' },
-        ],
-      },
-      {
-        id: 'bake_sale',
-        prompt: "There's a bake sale at school today.",
-        options: [
-          { label: 'Buy a treat', cash: -2, stress: -2, good: false, tip: 'Small treats add up if you buy one every single time.' },
-          { label: 'Bring a snack from home instead', cash: 0, stress: 3, good: true, tip: 'Bringing your own snack instead of buying one saves money over time.' },
-        ],
-      },
-      {
-        id: 'rainy_day',
-        prompt: "It's raining and you're stuck inside, bored.",
-        options: [
-          { label: 'Ask to buy a new game', cash: -5, stress: -6, good: false, tip: 'Being bored doesn\'t always need to be solved by buying something.' },
-          { label: 'Play with toys you already have', cash: 0, stress: 4, good: true, tip: 'Free fun is still fun — you don\'t need something new every time.' },
-        ],
-      },
-      {
-        id: 'birthday_card',
-        prompt: "It's your cousin's birthday this weekend.",
-        options: [
-          { label: 'Buy an expensive gift', cash: -6, stress: -3, good: false, tip: 'A thoughtful gift doesn\'t have to be the most expensive one.' },
-          { label: 'Make a card and a small gift', cash: -2, stress: 5, good: true, tip: 'Homemade gifts can mean just as much and cost much less.' },
+          { label: 'Skip sunscreen this one time', cash: 0, stress: 8, good: false, tip: 'A sunburn hurts for days. Sunscreen is worth the money.' },
+          { label: 'Buy a small bottle of sunscreen', cash: -2, stress: -2, good: true, tip: 'Some things keep you safe. Those are worth paying for.' },
         ],
       },
       {
         id: 'vending_machine',
-        prompt: 'You walk past a vending machine and feel like a snack.',
+        prompt: "You walk past a snack machine. You're not hungry.",
         options: [
-          { label: 'Buy a snack', cash: -2, stress: -3, good: false, tip: 'Small "just this once" purchases are easy to make too often.' },
-          { label: 'Wait until you get home', cash: 0, stress: 3, good: true, tip: 'Waiting a little while often makes the urge to spend pass.' },
-        ],
-      },
-      {
-        id: 'lemonade_stand',
-        prompt: 'You want to start your own tiny lemonade stand next weekend.',
-        options: [
-          { label: 'Spend on fancy decorations first', cash: -5, stress: -2, good: false, tip: 'Spending before you\'ve earned anything is riskier than starting simple.' },
-          { label: 'Start simple and see how it goes', cash: -1, stress: 4, good: true, tip: 'Starting small before spending a lot is a smart way to try something new.' },
-        ],
-      },
-      {
-        id: 'sticker_pack',
-        prompt: 'A shiny new sticker pack catches your eye at the store.',
-        options: [
-          { label: 'Buy it right now', cash: -3, stress: -4, good: false, tip: 'The urge to buy something shiny fades fast if you wait a bit.' },
-          { label: 'Add it to your wish list for later', cash: 0, stress: 4, good: true, tip: 'A wish list helps you decide later if you still really want it.' },
-        ],
-      },
-      {
-        id: 'found_coin',
-        prompt: 'You found a coin on the sidewalk!',
-        options: [
-          { label: 'Save it', cash: 1, stress: 0, good: true, tip: 'Even small amounts of found money add up when you save them.' },
-          { label: 'Spend it on candy', cash: 0, stress: -1, good: false, tip: 'Small windfalls are easy to spend without even noticing.' },
+          { label: 'Buy a snack anyway', cash: -2, stress: -1, good: false, tip: 'Buying food when you are not hungry wastes money.' },
+          { label: 'Keep walking to class', cash: 0, stress: 1, good: true, tip: 'If you do not need it right now, you can wait.' },
         ],
       },
       {
         id: 'library_fine',
-        prompt: 'You kept a library book too long and owe a small fine.',
+        prompt: 'You kept a library book too long. You owe $3.',
         options: [
-          { label: 'Pay it right away', cash: -2, stress: 5, good: true, tip: 'Paying small debts quickly keeps them from becoming bigger problems.' },
-          { label: 'Put off paying it', cash: 0, stress: -3, good: false, tip: 'Putting off a small bill doesn\'t make it go away — it just waits.' },
+          { label: 'Pay the $3 now', cash: -3, stress: -4, good: true, tip: 'Paying small debts fast keeps them small.' },
+          { label: 'Hide from the librarian for a while', cash: 0, stress: 6, good: false, tip: 'Hiding from a debt does not make it go away.' },
+        ],
+      },
+      {
+        id: 'rainy_day',
+        prompt: "It's raining and you're bored inside.",
+        options: [
+          { label: 'Ask to buy a new game', cash: -5, stress: -4, good: false, tip: 'Being bored does not always need a new thing.' },
+          { label: 'Build a blanket fort', cash: 0, stress: -3, good: true, tip: 'Free fun is still fun.' },
+        ],
+      },
+      {
+        id: 'water_bottle',
+        prompt: 'You need a water bottle. The $1 one leaks. The $3 one does not.',
+        options: [
+          { label: 'Buy the $1 bottle', cash: -1, stress: 5, good: false, tip: 'A leaky bottle means buying another one soon. Cheap can cost more.' },
+          { label: 'Buy the $3 bottle', cash: -3, stress: -1, good: true, tip: 'Something that lasts can be worth a little more.' },
+        ],
+      },
+      {
+        id: 'sticker_pack',
+        prompt: 'A shiny sticker pack catches your eye at the store.',
+        options: [
+          { label: 'Buy it right now', cash: -3, stress: -3, good: false, tip: 'The wish to buy something shiny fades if you wait a bit.' },
+          { label: 'Put it on your wish list', cash: 0, stress: 2, good: true, tip: 'A wish list helps you decide later if you still want it.' },
+        ],
+      },
+      {
+        id: 'lemonade_stand',
+        prompt: 'You want to start a lemonade stand next weekend.',
+        options: [
+          { label: 'Buy fancy decorations first', cash: -5, stress: -2, good: false, tip: 'Spend a lot before you earn anything and you might lose it.' },
+          { label: 'Start with a simple sign', cash: -1, stress: 2, good: true, tip: 'Start small. Spend more once it works.' },
+          { label: 'Give up, it costs money', cash: 0, stress: 3, good: false, tip: 'A tiny start costs very little and could earn you money.' },
+        ],
+      },
+      {
+        id: 'friend_lunch',
+        prompt: 'Your friend forgot their lunch today.',
+        options: [
+          { label: 'Share half your sandwich', cash: 0, stress: -2, good: true, tip: 'Sharing helps a friend and costs you nothing extra.' },
+          { label: 'Give them all your money', cash: -4, stress: 3, good: false, tip: 'Being kind does not mean giving away everything you have.' },
+          { label: 'Act like you did not hear', cash: 0, stress: 4, good: false, tip: 'Helping a friend does not always cost money.' },
         ],
       },
     ],
@@ -120,104 +126,108 @@ export const SURVIVE_BANK = {
 
   '3-5': {
     title: 'School Week Budget',
-    startingCash: 12,
+    startingCash: 20,
     startingStress: 25,
     incomePerDay: 3,
     cardPool: [
       {
-        id: 'new_game',
-        prompt: 'Everyone at school is talking about a new video game.',
+        id: 'trending_game',
+        prompt: 'Everyone at school is talking about a new $12 video game.',
         options: [
-          { label: 'Buy it right away', cash: -12, stress: -8, good: false, tip: 'Buying something because it\'s trending is called impulse spending.' },
-          { label: 'Wait and see if you still want it in a week', cash: 0, stress: 6, good: true, tip: 'Waiting before a big purchase helps you avoid regretting it.' },
+          { label: 'Buy it today before it sells out', cash: -12, stress: -6, good: false, tip: 'Buying because everyone else is buying is called impulse spending.' },
+          { label: 'Wait a week and see if you still want it', cash: 0, stress: 3, good: true, tip: 'Waiting before a big purchase helps you avoid regret.' },
         ],
       },
       {
-        id: 'lunch_money',
-        prompt: 'You forgot your lunch and need to buy one at school.',
+        id: 'forgot_lunch',
+        prompt: 'You forgot your lunch at home.',
         options: [
-          { label: 'Buy the fanciest lunch option', cash: -8, stress: -3, good: false, tip: 'The most expensive option isn\'t always the best value.' },
-          { label: 'Get the basic lunch', cash: -4, stress: 3, good: true, tip: 'Choosing the basic option when you have to spend still saves money.' },
+          { label: 'Skip lunch to save the money', cash: 0, stress: 8, good: false, tip: 'Going hungry all afternoon is not a good way to save. This is what money is for.' },
+          { label: 'Buy the basic school lunch', cash: -4, stress: -2, good: true, tip: 'When you have to spend, the basic option does the job.' },
+          { label: 'Buy the fanciest lunch they have', cash: -8, stress: -2, good: false, tip: 'The most expensive option is not always the best value.' },
         ],
       },
       {
         id: 'group_project',
-        prompt: 'Your group project needs poster supplies.',
+        prompt: 'Your group project needs $8 of poster supplies.',
         options: [
-          { label: 'Buy all new supplies yourself', cash: -7, stress: -2, good: false, tip: 'Splitting a cost with a group is usually fairer than covering it alone.' },
-          { label: 'Ask to split the cost with your group', cash: -3, stress: 4, good: true, tip: 'Sharing costs for a shared project is a fair way to budget.' },
+          { label: 'Pay for all of it so the group likes you', cash: -8, stress: 1, good: false, tip: 'A shared project is a shared cost.' },
+          { label: 'Ask everyone to chip in $2 each', cash: -2, stress: 2, good: true, tip: 'Splitting costs evenly is fair and easy.' },
+          { label: 'Say you have no money when you do', cash: 0, stress: 5, good: false, tip: 'Dodging your share leaves it on someone else.' },
         ],
       },
       {
-        id: 'weekend_movie',
-        prompt: 'Friends are going to the movies this weekend.',
+        id: 'movies',
+        prompt: 'Your friends are going to the movies on Saturday.',
         options: [
-          { label: 'Go and buy snacks too', cash: -10, stress: -5, good: false, tip: 'Extras like snacks often cost more than the main thing itself.' },
-          { label: 'Go, but skip the snacks', cash: -6, stress: 4, good: true, tip: 'Skipping the extras on an outing can cut the cost by a lot.' },
+          { label: 'Go, and bring snacks from home', cash: -6, stress: -4, good: true, tip: 'Fun with friends matters. Skipping the extras makes it cheaper.' },
+          { label: 'Go and get the big snack combo', cash: -11, stress: -5, good: false, tip: 'The snacks can cost almost as much as the ticket.' },
+          { label: 'Stay home, even though you have the money', cash: 0, stress: 6, good: false, tip: 'A budget with no fun in it is hard to stick to.' },
         ],
       },
       {
-        id: 'savings_jar',
-        prompt: 'You have some spare change lying around.',
+        id: 'spare_change',
+        prompt: 'You find $4 in spare change around your room.',
         options: [
-          { label: 'Add it to your savings jar', cash: 4, stress: 0, good: true, tip: 'Small deposits into savings add up faster than they feel like they will.' },
-          { label: 'Spend it on something small', cash: 0, stress: -2, good: false, tip: 'Spare change spent right away never gets the chance to add up.' },
+          { label: 'Put it in your savings jar', cash: 4, stress: 0, good: true, tip: 'Small deposits add up faster than you think.' },
+          { label: 'Spend it at the corner store', cash: 0, stress: -2, good: false, tip: 'Spare change spent right away never gets to add up.' },
         ],
       },
       {
-        id: 'broken_backpack',
+        id: 'backpack_zipper',
         prompt: 'Your backpack zipper broke.',
         options: [
-          { label: 'Buy a brand new backpack', cash: -15, stress: -4, good: false, tip: 'Replacing something that could be fixed is usually the pricier option.' },
-          { label: 'Get it repaired instead', cash: -5, stress: 5, good: true, tip: 'Repairing something is often much cheaper than replacing it.' },
+          { label: 'Buy a brand-new $15 backpack', cash: -15, stress: -3, good: false, tip: 'Replacing something that can be fixed usually costs more.' },
+          { label: 'Pay $5 to get the zipper fixed', cash: -5, stress: -2, good: true, tip: 'Repairing is often much cheaper than replacing.' },
+          { label: 'Carry your books in your arms', cash: 0, stress: 7, good: false, tip: 'You will drop and lose things. A cheap fix is worth it.' },
         ],
       },
       {
-        id: 'app_purchase',
-        prompt: 'A game app is asking you to buy a special item.',
+        id: 'in_app',
+        prompt: 'A game on your tablet wants you to buy gems.',
         options: [
-          { label: 'Buy the item', cash: -6, stress: -6, good: false, tip: 'In-app purchases are designed to feel small, but they add up fast.' },
-          { label: 'Close the app and keep playing free', cash: 0, stress: 5, good: true, tip: 'Most games are still fun without spending real money on extras.' },
+          { label: 'Buy a small pack of gems', cash: -6, stress: -4, good: false, tip: 'In-app purchases are made to feel small, but they add up fast.' },
+          { label: 'Keep playing for free', cash: 0, stress: 2, good: true, tip: 'Most games are still fun without paying for extras.' },
         ],
       },
       {
         id: 'birthday_money',
-        prompt: 'You got some money as a birthday gift.',
+        prompt: 'Your grandma gave you $10 for your birthday.',
         options: [
-          { label: 'Save most of it', cash: 10, stress: 0, good: true, tip: 'Gift money is a great chance to build up savings.' },
-          { label: 'Spend all of it right away', cash: 2, stress: -3, good: false, tip: 'Spending a windfall all at once means none of it lasts.' },
+          { label: 'Save most of it and spend a little', cash: 8, stress: -3, good: true, tip: 'Saving most and enjoying a little is a healthy balance.' },
+          { label: 'Spend all of it today', cash: 1, stress: -3, good: false, tip: 'Spending a gift all at once means none of it lasts.' },
         ],
       },
       {
         id: 'club_fee',
-        prompt: 'A club you want to join has a small sign-up fee.',
+        prompt: "The robotics club costs $5 to join. You've wanted to for months.",
         options: [
-          { label: 'Pay it — it seems worth it', cash: -5, stress: 6, good: true, tip: 'Spending on something you\'ll really use is different from an impulse buy.' },
-          { label: 'Skip it to save the money', cash: 0, stress: -3, good: false, tip: 'Sometimes saving money means missing out on something you\'d have enjoyed.' },
+          { label: 'Pay the $5 and join', cash: -5, stress: -3, good: true, tip: 'Spending on something you really want and will use is what money is for.' },
+          { label: 'Skip it to keep the $5', cash: 0, stress: 4, good: false, tip: 'Saving is great, but not if you miss what you were saving for.' },
         ],
       },
       {
-        id: 'used_book',
-        prompt: 'You want a book a classmate already read.',
+        id: 'library_book',
+        prompt: 'You want to read a book your classmate liked.',
         options: [
-          { label: 'Buy it brand new', cash: -9, stress: -3, good: false, tip: 'Buying new when a used option exists usually costs more for no real benefit.' },
-          { label: 'Ask to borrow or buy it used', cash: -2, stress: 4, good: true, tip: 'Buying used or borrowing is an easy way to spend less.' },
+          { label: 'Buy it brand-new for $9', cash: -9, stress: -2, good: false, tip: 'Buying new when you can borrow costs more for the same story.' },
+          { label: 'Borrow it from the library', cash: 0, stress: 1, good: true, tip: 'The library is free. Use it.' },
         ],
       },
       {
-        id: 'gum_pack',
-        prompt: 'You spot gum at the checkout counter.',
+        id: 'sneakers',
+        prompt: 'You need sneakers. A $5 pair falls apart fast. A $9 pair lasts all year.',
         options: [
-          { label: 'Grab it — it\'s cheap anyway', cash: -3, stress: -3, good: false, tip: 'Checkout-line items are placed there to trigger impulse buys.' },
-          { label: 'Skip it', cash: 0, stress: 3, good: true, tip: 'Skipping small checkout-line temptations adds up over time.' },
+          { label: 'Buy the $5 pair', cash: -5, stress: 3, good: false, tip: 'If you buy the cheap pair twice, you pay $10.' },
+          { label: 'Buy the $9 pair', cash: -9, stress: -1, good: true, tip: 'Paying a bit more for something that lasts can save money.' },
         ],
       },
       {
-        id: 'field_trip_snack',
-        prompt: 'The field trip gift shop has souvenirs for sale.',
+        id: 'flat_tire',
+        prompt: 'Your bike tire is flat, and you ride it to school.',
         options: [
-          { label: 'Buy a souvenir', cash: -8, stress: -4, good: false, tip: 'Souvenirs are marked up because they\'re sold in a place you can\'t leave easily.' },
-          { label: 'Take photos instead', cash: 0, stress: 4, good: true, tip: 'A free memory can be just as good as a souvenir.' },
+          { label: 'Walk to school for a few weeks', cash: 0, stress: 6, good: false, tip: 'You will be late and tired. A patch kit is cheap.' },
+          { label: 'Buy a $4 patch kit and fix it', cash: -4, stress: -2, good: true, tip: 'Small fixes keep bigger problems away.' },
         ],
       },
     ],
@@ -230,100 +240,104 @@ export const SURVIVE_BANK = {
     incomePerDay: 18,
     cardPool: [
       {
-        id: 'new_sneakers',
-        prompt: 'A limited-edition sneaker drop just happened online.',
+        id: 'sneaker_drop',
+        prompt: 'A limited-edition sneaker drop just went live: $55.',
         options: [
-          { label: 'Buy them immediately', cash: -55, stress: -10, good: false, tip: 'Limited-time hype is designed to make you skip thinking it over.' },
-          { label: 'Sleep on it before deciding', cash: 0, stress: 8, good: true, tip: 'A cooling-off period before a big purchase prevents a lot of regret.' },
+          { label: 'Buy them before they sell out', cash: -55, stress: -8, good: false, tip: 'Countdown timers are there to stop you thinking it over.' },
+          { label: 'Sleep on it before deciding', cash: 0, stress: 4, good: true, tip: 'A cooling-off period prevents a lot of regret.' },
         ],
       },
       {
         id: 'phone_case',
-        prompt: 'Your phone case cracked.',
+        prompt: 'Your phone case cracked and fell off.',
         options: [
-          { label: 'Buy the premium designer case', cash: -35, stress: -5, good: false, tip: 'A basic case protects your phone just as well as an expensive one.' },
-          { label: 'Buy a basic replacement case', cash: -12, stress: 6, good: true, tip: 'Choosing function over brand name is a simple way to save.' },
+          { label: 'Buy a basic $12 case', cash: -12, stress: -2, good: true, tip: 'A basic case protects just as well as a designer one.' },
+          { label: 'Go without a case for now', cash: 0, stress: 6, good: false, tip: 'One drop could mean a $200 screen repair.' },
+          { label: 'Buy the $35 designer case', cash: -35, stress: -3, good: false, tip: 'You are paying for the brand, not more protection.' },
         ],
       },
       {
         id: 'friend_loan',
-        prompt: 'A friend asks to borrow $20 and says they\'ll pay you back.',
+        prompt: 'A friend asks to borrow $20 for a concert. You need that $20 for your bus pass.',
         options: [
-          { label: 'Lend it without a plan to get it back', cash: -20, stress: 10, good: false, tip: 'Informal loans between friends often go unpaid and strain the friendship.' },
-          { label: 'Say you can\'t this time', cash: 0, stress: -3, good: true, tip: 'It\'s okay to say no to a loan you can\'t afford to lose.' },
+          { label: "Lend it anyway, they're your friend", cash: -20, stress: 10, good: false, tip: 'Only lend money you could afford never to get back.' },
+          { label: 'Say no and explain you need it for the bus', cash: 0, stress: 2, good: true, tip: 'It is okay to say no when the money already has a job.' },
+          { label: 'Lend half and hope for the best', cash: -10, stress: 6, good: false, tip: 'Half your bus money is still bus money you will be short.' },
         ],
       },
       {
-        id: 'streaming_bundle',
-        prompt: 'A streaming service offers a "bundle deal" upgrade.',
+        id: 'streaming',
+        prompt: 'You pay for two streaming apps but only watch one.',
         options: [
-          { label: 'Upgrade to the bundle', cash: -15, stress: -4, good: false, tip: 'Subscription upgrades are easy to say yes to and easy to forget you\'re paying for.' },
-          { label: 'Stick with what you have', cash: 0, stress: 4, good: true, tip: 'Reviewing whether you need an upgrade before buying saves money long-term.' },
+          { label: "Cancel the one you don't watch", cash: 8, stress: -1, good: true, tip: 'Small monthly charges you forget about drain a budget.' },
+          { label: 'Keep both, just in case', cash: -8, stress: 2, good: false, tip: 'Paying "just in case" is still paying for nothing.' },
         ],
       },
       {
-        id: 'car_wash_gig',
-        prompt: 'You get offered a quick paid gig helping a neighbor.',
+        id: 'extra_shifts',
+        prompt: 'Your manager offers you extra shifts during exam week.',
         options: [
-          { label: 'Take it and save the pay', cash: 25, stress: 3, good: true, tip: 'Extra income you save instead of spend builds a real cushion.' },
-          { label: 'Take it and spend the pay same-day', cash: 8, stress: -4, good: false, tip: 'Extra income spent immediately never gets a chance to help you later.' },
+          { label: 'Take every shift they offer', cash: 50, stress: 25, good: false, tip: 'More money is not worth failing exams or burning out.' },
+          { label: 'Take one shift on the weekend', cash: 18, stress: 3, good: true, tip: 'Some extra pay without wrecking your study time.' },
         ],
       },
       {
-        id: 'concert_ticket',
-        prompt: 'Tickets for a concert you want just went on sale.',
+        id: 'concert',
+        prompt: 'A band you love is in town. Regular tickets are $30, VIP is $60. You budgeted $30 for fun.',
         options: [
-          { label: 'Buy the VIP ticket', cash: -60, stress: -8, good: false, tip: 'Upgrades like VIP tickets often cost far more than the extra value they add.' },
-          { label: 'Buy the regular ticket', cash: -30, stress: 6, good: true, tip: 'Getting the experience without the upgrade still gets you there.' },
-          { label: 'Skip it this time', cash: 0, stress: 8, good: true, tip: 'Skipping a fun event sometimes is a valid budgeting choice, not a failure.' },
+          { label: 'Buy the regular ticket', cash: -30, stress: -8, good: true, tip: 'You planned for this. Enjoying fun you budgeted for is the point.' },
+          { label: 'Buy the VIP ticket', cash: -60, stress: -8, good: false, tip: 'The upgrade costs double your fun budget for a slightly better view.' },
+          { label: 'Skip it and save the $30', cash: 0, stress: 6, good: false, tip: 'If you planned for fun, skipping it makes the budget harder to stick to.' },
         ],
       },
       {
-        id: 'broken_headphones',
-        prompt: 'Your headphones stopped working.',
+        id: 'headphones',
+        prompt: 'Your headphones broke. You use them every day on the bus.',
         options: [
-          { label: 'Buy the newest premium pair', cash: -45, stress: -6, good: false, tip: 'The newest version rarely justifies its price over a solid mid-range option.' },
-          { label: 'Buy a reliable budget pair', cash: -18, stress: 5, good: true, tip: 'A budget option that does the job is a smart trade-off.' },
+          { label: 'Buy a solid $18 pair', cash: -18, stress: -3, good: true, tip: 'A mid-range pair that lasts is good value for something you use daily.' },
+          { label: 'Buy the $45 newest model', cash: -45, stress: -4, good: false, tip: 'The newest version rarely justifies its price.' },
+          { label: 'Grab the $4 gas-station pair', cash: -4, stress: 4, good: false, tip: 'They will break in weeks. Buying cheap over and over costs more.' },
         ],
       },
       {
-        id: 'group_chat_split',
-        prompt: 'A group order got placed and you owe your share.',
+        id: 'group_order',
+        prompt: 'Your friends ordered pizza together. You owe $14.',
         options: [
-          { label: 'Pay your share right away', cash: -14, stress: 5, good: true, tip: 'Settling shared costs quickly avoids awkwardness and forgotten debts.' },
-          { label: 'Put off paying your share', cash: 0, stress: -2, good: false, tip: 'Delaying small debts to friends can quietly damage trust.' },
+          { label: 'Pay your share right away', cash: -14, stress: -2, good: true, tip: 'Paying friends back quickly keeps things easy.' },
+          { label: 'Wait until someone asks', cash: 0, stress: 4, good: false, tip: 'Waiting to be asked makes friends feel awkward.' },
         ],
       },
       {
-        id: 'impulse_app_sub',
-        prompt: 'An app offers a "free trial" that auto-renews into a paid plan.',
+        id: 'free_trial',
+        prompt: 'An app offers a free trial that turns into $10 a month.',
         options: [
-          { label: 'Sign up without checking the terms', cash: -10, stress: -3, good: false, tip: 'Free trials often auto-bill unless you cancel — always check the terms.' },
-          { label: 'Set a reminder to cancel before it charges', cash: 0, stress: 4, good: true, tip: 'A cancellation reminder is a simple habit that avoids surprise charges.' },
+          { label: 'Sign up and figure it out later', cash: -10, stress: -2, good: false, tip: 'Free trials count on you forgetting to cancel.' },
+          { label: 'Set a reminder to cancel before it charges', cash: 0, stress: 1, good: true, tip: 'A reminder is an easy habit that stops surprise charges.' },
         ],
       },
       {
-        id: 'clothes_sale',
-        prompt: 'A clothing store is having a big sale.',
+        id: 'clothing_sale',
+        prompt: 'The store is having a 50% off sale. You need new jeans.',
         options: [
-          { label: 'Buy several things because they\'re "on sale"', cash: -40, stress: -5, good: false, tip: 'A sale only saves money if you were already planning to buy it.' },
-          { label: 'Buy only what you actually needed', cash: -15, stress: 5, good: true, tip: 'Sticking to your list at a sale prevents overspending on "deals."' },
+          { label: 'Buy just the jeans', cash: -15, stress: -2, good: true, tip: 'A sale saves money on what you already planned to buy.' },
+          { label: "Buy four things since it's half off", cash: -40, stress: -3, good: false, tip: 'Half off something you did not need is not saving.' },
+          { label: 'Skip the jeans and wait for a bigger sale', cash: 0, stress: 4, good: false, tip: 'Waiting on something you need for a better deal can backfire.' },
         ],
       },
       {
-        id: 'savings_goal',
-        prompt: 'You set a goal to save toward something bigger this month.',
+        id: 'pay_yourself_first',
+        prompt: "It's payday. You want $100 saved by summer.",
         options: [
-          { label: 'Move money to savings before spending on anything else', cash: -20, stress: 4, good: true, tip: '"Paying yourself first" means saving happens before spending, not after.' },
-          { label: 'Save whatever is left at the end, if any', cash: 0, stress: -2, good: false, tip: 'Saving "whatever is left" often means saving nothing at all.' },
+          { label: 'Move $20 to savings first', cash: -20, stress: 2, good: true, tip: 'Saving first, then spending, is how savings actually happen.' },
+          { label: "Save whatever's left at the end", cash: 0, stress: -2, good: false, tip: '"Whatever is left" usually turns out to be nothing.' },
         ],
       },
       {
-        id: 'gas_money',
-        prompt: 'You need gas money to get to your job this week.',
+        id: 'bike_brakes',
+        prompt: 'Your bike brakes squeal and feel weak.',
         options: [
-          { label: 'Budget exactly what you need for gas', cash: -12, stress: 5, good: true, tip: 'Budgeting for a known, recurring cost avoids last-minute stress.' },
-          { label: 'Deal with it later if it comes up', cash: 0, stress: 12, good: false, tip: 'Ignoring a predictable cost just moves the stress to later, worse.' },
+          { label: 'Pay $15 to get them fixed', cash: -15, stress: -3, good: true, tip: 'Safety fixes come first. They are cheap next to an accident.' },
+          { label: 'Keep riding, just go slower', cash: 0, stress: 8, good: false, tip: 'Weak brakes fail when you need them most.' },
         ],
       },
     ],
@@ -331,105 +345,106 @@ export const SURVIVE_BANK = {
 
   '9-12': {
     title: 'Independent Living Month',
-    startingCash: 280,
+    startingCash: 400,
     startingStress: 35,
-    incomePerDay: 45,
+    incomePerDay: 60,
     cardPool: [
       {
-        id: 'flat_tire',
-        prompt: 'Your tire blew out on the way to class.',
+        id: 'tire_blowout',
+        prompt: 'Your tire blew out. You drive to work.',
         options: [
-          { label: 'Pay $150 out of savings', cash: -150, stress: -5, good: true, tip: 'Paying cash for an emergency is exactly what an emergency fund is for.' },
-          { label: 'Put it on a high-interest card', cash: -10, stress: 15, good: false, tip: 'Credit feels free today, but interest quietly makes it cost more later.' },
-          { label: 'Take public transit for a week instead', cash: -20, stress: 20, good: false, tip: 'Avoiding a necessary fix doesn\'t make the underlying cost disappear.' },
+          { label: 'Pay $150 for a new tire now', cash: -150, stress: -5, good: true, tip: 'This is what cash on hand is for. The car gets you to your paycheck.' },
+          { label: 'Put it on a 29% card and pay the minimum', cash: -10, stress: 12, good: false, tip: 'At 29%, paying only the minimum can double what the tire costs.' },
+          { label: 'Drive on the spare for a month', cash: 0, stress: 10, good: false, tip: 'Spares are made for short trips, not weeks of commuting.' },
         ],
       },
       {
-        id: 'subscription_creep',
-        prompt: 'You realize you\'re paying for three streaming services you barely use.',
+        id: 'subscriptions',
+        prompt: 'You find three streaming services on your statement. You use one.',
         options: [
-          { label: 'Cancel the ones you don\'t use', cash: 25, stress: -3, good: true, tip: '"Subscription creep" — small recurring charges — quietly drains a budget.' },
-          { label: 'Keep them all "just in case"', cash: -25, stress: 6, good: false, tip: 'Paying for "just in case" access is still paying for something unused.' },
+          { label: 'Cancel the two you never use', cash: 25, stress: -3, good: true, tip: 'Forgotten subscriptions quietly drain a budget.' },
+          { label: 'Keep them all, just in case', cash: -25, stress: 4, good: false, tip: '"Just in case" access is still paying for nothing.' },
         ],
       },
       {
-        id: 'credit_card_offer',
-        prompt: 'You get approved for a new credit card with a big spending limit.',
+        id: 'credit_limit',
+        prompt: 'You got a new credit card with a $3,000 limit.',
         options: [
-          { label: 'Use it only for planned expenses you can repay', cash: 0, stress: 3, good: true, tip: 'A high limit is not the same as money you actually have.' },
-          { label: 'Treat the limit as extra spending money', cash: -180, stress: 20, good: false, tip: 'Credit limits are not income — spending against them creates real debt.' },
+          { label: 'Use it for planned costs and pay it off monthly', cash: 0, stress: 2, good: true, tip: 'Paid off every month, a card builds credit and costs nothing.' },
+          { label: 'Use it for the things you have been wanting', cash: -180, stress: 15, good: false, tip: 'A credit limit is borrowed money, not extra income.' },
         ],
       },
       {
-        id: 'roommate_split',
-        prompt: 'A shared utility bill came in higher than expected.',
+        id: 'utility_bill',
+        prompt: 'The shared electric bill came in high. Your share is $60.',
         options: [
-          { label: 'Pay your exact share promptly', cash: -60, stress: 4, good: true, tip: 'Paying shared costs promptly and fairly keeps roommate finances healthy.' },
-          { label: 'Wait for your roommate to bring it up', cash: 0, stress: 10, good: false, tip: 'Avoiding a bill you owe doesn\'t make it smaller — it makes it awkward.' },
+          { label: 'Pay your share the day it arrives', cash: -60, stress: -3, good: true, tip: 'Paying shared bills fast keeps roommates on good terms.' },
+          { label: 'Wait for your roommate to ask', cash: 0, stress: 8, good: false, tip: 'Avoiding a bill you owe does not make it smaller.' },
         ],
       },
       {
-        id: 'impulse_electronics',
-        prompt: 'A flash sale on electronics pops up on your phone.',
+        id: 'cavity',
+        prompt: 'The dentist found a small cavity. A filling costs $90.',
         options: [
-          { label: 'Buy it — the discount is huge', cash: -220, stress: -8, good: false, tip: 'A big discount on something you didn\'t need is still an unplanned expense.' },
-          { label: 'Close the ad and move on', cash: 0, stress: 5, good: true, tip: 'Flash sales are designed to create urgency you don\'t actually have.' },
+          { label: 'Get the filling now', cash: -90, stress: -3, good: true, tip: 'Small problems stay cheap when you fix them early.' },
+          { label: 'Wait until it actually hurts', cash: 0, stress: 4, good: false, tip: 'A cavity keeps growing. A $90 filling can become a $1,000 root canal.' },
         ],
       },
       {
-        id: 'side_gig',
-        prompt: 'You get offered freelance work with flexible hours.',
+        id: 'certification',
+        prompt: 'Your job offers a free certification course, three evenings a month.',
         options: [
-          { label: 'Take it and save the extra income', cash: 140, stress: 8, good: true, tip: 'Extra income put toward savings builds real financial security.' },
-          { label: 'Take it and immediately upgrade your lifestyle', cash: 40, stress: -4, good: false, tip: '"Lifestyle inflation" — spending more the moment you earn more — erases the benefit of a raise.' },
+          { label: 'Sign up for the course', cash: 0, stress: 6, good: true, tip: 'Free training toward a raise is one of the best deals there is.' },
+          { label: 'Skip it, evenings are for resting', cash: 0, stress: -3, good: false, tip: 'Rest matters, but a free path to higher pay is rare.' },
         ],
       },
       {
-        id: 'emergency_fund_check',
-        prompt: "It's a good time to check in on your emergency fund.",
+        id: 'emergency_fund',
+        prompt: "Nothing's gone wrong lately. You have no emergency fund yet.",
         options: [
-          { label: 'Set aside money toward it this month', cash: -80, stress: -6, good: true, tip: 'An emergency fund built gradually is what turns a crisis into an inconvenience.' },
-          { label: 'Skip it — nothing\'s gone wrong lately', cash: 0, stress: 8, good: false, tip: 'An emergency fund is built before the emergency, not during it.' },
+          { label: 'Move $80 into an emergency fund', cash: -80, stress: -4, good: true, tip: 'An emergency fund is built before the emergency, not during it.' },
+          { label: 'Skip it while things are calm', cash: 0, stress: 4, good: false, tip: 'Calm months are the easiest time to build a cushion.' },
         ],
       },
       {
-        id: 'interest_only_payment',
-        prompt: 'A card statement shows a "minimum payment" option.',
+        id: 'card_statement',
+        prompt: 'Your card statement: $120 balance, $25 minimum payment.',
         options: [
-          { label: 'Pay the full balance', cash: -200, stress: 6, good: true, tip: 'Paying in full avoids interest entirely — minimum payments let it compound.' },
-          { label: 'Pay just the minimum', cash: -30, stress: -3, good: false, tip: 'Minimum payments keep an account "current" while the real balance keeps growing with interest.' },
+          { label: 'Pay the full $120', cash: -120, stress: -2, good: true, tip: 'Paying in full means you pay no interest at all.' },
+          { label: 'Pay the $25 minimum', cash: -25, stress: 5, good: false, tip: 'Paying the minimum lets interest pile up on the rest.' },
         ],
       },
       {
-        id: 'grocery_vs_delivery',
+        id: 'too_tired',
         prompt: "You're too tired to cook again this week.",
         options: [
-          { label: 'Order delivery again', cash: -45, stress: -8, good: false, tip: 'Convenience costs compound fast — delivery fees and markups add up over a month.' },
-          { label: 'Do a quick grocery run instead', cash: -20, stress: 5, good: true, tip: 'Cooking at home is one of the most reliable ways to cut monthly costs.' },
+          { label: 'Order delivery again', cash: -45, stress: -6, good: false, tip: 'Delivery fees and markups add up fast over a month.' },
+          { label: 'Grab easy meals at the grocery store', cash: -20, stress: -2, good: true, tip: 'Easy grocery meals cost a fraction of delivery.' },
+          { label: 'Skip dinner', cash: 0, stress: 8, good: false, tip: 'Going hungry is not a plan. Cheap easy food is.' },
         ],
       },
       {
-        id: 'investment_pitch',
-        prompt: 'A friend pitches you on a "guaranteed" investment opportunity.',
+        id: 'guaranteed_investment',
+        prompt: 'A friend pitches a "guaranteed" investment that doubles your money.',
         options: [
-          { label: 'Research it thoroughly before committing any money', cash: 0, stress: 4, good: true, tip: '"Guaranteed" returns are the biggest red flag in any investment pitch.' },
-          { label: 'Put money in because your friend seems confident', cash: -150, stress: 18, good: false, tip: 'Confidence isn\'t evidence — investing without research risks real losses.' },
+          { label: 'Research it before putting in anything', cash: 0, stress: 3, good: true, tip: '"Guaranteed" high returns are the classic sign of a scam.' },
+          { label: 'Put in $150 since your friend is sure', cash: -150, stress: 15, good: false, tip: 'Confidence is not evidence.' },
         ],
       },
       {
-        id: 'rent_increase',
-        prompt: 'Your landlord notifies you of a rent increase next month.',
+        id: 'health_insurance',
+        prompt: 'Health insurance through work starts next month for $60 a month.',
         options: [
-          { label: 'Adjust your budget now to plan ahead', cash: 0, stress: 5, good: true, tip: 'Adjusting a budget before a known cost hits avoids a scramble later.' },
-          { label: 'Worry about it when the bill actually changes', cash: 0, stress: 15, good: false, tip: 'Waiting until a known cost increase hits just concentrates the stress into one bad month.' },
+          { label: 'Enroll in the plan', cash: -60, stress: -5, good: true, tip: 'One emergency room visit can cost thousands without insurance.' },
+          { label: "Skip it, you're young and healthy", cash: 0, stress: 2, good: false, tip: 'Accidents happen to healthy people too.' },
         ],
       },
       {
-        id: 'bonus_check',
-        prompt: 'You get an unexpected small bonus at work.',
+        id: 'bonus',
+        prompt: 'You got a $100 bonus at work.',
         options: [
-          { label: 'Split it between savings and a small treat', cash: 60, stress: -4, good: true, tip: 'Balancing saving and enjoying a windfall is healthier than doing only one.' },
-          { label: 'Spend the entire bonus', cash: 20, stress: -6, good: false, tip: 'A windfall spent entirely provides no lasting benefit once it\'s gone.' },
+          { label: 'Save most of it and enjoy a little', cash: 70, stress: -4, good: true, tip: 'Saving most and enjoying some is healthier than doing only one.' },
+          { label: 'Spend the whole thing this weekend', cash: 0, stress: -6, good: false, tip: 'A bonus spent in one weekend leaves nothing behind.' },
         ],
       },
     ],

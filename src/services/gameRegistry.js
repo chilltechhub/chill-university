@@ -123,7 +123,7 @@ export const GAME_REGISTRY = {
 
     icon: '🍎',
     color: '#e05858',
-    desc: 'Sort foods by how healthy they are',
+    desc: 'Sort foods by how often to eat them',
 
     enabled: true,
   },

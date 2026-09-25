@@ -14,6 +14,7 @@ import useGradeLevel, { levelForTier } from '../logic/useGradeLevel';
 import { createAdaptiveTier, nextAdaptiveTier, roundLength, STAGE_COUNT } from '../logic/difficultyAdapter';
 import { MIND_BANK } from '../data/gameContent/mindGym';
 import { rotatePick } from '../logic/questionRotation';
+import { shuffle } from '../logic/optionOrder';
 
 const BLURBS = {
   'K-2': 'Naming feelings and calming down.',
@@ -21,8 +22,6 @@ const BLURBS = {
   '6-8': 'Self-talk, reframing, and emotional regulation.',
   '9-12': 'Resilience, burnout, and asking for help.',
 };
-
-function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
 // Rotates through the whole pool across runs, see questionRotation.js.
 function pickNext(pool, avoid = []) {

@@ -23,6 +23,8 @@ export const WORD_BANK = {
     { word: 'jumped',    sentence: 'The frog jumped over the log.',             correct: 'verb',      options: BASE4, explanation: "'Jumped' is an action — action words are verbs." },
     { word: 'teacher',   sentence: 'Our teacher reads us stories every day.',   correct: 'noun',      options: BASE4, explanation: "'Teacher' is a person — people are nouns." },
     { word: 'slowly',    sentence: 'The turtle moved slowly across the path.',  correct: 'adverb',    options: BASE4, explanation: "'Slowly' tells HOW the turtle moved — adverb." },
+    { word: 'fast',      sentence: 'The bunny hops fast.',                      correct: 'adverb',    options: BASE4, explanation: "'Fast' tells HOW the bunny hops — an adverb, even without -ly." },
+    { word: 'slow',      sentence: 'The turtle is slow.',                       correct: 'adjective', options: BASE4, explanation: "'Slow' describes the turtle — adjective. 'Slowly' would tell how it moves." },
     { word: 'giggled',   sentence: 'The baby giggled at the funny face.',       correct: 'verb',      options: BASE4, explanation: "'Giggled' is something the baby did — verb." },
     { word: 'soft',      sentence: 'The kitten had soft fur.',                  correct: 'adjective', options: BASE4, explanation: "'Soft' describes the fur — adjective." },
     { word: 'mountain',  sentence: 'The mountain was covered in snow.',         correct: 'noun',      options: BASE4, explanation: "'Mountain' is a place — noun." },
@@ -47,6 +49,8 @@ export const WORD_BANK = {
     { word: 'freedom',   sentence: 'The prisoners finally tasted freedom.',        correct: 'noun',      options: BASE4, explanation: "'Freedom' is an idea treated as a thing — noun." },
     { word: 'those',     sentence: 'Those belong to my sister.',                   correct: 'pronoun',   options: ['pronoun', 'adjective', 'noun', 'verb'], explanation: "'Those' replaces the name of the objects — pronoun." },
     { word: 'gracefully',sentence: 'The dancer moved gracefully across the stage.',correct: 'adverb',    options: BASE4, explanation: "'Gracefully' tells HOW the dancer moved — adverb." },
+    { word: 'friendly',  sentence: 'Our friendly neighbor waved hello.',        correct: 'adjective', options: BASE4, explanation: "'Friendly' ends in -ly but describes the neighbor — adjective. Not every -ly word is an adverb." },
+    { word: 'soon',      sentence: 'The bus will arrive soon.',                 correct: 'adverb',    options: BASE4, explanation: "'Soon' tells WHEN the bus will arrive — adverb, with no -ly." },
   ],
 
   '6-8': [
@@ -64,6 +68,7 @@ export const WORD_BANK = {
     { word: 'either',    sentence: 'You can have either the cake or the pie.',     correct: 'conjunction', options: ['pronoun', 'conjunction', 'adjective', 'noun'], explanation: "'Either...or' is a pair of conjunctions linking two choices." },
     { word: 'growth',    sentence: 'The company saw rapid growth this year.',      correct: 'noun',      options: BASE4, explanation: "'Growth' names a process treated as a thing — a noun, even though it comes from the verb 'grow'." },
     { word: 'barely',    sentence: 'She barely finished the race in time.',        correct: 'adverb',    options: BASE4, explanation: "'Barely' tells the degree to which she finished — adverb." },
+    { word: 'lonely',    sentence: 'A lonely puppy waited by the door.',        correct: 'adjective', options: BASE4, explanation: "'Lonely' describes the puppy — an adjective that happens to end in -ly." },
     { word: 'whose',     sentence: 'The scientist whose theory was proven right won the prize.', correct: 'pronoun', options: ['pronoun', 'conjunction', 'adjective', 'noun'], explanation: "'Whose' links back to 'the scientist' and shows possession — a relative pronoun." },
   ],
 

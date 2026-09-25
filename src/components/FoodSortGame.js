@@ -16,19 +16,23 @@ import { FOOD_BANK, NUTRITION_TIPS } from '../data/gameContent/foodSort';
 import { rotatePick } from '../logic/questionRotation';
 
 const BLURBS = {
-  'K-2': 'Obvious healthy vs junk food picks.',
-  '3-5': 'Adds "moderate" foods — pizza, cheese, juice.',
+  'K-2': 'Everyday foods vs once-in-a-while treats.',
+  '3-5': 'Adds "sometimes" foods — pizza, cheese, juice.',
   '6-8': 'Sneaky ones — granola bars, trail mix, sports drinks.',
   '9-12': 'Nutrition science — glycemic index, processed protein, additives.',
 };
 
 function getCatConfig(G) {
   return {
-    Healthy:  { color: G.success, label: '✓ Healthy',  bg: G.success + '22' },
-    Moderate: { color: G.warning, label: '~ Moderate', bg: G.warning + '22' },
-    Junk:     { color: G.error,   label: '✗ Junk',     bg: G.error + '22' },
+    Healthy:  { color: G.success, label: 'Every day',       bg: G.success + '22' },
+    Moderate: { color: G.warning, label: 'Sometimes',       bg: G.warning + '22' },
+    Junk:     { color: G.error,   label: 'Once in a while', bg: G.error + '22' },
   };
 }
+
+// The categories are about how OFTEN to eat something, not "good" and
+// "bad" food (see the last NUTRITION_TIP). The data keeps the original
+// Healthy/Moderate/Junk keys; only the labels the player sees changed.
 
 // Rotates through the whole pool across runs, see questionRotation.js.
 function pickNext(pool, avoid = []) {
@@ -205,7 +209,7 @@ export default function FoodSortGame({ onGameEnd }) {
 
         <View style={s.foodCard}>
           <Text style={s.foodEmoji}>{q.emoji}</Text>
-          <Text style={s.foodName}>Is {q.food.replace(/^\S+\s/, '')} healthy, moderate, or junk food?</Text>
+          <Text style={s.foodName}>How often should you have {q.food.replace(/^\S+\s/, '').toLowerCase()}?</Text>
         </View>
 
         <RushTimerBar active={pace === 'rush' && !feedback} durationMs={3000} resetKey={q} onExpire={() => handleAnswer('__TIMEOUT__')} />
@@ -230,7 +234,7 @@ export default function FoodSortGame({ onGameEnd }) {
         {feedback && (
           <View style={[s.feedback, { borderColor: feedback.isCorrect ? G.success : G.error }]}>
             <Text style={[s.feedbackTitle, { color: feedback.isCorrect ? G.success : G.error }]}>
-              {feedback.isCorrect ? '✓ Correct!' : `✗ It's ${feedback.correct}!`}
+              {feedback.isCorrect ? '✓ Correct!' : `✗ It's a "${CAT_CONFIG[feedback.correct]?.label.toLowerCase()}" food`}
             </Text>
             <Text style={s.feedbackFact}>{q.fact}</Text>
           </View>

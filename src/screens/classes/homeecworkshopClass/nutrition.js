@@ -44,7 +44,7 @@ const topics = [
         { heading: 'Balance Every Plate', body: 'A well-planned meal usually includes a protein, a whole grain or starch, and vegetables or fruit — filling roughly half the plate with produce. Prepping ingredients in batches (like chopping vegetables or cooking rice ahead of time) makes weeknight cooking much faster.' },
       ],
       practice: [
-        { question: 'What should you do before writing a grocery list?', options: ['Go to the store immediately', 'Check what food you already have at home', 'Buy only snacks', 'Skip planning meals'], answerIndex: 1, explanation: 'Checking your pantry and fridge first prevents buying duplicates and reduces food waste.' },
+        { question: 'What should you do before writing a grocery list?', options: ['Go to the store right away', 'Check what food you already have', 'Buy only snacks for the week', 'Skip planning any meals'], answerIndex: 1, explanation: 'Checking your pantry and fridge first prevents buying duplicates and reduces food waste.' },
         { question: 'A balanced meal typically fills about half the plate with what?', options: ['Dessert', 'Vegetables or fruit', 'Bread only', 'Soda'], answerIndex: 1, explanation: 'Filling half the plate with vegetables or fruit is a simple way to build a balanced, nutrient-rich meal.' },
       ],
       apply: {
@@ -73,8 +73,8 @@ const topics = [
         { heading: 'Measuring Matters Too', body: 'Safe cooking also means measuring correctly — liquid measuring cups (clear, with a spout) for liquids, and dry measuring cups (leveled off flat with a knife) for dry ingredients like flour or sugar.' },
       ],
       practice: [
-        { question: 'Which tool should you use to measure 1/2 cup of milk?', options: ['A dry measuring cup', 'A clear liquid measuring cup', 'A tablespoon', 'Your hands'], answerIndex: 1, explanation: 'Liquids get measured in a clear cup with a spout so you can check the line at eye level.' },
-        { question: 'Why should raw meat be kept separate from other foods while cooking?', options: ['It smells bad', 'To keep germs from spreading to other food (cross-contamination)', 'It cooks faster alone', 'It is more expensive'], answerIndex: 1, explanation: "Raw meat can carry germs that spread to other foods if they touch — that's called cross-contamination." },
+        { question: 'Which tool should you use to measure 1/2 cup of milk?', options: ['A dry measuring cup', 'A liquid measuring cup', 'A tablespoon, eight times', 'A drinking glass'], answerIndex: 1, explanation: 'Liquids get measured in a clear cup with a spout so you can check the line at eye level.' },
+        { question: 'Why should raw meat be kept separate from other foods while cooking?', options: ['It smells bad', 'To stop germs spreading', 'It cooks faster alone', 'It is more expensive'], answerIndex: 1, explanation: "Raw meat can carry germs that spread to other foods if they touch — that's called cross-contamination." },
       ],
       apply: {
         prompt: 'Find a measuring cup or spoon at home. Measure 1 cup of water and pour it into a clear glass, photographing your measurement at eye level.',
@@ -107,7 +107,7 @@ const topics = [
       ],
       practice: [
         { question: 'Which cooking method uses liquid and long, slow cooking to tenderize tough meat?', options: ['Sautéing', 'Braising', 'Searing only', 'Deep frying'], answerIndex: 1, explanation: 'Braising combines searing with slow cooking in liquid, which breaks down tough fibers over time.' },
-        { question: 'What is the "claw grip" used for in knife skills?', options: ['Holding the pan handle', 'Protecting your fingertips while cutting', 'Sharpening the blade', 'Stirring sauce'], answerIndex: 1, explanation: 'Curling your fingertips under while gripping the food keeps them safely away from the blade.' },
+        { question: 'What is the "claw grip" used for in knife skills?', options: ['Holding the pan handle', 'Protecting your fingers', 'Sharpening the blade', 'Stirring a sauce'], answerIndex: 1, explanation: 'Curling your fingertips under while gripping the food keeps them safely away from the blade.' },
       ],
       apply: {
         prompt: 'With adult supervision, practice the claw grip by dicing one vegetable (like a carrot or bell pepper) into evenly sized pieces.',
@@ -136,7 +136,7 @@ const topics = [
       ],
       practice: [
         { question: 'Which of these is an example of a food allergy rather than a lifestyle choice?', options: ['Vegetarianism', 'A peanut allergy', 'Following a kosher diet', 'Veganism'], answerIndex: 1, explanation: 'A peanut allergy is an immune system reaction and can be medically serious, unlike a chosen diet.' },
-        { question: 'Why do traditional cuisines often differ so much by region?', options: ['Random chance', 'Available ingredients, climate, and trade history shaped local cooking', 'All cuisines are actually the same', 'Governments require it'], answerIndex: 1, explanation: 'What grows locally and what trade brought in over centuries shaped each region\'s traditional dishes.' },
+        { question: 'Why do traditional cuisines often differ so much by region?', options: ['Random chance over time', 'Local ingredients, climate, and trade', 'All cuisines are actually the same', 'Governments require certain dishes to be made'], answerIndex: 1, explanation: 'What grows locally and what trade brought in over centuries shaped each region\'s traditional dishes.' },
       ],
       apply: {
         prompt: 'Research one traditional dish from a culture different from your own. Note its main ingredients and one dietary restriction (allergy, intolerance, or religious rule) that would affect whether someone could eat it.',

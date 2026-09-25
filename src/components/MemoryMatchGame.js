@@ -15,6 +15,7 @@ import RoundCompleteScreen from './RoundCompleteScreen';
 import useGame from '../logic/useGame';
 import useGradeLevel, { tierForLevel } from '../logic/useGradeLevel';
 import { MEMORY_BANK } from '../data/gameContent/memoryMatch';
+import { shuffle } from '../logic/optionOrder';
 
 const PAIR_COUNT = { 'K-2': 6, '3-5': 8, '6-8': 8, '9-12': 10 };
 
@@ -24,8 +25,6 @@ const BLURBS = {
   '6-8': '8 pairs — trickier academic terms.',
   '9-12': '10 pairs — advanced concepts.',
 };
-
-function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
 function buildBoard(bandKey) {
   const count = PAIR_COUNT[bandKey] || 6;

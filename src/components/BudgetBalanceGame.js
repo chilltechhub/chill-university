@@ -9,15 +9,22 @@ import RoundCompleteScreen from './RoundCompleteScreen';
 import useGame from '../logic/useGame';
 import useGradeLevel, { levelForTier } from '../logic/useGradeLevel';
 import { createAdaptiveTier, nextAdaptiveTier, STAGE_COUNT } from '../logic/difficultyAdapter';
-import { BUDGET_BANK } from '../data/gameContent/budgetBalance';
+import { BUDGET_BANK, gradePlan } from '../data/gameContent/budgetBalance';
 import { rotatePick } from '../logic/questionRotation';
 
 const BLURBS = {
-  'K-2': 'Small budgets, obvious needs vs wants.',
-  '3-5': 'Bigger budgets, sneakier "want" items.',
-  '6-8': 'Savings-first thinking and fundraiser math.',
-  '9-12': 'Real-world budgets — rent, loans, paychecks.',
+  'K-2': 'Small budgets. Spot the needs, then fit in a treat.',
+  '3-5': 'Cheaper versions of needs free up money for fun.',
+  '6-8': 'Save first, swap smart, keep what still fits.',
+  '9-12': 'Rent, loans, repairs. Some needs look like wants.',
 };
+
+// Tapping a row cycles it: keep → cheaper version (if it has one) → cut.
+function nextChoice(exp, current) {
+  if (current === 'keep') return exp.swap ? 'swap' : 'cut';
+  if (current === 'swap') return 'cut';
+  return 'keep';
+}
 
 // `avoid` accumulates every scenario title served this run — see the same
 // note on RecipeBuilderGame's pickRecipe.
@@ -36,7 +43,7 @@ export default function BudgetBalanceGame({ onGameEnd }) {
   const [adaptive, setAdaptive] = useState(() => createAdaptiveTier(savedTier));
   const [sc, setSc] = useState(null);
   const [asked, setAsked] = useState(0);
-  const [cuts, setCuts] = useState([]);
+  const [choice, setChoice] = useState([]); // per expense: 'keep' | 'swap' | 'cut'
   const [feedback, setFeedback] = useState(null);
   const [startTime, setStartTime] = useState(Date.now());
   const [roundComplete, setRoundComplete] = useState(null);
@@ -50,47 +57,62 @@ export default function BudgetBalanceGame({ onGameEnd }) {
     const first = pickNext(BUDGET_BANK[levelForTier(initial.tier)], []);
     recentRef.current = [first.title];
     setSc(first);
+    setChoice(first.expenses.map(() => 'keep'));
     setAsked(0);
-    setCuts([]);
     setFeedback(null);
     setStartTime(Date.now());
     setStarted(true);
   };
 
-  const toggleCut = (item) => {
-    if (feedback) return;
-    setCuts(prev => prev.includes(item) ? prev.filter(c => c !== item) : [...prev, item]);
+  const loadScenario = (next) => {
+    setSc(next);
+    setChoice(next.expenses.map(() => 'keep'));
   };
 
-  const totalAfterCuts = sc ? sc.expenses
-    .filter(e => !cuts.includes(e.item))
-    .reduce((sum, e) => sum + e.cost, 0) : 0;
+  const tapExpense = (i) => {
+    if (feedback || !sc) return;
+    setChoice(prev => prev.map((c, idx) => (idx === i ? nextChoice(sc.expenses[i], c) : c)));
+  };
+
+  const costOf = (exp, c) => (c === 'cut' ? 0 : c === 'swap' && exp.swap ? exp.swap.cost : exp.cost);
+  const totalAfterCuts = sc ? sc.expenses.reduce((sum, e, i) => sum + costOf(e, choice[i] || 'keep'), 0) : 0;
 
   const checkAnswer = useCallback(() => {
     if (feedback || !sc) return;
-    const withinBudget = totalAfterCuts <= sc.budget;
-    const cutEssential = cuts.some(c => {
-      const exp = sc.expenses.find(e => e.item === c);
-      return exp?.essential;
-    });
-    const isCorrect = withinBudget && !cutEssential;
+    const result = gradePlan(sc, choice);
+    const isCorrect = result.ok;
     const speed = (Date.now() - startTime) / 1000;
-    game.answer(isCorrect, { speedBonus: speed < 15 ? 5 : 0 });
+    game.answer(isCorrect, { speedBonus: speed < 20 ? 5 : 0 });
 
     const nextAdaptiveState = nextAdaptiveTier(adaptive, isCorrect);
     setAdaptive(nextAdaptiveState);
 
-    let msg = isCorrect
-      ? `✓ Budget balanced! $${totalAfterCuts} of $${sc.budget}`
-      : cutEssential
-        ? '✗ You cut something essential!'
-        : `✗ Still $${totalAfterCuts - sc.budget} over budget!`;
+    // One reason, the most important one first: a cut need, then going
+    // over, then cutting something that still fit.
+    let msg, detail;
+    if (isCorrect) {
+      msg = `✓ Balanced: $${result.total} of $${sc.budget}`;
+      detail = sc.lesson;
+    } else if (result.cutNeeds.length) {
+      const need = result.cutNeeds[0];
+      msg = `✗ ${need.item} is a need`;
+      detail = need.why;
+    } else if (result.overBy > 0) {
+      msg = `✗ Still $${result.overBy} over budget`;
+      detail = sc.expenses.some(e => e.swap)
+        ? 'Look for a cheaper version of something before cutting more.'
+        : 'Find another want to cut.';
+    } else {
+      const want = result.roomFor;
+      const left = sc.budget - result.total;
+      msg = '✗ You cut more than you had to';
+      detail = `You had $${left} left, enough to keep ${want.swap && want.swap.cost < want.cost ? want.swap.item : want.item}. A budget with no fun in it rarely lasts.`;
+    }
 
-    setFeedback({ isCorrect, msg, lesson: sc.lesson });
+    setFeedback({ isCorrect, msg, lesson: detail });
 
     setTimeout(() => {
       setFeedback(null);
-      setCuts([]);
       setStartTime(Date.now());
       const outOfLives = game.lives - (isCorrect ? 0 : 1) <= 0;
       const newAsked = asked + 1;
@@ -109,11 +131,11 @@ export default function BudgetBalanceGame({ onGameEnd }) {
         const pool = BUDGET_BANK[levelForTier(nextAdaptiveState.tier)];
         const next = pickNext(pool, recentRef.current);
         recentRef.current = [...recentRef.current, next.title];
-        setSc(next);
+        loadScenario(next);
         setAsked(newAsked);
       }
-    }, 2200);
-  }, [cuts, sc, totalAfterCuts, feedback, game, asked, startTime, adaptive]);
+    }, isCorrect ? 2600 : 4200);
+  }, [choice, sc, feedback, game, asked, startTime, adaptive]);
 
   const handleClaimPrize = useCallback(() => {
     if (roundComplete?.isLastStage) {
@@ -124,7 +146,7 @@ export default function BudgetBalanceGame({ onGameEnd }) {
     const pool = BUDGET_BANK[levelForTier(roundComplete.nextTier)];
     const next = pickNext(pool, recentRef.current);
     recentRef.current = [...recentRef.current, next.title];
-    setSc(next);
+    loadScenario(next);
     setRoundComplete(null);
   }, [game, roundComplete]);
 
@@ -185,22 +207,40 @@ export default function BudgetBalanceGame({ onGameEnd }) {
           </View>
         </View>
 
-        <Text style={s.sectionLabel}>Tap items to cut (non-essentials only)</Text>
+        <Text style={s.sectionLabel}>
+          Keep your needs. Cut or swap the rest until it fits, but don't cut what still fits.
+        </Text>
+        <Text style={s.tapHint}>
+          Tap an item to {sc.expenses.some(e => e.swap) ? 'swap it for a cheaper version or cut it' : 'cut it'}. Tap again to undo.
+        </Text>
 
-        {sc.expenses.map(exp => {
-          const isCut = cuts.includes(exp.item);
+        {sc.expenses.map((exp, i) => {
+          const c = choice[i] || 'keep';
+          const isCut = c === 'cut';
+          const isSwap = c === 'swap' && !!exp.swap;
+          // Needs are only revealed once the plan has been checked.
+          const reveal = !!feedback && exp.need;
           return (
             <TouchableOpacity
               key={exp.item}
-              style={[s.expense, isCut && s.expenseCut, exp.essential && s.expenseEssential]}
-              onPress={() => toggleCut(exp.item)}
+              style={[s.expense, isCut && s.expenseCut, isSwap && s.expenseSwap, reveal && s.expenseEssential]}
+              onPress={() => tapExpense(i)}
               disabled={!!feedback}
+              accessibilityRole="button"
+              accessibilityLabel={`${isSwap ? exp.swap.item : exp.item}, $${isSwap ? exp.swap.cost : exp.cost}${isCut ? ', cut' : isSwap ? ', cheaper version' : ''}`}
             >
               <View style={{ flex: 1 }}>
-                <Text style={[s.expenseName, isCut && s.expenseNameCut]}>{exp.item}</Text>
-                {exp.essential && <Text style={s.essentialBadge}>essential</Text>}
+                <Text style={[s.expenseName, isCut && s.expenseNameCut]}>{isSwap ? exp.swap.item : exp.item}</Text>
+                {!!exp.note && <Text style={s.expenseNote}>{exp.note}</Text>}
+                {!!exp.swap && c === 'keep' && (
+                  <Text style={s.swapHint}>Cheaper option: ${exp.swap.cost}</Text>
+                )}
+                {reveal && <Text style={s.essentialBadge}>need</Text>}
               </View>
-              <Text style={[s.expenseCost, isCut && s.expenseCostCut]}>${exp.cost}</Text>
+              {isSwap && <Text style={s.oldCost}>${exp.cost}</Text>}
+              <Text style={[s.expenseCost, isCut && s.expenseCostCut, isSwap && s.expenseCostSwap]}>
+                ${isSwap ? exp.swap.cost : exp.cost}
+              </Text>
               {isCut && <Text style={s.cutIcon}>✗</Text>}
             </TouchableOpacity>
           );
@@ -266,12 +306,18 @@ const makeStyles = (G) => StyleSheet.create({
   budgetRow:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: G.goldL, borderRadius: 8, padding: 10, borderWidth: 0.5, borderColor: G.gold },
   budgetLabel:    { fontSize: 12, color: G.gold, fontWeight: '600' },
   budgetAmount:   { fontSize: 20, fontWeight: '700', color: G.gold },
-  sectionLabel:   { fontSize: 11, color: G.muted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 },
+  sectionLabel:   { fontSize: 12, color: G.cream, marginBottom: 4, fontWeight: '600', lineHeight: 17 },
+  tapHint:        { fontSize: 11, color: G.muted, marginBottom: 10 },
   expense:        { flexDirection: 'row', alignItems: 'center', backgroundColor: G.card, borderRadius: 10, padding: 14, marginBottom: 6, borderWidth: 0.5, borderColor: G.border },
   expenseCut:     { backgroundColor: G.error + '11', borderColor: G.error },
-  expenseEssential:{ borderColor: G.teal + '66' },
+  expenseSwap:    { borderColor: G.gold },
+  expenseEssential:{ borderColor: G.teal },
   expenseName:    { fontSize: 14, color: G.cream, fontWeight: '500' },
   expenseNameCut: { textDecorationLine: 'line-through', color: G.muted },
+  expenseNote:    { fontSize: 11, color: G.muted, marginTop: 2 },
+  swapHint:       { fontSize: 10, color: G.gold, marginTop: 2 },
+  oldCost:        { fontSize: 12, color: G.muted, textDecorationLine: 'line-through', marginRight: 6 },
+  expenseCostSwap:{ color: G.gold },
   essentialBadge: { fontSize: 9, color: G.teal, textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 2 },
   expenseCost:    { fontSize: 15, fontWeight: '700', color: G.cream, marginRight: 6 },
   expenseCostCut: { color: G.muted },

@@ -43,8 +43,8 @@ const topics = [
       { heading: 'Ocean Currents', body: 'Currents are like rivers within the ocean — large, steady movements of water caused by wind, temperature differences, and the rotation of the Earth. Currents carry warm and cold water around the globe, which affects weather and helps sea creatures travel and find food.' },
     ],
     practice: [
-      { question: 'What mainly causes ocean waves?', options: ['The Moon\'s gravity', 'Wind blowing across the water', 'Fish swimming', 'Earth spinning'], answerIndex: 1, explanation: 'Waves are primarily created by wind pushing across the surface of the ocean.' },
-      { question: 'What mainly causes ocean tides?', options: ['Wind', 'The Moon\'s gravitational pull', 'Ocean currents', 'Boat traffic'], answerIndex: 1, explanation: "The Moon's gravity pulls on Earth's oceans, causing the regular rise and fall we call tides." },
+      { question: 'What mainly causes ocean waves?', options: ['The Moon\'s gravity', 'Wind on the water', 'Fish swimming in schools', 'Earth spinning'], answerIndex: 1, explanation: 'Waves are primarily created by wind pushing across the surface of the ocean.' },
+      { question: 'What mainly causes ocean tides?', options: ['Wind', 'The Moon\'s pull', 'Ocean currents', 'Boat traffic'], answerIndex: 1, explanation: "The Moon's gravity pulls on Earth's oceans, causing the regular rise and fall we call tides." },
     ],
     apply: {
       prompt: 'If you live near a coast, observe the tide at two different times of day (or look up a tide chart online) and note how the water line changes.',
@@ -75,8 +75,8 @@ const topics = [
       { heading: 'Human Impact on the Ocean', body: 'Human activities like overfishing, plastic pollution, and rising carbon dioxide emissions (which cause ocean acidification and warming) are disrupting marine ecosystems worldwide. Coral reefs, which support roughly a quarter of all marine species, are especially sensitive to small changes in ocean temperature and pH.' },
     ],
     practice: [
-      { question: 'How do ocean currents affect regional climate?', options: ['They have no effect', 'They distribute heat around the planet', 'They only affect rainfall', 'They cool the entire Earth equally'], answerIndex: 1, explanation: 'Currents like the Gulf Stream carry warm or cold water that moderates the climate of nearby land regions.' },
-      { question: 'Why are coral reefs especially vulnerable to climate change?', options: ['They need cold water only', 'They are sensitive to small shifts in temperature and pH', 'They do not support other species', 'They grow faster when oceans warm'], answerIndex: 1, explanation: 'Coral is highly sensitive to changes in ocean temperature and acidity, which can cause bleaching and die-offs.' },
+      { question: 'How do ocean currents affect regional climate?', options: ['They have no effect', 'They move heat around the planet', 'They only affect how much it rains', 'They cool the entire Earth equally'], answerIndex: 1, explanation: 'Currents like the Gulf Stream carry warm or cold water that moderates the climate of nearby land regions.' },
+      { question: 'Why are coral reefs especially vulnerable to climate change?', options: ['They need cold water only', 'Small heat changes harm them', 'They support no other species', 'They grow faster in warm seas'], answerIndex: 1, explanation: 'Coral is highly sensitive to changes in ocean temperature and acidity, which can cause bleaching and die-offs.' },
     ],
     apply: {
       prompt: 'Research one specific human impact on the ocean (such as coral bleaching, plastic pollution, or overfishing) and outline one realistic action individuals can take to reduce it.',

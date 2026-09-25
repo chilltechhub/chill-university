@@ -75,7 +75,7 @@ const topics = [
       { heading: 'Cellular Respiration', body: 'Cellular respiration is the process mitochondria use to convert glucose (sugar) and oxygen into usable energy (ATP), releasing carbon dioxide and water as byproducts. This is essentially the reverse of photosynthesis, and it happens continuously in nearly every cell in your body to power everything you do.' },
     ],
     practice: [
-      { question: 'What is the main purpose of mitosis?', options: ['To create sperm and egg cells', 'To produce two identical daughter cells for growth and repair', 'To break down glucose for energy', 'To combine two different cells'], answerIndex: 1, explanation: 'Mitosis produces two genetically identical daughter cells, allowing organisms to grow and repair tissue.' },
+      { question: 'What is the main purpose of mitosis?', options: ['To create sperm and egg cells', 'To make identical cells for growth', 'To break down glucose for energy', 'To combine two different cells'], answerIndex: 1, explanation: 'Mitosis produces two genetically identical daughter cells, allowing organisms to grow and repair tissue.' },
       { question: 'What do mitochondria produce during cellular respiration?', options: ['Oxygen', 'DNA', 'Usable energy (ATP)', 'Chlorophyll'], answerIndex: 2, explanation: 'Mitochondria convert glucose and oxygen into ATP, the energy currency cells use to function.' },
     ],
     apply: {

@@ -41,8 +41,8 @@ const topics = [
       { heading: 'Loops Save Work — and Catch Bugs', body: 'Loops make programs shorter and easier to fix — change the number in the loop once, and every repetition updates. But a loop that repeats a mistake also repeats it 10 times, so testing what\'s inside the loop first is important.' },
     ],
     practice: [
-      { question: 'If a block inside a "Repeat 4 Times" loop says "Turn Right 90 Degrees," what shape path will your character trace?', options: ['A straight line', 'A full turn back to where it started (like a square)', 'It won\'t move', 'A zigzag'], answerIndex: 1, explanation: 'Four 90-degree turns add up to 360 degrees — a full turn, like tracing a square.' },
-      { question: 'Why use a loop instead of copying a block 10 times?', options: ['Loops run slower', 'Loops make it easy to change how many times something repeats', 'Loops use more blocks', 'There is no difference'], answerIndex: 1, explanation: 'A loop lets you change one number instead of editing 10 separate blocks.' },
+      { question: 'If a block inside a "Repeat 4 Times" loop says "Turn Right 90 Degrees," what shape path will your character trace?', options: ['A straight line', 'A square', 'It won\'t move', 'A zigzag'], answerIndex: 1, explanation: 'Four 90-degree turns add up to 360 degrees — a full turn, like tracing a square.' },
+      { question: 'Why use a loop instead of copying a block 10 times?', options: ['Loops always run slower', 'Easy to change the count', 'Loops use more blocks', 'There is no difference at all'], answerIndex: 1, explanation: 'A loop lets you change one number instead of editing 10 separate blocks.' },
     ],
     apply: {
       prompt: 'Write a short block-style pseudo-code routine (on paper or in Scratch) that makes a character walk forward 3 steps, jump, and repeat that whole sequence 3 times using a loop.',
@@ -67,8 +67,8 @@ const topics = [
       { heading: 'Additive vs. Subtractive Modeling', body: 'Additive modeling joins solid shapes together, like stacking blocks. Subtractive modeling uses a shape as a "hole" to cut material away from another shape — grouping a solid cylinder with a hole-shaped cylinder turns a solid rod into a hollow pipe.' },
     ],
     practice: [
-      { question: 'What modeling technique removes volume from an object to create a window or socket?', options: ['Additive modeling', 'Subtractive modeling (hole grouping)', 'Coloring', 'Rotating'], answerIndex: 1, explanation: 'Subtractive modeling uses a "hole" shape to cut material away, like drilling a hole through a block.' },
-      { question: 'To turn a solid cylinder into a pipe in a CAD program, what would you do?', options: ['Change its color', 'Group it with a smaller hole-cylinder set to "hole"', 'Make it bigger', 'Delete it'], answerIndex: 1, explanation: 'Grouping a solid shape with a same-shaped "hole" cuts out the inside, leaving a hollow pipe.' },
+      { question: 'What modeling technique removes volume from an object to create a window or socket?', options: ['Additive modeling', 'Subtractive modeling', 'Color grouping', 'Mirror-image modeling'], answerIndex: 1, explanation: 'Subtractive modeling uses a "hole" shape to cut material away, like drilling a hole through a block.' },
+      { question: 'To turn a solid cylinder into a pipe in a CAD program, what would you do?', options: ['Change its color', 'Group it with a hole', 'Make it bigger', 'Stretch it taller'], answerIndex: 1, explanation: 'Grouping a solid shape with a same-shaped "hole" cuts out the inside, leaving a hollow pipe.' },
     ],
     apply: {
       prompt: 'Sketch a 3D object (like a mug or a pencil holder) on paper and break down which primitive shapes — and which additive/subtractive steps — you would combine to build it in a CAD program.',
@@ -94,7 +94,7 @@ const topics = [
     ],
     practice: [
       { question: 'Which HTTP method should a client send when submitting a new user registration form?', options: ['GET', 'POST', 'DELETE', 'PATCH'], answerIndex: 1, explanation: 'POST is used to create a new resource, like a new user account.' },
-      { question: 'A GET request to an API returns status code 200. What does that mean?', options: ['The request failed', 'The server is down', 'The request succeeded and returned data', 'The data was deleted'], answerIndex: 2, explanation: '200 OK means the request was successful.' },
+      { question: 'A GET request to an API returns status code 200. What does that mean?', options: ['The request failed', 'The server is down', 'It succeeded', 'The data was deleted'], answerIndex: 2, explanation: '200 OK means the request was successful.' },
     ],
     apply: {
       prompt: 'Use a browser developer console or a free tool like Postman to send a GET request to a public API (e.g. api.github.com/users/octocat) and find the JSON field containing the account name.',

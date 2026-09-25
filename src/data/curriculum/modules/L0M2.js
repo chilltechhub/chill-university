@@ -66,9 +66,9 @@ export default {
         {
           question: 'Your savings account pays 1% and inflation is running at 3%. What\'s happening to your money?',
           options: [
-            'It\'s growing at 1% a year',
-            'It\'s losing roughly 2% of its purchasing power a year',
-            'It\'s safe, because the balance never goes down',
+            'It\'s growing, just slowly, at 1% a year',
+            'It loses about 2% of buying power a year',
+            'It\'s safe, because the balance never drops',
           ],
           answerIndex: 1,
           explain: 'The balance rises, but prices rise faster. Real return is roughly 1% − 3% = −2%. The number on screen going up and your money actually growing aren\'t the same thing.',
@@ -76,8 +76,8 @@ export default {
         {
           question: 'You live in a state with a high income tax. What\'s one feature of Treasury bill interest worth knowing?',
           options: [
-            'It\'s completely tax-free',
-            'It\'s exempt from state and local income tax, though federal tax still applies',
+            'It\'s free of every income tax, federal too',
+            'It\'s free of state tax, but not federal tax',
             'It\'s taxed at a higher rate than bank interest',
           ],
           answerIndex: 1,
@@ -145,9 +145,9 @@ export default {
         {
           question: 'Your minimum payment this month is $150. You pay exactly the minimum every month from now on. What happens?',
           options: [
-            'You pay $150 a month until it\'s gone',
-            'Your payment shrinks as the balance shrinks, so the debt can take many years and cost far more',
-            'The card issuer is required to clear the debt within five years',
+            'You pay $150 a month until the balance is gone',
+            'The payment shrinks, so it takes years and costs more',
+            'The issuer must clear the debt within five years',
           ],
           answerIndex: 1,
           explain: 'Minimums are mostly a percentage of the balance, so they fall as the balance falls. On a $5,000 balance at 24%, holding $150 fixed clears it in under five years; paying the shrinking minimum takes about 19 and a half years.',
@@ -155,9 +155,9 @@ export default {
         {
           question: 'You have a card with 2% cash back and you carry a $3,000 balance at 22%. How do the rewards compare to the interest?',
           options: [
-            'The rewards more than cover the interest',
-            'They roughly cancel out',
-            'The interest is far larger — carrying a balance makes rewards pointless',
+            'The rewards more than make up for the interest',
+            'They roughly cancel each other out over a year',
+            'The interest is far bigger than the rewards',
           ],
           answerIndex: 2,
           explain: 'Carrying $3,000 at 22% costs about $660 a year in interest. To earn $660 in 2% rewards you\'d need to spend $33,000 on the card. Rewards only pay if the balance is cleared in full every month.',
@@ -224,9 +224,9 @@ export default {
         {
           question: 'A company offers to "remove negative items" from your credit report for $99 a month. What\'s true?',
           options: [
-            'They have special access that lets them delete things you can\'t',
-            'Anything they can legitimately do, you can do yourself for free — and accurate negative information can\'t be removed',
-            'This is the only way to fix a report',
+            'They can delete accurate items you can\'t remove',
+            'You can do the legitimate parts yourself, free',
+            'It\'s the only way to get errors fixed on a report',
           ],
           answerIndex: 1,
           explain: 'You can dispute errors directly with the bureaus at no cost. Inaccurate items can be removed; accurate ones generally can\'t, by anyone. Promises otherwise are a warning sign.',
@@ -234,9 +234,9 @@ export default {
         {
           question: 'Someone makes an unauthorised $900 purchase with your card. Which card leaves you better protected?',
           options: [
-            'A debit card — the money comes straight from the bank',
-            'A credit card — your liability is capped at $50 and the money isn\'t missing from your account while it\'s resolved',
-            'They\'re protected identically',
+            'A debit card, since the bank handles fraud quickly',
+            'A credit card: capped liability, your cash untouched',
+            'Both, because federal law protects them identically',
           ],
           answerIndex: 1,
           explain: 'Credit card liability for unauthorised use is capped at $50 (reviewed 2026), and issuers commonly waive it. With a debit card, protection depends on how fast you report, and the money is gone from your account during the dispute.',
@@ -298,9 +298,9 @@ export default {
         {
           question: 'You cancel $150 a month of subscriptions you don\'t use. What makes that a real saving?',
           options: [
-            'Nothing else — cancelling them saves the money automatically',
-            'Setting an automatic transfer of that $150 somewhere separate the same day',
-            'Spending it on something more useful instead',
+            'Nothing more; cancelling saves the money on its own',
+            'Moving that $150 somewhere separate the same day',
+            'Spending it on something more useful to you instead',
           ],
           answerIndex: 1,
           explain: 'Freed money that stays in your checking account gets absorbed into ordinary spending without anyone deciding it should. Redirecting the exact amount automatically is what turns a cancellation into savings you can see.',
@@ -308,9 +308,9 @@ export default {
         {
           question: 'Which is the most accurate description of "shifting from consumer to producer"?',
           options: [
-            'Forming an LLC so personal purchases become tax deductions',
-            'Moving money and time toward things that earn or build future income — savings, skills, and real income-producing activity',
-            'Buying assets on credit as quickly as possible',
+            'Forming an LLC so purchases become deductible',
+            'Putting money and time into things that earn',
+            'Buying assets on credit as fast as you can',
           ],
           answerIndex: 1,
           explain: 'The LLC-for-deductions version gets people into trouble; personal purchases don\'t become deductible because a company exists. Real production is anything that grows future earning power, and it starts well before any business.',

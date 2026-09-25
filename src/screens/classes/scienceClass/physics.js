@@ -47,8 +47,8 @@ const topics = [
       { heading: 'Simple Machines', body: 'Simple machines like levers, pulleys, wheels, and inclined planes don\'t create new energy — they just change the size or direction of a force, making a task easier to do. A ramp, for example, lets you move something heavy upward using less force spread over a longer distance.' },
     ],
     practice: [
-      { question: 'In physics, when does "work" actually happen?', options: ['Whenever you feel tired', 'When a force moves an object over a distance', 'Only when using a machine', 'When energy is destroyed'], answerIndex: 1, explanation: 'Scientific work requires a force to actually move an object across some distance.' },
-      { question: 'What do simple machines like ramps and levers actually do?', options: ['Create new energy', 'Destroy energy', 'Change the size or direction of a force', 'Store electricity'], answerIndex: 2, explanation: 'Simple machines make tasks easier by changing how much force is needed or which direction it is applied, not by creating energy.' },
+      { question: 'In physics, when does "work" actually happen?', options: ['Whenever you feel tired', 'When a force moves something', 'Only when using a machine', 'When energy is destroyed'], answerIndex: 1, explanation: 'Scientific work requires a force to actually move an object across some distance.' },
+      { question: 'What do simple machines like ramps and levers actually do?', options: ['Create new energy', 'Destroy energy', 'Change a force', 'Store electricity'], answerIndex: 2, explanation: 'Simple machines make tasks easier by changing how much force is needed or which direction it is applied, not by creating energy.' },
     ],
     apply: {
       prompt: 'Build a simple ramp (a board propped on books) and compare how much easier it feels to slide a heavy book up the ramp versus lifting it straight up.',

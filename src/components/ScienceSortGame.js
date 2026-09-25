@@ -231,7 +231,7 @@ export default function ScienceSortGame({ onGameEnd }) {
         {feedback && (
           <View style={[s.feedback, { borderColor: feedback.isCorrect ? G.success : G.error }]}>
             <Text style={[s.feedbackTitle, { color: feedback.isCorrect ? G.success : G.error }]}>
-              {feedback.isCorrect ? `✓ Correct! It's a ${feedback.correct}` : `✗ It's actually a ${feedback.correct}`}
+              {feedback.isCorrect ? `✓ Correct: ${feedback.correct}` : `✗ The answer is ${feedback.correct}`}
             </Text>
             <Text style={s.feedbackText}>{feedback.explanation}</Text>
           </View>

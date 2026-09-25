@@ -22,6 +22,7 @@ import useGame from '../logic/useGame';
 import useGradeLevel, { tierForLevel } from '../logic/useGradeLevel';
 import { roundLength, STAGE_COUNT } from '../logic/difficultyAdapter';
 import { SHIFT_BANK } from '../data/gameContent/shiftManager';
+import { shuffle } from '../logic/optionOrder';
 
 const TIER_LABELS = {
   'K-2': 'Opening Shift', '3-5': 'Weekday Lead', '6-8': 'Holiday Rush', '9-12': 'Shift Lead',
@@ -35,8 +36,6 @@ const BLURBS = {
 };
 
 const RISK_MAX = 100;
-
-function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
 export default function ShiftManagerGame({ onGameEnd }) {
   const navigation = useNavigation();
@@ -62,7 +61,11 @@ export default function ShiftManagerGame({ onGameEnd }) {
 
   const startWeek = (b, weekNum) => {
     const days = roundLength(weekNum);
-    const picked = shuffle(b.cardPool).slice(0, Math.min(days, b.cardPool.length));
+    // Options are shuffled too: the content lists the good one wherever it
+    // was written, and a fixed order turns the game into "always tap the top".
+    const picked = shuffle(b.cardPool)
+      .slice(0, Math.min(days, b.cardPool.length))
+      .map(card => ({ ...card, options: shuffle(card.options) }));
     setDeck(picked);
     setDayIndex(0);
     setTill(b.startingTill);

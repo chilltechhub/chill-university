@@ -41,7 +41,7 @@ const topics = [
     ],
     practice: [
       { question: 'If you earn $10 doing yard work and put 20% into your Save jar, how much goes into Save?', options: ['$1.00', '$2.00', '$5.00', '$10.00'], answerIndex: 1, explanation: '20% of $10 is $2.00 (10 × 0.20 = 2).' },
-      { question: 'What is the purpose of the "Give" jar?', options: ['Buying video games', 'Saving for college', 'Helping others or a cause you care about', 'Paying rent'], answerIndex: 2, explanation: 'The Give jar sets money aside specifically to help others, like a charity or a gift.' },
+      { question: 'What is the purpose of the "Give" jar?', options: ['Buying video games', 'Saving for college', 'Helping others', 'Paying rent'], answerIndex: 2, explanation: 'The Give jar sets money aside specifically to help others, like a charity or a gift.' },
     ],
     apply: {
       prompt: 'Create a savings goal tracker on paper for an item you want to buy, showing how much you need to save each week to buy it in 4 weeks.',
@@ -91,7 +91,7 @@ const topics = [
     ],
     practice: [
       { question: 'If you invest $1,000 at 10% annual interest compounded yearly, how much do you have after 2 years?', options: ['$1,100', '$1,200', '$1,210', '$1,000'], answerIndex: 2, explanation: 'Year 1: $1,000 × 1.10 = $1,100. Year 2: $1,100 × 1.10 = $1,210 (interest earns interest).' },
-      { question: 'What makes compound interest different from simple interest?', options: ['Compound interest is always a lower rate', 'Compound interest grows on principal plus previously earned interest', 'Simple interest grows faster', 'There is no real difference'], answerIndex: 1, explanation: 'Compound interest reinvests earned interest, so future interest is calculated on a growing balance.' },
+      { question: 'What makes compound interest different from simple interest?', options: ['Compound interest is always a lower rate', 'It earns interest on past interest too', 'Simple interest grows faster over time', 'Compound interest is only for loans'], answerIndex: 1, explanation: 'Compound interest reinvests earned interest, so future interest is calculated on a growing balance.' },
     ],
     apply: {
       prompt: 'Use an online compound interest calculator to compute the difference at age 60 between investing $100/month starting at age 20 versus starting at age 30 (assuming a 7% average annual return).',

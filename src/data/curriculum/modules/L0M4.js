@@ -73,9 +73,9 @@ export default {
         {
           question: 'You\'re self-employed in the 22% bracket. You spend $1,000 on a legitimate business expense. Roughly how much does the deduction save you?',
           options: [
-            '$1,000 — it\'s a write-off, so it\'s free',
-            'About $350, across income tax and self-employment tax',
-            'Nothing — business expenses don\'t reduce tax',
+            '$1,000, since a write-off makes it free',
+            'About $350, income plus self-employment tax',
+            'About $220, from income tax alone',
           ],
           answerIndex: 1,
           explain: 'The deduction removes $1,000 from taxable profit, cutting roughly $141 of self-employment tax and about $204 of income tax — around $350. You still spent the other $650. Spending just to get a deduction always leaves you poorer.',
@@ -83,9 +83,9 @@ export default {
         {
           question: 'You buy a laptop you use about 60% for your real side business and 40% personally. What\'s deductible?',
           options: [
-            'All of it, because it\'s used for the business',
-            'The business-use share, if you have a reasonable basis for the percentage',
-            'None of it, because it\'s used personally too',
+            'All of it, since the business uses it',
+            'The business share, with a sound basis',
+            'None of it, since you also use it personally',
           ],
           answerIndex: 1,
           explain: 'Mixed-use items are deductible in proportion to genuine business use. Claiming 100% of something you also use personally is one of the most common errors that surfaces in audits.',
@@ -93,9 +93,9 @@ export default {
         {
           question: 'Someone tells you to turn your hobby into an LLC so you can deduct its costs. What\'s the catch?',
           options: [
-            'There isn\'t one — an LLC makes any activity a business',
-            'If it isn\'t genuinely run to make a profit, it can be treated as a hobby: income taxable, expenses not deductible',
-            'LLCs aren\'t allowed to have expenses',
+            'None; an LLC makes any activity a business',
+            'If it isn\'t run for profit, costs don\'t count',
+            'An LLC doubles your paperwork and your taxes',
           ],
           answerIndex: 1,
           explain: 'An LLC is a legal wrapper; it doesn\'t decide whether an activity is a business for tax purposes. A real profit motive does. Treated as a hobby, the income is still taxed but the expenses aren\'t deductible under current rules (reviewed 2026).',
@@ -162,9 +162,9 @@ export default {
         {
           question: 'Your LLC nets $100,000. You elect S-Corp status with a $60,000 salary. Roughly what does that save in payroll-type taxes, before the extra costs of running an S-Corp?',
           options: [
-            '$15,300 — you avoid 15.3% on everything',
-            '$6,120 — 15.3% of the $40,000 distribution',
-            'About $4,950 — and less once payroll, filing and any state costs are counted',
+            '$15,300, since you skip 15.3% on everything',
+            '$6,120, which is 15.3% of the $40,000',
+            'About $4,950, and less after the extra costs',
           ],
           answerIndex: 2,
           explain: 'As a sole proprietor, self-employment tax is 15.3% of 92.35% of profit (reviewed 2026) — about $14,130. With a $60,000 salary, payroll tax is $9,180. The difference is about $4,950. Payroll services, a corporate return and state fees then reduce it further.',
@@ -172,9 +172,9 @@ export default {
         {
           question: 'Forming a single-member LLC does what to your taxes by default?',
           options: [
-            'Lowers them automatically',
-            'Nothing — it\'s taxed like a sole proprietorship unless you make an election',
-            'Makes you a corporation that pays 21%',
+            'Lowers them automatically from day one',
+            'Nothing, unless you make an election',
+            'Makes it a corporation taxed at 21%',
           ],
           answerIndex: 1,
           explain: 'An LLC is a legal structure. By default a single-member LLC is disregarded for income tax and reported on your personal return. Tax treatment only changes if you elect it, for example as an S-Corp.',
@@ -182,9 +182,9 @@ export default {
         {
           question: 'An employer offers to switch you from a $50,000 salaried job to a $50,000 contract doing the same work. What\'s true?',
           options: [
-            'It\'s the same pay',
-            'It\'s effectively a pay cut: you\'d pay the employer\'s half of payroll tax and lose benefits and protections',
-            'It\'s a raise, because you can deduct everything',
+            'It\'s the same pay for the same work',
+            'It\'s a pay cut once taxes and benefits count',
+            'It\'s a raise, since you can deduct everything',
           ],
           answerIndex: 1,
           explain: 'As a contractor you owe self-employment tax on both halves, fund your own benefits, and lose overtime, unemployment insurance and more. If the work is still controlled like a job, the change may also be misclassification.',
@@ -252,9 +252,9 @@ export default {
         {
           question: 'A loan costs 8% interest and the equipment is expected to return 20% a year. What does that comparison leave out?',
           options: [
-            'Nothing — 20% is more than 8%, so it\'s profitable',
-            'Principal repayment and the risk that the return falls short while the payment stays fixed',
-            'Only the tax deduction on the interest',
+            'Nothing; 20% beats 8%, so it\'s clearly profitable',
+            'Repaying principal, and the risk the return falls short',
+            'Only the tax deduction you get on the interest',
           ],
           answerIndex: 1,
           explain: 'Loan payments include principal, which must come from cash flow. And a forecast return can miss while the payment doesn\'t move. Both have to be modelled — especially the downside.',
@@ -263,8 +263,8 @@ export default {
           question: 'You form an LLC, then personally guarantee a $50,000 business loan. The business fails. What happens?',
           options: [
             'The LLC protects you, so you owe nothing',
-            'The lender can pursue you personally for the guaranteed debt',
-            'The debt is cancelled because the business closed',
+            'The lender can come after you personally',
+            'The debt is cancelled when the business closes',
           ],
           answerIndex: 1,
           explain: 'A personal guarantee is a direct promise from you. LLC liability protection doesn\'t extend to debts you\'ve guaranteed personally, which is why guarantees deserve serious thought.',
@@ -328,9 +328,9 @@ export default {
         {
           question: 'Someone earning $170,000 in salary buys a rental that shows a $10,000 depreciation-driven loss. Under the passive loss rules, what generally happens this year?',
           options: [
-            'It reduces their taxable salary by $10,000',
-            'The loss is generally suspended and carried forward, because the special allowance has phased out at that income',
-            'The loss is permanently lost',
+            'It lowers their taxable salary by $10,000',
+            'It\'s usually suspended and carried forward',
+            'The loss is gone for good and can\'t be used',
           ],
           answerIndex: 1,
           explain: 'The $25,000 special allowance phases out between $100,000 and $150,000 of modified AGI (reviewed 2026). Above that, rental losses generally can\'t offset wages — they carry forward to offset future passive income or gains on sale.',
@@ -338,9 +338,9 @@ export default {
         {
           question: 'A business takes a large first-year depreciation deduction on new equipment. What\'s the most accurate description?',
           options: [
-            'The equipment was effectively free',
-            'It moves the deduction earlier; the cost was real, and some benefit can be taxed back if the equipment is sold',
-            'The business will never pay tax on anything related to that equipment',
+            'The equipment ended up being effectively free',
+            'The deduction just comes earlier; the cost was real',
+            'It never gets taxed, even if you sell the equipment',
           ],
           answerIndex: 1,
           explain: 'Accelerated depreciation changes timing. The business still spent the money, and depreciation recapture can apply on sale. It\'s a real incentive to invest — just not a free one.',

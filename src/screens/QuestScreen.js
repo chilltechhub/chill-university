@@ -26,6 +26,7 @@ import {
   addQuestTask, finishQuest, saveQuestResources,
 } from '../logic/questProgress';
 import ReminderComposer from '../components/ReminderComposer';
+import { optionOrder } from '../logic/optionOrder';
 
 // Pass mark for the check: four in five. Missed questions can be retried
 // straight away; the explanations are there to learn from, not to punish.
@@ -42,28 +43,6 @@ function onColor(hex) {
   });
   const lum = 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
   return lum > 0.3 ? '#111827' : '#ffffff';
-}
-
-// Options are written with the right answer wherever it fell, which in
-// practice is usually first. Show them in a shuffled order that is fixed
-// per question (seeded from its text), so the order doesn't jump between
-// visits and saved answers, which are original indexes, stay valid.
-function optionOrder(item) {
-  // FNV-1a hash of the question, then mulberry32 for the shuffle.
-  let seed = 2166136261;
-  for (const ch of item.question) seed = Math.imul(seed ^ ch.charCodeAt(0), 16777619) >>> 0;
-  const rand = () => {
-    seed = (seed + 0x6D2B79F5) >>> 0;
-    let x = Math.imul(seed ^ (seed >>> 15), seed | 1);
-    x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
-    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
-  };
-  const order = item.options.map((_, i) => i);
-  for (let i = order.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    [order[i], order[j]] = [order[j], order[i]];
-  }
-  return order;
 }
 
 // "1,000" or "$960" or " 960 " all read as a number.
@@ -499,7 +478,7 @@ function CheckStep({ quest, progress, onBack, onNext, ui }) {
                 )}
               </View>
             ) : (
-              optionOrder(item).map((oi) => {
+              optionOrder(item.question, item.options.length).map((oi) => {
                 const opt = item.options[oi];
                 const correct = oi === item.answerIndex;
                 const picked = oi === a;

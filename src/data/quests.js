@@ -87,10 +87,10 @@ export const QUESTS = [
       {
         question: 'Why can rereading your notes make you feel more ready than you are?',
         options: [
-          'The words feel familiar, and familiar feels like understanding',
-          'Rereading tires your eyes, so you remember less',
-          'Notes are usually full of mistakes',
-          'It only works if you read out loud',
+          'Familiar words feel like understanding',
+          'Rereading tires your eyes, so less sticks',
+          'Notes are usually full of small mistakes',
+          'It only works if you read the notes out loud',
         ],
         answerIndex: 0,
         explanation: 'Recognizing something is not the same as recalling it. A test asks you to produce the idea, not to recognize it on a page.',
@@ -98,10 +98,10 @@ export const QUESTS = [
       {
         question: 'You write "chloroplasts convert light energy" in your explanation of photosynthesis. What does the technique say to do?',
         options: [
-          'Leave it. It is the correct term',
-          'Check you could say what that means in plain words, and study the part you can\'t',
+          'Leave it. It is the correct scientific term',
+          'Check you could say it in plain words',
           'Add more technical terms so it sounds complete',
-          'Move on to a new topic',
+          'Move on, since that part is already written',
         ],
         answerIndex: 1,
         explanation: 'Jargon is not wrong, but it can hide a gap. If you can\'t unpack a term, that is exactly the part to study.',
@@ -110,9 +110,9 @@ export const QUESTS = [
         question: 'Where does the technique tell you to spend your study time?',
         options: [
           'Rereading the whole chapter from the start',
-          'On the exact spot where your explanation broke down',
-          'On the parts you already explain well',
-          'Memorizing definitions word for word',
+          'The exact spot where your explanation broke',
+          'The parts you can already explain well',
+          'Memorizing the definitions word for word',
         ],
         answerIndex: 1,
         explanation: 'The point of explaining is to find the weak spot. Studying everything again spends most of your time on what you already know.',
@@ -120,10 +120,10 @@ export const QUESTS = [
       {
         question: 'Which of these is retrieval practice?',
         options: [
-          'Highlighting the key sentences',
-          'Closing the book and writing down what you remember',
-          'Reading a summary someone else wrote',
-          'Copying your notes out neatly',
+          'Highlighting the key sentences as you read',
+          'Closing the book and writing what you recall',
+          'Reading a summary that someone else wrote',
+          'Copying your notes out again, neatly',
         ],
         answerIndex: 1,
         explanation: 'Pulling an idea out of memory strengthens it. Highlighting, summaries and recopying all keep the answer in front of you.',
@@ -132,9 +132,9 @@ export const QUESTS = [
         question: 'Which explanation of inflation is the most Feynman-style?',
         options: [
           'A sustained increase in the general price level that reduces purchasing power.',
-          'Prices across the board go up over time, so the same money buys less than it used to.',
-          'A macroeconomic phenomenon driven by monetary expansion.',
-          'What the central bank measures with the CPI.',
+          'Prices across the board go up over time, so the same money buys less.',
+          'A macroeconomic phenomenon driven mainly by monetary expansion over time.',
+          'What the central bank measures each month with the Consumer Price Index.',
         ],
         answerIndex: 1,
         explanation: 'The textbook version is correct, but "general price level" and "purchasing power" each need explaining. The plain version says the same thing in words anyone can follow.',
@@ -142,10 +142,10 @@ export const QUESTS = [
       {
         question: 'An analogy helps an explanation when it…',
         options: [
-          'connects the new idea to something the listener already knows',
-          'replaces the facts with a story',
-          'makes the explanation longer',
-          'uses as many comparisons as possible',
+          'links the new idea to something familiar',
+          'replaces the facts with a memorable story',
+          'makes the explanation longer and fuller',
+          'uses as many comparisons as it possibly can',
         ],
         answerIndex: 0,
         explanation: 'A good analogy is a bridge to something familiar. It should make the real idea clearer, not stand in for it.',
@@ -205,8 +205,8 @@ export const QUESTS = [
         options: [
           'The minimum is a need. The extra is savings and debt',
           'The minimum is a want. The extra is a need',
-          'Both are wants',
-          'Both are needs',
+          'Both are wants, since you chose the loan',
+          'Both are needs, since both pay off the loan',
         ],
         answerIndex: 0,
         explanation: 'The minimum is required, so it is a need. Paying extra is a choice that clears the debt faster, which is what the third bucket is for.',
@@ -214,8 +214,8 @@ export const QUESTS = [
       {
         question: 'Imagine your needs take 65% of your pay. What does the rule treat as the bucket to adjust first?',
         options: [
-          'Wants, while looking for ways to bring needs down over time',
-          'Savings, cut to nothing for good',
+          'Wants, while working to bring needs down',
+          'Savings, cut down to nothing for good',
           'None. Put the difference on a credit card',
           'None. The rule only works at exactly 50%',
         ],
@@ -224,17 +224,17 @@ export const QUESTS = [
       },
       {
         question: 'Which of these is a want, not a need?',
-        options: ['A streaming subscription', 'The electric bill', 'Bus fare to work', 'This week\'s groceries'],
+        options: ['A streaming subscription', 'The monthly electric bill', 'Bus fare to get to work', 'This week\'s groceries'],
         answerIndex: 0,
         explanation: 'Nice to have and possible to cancel. The others keep the lights on, get you to work and feed you.',
       },
       {
         question: 'Why does the rule use take-home pay instead of your salary?',
         options: [
-          'Take-home pay is what you can actually spend, after taxes and deductions',
-          'Salary is always smaller than take-home pay',
-          'Banks require it',
-          'It makes the buckets bigger',
+          'It is what you can actually spend',
+          'Salary is always smaller than take-home',
+          'Banks require it when you open an account',
+          'It makes each of the buckets bigger',
         ],
         answerIndex: 0,
         explanation: 'Salary includes money you never see, like taxes and deductions taken before payday. A plan built on it spends money you don\'t have.',
@@ -242,9 +242,9 @@ export const QUESTS = [
       {
         question: 'Why do many people stick with 50/30/20 when they gave up on tracking every purchase?',
         options: [
-          'It is a few decisions a month instead of hundreds',
+          'A few decisions a month, not hundreds',
           'It guarantees you will never overspend',
-          'Banks enforce the limits for you',
+          'Banks enforce the limits for you automatically',
           'It ignores small purchases, so they don\'t count',
         ],
         answerIndex: 0,
@@ -302,10 +302,10 @@ export const QUESTS = [
       {
         question: 'Why is P@ssword1! weak even though it has a capital, a number and a symbol?',
         options: [
-          'It is a common word with common swaps, which cracking tools try early',
-          'It is too long',
-          'Most sites don\'t allow symbols',
-          'It has no spaces',
+          'It is a common word with common swaps',
+          'It is too long for most sites to accept',
+          'Most sites don\'t allow symbols in passwords',
+          'It has no spaces, so it is easy to guess',
         ],
         answerIndex: 0,
         explanation: 'Tools start with common words and the usual tweaks (a capital first, @ for a, a number and ! at the end). Following the pattern puts you near the front of the line.',
@@ -313,10 +313,10 @@ export const QUESTS = [
       {
         question: 'Four words you chose from your favorite things, or four words picked by rolling dice. Which is stronger?',
         options: [
-          'The dice words. People\'s own choices are predictable',
-          'Your words. They are more personal',
+          'The dice words. People\'s own picks are predictable',
+          'Your words. They are more personal and memorable',
           'They are the same. Four words is four words',
-          'Neither. Passphrases don\'t work',
+          'Neither. Passphrases don\'t really work well',
         ],
         answerIndex: 0,
         explanation: 'Attackers try common words, names and favorites first. Dice give every word on the list the same chance, so there is no shortcut.',
@@ -335,10 +335,10 @@ export const QUESTS = [
       {
         question: 'You use the same password for your email and a game site. The game site gets hacked. What is the risk?',
         options: [
-          'Attackers try that email and password on other sites, including your email',
-          'Only the game account is affected',
-          'Nothing, because the sites aren\'t connected',
-          'Your password gets stronger',
+          'Attackers try that login on other sites too',
+          'Only the game account itself is affected',
+          'Nothing, because the two sites aren\'t connected',
+          'Your email provider gets hacked at the same time',
         ],
         answerIndex: 0,
         explanation: 'This is called credential stuffing. A different password on every site means one leak opens one door, not all of them.',
@@ -346,9 +346,9 @@ export const QUESTS = [
       {
         question: 'What does the U.S. standards agency NIST now say about making people change passwords every few months?',
         options: [
-          'Services shouldn\'t force it. Change a password when there are signs it was stolen',
-          'Everyone should change every password every 90 days',
-          'Change passwords weekly',
+          'Don\'t force it. Change it if it was stolen',
+          'Change every password every 90 days',
+          'Change your passwords once every week',
           'Never change a password, even after a breach',
         ],
         answerIndex: 0,
@@ -403,10 +403,10 @@ export const QUESTS = [
       {
         question: 'Why is sitting next to a window weaker than stepping outside?',
         options: [
-          'You get far less light. Glass reflects some, and indoors you see only a slice of the sky',
-          'Glass blocks all the light that affects your clock',
-          'Light only counts if it touches your skin',
-          'Windows make light too blue',
+          'Glass and walls cut the light a lot',
+          'Glass blocks all of the light your clock uses',
+          'Light only counts if it touches your skin directly',
+          'Windows make the light too blue to help',
         ],
         answerIndex: 0,
         explanation: 'Ordinary window glass lets visible light through. The difference is how much: indoors you get a fraction of what the open sky gives.',
@@ -414,10 +414,10 @@ export const QUESTS = [
       {
         question: 'What does bright light soon after waking do to your body clock?',
         options: [
-          'Shifts it earlier, so you get sleepy earlier at night',
-          'Shifts it later',
-          'Resets it to exactly 24 hours',
-          'Nothing. The clock ignores light',
+          'Shifts it earlier, so you sleep earlier',
+          'Shifts it later, so you stay up later',
+          'Resets it to exactly 24 hours each day',
+          'Nothing. The body clock ignores light',
         ],
         answerIndex: 0,
         explanation: 'Morning light moves the clock earlier and evening light moves it later. That is why the timing of light matters as much as the amount.',
@@ -425,8 +425,8 @@ export const QUESTS = [
       {
         question: 'Why can late-night screen time make it harder to fall asleep?',
         options: [
-          'Bright light late in the day holds back melatonin and pushes your clock later',
-          'Screens make the room hot',
+          'Late bright light delays melatonin',
+          'Screens heat up the room at night',
           'Phones use up the oxygen in the room',
           'It can\'t. Screens have no effect on sleep',
         ],
@@ -435,17 +435,17 @@ export const QUESTS = [
       },
       {
         question: 'Compared with a lit room, an overcast day outside is…',
-        options: ['several times brighter or more', 'about the same', 'darker', 'exactly twice as bright'],
+        options: ['several times brighter or more', 'about the same as a lit room', 'darker than a lit room', 'exactly twice as bright'],
         answerIndex: 0,
         explanation: 'Rooms are usually 50 to 500 lux. An overcast day is around 1,000 and full daylight 10,000 or more. Our eyes adjust, so it doesn\'t look that different.',
       },
       {
         question: 'Why do so many teens find early mornings hard?',
         options: [
-          'Their body clocks naturally shift later during the teen years',
-          'Teens need less sleep than adults',
-          'Teens don\'t make melatonin',
-          'It is only ever bad habits',
+          'Teen body clocks naturally shift later',
+          'Teens need less sleep than adults do',
+          'Teens don\'t make melatonin at night',
+          'It is only ever a matter of bad habits',
         ],
         answerIndex: 0,
         explanation: 'During the teen years melatonin starts later in the evening. Habits matter too, but the shift itself is biological.',
@@ -453,9 +453,9 @@ export const QUESTS = [
       {
         question: 'Which way of getting morning light is both safe and effective?',
         options: [
-          'Spend time outside and look around normally, never straight at the sun',
+          'Go outside and look around, never at the sun',
           'Look directly at the sun for a few seconds',
-          'Sit indoors facing a wall',
+          'Sit indoors facing a wall near a lamp',
           'Look at your phone at full brightness',
         ],
         answerIndex: 0,

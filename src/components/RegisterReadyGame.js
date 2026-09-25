@@ -23,6 +23,7 @@ import useGradeLevel, { levelForTier } from '../logic/useGradeLevel';
 import { createAdaptiveTier, nextAdaptiveTier, roundLength, STAGE_COUNT } from '../logic/difficultyAdapter';
 import { REGISTER_BANK } from '../data/gameContent/registerReady';
 import { rotatePick } from '../logic/questionRotation';
+import { shuffle } from '../logic/optionOrder';
 
 const TIER_LABELS = {
   'K-2': 'Day One', '3-5': 'First Weeks', '6-8': 'Experienced Associate', '9-12': 'Shift Lead',
@@ -34,8 +35,6 @@ const BLURBS = {
   '6-8': 'De-escalation, ID checks, and spotting loss-prevention red flags.',
   '9-12': 'Till discrepancies, override authority, and escalations.',
 };
-
-function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
 // Rotates through the whole pool across runs, see questionRotation.js.
 function pickNext(pool, avoid = []) {

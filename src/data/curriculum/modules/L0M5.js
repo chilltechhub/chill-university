@@ -66,8 +66,8 @@ export default {
           question: 'Someone has $600 a month of surplus, $9,000 on cards at 24%, and no emergency fund. They want to start investing in index funds. What does the tier model suggest comes first?',
           options: [
             'Investing, because starting early matters most',
-            'Stabilising: reducing the 24% debt and building a small cushion',
-            'Starting a business to earn more',
+            'Stabilising: pay down the 24% debt and save a cushion',
+            'Starting a side business to earn more money first',
           ],
           answerIndex: 1,
           explain: 'Paying down a 24% balance is a guaranteed 24% "return"; no investment reliably beats that. Without a cushion, the next surprise lands back on the card. Stabilise first, then build.',
@@ -75,9 +75,9 @@ export default {
         {
           question: 'Why name a single "biggest exposure" in the snapshot?',
           options: [
-            'It\'s required for a loan application',
-            'Because one unprotected risk can undo far more progress than any single growth move adds',
-            'It isn\'t important if income is growing',
+            'Lenders ask for it on a loan application',
+            'One unprotected risk can undo the progress',
+            'It matters less once your income is growing',
           ],
           answerIndex: 1,
           explain: 'Plans naturally chase growth and overlook fragility. Reducing the one thing most likely to set you back is often the highest-value move available.',
@@ -145,9 +145,9 @@ export default {
         {
           question: 'You have a day job and start earning side-business profit. What\'s one simple alternative to making quarterly estimated tax payments?',
           options: [
-            'There isn\'t one — quarterly payments are the only option',
-            'Increasing the tax withheld from your day-job paycheck with a new W-4',
-            'Waiting until April and paying it all then, penalty-free',
+            'None; quarterly payments are the only way',
+            'More withholding at the day job via a W-4',
+            'Paying it all in April with no penalty at all',
           ],
           answerIndex: 1,
           explain: 'Extra withholding from a paycheck can cover tax on side income, and withholding is treated as paid evenly through the year — which can help avoid underpayment penalties. Waiting until April with no payments can trigger them.',
@@ -155,9 +155,9 @@ export default {
         {
           question: 'You design logos for your own clients at night, but you used your employer\'s laptop and your agreement has an IP assignment clause. What\'s the risk?',
           options: [
-            'None — it was your own time',
-            'Your employer may have a claim to what you created, so it\'s worth reading the clause and keeping side work on your own equipment',
-            'The clients own everything automatically',
+            'None, because you did the work on your own time',
+            'Your employer may be able to claim the work',
+            'Your clients own everything you make, automatically',
           ],
           answerIndex: 1,
           explain: 'IP clauses vary, and using employer equipment strengthens an employer\'s potential claim. Reading the agreement and keeping side work entirely on your own devices and time avoids most disputes.',
@@ -165,9 +165,9 @@ export default {
         {
           question: 'At what point does self-employment tax generally apply to side-business profit?',
           options: [
-            'Only above $10,000 of profit',
-            'Once net self-employment earnings reach $400 in a year',
-            'Never, if you also have a W-2 job',
+            'Only once profit passes $10,000 in a year',
+            'Once net earnings reach $400 in a year',
+            'Never, as long as you also have a W-2 job',
           ],
           answerIndex: 1,
           explain: 'Self-employment tax generally applies once net self-employment earnings are $400 or more (reviewed 2026), whether or not you also have a job. It\'s why a quarter of profit is a sensible starting set-aside.',
@@ -236,9 +236,9 @@ export default {
         {
           question: 'A business is short of cash. The owner considers using sales tax collected from customers to cover rent this month. What\'s the problem?',
           options: [
-            'None — it\'s the business\'s money until it\'s due',
-            'Collected sales tax is held on the government\'s behalf; spending it creates serious liability that can fall on the owner personally',
-            'It\'s fine as long as the business is an LLC',
+            'None; it\'s the business\'s money until it\'s due',
+            'That money is the government\'s, and you can be liable',
+            'It\'s fine, because the LLC protects you personally',
           ],
           answerIndex: 1,
           explain: 'Sales tax collected and payroll tax withheld are trust fund taxes. They were never the business\'s money, and unpaid trust fund taxes are pursued aggressively — in the case of payroll withholding, potentially from the responsible individuals personally (reviewed 2026).',
@@ -246,12 +246,12 @@ export default {
         {
           question: 'Your new business\'s income is unpredictable this year. How can you generally avoid an underpayment penalty without knowing exactly what you\'ll earn?',
           options: [
-            'You can\'t — you have to guess correctly',
-            'Pay at least 100% of last year\'s total tax (110% if last year\'s AGI was above $150,000) through withholding and estimates',
-            'Only pay once your income is final in December',
+            'You can\'t; you have to guess your income right',
+            'Pay at least last year\'s total tax during the year',
+            'Pay once in December when your income is final',
           ],
           answerIndex: 1,
-          explain: 'The safe harbour rules let you base payments on last year\'s tax, which you already know (reviewed 2026). That gives a predictable target even when this year is uncertain.',
+          explain: 'The safe harbour rules let you base payments on last year\'s tax, which you already know: 100% of it, or 110% if last year\'s AGI was above $150,000 (reviewed 2026). That gives a predictable target even when this year is uncertain.',
         },
       ],
       exercise: {
@@ -316,9 +316,9 @@ export default {
         {
           question: 'You have $300 a month to put to work. You carry a card at 24% and your employer offers a match you aren\'t collecting. Which order makes most sense?',
           options: [
-            'Invest it all in the stock market for long-term growth',
-            'Capture the match and attack the 24% debt — both beat what investing can reliably earn',
-            'Save it in a checking account until you have more',
+            'Invest it all in the stock market for growth',
+            'Get the full match, then hit the 24% card',
+            'Keep it in checking until you have more',
           ],
           answerIndex: 1,
           explain: 'A match is an immediate 100% return and clearing 24% debt is a guaranteed 24% return. Neither depends on markets. Those come before investing — which is exactly why sequencing matters more than ambition.',
@@ -326,9 +326,9 @@ export default {
         {
           question: 'Which of these is generally available free?',
           options: [
-            'Tax preparation for eligible people through VITA, and small business consulting through an SBDC',
-            'Nothing useful — good help always costs money',
-            'Only credit repair services',
+            'Tax prep through VITA, if you qualify',
+            'Credit repair, if you ask the right company',
+            'Nothing; real help always costs money',
           ],
           answerIndex: 0,
           explain: 'VITA offers free tax preparation for eligible taxpayers (reviewed 2026), Small Business Development Centers and SCORE provide free business help, and nonprofit credit counsellors help with debt. Paying for any of these should be a deliberate choice.',

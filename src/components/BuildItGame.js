@@ -14,15 +14,14 @@ import RoundCompleteScreen from './RoundCompleteScreen';
 import useGame from '../logic/useGame';
 import useGradeLevel, { tierForLevel } from '../logic/useGradeLevel';
 import { BUILD_BANK } from '../data/gameContent/buildIt';
+import { shuffle } from '../logic/optionOrder';
 
 const BLURBS = {
-  'K-2': 'Simple 3-4 piece builds — houses and trees.',
+  'K-2': 'Houses, trees, and bikes. Match each part to its job.',
   '3-5': 'Houses, plants, and sentences (4-5 pieces).',
   '6-8': 'Circuits, cells, and government (4 pieces).',
   '9-12': 'Circuits, careers, and personal finance (5-6 pieces).',
 };
-
-function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
 export default function BuildItGame({ onGameEnd }) {
   const navigation = useNavigation();
@@ -159,7 +158,7 @@ export default function BuildItGame({ onGameEnd }) {
       <ScrollView contentContainerStyle={s.scroll}>
         <Text style={s.progress}>Project {projectIndex + 1} of {queue.length}</Text>
         <Text style={s.projectName}>{project.emoji} {project.name}</Text>
-        <Text style={s.instruction}>Tap a piece below, then tap the slot it belongs in</Text>
+        <Text style={s.instruction}>Tap what a part does, then tap that part. Two pieces don't belong anywhere.</Text>
 
         {/* Slots */}
         <View style={s.slotsGrid}>

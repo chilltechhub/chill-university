@@ -16,7 +16,7 @@ const topics = [
     ],
     practice: [
       { question: 'Why did early people settle near rivers like the Indus?', options: ['Rivers were fun to swim in', 'Rivers gave water and good soil for farming', 'Rivers had no animals nearby', 'Rivers made travel impossible'], answerIndex: 1, explanation: 'A steady water supply and rich soil let people farm instead of always moving around.' },
-      { question: 'What happened when farmers grew extra food?', options: ['Everyone still had to farm', 'Some people could do other jobs, and villages grew into cities', 'The extra food was thrown away', 'People stopped living near the river'], answerIndex: 1, explanation: 'Extra food freed some people to build, make tools, or trade, which helped villages grow into cities.' },
+      { question: 'What happened when farmers grew extra food?', options: ['Everyone still had to farm', 'Some people did other jobs', 'The extra food was thrown away', 'People moved away from rivers'], answerIndex: 1, explanation: 'Extra food freed some people to build, make tools, or trade, which helped villages grow into cities.' },
     ],
     apply: {
       prompt: 'Draw a simple map showing a river with a village on its bank. Label 3 things the river gives the village (like water, fish, or good soil).',
@@ -47,7 +47,7 @@ const topics = [
       { heading: 'Why the Nile Mattered', body: 'The Nile flooded predictably every year, depositing rich silt on its banks. That silt let ancient Egyptian farmers grow surplus food — freeing some people to become builders, priests, and rulers instead of full-time farmers.' },
     ],
     practice: [
-      { question: 'Why was the Nile River essential to ancient Egyptian civilization?', options: ['It never flooded', 'It provided fertile soil for farming and a trade route', 'It was too dangerous to settle near', 'It froze every winter'], answerIndex: 1, explanation: 'Annual flooding deposited fertile silt, and the river also worked as a highway for trade.' },
+      { question: 'Why was the Nile River essential to ancient Egyptian civilization?', options: ['It never flooded', 'Fertile soil and a trade route', 'It was too dangerous to live near', 'It froze every winter'], answerIndex: 1, explanation: 'Annual flooding deposited fertile silt, and the river also worked as a highway for trade.' },
       { question: 'What do Mesopotamia, Egypt, and the Indus Valley civilizations have in common?', options: ['They were all islands', 'They all formed near major rivers', 'They had no agriculture', 'They were all in the same country'], answerIndex: 1, explanation: 'All three grew up in river valleys, which supplied water, fertile soil, and transportation.' },
     ],
     apply: {
@@ -79,8 +79,8 @@ const topics = [
       { heading: 'Collapse Is Not Simple', body: 'Civilizations that seem to "collapse," like the Bronze Age societies of the eastern Mediterranean, rarely vanish for one reason. Historians point to combinations of causes — climate shifts, trade breakdowns, invasions, and internal unrest — that stack up and make a society lose the complexity it once had.' },
     ],
     practice: [
-      { question: 'Why do many historians today question the traditional "checklist" definition of civilization?', options: ['It has too many categories', 'It reflects a Western bias and excludes societies that do not fit it', 'It is too scientific', 'All historians have always agreed on it'], answerIndex: 1, explanation: 'The checklist approach judged societies by criteria rooted in a Western perspective, sidelining societies organized differently.' },
-      { question: 'According to historians, what usually causes a civilization to collapse?', options: ['A single sudden event', 'Multiple combined factors like climate, trade, and conflict', 'Collapse never actually happens', 'Only foreign invasion'], answerIndex: 1, explanation: 'Collapse is typically the result of several stacked pressures rather than one isolated cause.' },
+      { question: 'Why do many historians today question the traditional "checklist" definition of civilization?', options: ['It has too many categories', 'It reflects a Western bias', 'It is too scientific', 'Historians always agreed on it'], answerIndex: 1, explanation: 'The checklist approach judged societies by criteria rooted in a Western perspective, sidelining societies organized differently.' },
+      { question: 'According to historians, what usually causes a civilization to collapse?', options: ['A single sudden event', 'Several factors together', 'Collapse never really happens', 'Only a foreign invasion'], answerIndex: 1, explanation: 'Collapse is typically the result of several stacked pressures rather than one isolated cause.' },
     ],
     apply: {
       prompt: 'Pick one historical or modern society. List 3 factors that could cause it to become unstable (like environment, economy, or conflict), and explain how they might combine.',

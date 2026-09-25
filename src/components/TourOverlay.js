@@ -50,6 +50,7 @@ import { useTour } from '../../context/TourContext';
 import { useProfiles } from '../../context/ProfileAccountsContext';
 import { getGuide } from '../data/guides';
 import PlayerCharacter from './PlayerCharacter';
+import { optionOrder } from '../logic/optionOrder';
 
 const PAD = 10;
 const SCRIM = 'rgba(0,0,0,0.72)';
@@ -247,7 +248,8 @@ export default function TourOverlay() {
                   <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1, marginBottom: s.sm }}>
                     {currentStep.quiz.question}
                   </Text>
-                  {currentStep.quiz.options.map((opt, i) => {
+                  {optionOrder(currentStep.quiz.question, currentStep.quiz.options.length).map((i) => {
+                    const opt = currentStep.quiz.options[i];
                     const answered = quizAnswer !== null;
                     const isRight = i === currentStep.quiz.answerIndex;
                     const isPicked = quizAnswer === i;
