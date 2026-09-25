@@ -11,7 +11,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useIsFocused } from '@react-navigation/native';
+import { useTour } from '../../context/TourContext';
+import { WIDGET_INTROS } from '../data/widgetIntros';
 import { useTheme } from '../../context/ThemeContext';
 import { Button, Eyebrow, Readout } from '../components/ui';
 import { areaColor } from '../data/areaColors';
@@ -863,7 +865,7 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s, radius: r, shadows: sh, style: ui, accent } = useTheme();
   const { showEmojis, showSubtext } = useUIPrefs();
-  const { profile, streakDays, rank, progress, level, points, dailyMissions, subjectProgress } = useUserProgress();
+  const { profile, streakDays, rank, progress, level, points, dailyMissions, subjectProgress, progressEvents } = useUserProgress();
   // The active profile's type is what decides this dashboard's default
   // layout, and `active` is what the entrepreneur widgets scope their vault
   // documents and baseline to.
@@ -873,7 +875,9 @@ export default function HomeScreen() {
   // far, a couple at a time, with no editor. 'dashboard' brings this type's
   // own layout and an editor offering this type's widgets; 'doors' offers
   // all twenty.
-  const { can, opened, isScreenVisible, isGameVisible, signalAction } = useAccess();
+  const { can, opened, isScreenVisible, isGameVisible, signalAction, stageEvents } = useAccess();
+  const { active: tourActive, startLesson } = useTour();
+  const homeFocused = useIsFocused();
   const { background: playerBackground } = useCharacterLoadout({ level, points, rank, streakDays });
   // Set from Settings → Appearance, not on this screen itself.
   const [bgMode] = useSetting(SETTING_KEYS.HOME_BACKGROUND, 'plain');
@@ -1083,7 +1087,9 @@ export default function HomeScreen() {
     // editor (the Hidden tray lists only what's open). Once someone has
     // arranged it, their own order and hides win for those widgets.
     if (!can('dashboard')) {
-      const allowed = new Set(opened?.widgets || []);
+      // homeWidgets, not widgets: Home takes on what the stages open a
+      // couple at a time (homeWidgetsAt in src/logic/experienceStage.js).
+      const allowed = new Set(opened?.homeWidgets || opened?.widgets || []);
       const starter = starterWidgetLayout(opened, WIDGET_KEYS).filter(l => allowed.has(l.key));
       if (!savedLayout) return starter;
       const kept = widgetLayout.filter(l => allowed.has(l.key));
@@ -1150,7 +1156,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (!offeredRef.current || widgetOffer.length || editingWidgets) return;
-    const openNow = opened?.widgets || [];
+    const openNow = opened?.homeWidgets || opened?.widgets || [];
     const persist = (set) => {
       offeredRef.current = set;
       if (offeredKey) AsyncStorage.setItem(offeredKey, JSON.stringify([...set])).catch(() => {});
@@ -1169,6 +1175,58 @@ export default function HomeScreen() {
       .filter(Boolean);
     if (fresh.length) setWidgetOffer(fresh);
   }, [opened, boardLayout, widgetOffer.length, editingWidgets, offeredKey]);
+
+  /* ── "New on Home" ──────────────────────────────────────────────────────
+     Widgets arrive on Home a couple per stage (homeWidgetsAt), and each one
+     that arrives is pointed at and explained once (src/data/widgetIntros.js)
+     rather than just appearing. Waits for a calm Home: no popup up (stage,
+     level-up, widget offer), no walkthrough running, not editing. The first
+     look at a profile records what's already there instead of explaining
+     it, so an existing dashboard never gets a lecture about itself. */
+  const introKey = activeProfile?.id ? `@cth_widget_introduced_${activeProfile.id}` : null;
+  const introducedRef = useRef(null);
+  const [introReady, setIntroReady] = useState(false);
+  useEffect(() => {
+    introducedRef.current = null;
+    setIntroReady(false);
+    if (!introKey) return undefined;
+    let alive = true;
+    AsyncStorage.getItem(introKey)
+      .then(raw => { if (alive) introducedRef.current = raw ? new Set(JSON.parse(raw)) : 'baseline'; })
+      .catch(() => { if (alive) introducedRef.current = 'baseline'; })
+      .finally(() => { if (alive) setIntroReady(true); });
+    return () => { alive = false; };
+  }, [introKey]);
+
+  useEffect(() => {
+    if (!introReady || !introducedRef.current || !homeFocused || tourActive || editingWidgets) return undefined;
+    if (stageEvents?.length || progressEvents?.length || widgetOffer.length) return undefined;
+    const shown = shownBoardLayout.filter(l => !l.hidden).map(l => l.key);
+    const persist = (set) => {
+      introducedRef.current = set;
+      if (introKey) AsyncStorage.setItem(introKey, JSON.stringify([...set])).catch(() => {});
+    };
+    if (introducedRef.current === 'baseline') { persist(new Set(shown)); return undefined; }
+    const known = introducedRef.current;
+    const fresh = shown.filter(k => !known.has(k) && WIDGET_INTROS[k]);
+    if (!fresh.length) return undefined;
+    // Long enough for a widget that has just been added to lay out and
+    // measure, so its highlight lands on it.
+    const timer = setTimeout(() => {
+      startLesson(fresh.map((k, i) => ({
+        id: `widget-${k}`,
+        title: `New on Home${fresh.length > 1 ? ` · ${i + 1} of ${fresh.length}` : ''} · ${WIDGET_DEFS.find(w => w.key === k)?.title || k}`,
+        body: WIDGET_INTROS[k],
+      })), {
+        onEnd: (reason) => {
+          // Knocked off by something else starting: try again later.
+          if (reason === 'replaced') return;
+          persist(new Set([...(introducedRef.current instanceof Set ? introducedRef.current : []), ...fresh]));
+        },
+      });
+    }, 1400);
+    return () => clearTimeout(timer);
+  }, [introReady, homeFocused, tourActive, editingWidgets, stageEvents, progressEvents, widgetOffer.length, shownBoardLayout, introKey, startLesson]);
 
   const closeWidgetOffer = (add) => {
     const keys = widgetOffer.map(w => w.key);

@@ -181,7 +181,10 @@ export default function useFirstVisitTutorial({ tourActive, startScreenTour, pau
       // anyway is how Compass and the Library ended up "seen" on a fresh
       // account that had seen neither. Those get another go next visit.
       markSeen(routeName);
+      // firstVisit: just the basics (FIRST_VISIT in screenTutorials.js).
+      // The full walkthrough is Screen Tutorial in the menu.
       startScreenTour(routeName, {
+        firstVisit: true,
         onEnd: (reason) => { if (reason === 'replaced') forgetSeenScreens([routeName]); },
       });
     }, SETTLE_MS);

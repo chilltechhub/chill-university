@@ -57,7 +57,7 @@ const lowerFirst = (str = '') => str.charAt(0).toLowerCase() + str.slice(1);
  */
 export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
   const { user, profile } = useUserProgress();
-  const { activeObjective, loading } = useAccess();
+  const { activeObjective, loading, purpose } = useAccess();
   const { active: tourActive, startLesson, endTour } = useTour();
   const uid = user?.id || null;
 
@@ -73,6 +73,10 @@ export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
   const skipsRef = useRef(0);
   const runRef = useRef(null); // { key, screen, arrived }
   const greetedRef = useRef(false);
+  // "How to get back" is said once, on the first step that takes someone
+  // into a page that opens on top of another. The welcome tour used to
+  // teach it up front; now it's taught where it's first needed.
+  const backTaughtRef = useRef(false);
 
   useEffect(() => {
     let alive = true;
@@ -147,17 +151,26 @@ export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
     const lead = key === 'claim'
       ? `That's all ${intro.total}. Nice work.`
       : first
-        ? `Your first goal is ${intro.total} quick steps, and I'll show you each one. First: ${lowerFirst(step.label)}.`
+        // Said back in their words, so the first thing the guide does is
+        // start on what they came for, not on a tour of the app.
+        // (The welcome tour has just said "You came here to…", so this
+        // doesn't say it again.)
+        ? `Your first goal: ${intro.total} quick steps${purpose?.you && purpose.key === intro.objective.purpose ? ` to ${purpose.you}` : ''}, and I'll show you each one. First: ${lowerFirst(step.label)}.`
         : intro.done > 0
           ? `That's ${intro.done} of ${intro.total}. Next: ${lowerFirst(step.label)}.`
           : `Next: ${lowerFirst(step.label)}.`;
 
     const goParams = g.params === 'firstArea'
       ? { areaId: (Array.isArray(profile?.active_life_areas) && profile.active_life_areas[0]) || 'physical' }
-      : undefined;
+      : (g.params && typeof g.params === 'object' ? g.params : undefined);
+    const pushed = g.go && !HUBS.has(g.go);
+    const backTip = pushed && !backTaughtRef.current
+      ? ' When you are done, tap the arrow at the top left, or swipe right from the left edge, to go back.'
+      : '';
+    if (backTip) backTaughtRef.current = true;
     const pointAt = {
       title,
-      body: g.say,
+      body: g.say + backTip,
       go: g.go,
       goParams,
       id: g.spot || undefined,
@@ -178,7 +191,7 @@ export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
     const inGame = PLAY_ROUTES.has(routeName);
     setJustTicked(false);
     const lessonSteps = here
-      ? [{ ...pointAt, body: `${lead} ${g.say}`, go: undefined }]
+      ? [{ ...pointAt, body: `${lead} ${g.say}${backTip}`, go: undefined }]
       : [{
           title,
           body: inGame
@@ -207,7 +220,7 @@ export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
         setWaiting(key);
       },
     });
-  }, [intro, key, script, routeName, profile, startLesson, persistMode]);
+  }, [intro, key, script, routeName, profile, purpose, startLesson, persistMode]);
 
   // Start the next piece of guidance once things are calm.
   const scriptScreens = script ? Object.values(script).map(s => s.go) : [];

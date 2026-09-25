@@ -7,7 +7,8 @@
 // AccessContext is the only caller that holds state; everything else asks it
 // (isScreenVisible, isGameVisible, can(...)) so every surface agrees.
 
-import { PATHS, MAX_STAGE, EXPLORING_WIDGET, STAGED_SCREENS, FIRST_GOALS } from '../data/experienceStages';
+import { PATHS, MAX_STAGE, EXPLORING_WIDGET, STAGED_SCREENS, FIRST_GOALS, AIM_OPENS } from '../data/experienceStages';
+import { getPurpose, getObjective } from '../data/objectives';
 
 // 'auto' grows with progress. 'full' is "show me everything", picked in
 // onboarding or Settings. Anything else reads as auto.
@@ -33,7 +34,11 @@ export function pathFor(persona) {
   return PATHS[persona] || PATHS.PERSONAL;
 }
 
-export function firstGoalFor(persona) {
+// The first goal goes by what the person came for when they've said (the
+// purpose's `firstGoal`), and by account type otherwise.
+export function firstGoalFor(persona, purposeKey = null) {
+  const byAim = getPurpose(purposeKey)?.firstGoal;
+  if (byAim && getObjective(byAim)) return { objective: byAim, purpose: purposeKey };
   return FIRST_GOALS[persona] || FIRST_GOALS.PERSONAL;
 }
 
@@ -56,9 +61,15 @@ export function nextStageNeeds({ stage, persona }) {
 }
 
 // Everything the path has opened up to `stage`, flattened. Memoise it per
-// (persona, stage) — every visibility check reads it.
-export function openedAt(persona, stage = MAX_STAGE, { exploring = false } = {}) {
+// (persona, stage, aim) — every visibility check reads it.
+//
+// `aim` is the purpose key someone answered "What did you come here for?"
+// with. What it opens (AIM_OPENS) joins stage 1, and its widgets go first
+// after the lead cards: the thing they came for comes before the rest.
+export function openedAt(persona, stage = MAX_STAGE, { exploring = false, aim = null } = {}) {
+  const extra = AIM_OPENS[aim];
   const reached = pathFor(persona).slice(0, Math.max(1, stage));
+  if (extra) reached.unshift({ ...extra });
   const out = {
     features: new Set(),
     screens: new Set(),
@@ -81,7 +92,37 @@ export function openedAt(persona, stage = MAX_STAGE, { exploring = false } = {})
     const at = Math.min(2, rest.length);
     out.widgets = [...rest.slice(0, at), EXPLORING_WIDGET, ...rest.slice(at)];
   }
+  // Each stage from 2 on leads with one widget of its own (the one its
+  // label promises, like the Quests card); `reached` has the aim's
+  // openings in front when there is an aim, so the path's stages start
+  // one further along.
+  const pathStages = extra ? reached.slice(1) : reached;
+  const headlines = pathStages.slice(1).map(st => (st.widgets || [])[0]).filter(Boolean);
+  out.homeWidgets = homeWidgetsAt(out.widgets, stage, headlines);
   return out;
+}
+
+// What Home actually shows before the 'dashboard' stage. The stages open
+// widgets faster than anyone can take them in (stage 1 alone used to put
+// six on a brand-new Home), so Home starts with the three cards that say
+// who you are, what to do and what's next, and takes on the rest a couple
+// per stage, in the order they opened: what you came for first. Each one
+// that arrives gets pointed at and explained on Home (HomeScreen's
+// "new on Home" note), so two is about as many as is worth reading.
+export const HOME_BASICS = ['hq', 'stageSteps', 'compass', 'goalSteps'];
+export const WIDGETS_PER_STAGE = 2;
+
+// `headlines` is each reached stage's own lead widget: it arrives with its
+// stage, so a stage that says "your first quest" has the Quests card. The
+// rest (what the aim and stage 1 opened, then the other stage widgets) fill
+// the remaining room in the order they opened.
+export function homeWidgetsAt(openedWidgets = [], stage = 1, headlines = []) {
+  const heads = [...new Set(headlines)].filter(k => !HOME_BASICS.includes(k));
+  const queue = openedWidgets.filter(k => !HOME_BASICS.includes(k) && !heads.includes(k));
+  const room = Math.max(0, (stage - 1) * WIDGETS_PER_STAGE - heads.length);
+  const shown = new Set([...heads, ...queue.slice(0, room)]);
+  // In the order they opened, so Home doesn't reshuffle as more arrive.
+  return [...HOME_BASICS, ...openedWidgets.filter(k => shown.has(k))];
 }
 
 /* ─── Visibility ──────────────────────────────────────────────────────────── */
@@ -138,7 +179,7 @@ const LEAD_WIDGETS = ['hq', 'stageSteps', 'focus', 'compass', 'goalSteps', 'desk
 
 export function starterWidgetLayout(opened, allKeys) {
   const known = new Set(allKeys);
-  const opens = (opened?.widgets || []).filter(k => known.has(k));
+  const opens = (opened?.homeWidgets || opened?.widgets || []).filter(k => known.has(k));
   const visible = [...LEAD_WIDGETS.filter(k => opens.includes(k)), ...opens.filter(k => !LEAD_WIDGETS.includes(k))];
   const shown = new Set(visible);
   return [

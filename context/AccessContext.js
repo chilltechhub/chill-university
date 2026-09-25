@@ -113,6 +113,16 @@ export function AccessProvider({ children }) {
   }, []);
 
   const [state, setState] = useState(EMPTY_ACCESS);
+  // Each objective's steps as of the last write, including writes this
+  // render hasn't seen yet. Two signals sent back to back (the Workshop
+  // sends 'project-started' then 'project-next-set' for one save) used to
+  // both read the same pre-tick steps from `state`, so the second write put
+  // back the step the first had just ticked. Found 2026-09-25 on a fresh
+  // account: Start Your Build stuck at 2 of 3. Cleared whenever `state`
+  // catches up, so it only ever bridges writes within one render.
+  const stepsRef = useRef({});
+  useEffect(() => { stepsRef.current = {}; }, [state.objectives]);
+  const latestSteps = (id) => stepsRef.current[id] || state.objectives[id]?.steps || {};
   const [loading, setLoading] = useState(true);
 
   // Local echoes of the two profile columns this context writes, so a toggle
@@ -278,7 +288,13 @@ export function AccessProvider({ children }) {
   const derivedStage = progressReady ? liveStage : Math.max(liveStage, cachedStage || 1);
   const stage = resolveStage({ derived: derivedStage, mode: experienceMode });
   const persona = activeType || null;
-  const opened = useMemo(() => openedAt(persona, stage, { exploring }), [persona, stage, exploring]);
+  // The purpose is also the answer to onboarding's "What did you come here
+  // for?", and what it opens joins stage 1 (AIM_OPENS). Changing it on the
+  // Compass later re-tailors the start the same way.
+  const opened = useMemo(
+    () => openedAt(persona, stage, { exploring, aim: purposeKey }),
+    [persona, stage, exploring, purposeKey]
+  );
   const can = useCallback((cap) => opened.caps.has(cap), [opened]);
 
   // "More of the app is open" — only for stages reached by progress. A
@@ -474,20 +490,21 @@ export function AccessProvider({ children }) {
     return startObjectiveApi(userId, objectiveId);
   }, [userId, applyLocal]);
 
-  // The profile type's simple first goal, with a purpose to go with it if
-  // there isn't one yet — a brand-new account is handed one thing to do
-  // rather than asked what it's here for (it can still change the purpose on
-  // the Compass). Called by onboarding and by Home's Compass card.
+  // The first goal for what the person came for (their purpose), or for
+  // their profile type when they never said — with that type's purpose set
+  // alongside it if there isn't one yet. Called by onboarding and by Home's
+  // Compass card.
   //
-  // Onboarding passes the type it just picked: it calls this before the
-  // master profile exists, when activeType is still whatever the context
-  // had (usually nothing), and the plan has to be the chosen type's.
-  const firstGoal = useMemo(() => firstGoalFor(persona), [persona]);
-  const startFirstGoal = useCallback(async (forPersona) => {
-    const goal = forPersona ? firstGoalFor(forPersona) : firstGoal;
-    if (!purposeKey && goal.purpose) await choosePurpose(goal.purpose);
+  // Onboarding passes the type and aim it just picked: it calls this before
+  // the master profile exists and before the purpose it just wrote has come
+  // back on the profile, and the plan has to be the chosen one.
+  const firstGoal = useMemo(() => firstGoalFor(persona, purposeKey), [persona, purposeKey]);
+  const startFirstGoal = useCallback(async (forPersona, forPurpose) => {
+    const aim = forPurpose || purposeKey;
+    const goal = forPersona || forPurpose ? firstGoalFor(forPersona || persona, aim) : firstGoal;
+    if (!aim && goal.purpose) await choosePurpose(goal.purpose);
     return startObjective(goal.objective);
-  }, [purposeKey, firstGoal, choosePurpose, startObjective]);
+  }, [persona, purposeKey, firstGoal, choosePurpose, startObjective]);
 
   const abandonActiveObjective = useCallback(async () => {
     if (!activeObjectiveId) return {};
@@ -508,11 +525,12 @@ export function AccessProvider({ children }) {
     // it isn't anyone's to tick by hand.
     if (!target || target.locked) return;
 
-    const current = state.objectives[activeObjectiveId]?.steps || {};
+    const current = latestSteps(activeObjectiveId);
     // A counted step (objectives.js `signalCount`) stores a running number,
     // so "tick it by hand" means jump to done rather than flip a flag.
     const steps = { ...current, [stepId]: target.done ? false : true };
     if (!steps[stepId]) delete steps[stepId];
+    stepsRef.current = { ...stepsRef.current, [activeObjectiveId]: steps };
 
     applyLocal(prev => ({
       ...prev,
@@ -539,7 +557,7 @@ export function AccessProvider({ children }) {
     if (!activeObjectiveId || !name) return;
     const objective = getObjective(activeObjectiveId);
     const names = new Set([name, ...Object.values(detail).map(v => `${name}:${v}`)]);
-    const current = state.objectives[activeObjectiveId]?.steps || {};
+    const current = latestSteps(activeObjectiveId);
     const hits = (objective?.steps || []).filter(step => (
       step.signal && names.has(step.signal) && current[step.id] !== true
         && !(typeof current[step.id] === 'number' && current[step.id] >= signalTarget(step))
@@ -555,6 +573,7 @@ export function AccessProvider({ children }) {
       const next = (typeof current[step.id] === 'number' ? current[step.id] : 0) + Math.max(1, times);
       steps[step.id] = next >= target ? true : next;
     });
+    stepsRef.current = { ...stepsRef.current, [activeObjectiveId]: steps };
     applyLocal(prev => ({
       ...prev,
       objectives: {

@@ -34,48 +34,25 @@
 // swipes up/down with arrow buttons as well (GameFeed.js), and pushed
 // screens go back by the arrow or an edge swipe (App.js gestureEnabled).
 
+// Four bubbles since 2026-09-25. It used to be thirteen (top bar, profile,
+// stats, Library pages, life areas, going back, Training...), and the user
+// found that too long to take in before doing anything. Now it's only what
+// every screen shares: the bar at the bottom and the + button. Everything
+// else is taught where it happens, the first time someone gets there — the
+// Library's pages on the Library, going back on the first pushed screen,
+// switching games in the feed (FIRST_VISIT in src/logic/screenTutorials.js).
 export const TOUR_STEPS = [
   {
     id: null,
     go: 'Home',
     title: 'A quick look around',
-    body: "Before your first goal, here's how to get around. It takes about a minute. Tap Next › to move on, Back to see a step again, or Skip if you'd rather explore on your own.",
+    body: "Two things before your first goal. Tap Next › to move on, or Skip if you'd rather go straight in.",
   },
   {
     id: 'nav-tabbar',
     go: 'Home',
     title: 'The bar at the bottom',
-    body: 'This is how you get around. Three places: Library holds your tools, Home is your day, and Training has quick games. Tap one any time, from anywhere.',
-  },
-  {
-    id: 'home-study-play',
-    go: 'Home',
-    title: 'Play (and Study)',
-    body: 'Play starts a quick game. On a Student profile, Study sits beside it and opens a class or your notes. Press and hold either one to choose.',
-  },
-  {
-    id: 'home-stage',
-    go: 'Home',
-    title: 'What to do next',
-    body: 'Your "what now?" card. The app opens up in stages: finish a goal or level up to reach the next one.',
-  },
-  {
-    id: 'topbar-menu',
-    go: 'Home',
-    title: 'Your menu',
-    body: 'Tap this badge for Profile, Help, Settings and Search. "Screen Tutorial" in there explains whatever screen you are on.',
-  },
-  {
-    id: 'topbar-profile',
-    go: 'Home',
-    title: 'Your profile',
-    body: 'Which profile you are using. Tap it to rename it, or add another one later (say, Student next to Personal).',
-  },
-  {
-    id: 'topbar-stats',
-    go: 'Home',
-    title: 'Level, points and the bell',
-    body: 'Right answers and finished steps earn points and level you up. Tap your level to see your profile. The bell holds your reminders and updates.',
+    body: 'Three places: Library holds your tools, Home is your day, and Training has quick games. Tap one any time, from anywhere.',
   },
   {
     id: 'fab',
@@ -84,39 +61,9 @@ export const TOUR_STEPS = [
     body: 'It follows you to every screen. Tap it to jot a note, set a reminder, or drop a thought in your inbox before you lose it.',
   },
   {
-    id: 'library-views',
-    go: 'LibraryScreen',
-    librarySubTab: 'domains',
-    title: 'The Library',
-    body: 'Your tools live here, on three pages: Life, Build and Knowledge. Swipe left or right to switch pages, or tap the title to pick one.',
-  },
-  {
-    id: 'library-life-areas',
-    go: 'LibraryScreen',
-    librarySubTab: 'domains',
-    passthrough: true,
-    allowNext: true,
-    title: 'Your life areas',
-    body: 'Each circle is one part of your life. Tap once to filter the list below it. Double-tap, or press and hold, to open it. Try it now: double-tap one.',
-  },
-  {
-    id: 'lifearea-back',
-    go: 'LifeAreaScreen',
-    goParams: { areaId: 'physical' },
-    stay: true,
-    title: 'Getting back',
-    body: "Pages like this open on top of the one you came from. To go back, tap the arrow at the top left, or swipe right from the left edge of the screen (or use your phone's back button).",
-  },
-  {
-    id: 'training-enter',
-    go: 'Training',
-    title: 'Training',
-    body: 'Quick games that earn points. Tap Enter Training to play. Inside, swipe up or down (or tap the arrows on the right) to switch games, and tap X at the top left to come back.',
-  },
-  {
     id: null,
     go: 'Home',
-    title: "That's the tour",
-    body: "You can replay it any time from Settings. Scroll down Home for your goal and more cards. Next up is your first goal: three small steps, and I'll walk you through each one.",
+    title: "That's all for now",
+    body: "I'll show you the rest as you get to it. Next up is your first goal, and I'll walk you through each step.",
   },
 ];

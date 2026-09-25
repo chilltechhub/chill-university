@@ -8,6 +8,8 @@
 // finishing was a twelve-step tour. What's left here is the two answers
 // that have to exist before the app can render honestly:
 //
+//   0. Aim      — "What did you come here for?" Picks the first goal, what
+//                 the app shows from day one, and the Compass purpose.
 //   1. Persona  — decides the default widgets on Home, the quest line, the
 //                 curriculum track, and which life areas step 2 pre-selects.
 //   2. Sectors  — exactly what the Library tab's life-area grid shows.
@@ -61,7 +63,7 @@ import { useAccess } from '../../context/AccessContext';
 import { useFeatureFlag, useRemoteConfig } from '../../context/RemoteConfigContext';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import {
-  WelcomeStep, PersonaStep, StartModeStep, NameStep, SectorsStep, LookStep, PERSONA_AREA_DEFAULTS, pickFocusHub, buildRecommendations,
+  WelcomeStep, AimStep, PersonaStep, StartModeStep, NameStep, SectorsStep, LookStep, PERSONA_AREA_DEFAULTS, pickFocusHub, buildRecommendations,
 } from './onboarding/steps';
 
 const { width: SW } = Dimensions.get('window');
@@ -97,6 +99,8 @@ const STEPS = [
   // else, and four questions about a thing you cannot picture yet is how an
   // app gets closed on day one. See WelcomeStep in ./onboarding/steps.js.
   { component: WelcomeStep,    title: 'Welcome', subtitle: 'What this app is' },
+  // The question everything else is tailored to. See AimStep.
+  { component: AimStep,        title: 'Aim',     subtitle: 'What you came for' },
   { component: PersonaStep,    title: 'Profile', subtitle: 'Your account type' },
   { component: StartModeStep,  title: 'Start',   subtitle: 'How much to start with' },
   { component: NameStep,       title: 'Name',    subtitle: 'What to call you' },
@@ -123,7 +127,7 @@ export default function MultiStepOnboarding() {
   // Started card on Home instead (and from Settings, as it always was).
   const { setPersonalization } = useTour();
   const { createMasterProfile } = useProfiles();
-  const { setExperienceMode, startFirstGoal } = useAccess();
+  const { setExperienceMode, startFirstGoal, choosePurpose } = useAccess();
   const { refreshProfile } = useUserProgress();
   // Written by the Look step. Device-local, same key Settings' own "Library
   // Sections" editor reads and writes.
@@ -176,7 +180,15 @@ export default function MultiStepOnboarding() {
   // task instead (src/logic/onboardingTasks.js).
   const [data, setData] = useState({
     active_persona:    DEFAULT_PERSONA,
-    // "I'm not sure yet" on the persona step. Not a column — it rides in the
+    // "What did you come here for?" — a purpose key (ONBOARDING_AIMS in
+    // src/data/objectives.js), written to profiles.purpose_key in finish().
+    // Null means unanswered: the first goal then goes by account type.
+    aim:               null,
+    // Set once the profile card has been used, so a later change of aim
+    // stops re-suggesting a type over the person's own pick.
+    persona_touched:   false,
+    // "Find my way" on the aim card (it used to be "I'm not sure yet" on the
+    // persona step). Not a column — it rides in the
     // local draft and lands as the Wayfinder intent flag in finish().
     exploring:         false,
     // 'auto' = start simple and grow; 'full' = show everything now. Not a
@@ -269,6 +281,8 @@ export default function MultiStepOnboarding() {
       setData(prev => ({
         ...prev,
         active_persona:   draft.active_persona || prev.active_persona,
+        aim:              typeof draft.aim === 'string' ? draft.aim : prev.aim,
+        persona_touched:  !!draft.persona_touched,
         exploring:        typeof draft.exploring === 'boolean' ? draft.exploring : prev.exploring,
         experience_mode:  draft.experience_mode === 'full' ? 'full' : prev.experience_mode,
         persona_baseline: draft.persona_baseline || prev.persona_baseline,
@@ -458,6 +472,8 @@ export default function MultiStepOnboarding() {
     saveOnboardingDraft({
       step: nextStep,
       active_persona: data.active_persona,
+      aim: data.aim,
+      persona_touched: !!data.persona_touched,
       exploring: !!data.exploring,
       experience_mode: data.experience_mode,
       persona_baseline: data.persona_baseline,
@@ -545,6 +561,11 @@ export default function MultiStepOnboarding() {
     // pages and going back, before the first goal starts. Home reads this
     // on its first render, so it has to be down before navigating.
     await queueWelcomeTour(userId);
+    // What they came for. choosePurpose sets it locally before its write
+    // goes out, so Home's first render already has the tools it opens
+    // (AIM_OPENS) and the tour already knows what to say. The write itself
+    // is awaited below with the rest of the best-effort work.
+    const aimWrite = data.aim ? choosePurpose(data.aim) : null;
 
     // ── Out of the wizard, immediately ───────────────────────────────────
     // Saved is saved. Nothing below is worth holding someone on this
@@ -583,8 +604,13 @@ export default function MultiStepOnboarding() {
     // would offer it anyway, but landing with it already running means the
     // first thing on screen is a next step rather than a Start button.
     // Someone who asked for everything gets the ordinary Compass instead.
+    if (aimWrite) {
+      try { await aimWrite; }
+      catch (e) { console.warn('onboarding purpose', e?.message); }
+    }
+
     if (data.experience_mode !== 'full') {
-      try { await startFirstGoal(data.active_persona || DEFAULT_PERSONA); }
+      try { await startFirstGoal(data.active_persona || DEFAULT_PERSONA, data.aim || null); }
       catch (e) { console.warn('onboarding first goal', e?.message); }
     }
 

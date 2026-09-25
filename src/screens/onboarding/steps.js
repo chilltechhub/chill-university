@@ -44,7 +44,7 @@ import PlayerCharacter from '../../components/PlayerCharacter';
 import { OUTFITS } from '../../data/characterOptions';
 import { personasFor, defaultPersonaFor, getPersona } from '../../data/personas';
 import { firstGoalFor } from '../../logic/experienceStage';
-import { getObjective } from '../../data/objectives';
+import { getObjective, getPurpose, ONBOARDING_AIMS, AIM_PERSONA } from '../../data/objectives';
 
 const { width: SW } = Dimensions.get('window');
 
@@ -285,7 +285,7 @@ export function WelcomeStep({ theme }) {
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, padding: 12, borderRadius: 12, backgroundColor: c.gold + '14', borderWidth: 1, borderColor: c.gold + '44' }}>
         <Ionicons name="time-outline" size={15} color={c.gold} style={{ marginTop: 1 }} />
         <Text style={{ flex: 1, fontSize: 12.5, color: c.text2, lineHeight: 18 }}>
-          Five quick questions next, about a minute. Then your guide shows you around the app.
+          Six quick questions next, about a minute, starting with what you came here for. Then your guide takes you straight into it.
           Every answer can be changed later in Settings.
         </Text>
       </View>
@@ -293,22 +293,116 @@ export function WelcomeStep({ theme }) {
   );
 }
 
+// ─── What did you come here for? ─────────────────────────────────────────────
+// The question the rest of the app is tailored to. The answer is a purpose
+// (ONBOARDING_AIMS in src/data/objectives.js), and it decides:
+//   - the first goal the guide walks them through (the purpose's firstGoal)
+//   - what's on the map from the first minute (AIM_OPENS in
+//     src/data/experienceStages.js), whatever their account type
+//   - what the Compass hands over after that (the purpose's path)
+// It also pre-selects the account type on the next card, until that card
+// has been touched.
+//
+// The picked tile shows the first goal's steps underneath, so the answer
+// comes back as "here's exactly what we'll do", not a confirmation tick.
+export function AimStep({ data, set, theme, isMinor, ageBand }) {
+  const { c } = theme;
+  const st = stepStyles(theme);
+  const personaCtx = { isMinor, ageBand };
+  const chosen = data.aim ? getPurpose(data.aim) : null;
+  const first = chosen ? getObjective(firstGoalFor(data.active_persona, data.aim).objective) : null;
+
+  const choose = (key) => {
+    set('aim', key);
+    // "Find my way" is the old "I'm not sure yet": Home leads with the
+    // Wayfinder (HomeScreen's layoutForPersona({ exploring })).
+    set('exploring', key === 'direction');
+    if (data.persona_touched) return;
+    const allowed = personasFor(personaCtx).map(p => p.key);
+    const hint = AIM_PERSONA[key];
+    const persona = hint && allowed.includes(hint) ? hint : defaultPersonaFor(personaCtx);
+    set('active_persona', persona);
+    if (!data.areas_touched) set('active_life_areas', PERSONA_AREA_DEFAULTS[persona] || []);
+  };
+
+  return (
+    <View style={st.stepContent}>
+      <Text style={st.stepTitle}>What did you come here for?</Text>
+      <Text style={st.stepSubtitle}>
+        Pick the one that matters most right now. The app starts there, and everything else waits its turn.
+      </Text>
+
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+        {ONBOARDING_AIMS.map(key => {
+          const p = getPurpose(key);
+          if (!p) return null;
+          const sel = data.aim === key;
+          const accent = c[p.accentKey] || c.teal;
+          return (
+            <TouchableOpacity
+              key={key}
+              onPress={() => choose(key)}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: sel }}
+              accessibilityLabel={p.ask}
+              style={{
+                width: '48.5%', minHeight: 58, flexDirection: 'row', alignItems: 'center', gap: 8,
+                paddingVertical: 10, paddingHorizontal: 10, marginBottom: 8, borderRadius: 12,
+                borderWidth: sel ? 1.5 : 1, borderColor: sel ? accent : c.border,
+                backgroundColor: sel ? accent + '18' : c.bg0,
+              }}
+            >
+              <Text style={{ fontSize: 20 }}>{p.emoji}</Text>
+              <Text style={{ flex: 1, fontSize: 13.5, lineHeight: 17, fontWeight: sel ? '700' : '600', color: sel ? accent : c.text1 }}>
+                {p.ask}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {chosen && first ? (
+        <View style={{ marginTop: 6, padding: 14, borderRadius: 12, backgroundColor: c.bg1, borderWidth: 1, borderColor: c.border }}>
+          <Text style={{ fontSize: 12.5, color: c.text3, lineHeight: 18, marginBottom: 10 }}>{chosen.blurb}</Text>
+          <Text style={{ fontSize: 11, color: c.text4, fontFamily: FONTS.mono, textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 6 }}>
+            Where we start · {first.label}
+          </Text>
+          {first.steps.map((step, i) => (
+            <Text key={step.id} style={{ fontSize: 13, color: c.text1, lineHeight: 20 }}>
+              {i + 1}. {step.label}
+            </Text>
+          ))}
+          <Text style={{ fontSize: 12, color: c.text3, lineHeight: 17, marginTop: 8 }}>
+            Your guide walks you through each step. You can change this later on the Compass.
+          </Text>
+        </View>
+      ) : (
+        <Text style={{ fontSize: 12, color: c.text4, lineHeight: 17, marginTop: 4 }}>
+          Not sure? “Find my way” is for exactly that.
+        </Text>
+      )}
+    </View>
+  );
+}
+
+// Second now, and secondary: what someone came for is the card before this
+// (AimStep), and it pre-selects this one. The type still decides which
+// classes and games come first, the dashboard's full layout, and the order
+// the rest of the app opens in.
+//
+// "I'm not sure yet" used to live here. It's "Find my way" on the aim card
+// now, which lands on the age-appropriate default type underneath.
 export function PersonaStep({ data, set, theme, isMinor, ageBand }) {
   const { c } = theme;
   const st = stepStyles(theme);
   const personaCtx = { isMinor, ageBand };
   const options = personasFor(personaCtx);
-  // What "I'm not sure yet" lands on underneath: Personal for an adult,
-  // Student for anyone under 18.
-  const exploringBase = defaultPersonaFor(personaCtx);
   const exploring = !!data.exploring;
-  // Nobody who just said "I don't know yet" should be asked for a baseline
-  // number about the thing they don't know yet.
-  const baseline = data.active_persona && !exploring ? PERSONA_BASELINE[data.active_persona] : null;
   const chosen = data.active_persona ? getPersona(data.active_persona) : null;
+  const aim = data.aim ? getPurpose(data.aim) : null;
 
   const choose = (key) => {
-    set('exploring', false);
+    set('persona_touched', true);
     set('active_persona', key);
     // Pre-fill the Sectors step unless the user has already touched it
     // themselves — re-picking a mission shouldn't silently wipe a hand-made
@@ -318,21 +412,17 @@ export function PersonaStep({ data, set, theme, isMinor, ageBand }) {
     }
   };
 
-  const chooseExploring = () => {
-    set('exploring', true);
-    set('active_persona', exploringBase);
-    if (!data.areas_touched) {
-      set('active_life_areas', PERSONA_AREA_DEFAULTS[exploringBase] || []);
-    }
-  };
-
   return (
     <View style={st.stepContent}>
-      <Text style={st.stepTitle}>What are you mostly here for?</Text>
-      <Text style={st.stepSubtitle}>This picks your first goal and what shows on your Home screen. Not sure? Pick the closest one; you can add another profile later.</Text>
+      <Text style={st.stepTitle}>Which profile fits you?</Text>
+      <Text style={st.stepSubtitle}>
+        {aim
+          ? `We picked the closest one to “${aim.ask}”. It decides which classes and games come first. Your goal stays the same either way.`
+          : 'It decides which classes and games come first. You can add another profile later.'}
+      </Text>
 
       {options.map(p => {
-        const sel = !exploring && data.active_persona === p.key;
+        const sel = data.active_persona === p.key;
         return (
           <TouchableOpacity key={p.key} onPress={() => choose(p.key)}
             accessibilityRole="radio" accessibilityState={{ checked: sel }}
@@ -349,25 +439,6 @@ export function PersonaStep({ data, set, theme, isMinor, ageBand }) {
         );
       })}
 
-      {/* Every option above assumes you already know what you're here for.
-          This one is for everyone who doesn't — it still has to land on a
-          real profile type (the app can't render without one), so it's
-          the age-appropriate default underneath — PERSONAL for an adult,
-          STUDENT for anyone under 18 — plus a flag that makes Home lead
-          with Wayfinder. */}
-      <TouchableOpacity onPress={chooseExploring}
-        accessibilityRole="radio" accessibilityState={{ checked: exploring }}
-        style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: exploring ? c.teal + '18' : c.bg0, borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderStyle: exploring ? 'solid' : 'dashed', borderColor: exploring ? c.teal : c.border }}>
-        <Text style={{ fontSize: 24 }}>🧭</Text>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 15, fontWeight: '600', color: exploring ? c.teal : c.text1, marginBottom: 2 }}>I’m not sure yet</Text>
-          <Text style={{ fontSize: 12, color: c.text3 }}>Help me figure out what I want — and what I’m already good at</Text>
-        </View>
-        <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: exploring ? c.teal : c.border, backgroundColor: exploring ? c.teal : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
-          {exploring && <Ionicons name="checkmark" size={13} color="#fff" />}
-        </View>
-      </TouchableOpacity>
-
       {ageBand === 'kid' ? (
         <Text style={{ fontSize: 11, color: c.text4, lineHeight: 16, marginTop: 4 }}>
           Student is built for your age — lessons, study tools and life areas written for you.
@@ -380,12 +451,10 @@ export function PersonaStep({ data, set, theme, isMinor, ageBand }) {
         </Text>
       )}
 
-      {/* One line on what the pick changes. The full list, the start mode
-          and the name each got their own card: onboarding is one question
-          per card now, with nothing to scroll. */}
+      {/* One line on what the pick changes. */}
       {chosen && (
         <Text style={{ fontSize: 12, color: exploring ? c.teal : chosen.color, marginTop: 8, lineHeight: 17 }}>
-          {exploring ? exploringChanges(exploringBase, ageBand)[0] : chosen.changes?.[0]}
+          {exploring ? exploringChanges(chosen.key, ageBand)[0] : chosen.changes?.[0]}
         </Text>
       )}
     </View>
@@ -401,7 +470,7 @@ export function StartModeStep({ data, set, theme }) {
   const st = stepStyles(theme);
   const exploring = !!data.exploring;
   const chosen = data.active_persona ? getPersona(data.active_persona) : null;
-  const first = chosen ? getObjective(firstGoalFor(data.active_persona).objective) : null;
+  const first = chosen ? getObjective(firstGoalFor(data.active_persona, data.aim).objective) : null;
   return (
     <View style={st.stepContent}>
       <Text style={st.stepTitle}>How much do you want to see at first?</Text>

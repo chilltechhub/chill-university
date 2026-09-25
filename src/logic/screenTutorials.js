@@ -352,8 +352,42 @@ const STARTER_FEATURES = {
 // Which stage opens the full walkthrough for a screen with a starter one.
 const FULL_TUTORIAL_AT = { Home: 'dashboard', LibraryScreen: 'all-tools' };
 
+// What a screen says the FIRST time someone lands on it, on its own. Just
+// the basics: how to move around it and the one thing it's for. The user
+// found the full walkthroughs (four to six bubbles, on every new screen) too
+// much at once, and asked for the app to be introduced as they move around
+// it. The gestures the welcome tour used to teach up front live here now,
+// on the screen where they're used. Screens not listed get their first two
+// steps. Screen Tutorial in the menu always runs the full version.
+const FIRST_VISIT = {
+  LibraryScreen: [
+    { title: 'Three pages', body: 'The Library has three pages: Life, Build and Knowledge. Swipe left or right to switch, or tap the title.', id: 'library-views', librarySubTab: 'domains' },
+    { title: 'Your life areas', body: 'Each circle is one part of your life. Double-tap one, or press and hold it, to open it.', id: 'library-life-areas', librarySubTab: 'domains' },
+  ],
+  LifeAreaScreen: [
+    { title: 'Rate it', body: 'Tap the number that fits this part of your life right now. Nobody else sees it.', id: 'lifearea-rating' },
+    { title: 'Getting back', body: 'Tap the arrow at the top left, or swipe right from the left edge of the screen, to go back. That works on every page like this one.', id: 'lifearea-back' },
+  ],
+  Training: [
+    { title: 'Training', body: 'Quick games that earn points. Tap Enter Training to play. Inside, swipe up or down to switch games, and tap X to come back.', id: 'training-enter' },
+  ],
+  Play: [PLAY_STEPS[0], PLAY_STEPS[2]],
+  PlayGame: [PLAY_STEPS[0], PLAY_STEPS[2]],
+};
+const FIRST_VISIT_STEPS = 2;
+const MORE_NOTE = ' There is more in Screen Tutorial, in the menu at the top left.';
+
 // `can` is AccessContext's stage check; omitted means the full walkthroughs.
-export function buildScreenTutorial(routeName, personalization, { can } = {}) {
+// `firstVisit` is the automatic first-visit version: the basics only.
+export function buildScreenTutorial(routeName, personalization, { can, firstVisit = false } = {}) {
+  if (firstVisit) {
+    if (FIRST_VISIT[routeName]) return FIRST_VISIT[routeName];
+    const full = buildScreenTutorial(routeName, personalization, { can });
+    if (full.length <= FIRST_VISIT_STEPS) return full;
+    const short = full.slice(0, FIRST_VISIT_STEPS);
+    const last = short[short.length - 1];
+    return [...short.slice(0, -1), { ...last, body: last.body + MORE_NOTE }];
+  }
   const starter = !!can && !!FULL_TUTORIAL_AT[routeName] && !can(FULL_TUTORIAL_AT[routeName]);
   const hand = (starter && STARTER_FEATURES[routeName]) || SCREEN_FEATURES[routeName];
   const info = SCREEN_HELP[routeName];

@@ -26,7 +26,11 @@
 //
 //   features  featureCatalog ids of OPEN tools now on the map
 //   screens   routes outside the catalog now on the map (see STAGED_SCREENS)
-//   widgets   Home widgets added to the fixed dashboard, in order
+//   widgets   Home widgets this stage opens, in order. Home takes them on
+//             two per stage (homeWidgetsAt in src/logic/experienceStage.js):
+//             the FIRST one listed arrives with the stage, the rest queue
+//             behind whatever the aim and stage 1 opened. So put the widget
+//             the label promises first, and don't promise the others.
 //   games     training games now listed, by gameRegistry id
 //   fab       quick actions now on the + button
 //   caps      the four bigger openings, one per stage at most:
@@ -63,7 +67,7 @@ const tail = (sixth) => [
   {
     key: 'dashboard',
     label: 'Your dashboard, your way',
-    blurb: 'Rearrange Home, every quick action on the +, and the rest of setup.',
+    blurb: 'Your full dashboard to arrange, every quick action on the +, and the rest of setup.',
     caps: ['dashboard'],
     reteach: ['Home'],
   },
@@ -101,7 +105,7 @@ export const PATHS = {
     {
       key: 'start',
       label: 'Getting started',
-      blurb: 'Home with your first goal, today’s focus and what opens next; Life Areas, the Planner and three games.',
+      blurb: 'Home with your first goal and what opens next; Life Areas, the Planner and three games.',
       features: ['home-desk', 'compass', 'training', 'life-areas', 'planner'],
       screens: ['WayfinderScreen'],
       widgets: ['hq', 'stageSteps', 'focus', 'compass', 'goalSteps', 'lifeAreas'],
@@ -121,14 +125,14 @@ export const PATHS = {
     {
       key: 'games',
       label: 'Three more games and your first quest',
-      blurb: 'Budget Balance, People Skills and Snack Catch, your streak on Home, and quests: an idea, your own research, one real thing to do.',
+      blurb: 'Budget Balance, People Skills and Snack Catch, and quests: an idea, your own research, one real thing to do.',
       games: ['budget', 'people', 'snackcatch'],
       widgets: ['quests', 'habitRings', 'streak'],
     },
     {
       key: 'wayfinder',
       label: 'The Wayfinder on Home',
-      blurb: 'Work out what you want, and today’s drills on your dashboard.',
+      blurb: 'Work out what you want: a few questions, then small things to try.',
       widgets: ['wayfinder', 'dailyDrills'],
     },
     { ...VAULT, widgets: ['wisdom'] },
@@ -150,7 +154,7 @@ export const PATHS = {
     {
       key: 'games',
       label: 'Three more games and your first quest',
-      blurb: 'World Explorer, Word Scramble and Memory Match, your streak on Home, and quests: an idea, your own research, one real thing to do.',
+      blurb: 'World Explorer, Word Scramble and Memory Match, and quests: an idea, your own research, one real thing to do.',
       games: ['world', 'scramble', 'memory'],
       widgets: ['quests', 'dailyDrills', 'streak'],
     },
@@ -193,7 +197,7 @@ export const PATHS = {
     {
       key: 'games',
       label: 'Three more games and your first quest',
-      blurb: 'Career Compass, Budget Balance and Survive the Month, a systems check, and quests: an idea, your own research, one real thing to do.',
+      blurb: 'Career Compass, Budget Balance and Survive the Month, and quests: an idea, your own research, one real thing to do.',
       games: ['career', 'budget', 'survivemonth'],
       widgets: ['quests', 'systemsCheck', 'streak'],
     },
@@ -235,7 +239,7 @@ export const PATHS = {
     {
       key: 'games',
       label: 'Three more games and your first quest',
-      blurb: 'Career Compass, People Skills and Code Breaker, the Vault on Home, and quests: an idea, your own research, one real thing to do.',
+      blurb: 'Career Compass, People Skills and Code Breaker, and quests: an idea, your own research, one real thing to do.',
       games: ['career', 'people', 'codebreaker'],
       widgets: ['quests', 'vaultStatus', 'streak'],
     },
@@ -260,8 +264,73 @@ export const PATHS = {
 
 export const MAX_STAGE = PATHS.PERSONAL.length;
 
-// Onboarding's "I'm not sure yet". Whatever type that landed on, the widget
-// built for not knowing yet joins stage 1, straight under the Compass.
+// What onboarding's "What did you come here for?" adds to stage 1, keyed by
+// the purpose it was answered with (ONBOARDING_AIMS in objectives.js). The
+// thing someone came for is on the map from the first minute, whatever
+// their account type, and its widgets sit on Home right under the lead
+// cards. Everything else still opens stage by stage, second to it.
+//
+// Same fields as a stage. Each aim's first goal (its purpose's `firstGoal`)
+// must be doable with what this plus any type's stage 1 shows;
+// scripts/check-wiring.mjs checks every type against every aim.
+export const AIM_OPENS = {
+  build: {
+    features: ['idea-garden', 'workshop'],
+    widgets: ['builds', 'ideas'],
+    fab: ['project'],
+  },
+  learn: {
+    features: ['classes', 'planner'],
+    widgets: ['classProgress', 'studyBlocks'],
+  },
+  direction: {
+    features: ['life-areas'],
+    screens: ['WayfinderScreen'],
+    widgets: ['wayfinder'],
+  },
+  // Someone who came to see what's in here gets the whole Library at once.
+  // Holding tools back from a person whose goal is finding tools would be
+  // working against them.
+  explore: {
+    features: ['capture', 'planner', 'knowledge-vault'],
+    widgets: ['desk', 'activities', 'ideas'],
+    fab: ['note', 'inbox'],
+    caps: ['all-tools'],
+  },
+  areas: {
+    features: ['life-areas', 'planner'],
+    widgets: ['lifeAreas', 'checkins'],
+  },
+  snapshot: {
+    features: ['life-areas', 'capture'],
+    screens: ['WayfinderScreen'],
+    widgets: ['lifeAreas', 'checkins'],
+    fab: ['inbox'],
+  },
+  store: {
+    features: ['capture', 'knowledge-vault'],
+    // Not vaultStatus: that's the ownership curriculum's document vault,
+    // not the Knowledge Vault. There's no Knowledge Vault widget; the desk
+    // is where saved things turn into the next action.
+    widgets: ['desk', 'ideas'],
+    fab: ['note', 'inbox'],
+  },
+  habits: {
+    features: ['planner', 'capture'],
+    widgets: ['habitRings', 'streak'],
+    fab: ['reminder', 'inbox'],
+  },
+  money: {
+    features: ['life-areas', 'capture'],
+    games: ['budget', 'survivemonth', 'trail'],
+    widgets: ['lifeAreas'],
+    fab: ['inbox'],
+  },
+};
+
+// Onboarding's "Find my way" (it was "I'm not sure yet" on the persona card).
+// Whatever type that landed on, the widget built for not knowing yet joins
+// stage 1, straight under the Compass.
 export const EXPLORING_WIDGET = 'wayfinder';
 
 // Routes outside the feature catalog that still belong to the map. Anything
@@ -285,10 +354,11 @@ export const STAGED_SCREENS = {
   ModerationQueueScreen:   'discover',
 };
 
-// The simple goal each type is handed at the end of onboarding, and the
-// purpose set alongside it so the Compass has one without asking a
-// brand-new account "what are you here for?". The guide walks people
-// through it step by step (src/logic/useGuidedFirstGoal.js).
+// The simple goal each type is handed when there's no answer to "What did
+// you come here for?" (an account from before onboarding asked it), and the
+// purpose set alongside it. With an answer, the purpose's own `firstGoal`
+// wins — see firstGoalFor in src/logic/experienceStage.js. The guide walks
+// people through it step by step (src/logic/useGuidedFirstGoal.js).
 export const FIRST_GOALS = {
   PERSONAL:     { objective: 'first-steps',         purpose: 'habits' },
   STUDENT:      { objective: 'first-study-session', purpose: 'learn' },
