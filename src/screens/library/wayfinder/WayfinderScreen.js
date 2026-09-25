@@ -146,8 +146,24 @@ export default function WayfinderScreen() {
     const stage = route.params?.stage;
     if (!stage || !state) return;
     if (MODULE_STAGES.includes(stage) || stage === 'map') update({ stage });
+    // 'core': the three core question sets, or the map once they're done.
+    // For the guide's "answer the three Wayfinder questions" step, which
+    // otherwise landed on wherever the person last was (a situation plan,
+    // say) while the bubble talked about questions.
+    if (stage === 'core') update(prev => ({ stage: prev.mapReadyAt ? 'map' : 'intro' }));
     navigation.setParams({ stage: undefined });
   }, [route.params?.stage, !!state]);
+
+  // The sheets are Modals, which draw over the whole app, not just this
+  // screen. Leaving the Wayfinder with one open (the guide's "take me to
+  // Home", a tab tap) left it covering whatever came next. Close them on
+  // the way out. Found 2026-09-25.
+  useFocusEffect(useCallback(() => () => {
+    setOpenPathId(null);
+    setOpenLifePathId(null);
+    setReflectId(null);
+    setStatementOpen(false);
+  }, []));
 
   // An experiment that became a task might have been ticked off in the task
   // list rather than here. Notice, so the map can ask how it went.

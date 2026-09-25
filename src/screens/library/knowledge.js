@@ -47,13 +47,17 @@ import LinkifiedText from '../../components/LinkifiedText';
 import TourSpot from '../../components/TourSpot';
 
 // ─── Item kinds ────────────────────────────────────────────────────────────
+// Saving here files a thing: status 'active', the same as sorting it into
+// the Vault from the Capture Inbox. It used to be 'inbox', so every note,
+// bookmark and paper saved in the Vault also turned up in the Inbox's
+// "To Process" list as if it had never been filed (found 2026-09-25 walking
+// the "Keep my info in one place" first goal).
 // One row shape, four profiles layered over it. `type`/`status` are what
-// actually gets written to `captures`, and they match exactly what the three
-// old screens wrote, so nothing new appears (or disappears) anywhere else.
+// actually gets written to `captures`.
 export const KINDS = {
-  note:     { label: 'Note',     plural: 'Notes',     emoji: '📝', icon: 'document-text-outline', colorKey: 'gold',      type: 'note',     status: 'inbox'  },
-  bookmark: { label: 'Bookmark', plural: 'Bookmarks', emoji: '🔗', icon: 'link-outline',          colorKey: 'teal',      type: 'link',     status: 'inbox'  },
-  paper:    { label: 'Paper',    plural: 'Papers',    emoji: '🎓', icon: 'school-outline',        colorKey: 'purple',    type: 'link',     status: 'inbox'  },
+  note:     { label: 'Note',     plural: 'Notes',     emoji: '📝', icon: 'document-text-outline', colorKey: 'gold',      type: 'note',     status: 'active' },
+  bookmark: { label: 'Bookmark', plural: 'Bookmarks', emoji: '🔗', icon: 'link-outline',          colorKey: 'teal',      type: 'link',     status: 'active' },
+  paper:    { label: 'Paper',    plural: 'Papers',    emoji: '🎓', icon: 'school-outline',        colorKey: 'purple',    type: 'link',     status: 'active' },
   tool:     { label: 'Tool',     plural: 'Tools',     emoji: '🛠️', icon: 'construct-outline',     colorKey: 'financial', type: 'resource', status: 'active' },
 };
 const KIND_KEYS = ['note', 'bookmark', 'paper', 'tool'];
@@ -711,9 +715,13 @@ export default function KnowledgeScreen() {
   //   notes      — anything not archived (Notes Desk)
   //   links      — inbox or active       (Research Vault)
   //   resources  — active                (Resources & Instruments)
+  //
+  // Except: nothing still waiting in the Capture Inbox (status 'inbox').
+  // The Inbox is what isn't sorted yet and the Vault is what you've kept;
+  // listing unsorted captures here too made the two look like one pile.
   const isVisibleRow = (row) => {
-    if (row.type === 'note') return true;
-    if (row.type === 'link') return ['inbox', 'active'].includes(row.status);
+    if (row.type === 'note') return row.status !== 'inbox';
+    if (row.type === 'link') return row.status === 'active';
     if (row.type === 'resource') return row.status === 'active';
     return false;
   };

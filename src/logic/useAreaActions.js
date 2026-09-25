@@ -11,6 +11,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { useProfiles } from '../../context/ProfileAccountsContext';
+import { useAccess } from '../../context/AccessContext';
 import {
   loadActionPool, loadResources, bundledActions, bundledResources,
   loadUserEdits, savePoolEdit, addCustomAction, updateEdit, deleteEdit,
@@ -79,21 +80,27 @@ export default function useAreaActions({ screenTag, areaId, areaLabel: labelProp
   const markDone = useCallback((key) => setDoneKeys(prev => new Set(prev).add(key)), []);
 
   // For the handlers that open a sheet first ('read', 'timer').
+  // Doing an area's action ("I did this", "Do it") is doing something for
+  // that area, same as a quick log: it ticks the "log one thing you did for
+  // it" step of the life-areas first goal (objectives.js first-areas).
+  const { signalAction } = useAccess();
   const complete = useCallback(async (action, { metrics = null, note = '' } = {}) => {
     const { row } = await logCompletion({ userId, areaId, screenTag, action, metrics, note });
     markDone(action.key);
+    signalAction('area-logged', { area: areaId });
     if (row) onLoggedRef.current?.(row);
     return row;
-  }, [userId, areaId, screenTag, markDone]);
+  }, [userId, areaId, screenTag, markDone, signalAction]);
 
   const run = useCallback(async (action) => {
     const result = await runAction(action, { userId, areaId, areaLabel, screenTag, navigation });
     if (result.ok) {
       markDone(action.key);
+      signalAction('area-logged', { area: areaId });
       if (result.row) onLoggedRef.current?.(result.row);
     }
     return result;
-  }, [userId, areaId, areaLabel, screenTag, navigation, markDone]);
+  }, [userId, areaId, areaLabel, screenTag, navigation, markDone, signalAction]);
 
   // ── Edits ────────────────────────────────────────────────────────────────
   // Optimistic: the sheet reflects a change at once, and rolls back if the

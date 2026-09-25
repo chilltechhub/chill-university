@@ -194,7 +194,7 @@ export default function CompassCard() {
 
       {complete ? (
         <>
-          <Text style={s.headline}>That's all {total}. Claim it.</Text>
+          <Text style={s.headline}>{total === 2 ? "That's both." : `That's all ${total}.`} Claim it.</Text>
           {showSubtext && (unlocks.length > 0 || opensStage) && (
             <Text style={s.sub}>
               {[

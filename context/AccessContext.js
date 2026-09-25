@@ -121,6 +121,10 @@ export function AccessProvider({ children }) {
   // account: Start Your Build stuck at 2 of 3. Cleared whenever `state`
   // catches up, so it only ever bridges writes within one render.
   const stepsRef = useRef({});
+  // The detail of the last signal of each name, e.g. which area was just
+  // rated, so the guide can take someone back to the area THEY picked.
+  const lastDetailRef = useRef({});
+  const lastSignalDetail = useCallback((name) => lastDetailRef.current[name] || null, []);
   useEffect(() => { stepsRef.current = {}; }, [state.objectives]);
   const latestSteps = (id) => stepsRef.current[id] || state.objectives[id]?.steps || {};
   const [loading, setLoading] = useState(true);
@@ -310,8 +314,20 @@ export function AccessProvider({ children }) {
       try { seen = parseInt(await AsyncStorage.getItem(seenStageKey(userId)), 10); } catch {}
       if (!alive) return;
       if (Number.isFinite(seen) && derivedStage > seen && experienceMode !== 'full') {
+        // What is actually new, not just what the stage lists: what someone
+        // came for opens tools early (AIM_OPENS), so a stage can "add" the
+        // Planner to an account that has used it since day one. The card
+        // says only what's new, and offers to go there.
+        const before = openedAt(persona, seen, { exploring, aim: purposeKey });
+        const after = openedAt(persona, derivedStage, { exploring, aim: purposeKey });
+        const fresh = {
+          features: [...after.features].filter(id => !before.features.has(id)),
+          games: [...after.games].filter(id => !before.games.has(id)),
+          widgets: after.homeWidgets.filter(k => !before.homeWidgets.includes(k)),
+          caps: [...after.caps].filter(id => !before.caps.has(id)),
+        };
         setStageEvents(q => [...q, {
-          from: seen, to: derivedStage, stages: stagesBetween(persona, seen, derivedStage),
+          from: seen, to: derivedStage, stages: stagesBetween(persona, seen, derivedStage), fresh,
         }]);
         // Screens with noticeably more on them teach themselves again.
         const again = reteachBetween(persona, seen, derivedStage);
@@ -322,7 +338,7 @@ export function AccessProvider({ children }) {
       }
     })();
     return () => { alive = false; };
-  }, [userId, progressReady, prefsReady, derivedStage, experienceMode, persona]);
+  }, [userId, progressReady, prefsReady, derivedStage, experienceMode, persona, exploring, purposeKey]);
 
   const dismissStageEvent = useCallback(() => setStageEvents(q => q.slice(1)), []);
 
@@ -554,6 +570,7 @@ export function AccessProvider({ children }) {
   // occurrences, and six separate calls in one tick would each read the same
   // pre-batch count and land as one.
   const signalAction = useCallback(async (name, detail = {}, { times = 1 } = {}) => {
+    if (name) lastDetailRef.current[name] = detail;
     if (!activeObjectiveId || !name) return;
     const objective = getObjective(activeObjectiveId);
     const names = new Set([name, ...Object.values(detail).map(v => `${name}:${v}`)]);
@@ -722,6 +739,7 @@ export function AccessProvider({ children }) {
     opened,
     can,
     firstGoalId: firstGoal.objective,
+    lastSignalDetail,
     startFirstGoal,
     isFeatureShown,
     isScreenVisible,

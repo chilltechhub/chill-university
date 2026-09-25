@@ -229,7 +229,7 @@ export default function GettingStartedCard({ onNavigate }) {
             paddingVertical: 10, marginTop: 2,
           }}>
           <Ionicons name="compass-outline" size={16} color={c.text3} />
-          <Text style={{ fontSize: t.sm, color: c.text3, fontWeight: t.semibold }}>Take the 2-min tour</Text>
+          <Text style={{ fontSize: t.sm, color: c.text3, fontWeight: t.semibold }}>Show me around again</Text>
         </TouchableOpacity>
       </View>
 

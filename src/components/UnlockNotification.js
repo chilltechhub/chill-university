@@ -31,6 +31,18 @@ const VIA_COPY = {
   plan:      'Included with your plan.',
 };
 
+// Where each of the four big openings (CAPS in experienceStages.js) lives,
+// for "Take me to…": they open a whole class of thing rather than one tool.
+const CAP_TARGETS = {
+  'all-games': { screen: 'Training', label: 'Training', body: 'Every game is open now. In Training, use the subject and type filters to find one, and the Progress tab to see how each subject is going.' },
+  'dashboard': { screen: 'Home', label: 'Home', body: 'Home is yours to arrange now. Tap Edit at the top right of Home to move cards, hide them, or add ones you want. Any new card gets pointed out when it arrives.' },
+  'all-tools': { screen: 'LibraryScreen', label: 'the Library', body: 'Every tool is on the map now. Swipe through the Life, Build and Knowledge pages to see what is new.' },
+  'doors':     { screen: 'Compass', label: 'the Compass', body: 'Locked tools now show up, each with what opens it: finish a goal, pass a short test, or switch it on. The Compass lists them all.' },
+};
+
+// Feature screens that are navigators, and the screen each one opens on.
+const TUTORIAL_ROUTE = { ClassesStack: 'ClassesMain' };
+
 export default function UnlockNotification() {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: sp, radius: r } = useTheme();
@@ -57,7 +69,15 @@ export default function UnlockNotification() {
   // arrives there is widgets, and Home explains each new one itself.
   const openAndTeach = (screen, what) => {
     goToScreen(navigation, screen);
-    if (screen === 'Home') return;
+    // Home's news is widgets, and Home explains each new one itself; the
+    // only thing to say here is a stage's own note, if it has one.
+    if (screen === 'Home') {
+      if (what) setTimeout(() => startLesson([{ title: `New · ${what.title}`, body: what.body }]), 900);
+      return;
+    }
+    // A feature's screen can be a navigator (ClassesStack); its basics
+    // belong to the screen it opens on.
+    screen = TUTORIAL_ROUTE[screen] || screen;
     // Marked seen here, since this is the screen's introduction: without it
     // the same basics would run again on the next visit.
     markScreensSeen([screen]);
@@ -77,15 +97,37 @@ export default function UnlockNotification() {
   if (stageEvent) {
     const stages = stageEvent.stages || [];
     const latest = stages[stages.length - 1];
-    // Somewhere to go, always: the first tool the newest stage put on the
-    // map; else its new games, in Training; else Home, where anything new
-    // is a widget and gets explained there.
-    const feature = stages
-      .flatMap(st => st.features || [])
-      .map(id => getFeature(id))
-      .find(f => f?.screen);
-    const games = stages.flatMap(st => st.games || []).map(id => GAME_REGISTRY[id]?.name).filter(Boolean);
-    const target = feature
+    // What's actually new (`fresh`, worked out in AccessContext): a stage
+    // can list tools the person has had since day one, because what they
+    // came for opened them early. Older events without it fall back to the
+    // stage's own lists.
+    const fresh = stageEvent.fresh;
+    const freshFeatures = (fresh ? fresh.features : stages.flatMap(st => st.features || []))
+      .map(id => getFeature(id)).filter(f => f?.screen);
+    const freshGameIds = fresh ? fresh.games : stages.flatMap(st => st.games || []);
+    const freshWidgets = fresh ? fresh.widgets : [];
+    // The stage's own name and blurb only when they describe something new.
+    const stageIsNews = !fresh || !!latest && (
+      (latest.features || []).some(id => fresh.features.includes(id))
+      || (latest.games || []).some(id => fresh.games.includes(id))
+      || (latest.caps || []).some(id => fresh.caps.includes(id))
+    );
+    // Somewhere to go, always: the first new tool; else the new games, in
+    // Training; else Home, where anything new is a widget and gets
+    // explained there.
+    const feature = freshFeatures[0];
+    const games = freshGameIds.map(id => GAME_REGISTRY[id]?.name).filter(Boolean);
+    const heading = stageIsNews
+      ? { title: latest?.label || 'More of the app is open', blurb: latest?.blurb }
+      : feature
+        ? { title: feature.label, blurb: feature.blurb }
+        : games.length
+          ? { title: 'New games in Training', blurb: games.join(', ') }
+          : { title: 'New on your Home screen', blurb: `${freshWidgets.length || 'A few'} new card${freshWidgets.length === 1 ? '' : 's'} on Home. I'll point out each one and what it's for.` };
+    const cap = (fresh ? fresh.caps : stages.flatMap(st => st.caps || [])).map(id => CAP_TARGETS[id]).find(Boolean);
+    const target = cap && !feature
+      ? { screen: cap.screen, label: cap.label, what: cap.body ? { title: heading.title, body: cap.body } : null }
+      : feature
       ? { screen: feature.screen, label: feature.label, what: { title: feature.label, body: feature.blurb } }
       : games.length
         ? { screen: 'Training', label: 'the new games', what: { title: games.join(', '), body: `New in Training: ${games.join(', ')}. Tap Enter Training, then swipe up or down to find them.` } }
@@ -96,7 +138,7 @@ export default function UnlockNotification() {
       openAndTeach(target.screen, target.what);
     };
     const alsoOpen = [
-      ...stages.slice(0, -1).map(st => ({ key: st.key + st.n, label: st.label })),
+      ...freshFeatures.slice(1).map(f => ({ key: 'n-' + f.id, label: f.label })),
       ...unlockedFeatures.map(f => ({ key: 'f-' + f.id, label: f.label })),
     ];
     return (
@@ -107,8 +149,8 @@ export default function UnlockNotification() {
               <Ionicons name="sparkles-outline" size={26} color={c.teal} />
             </View>
             <Text style={s.kicker}>New in your app · stage {stageEvent.to} of {MAX_STAGE}</Text>
-            <Text style={s.title}>{latest?.label || 'More of the app is open'}</Text>
-            {!!latest?.blurb && <Text style={s.blurb}>{latest.blurb}</Text>}
+            <Text style={s.title}>{heading.title}</Text>
+            {!!heading.blurb && <Text style={s.blurb}>{heading.blurb}</Text>}
             {alsoOpen.length > 0 && (
               <View style={s.list}>
                 {alsoOpen.map(item => (

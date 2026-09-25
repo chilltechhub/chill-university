@@ -147,7 +147,9 @@ export async function addCapture(userId, capture) {
     project_id: capture.project_id || null,
     life_area_id: capture.life_area_id || null,
     save_for_later: capture.save_for_later || null,
-    status: 'inbox',
+    // 'inbox' = waiting to be sorted in the Capture Inbox. A caller that is
+    // filing something directly (the + button's New Note) passes 'active'.
+    status: capture.status || 'inbox',
     source: capture.source || 'manual',
   };
 
