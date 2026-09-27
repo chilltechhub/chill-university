@@ -204,5 +204,5 @@ const makeStyles = (G) => StyleSheet.create({
   cardMatched: { backgroundColor: G.success + '22', borderColor: G.success },
   matchedBadge: { position: 'absolute', top: 4, right: 4, width: 16, height: 16, borderRadius: 8, backgroundColor: G.success, alignItems: 'center', justifyContent: 'center' },
   cardBack:    { fontSize: 22, color: G.muted, fontWeight: '700' },
-  cardText:    { fontSize: 9, color: G.cream, textAlign: 'center', lineHeight: 12 },
+  cardText:    { fontSize: 11, color: G.cream, textAlign: 'center', lineHeight: 12 },
 });

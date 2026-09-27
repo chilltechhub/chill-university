@@ -22,7 +22,10 @@ export const MINOR_BANDS = ['kid', 'teen'];
 // and the area_actions / area_resources age_bands columns expect.
 export function ageCategoryFromDob(dob) {
   if (!dob) return null;
-  const birth = new Date(dob);
+  // Local calendar date, not UTC midnight (see parseLocalDate in
+  // ageOfConsent.js — duplicated here because this file stays import-free).
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dob));
+  const birth = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(dob);
   if (Number.isNaN(birth.getTime())) return null;
 
   const now = new Date();

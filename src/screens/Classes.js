@@ -7,6 +7,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../context/ThemeContext';
 import { useUIPrefs } from '../../context/UIPrefsContext';
 import { useProfiles } from '../../context/ProfileAccountsContext';
+import { useUserProgress } from '../../context/UserProgressContext';
+import { defaultLevelFor, isAdultProfile } from '../logic/useGradeLevel';
 import { supabase } from '../api/supabaseClient';
 import { fetchContentPool } from '../api/remoteConfigService';
 import { listLessonPlans } from '../api/lessonBuilderService';
@@ -85,11 +87,18 @@ export default function Classes() {
     return () => { alive = false; };
   }, []);
 
+  // With no saved choice, a student starts on their own grade band rather than
+  // "All" — a 15-year-old's Reading list used to open on how to turn pages
+  // (K-2). Adults keep "All"; they browse by Starter … Advanced.
+  const { profile } = useUserProgress();
+  const dob = profile?.date_of_birth;
   useEffect(() => {
     AsyncStorage.getItem(GRADE_BAND_KEY).then(saved => {
       if (saved && BANDS.includes(saved)) setBand(saved);
+      else if (dob && !isAdultProfile(profile)) setBand(defaultLevelFor(profile));
     });
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dob]);
 
   useEffect(() => {
     fetchContentPool('class_subject').then((rows) => {
@@ -193,7 +202,7 @@ export default function Classes() {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
-        <TouchableOpacity
+        <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button"
           onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('LibraryScreen'))}
           style={{ marginBottom: 10 }}
         >
@@ -209,7 +218,7 @@ export default function Classes() {
             activeOpacity={0.85}
             style={[styles.builderCta, { backgroundColor: c.teal }]}
           >
-            <Ionicons name="hammer-outline" size={15} color="#fff" />
+            <Ionicons name="hammer-outline" size={15} color={c.onFill} />
             <Text style={styles.builderCtaText}>Build a Classroom Lesson</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -267,7 +276,7 @@ export default function Classes() {
             onPress={() => chooseBand(b)}
             style={[styles.bandChip, band === b && { backgroundColor: c.teal, borderColor: c.teal }]}
           >
-            <Text style={[styles.bandChipText, band === b && { color: '#fff', fontWeight: '800' }]}>
+            <Text style={[styles.bandChipText, band === b && { color: c.onFill, fontWeight: '800' }]}>
               {b === 'All' ? (adult ? 'All levels' : 'All grades') : bandLabel(b, adult, { short: true })}
             </Text>
           </TouchableOpacity>
@@ -561,8 +570,8 @@ const makeStyles = (c, t, s, r) => StyleSheet.create({
     gap: 4,
   },
   recCardSubject: {
-    fontSize: 9,
-    color: c.text4,
+    fontSize: 11,
+    color: c.text3,
     fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -621,7 +630,7 @@ const makeStyles = (c, t, s, r) => StyleSheet.create({
     paddingVertical: 2,
   },
   comingSoonBadgeText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
@@ -659,7 +668,7 @@ const makeStyles = (c, t, s, r) => StyleSheet.create({
     fontWeight: '700',
   },
   noneForBand: {
-    color: c.text4,
+    color: c.text3,
     fontSize: t.sm,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -685,8 +694,8 @@ const makeStyles = (c, t, s, r) => StyleSheet.create({
     fontWeight: '500',
   },
   subItemGrade: {
-    fontSize: 10,
-    color: c.text4,
+    fontSize: 11,
+    color: c.text3,
     fontWeight: '700',
     marginRight: 8,
   },

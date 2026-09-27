@@ -206,7 +206,7 @@ async function handleGameEventNow(event) {
 
   if (!userId) return;
 
-  const rewards = calculateRewards({ type, correct, difficulty });
+  const rewards = calculateRewards({ type, correct, difficulty, metadata });
 
   const { error: logError } = await supabase.from('activity_log').insert({
     user_id:       userId,
@@ -241,11 +241,21 @@ async function handleGameEventNow(event) {
 
 /* ─── Rewards ────────────────────────────────────────────────────────────── */
 
-function calculateRewards({ type, correct, difficulty }) {
+// A wrong answer still earns a little XP for the effort, but no points, and a
+// finished game's bonus scales with how much of it was right. Before, letting
+// a Rush timer run out three times paid 33 points while the results screen
+// said "0 points earned" — and walking away from the phone farmed points.
+function calculateRewards({ type, correct, difficulty, metadata = {} }) {
   switch (type) {
-    case 'QUESTION_ANSWERED': return { xp: correct ? 10 * difficulty : 2, points: correct ? 5 * difficulty : 1 };
+    case 'QUESTION_ANSWERED': return { xp: correct ? 10 * difficulty : 2, points: correct ? 5 * difficulty : 0 };
     case 'LEVEL_COMPLETED':   return { xp: 50 * difficulty,  points: 25 * difficulty };
-    case 'GAME_COMPLETED':    return { xp: 30 * difficulty,  points: 15 * difficulty };
+    case 'GAME_COMPLETED': {
+      const right = Number(metadata.correct) || 0;
+      const asked = Number(metadata.attempted) || 0;
+      if (right <= 0) return { xp: 0, points: 0 };
+      const share = asked > 0 ? Math.min(1, right / asked) : 1;
+      return { xp: Math.max(1, Math.round(30 * difficulty * share)), points: Math.max(1, Math.round(15 * difficulty * share)) };
+    }
     case 'STREAK_BONUS':      return { xp: 20,               points: 10 };
     case 'BONUS_REWARD_CLAIMED': return { xp: 10,            points: 15 };
     case 'COIN_COLLECTED':    return { xp: 1,                points: 1 };
@@ -343,6 +353,7 @@ async function advanceMissions(userId, event) {
   if (!missions?.length) return;
 
   const updates = [];
+  const completedIds = [];
   for (const m of missions) {
     const criteria = m.missions?.criteria;
     if (!criteria) continue;
@@ -369,15 +380,25 @@ async function advanceMissions(userId, event) {
     // it. Paid once, on the answer that finishes it (status leaves 'active',
     // so this row is never picked up here again).
     if (completed && (m.missions?.xp_reward || m.missions?.point_reward)) {
-      updates.push(supabase.rpc('increment_user_progress', {
-        p_user_id: userId,
-        p_xp:      m.missions.xp_reward || 0,
-        p_points:  m.missions.point_reward || 0,
-      }));
+      completedIds.push({ id: m.id, xp: m.missions.xp_reward || 0, points: m.missions.point_reward || 0 });
     }
   }
 
   if (updates.length) await Promise.all(updates);
+
+  // Paid after the status write lands: claim_mission_reward() pays the
+  // mission's own reward from the missions table, once per mission per
+  // day/week, and only for a row that is actually completed. Missions pay up
+  // to 3,000 points, far past what increment_user_progress now accepts in one
+  // call. A database without the function falls back to the old path.
+  for (const done of completedIds) {
+    const { error } = await supabase.rpc('claim_mission_reward', { p_user_mission_id: done.id });
+    if (error?.code === 'PGRST202') {
+      await supabase.rpc('increment_user_progress', { p_user_id: userId, p_xp: done.xp, p_points: done.points });
+    } else if (error) {
+      console.warn('[advanceMissions] claim', error.message);
+    }
+  }
 }
 
 /* ─── Lesson completion — advances any 'topic_completed' mission ────────── */
@@ -418,11 +439,24 @@ export async function touchStreak(userId, profile) {
   // A gap of exactly one calendar day continues the run; anything longer (or a
   // first-ever visit) starts a new one at 1. Note this counts *days*, not
   // hours — someone active at 11pm and again at 8am has an unbroken streak.
+  //
+  // The server does the counting now (touch_streak(), 20260927120000): the
+  // streak columns are no longer client-writable. Today's local date goes
+  // along so "a day" stays the person's day, not UTC's.
+  const { data, error } = await supabase.rpc('touch_streak', { p_today: today });
+  if (!error) {
+    if (!data?.changed) return null;
+    return { streak_count: data.streak_count, last_active_date: data.last_active_date };
+  }
+  // Database not migrated yet (no such function): the old direct write, which
+  // still works there.
+  if (error.code !== 'PGRST202') { console.warn('[touchStreak]', error.message); return null; }
+
   const gap = last ? daysBetween(last, today) : null;
   const streak = gap === 1 ? (profile?.streak_count || 0) + 1 : 1;
 
   const patch = { streak_count: streak, last_active_date: today };
-  const { error } = await supabase.from('profiles').update(patch).eq('id', userId);
-  if (error) { console.warn('[touchStreak]', error.message); return null; }
+  const { error: writeError } = await supabase.from('profiles').update(patch).eq('id', userId);
+  if (writeError) { console.warn('[touchStreak]', writeError.message); return null; }
   return patch;
 }

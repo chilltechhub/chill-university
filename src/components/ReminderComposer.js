@@ -137,7 +137,7 @@ export default function ReminderComposer({ visible, onClose, userId, initial = {
                 <Text style={{ flex: 1, fontSize: t.sm, color: c.text1 }}>{done}</Text>
               </View>
               <TouchableOpacity onPress={onClose} style={{ marginTop: s.lg, backgroundColor: c.teal, borderRadius: r.lg, paddingVertical: s.md, alignItems: 'center' }}>
-                <Text style={{ color: '#fff', fontWeight: t.bold }}>Done</Text>
+                <Text style={{ color: c.onFill, fontWeight: t.bold }}>Done</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -198,8 +198,8 @@ export default function ReminderComposer({ visible, onClose, userId, initial = {
               {!!error && <Text style={{ fontSize: 12, color: c.error, marginTop: s.md }}>{error}</Text>}
               <TouchableOpacity onPress={save} disabled={saving}
                 style={{ marginTop: s.lg, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: s.sm, backgroundColor: c.teal, borderRadius: r.lg, paddingVertical: s.md, opacity: saving ? 0.6 : 1 }}>
-                {saving ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="alarm-outline" size={16} color="#fff" />}
-                <Text style={{ color: '#fff', fontWeight: t.bold }}>Save reminder</Text>
+                {saving ? <ActivityIndicator color={c.onFill} size="small" /> : <Ionicons name="alarm-outline" size={16} color={c.onFill} />}
+                <Text style={{ color: c.onFill, fontWeight: t.bold }}>Save reminder</Text>
               </TouchableOpacity>
             </ScrollView>
           )}

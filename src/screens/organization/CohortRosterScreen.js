@@ -2,12 +2,12 @@
 // One cohort (class/team/group) — roster with progress visibility, an
 // invite code for a manager to share, and simple freeform assignment
 // tracking. Reached only with route params from OrganizationScreen:
-// { cohortId, cohortName, orgType, organizationId, isManager }.
+// { cohortId, cohortName, orgType, organizationId, isManager, orgRole }.
 
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, TextInput,
-  ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
+  ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -15,18 +15,19 @@ import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/nativ
 import { useTheme } from '../../../context/ThemeContext';
 import {
   getCohortRoster, generateOrgInviteCode, assignContentToCohort,
-  removeCohortMember, ORG_NOT_CONFIGURED,
+  removeCohortMember, removeOrgMember, ORG_NOT_CONFIGURED,
 } from '../../api/organizationService';
 import { getOrgLabels } from '../../data/orgLabels';
+import { confirmAsync, notify } from '../../logic/confirm';
 
 function SectionLabel({ label, c, t, s }) {
-  return <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.sm, marginTop: s.lg, paddingHorizontal: 2 }}>{label}</Text>;
+  return <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.sm, marginTop: s.lg, paddingHorizontal: 2 }}>{label}</Text>;
 }
 
 export default function CohortRosterScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { cohortId, cohortName, orgType, organizationId, isManager } = route.params || {};
+  const { cohortId, cohortName, orgType, organizationId, isManager, orgRole } = route.params || {};
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   const labels = getOrgLabels(orgType);
 
@@ -64,7 +65,7 @@ export default function CohortRosterScreen() {
       setExpiresAt(result?.expires_at || null);
       setMaxUses(result?.max_uses || null);
     } catch (e) {
-      Alert.alert("Couldn't generate a code", e.message);
+      notify("Couldn't generate a code", e.message);
     }
     setGenerating(false);
   };
@@ -72,7 +73,7 @@ export default function CohortRosterScreen() {
   const copyCode = async () => {
     if (!code) return;
     await Clipboard.setStringAsync(code);
-    Alert.alert('Copied', `Share this with anyone joining ${cohortName} — good for ${maxUses} people.`);
+    notify('Copied', `Share this with anyone joining ${cohortName} — good for ${maxUses} people.`);
   };
 
   const doAssign = async () => {
@@ -84,29 +85,37 @@ export default function CohortRosterScreen() {
       setNewDesc('');
       await load();
     } catch (e) {
-      Alert.alert("Couldn't assign that", e.message);
+      notify("Couldn't assign that", e.message);
     }
     setAssigning(false);
   };
 
-  const confirmRemove = (member) => {
-    Alert.alert(
-      `Remove ${member.display_name}?`,
-      `They'll no longer be part of ${cohortName}.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove', style: 'destructive', onPress: async () => {
-            try {
-              await removeCohortMember(cohortId, member.user_id);
-              setRoster((prev) => prev.filter((x) => x.user_id !== member.user_id));
-            } catch (e) {
-              Alert.alert("Couldn't remove them", e.message);
-            }
-          },
-        },
-      ]
+  // confirmAsync, not Alert.alert with buttons: the latter never fires on web.
+  // An org owner/admin is then asked whether to take them out of the whole
+  // organization too — removing from a class alone used to leave them a
+  // member of the org.
+  const confirmRemove = async (member) => {
+    const ok = await confirmAsync(`Remove ${member.display_name}?`, `They'll no longer be part of ${cohortName}.`, 'Remove');
+    if (!ok) return;
+    try {
+      await removeCohortMember(cohortId, member.user_id);
+      setRoster((prev) => prev.filter((x) => x.user_id !== member.user_id));
+    } catch (e) {
+      notify("Couldn't remove them", e.message);
+      return;
+    }
+    if (!organizationId || (orgRole !== 'owner' && orgRole !== 'admin')) return;
+    const wholeOrg = await confirmAsync(
+      `Remove ${member.display_name} from the whole ${labels.org.toLowerCase()} too?`,
+      `Otherwise they stay in it and can be added to another ${labels.cohort.toLowerCase()}.`,
+      'Remove from all',
     );
+    if (!wholeOrg) return;
+    try {
+      await removeOrgMember(organizationId, member.user_id);
+    } catch (e) {
+      notify("Couldn't remove them", e.message);
+    }
   };
 
   const daysLeft = expiresAt ? Math.max(0, Math.round((new Date(expiresAt) - Date.now()) / 86400000)) : 0;
@@ -129,14 +138,14 @@ export default function CohortRosterScreen() {
     // end up hidden behind the keyboard on a real device.
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg0 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={{ backgroundColor: c.bg1, padding: s.lg, paddingTop: s.xxl, borderBottomWidth: 0.5, borderBottomColor: c.border, flexDirection: 'row', alignItems: 'center', gap: s.md }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4 }}>
+        <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => navigation.goBack()} style={{ padding: 4 }}>
           <Ionicons name="chevron-back" size={22} color={c.teal} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }} numberOfLines={1}>{cohortName}</Text>
-          <Text style={{ fontSize: t.xs, color: c.text4, marginTop: 1 }}>{labels.cohort}</Text>
+          <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 1 }}>{labels.cohort}</Text>
         </View>
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Leaderboard"
           onPress={() => navigation.navigate('Leaderboard', { cohortId, cohortName })}
           style={{ padding: 8, backgroundColor: c.bg2, borderRadius: r.full }}
         >
@@ -154,10 +163,10 @@ export default function CohortRosterScreen() {
           <Text style={{ fontSize: 48, marginBottom: s.lg }}>⚠️</Text>
           <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.sm, textAlign: 'center' }}>Couldn't load this {labels.cohort.toLowerCase()}</Text>
           {!!errorDetail && (
-            <Text style={{ fontSize: t.xs, color: c.text4, textAlign: 'center', marginTop: 2 }}>{errorDetail}</Text>
+            <Text style={{ fontSize: t.xs, color: c.text3, textAlign: 'center', marginTop: 2 }}>{errorDetail}</Text>
           )}
           <TouchableOpacity onPress={load} style={{ marginTop: s.lg, backgroundColor: c.teal, borderRadius: r.md, paddingVertical: s.sm, paddingHorizontal: s.xl }}>
-            <Text style={{ color: '#fff', fontWeight: t.bold, fontSize: t.sm }}>Try again</Text>
+            <Text style={{ color: c.onFill, fontWeight: t.bold, fontSize: t.sm }}>Try again</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -192,7 +201,7 @@ export default function CohortRosterScreen() {
             ))
           )}
           {isManager && roster.length > 0 && (
-            <Text style={{ fontSize: 11, color: c.text4, marginTop: 2 }}>Long-press to remove someone.</Text>
+            <Text style={{ fontSize: 11, color: c.text3, marginTop: 2 }}>Long-press to remove someone.</Text>
           )}
 
           {/* ── Invite code (manager only) ── */}
@@ -206,7 +215,7 @@ export default function CohortRosterScreen() {
                 {code ? (
                   <>
                     <Text style={{ fontSize: 32, fontWeight: '800', letterSpacing: 6, color: c.gold, fontFamily: 'monospace', marginBottom: 4 }}>{code}</Text>
-                    <Text style={{ fontSize: t.xs, color: c.text4, marginBottom: s.md }}>
+                    <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: s.md }}>
                       Good for {maxUses} {maxUses === 1 ? 'person' : 'people'} · {daysLeft > 0 ? `expires in ${daysLeft}d` : 'expired — generate a new one'}
                     </Text>
                     <View style={{ flexDirection: 'row', gap: s.sm }}>
@@ -226,7 +235,7 @@ export default function CohortRosterScreen() {
                     disabled={generating}
                     style={{ backgroundColor: c.gold, borderRadius: r.md, paddingVertical: s.md, paddingHorizontal: s.xl, alignItems: 'center', opacity: generating ? 0.6 : 1 }}
                   >
-                    {generating ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '800', fontSize: t.sm }}>Generate Invite Code</Text>}
+                    {generating ? <ActivityIndicator size="small" color={c.onFill} /> : <Text style={{ color: c.onFill, fontWeight: '800', fontSize: t.sm }}>Generate Invite Code</Text>}
                   </TouchableOpacity>
                 )}
               </View>
@@ -257,7 +266,7 @@ export default function CohortRosterScreen() {
                 disabled={assigning || !newTitle.trim()}
                 style={{ backgroundColor: c.teal, borderRadius: r.md, paddingVertical: s.md, alignItems: 'center', opacity: (assigning || !newTitle.trim()) ? 0.5 : 1 }}
               >
-                {assigning ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '800', fontSize: t.sm }}>Assign to {labels.cohortPlural}</Text>}
+                {assigning ? <ActivityIndicator size="small" color={c.onFill} /> : <Text style={{ color: c.onFill, fontWeight: '800', fontSize: t.sm }}>Assign to {labels.cohortPlural}</Text>}
               </TouchableOpacity>
             </View>
           )}
@@ -266,7 +275,7 @@ export default function CohortRosterScreen() {
               <Text style={{ fontSize: t.sm, color: c.text3 }}>Nothing assigned yet.</Text>
             </View>
           ) : (
-            <Text style={{ fontSize: t.xs, color: c.text4 }}>
+            <Text style={{ fontSize: t.xs, color: c.text3 }}>
               {roster.reduce((sum, m) => sum + (m.assignments_completed || 0), 0)} of {roster.length * assignmentsTotal} completions across the {labels.cohort.toLowerCase()}.
             </Text>
           )}

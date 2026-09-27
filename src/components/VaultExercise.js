@@ -127,7 +127,7 @@ export default function VaultExercise({ lesson, levelId, color }) {
                 size={19}
                 color={checked[i] ? color : c.text4}
               />
-              <Text style={[st.checkText, checked[i] && { textDecorationLine: 'line-through', color: c.text4 }]}>
+              <Text style={[st.checkText, checked[i] && { textDecorationLine: 'line-through', color: c.text3 }]}>
                 {label}
               </Text>
             </TouchableOpacity>
@@ -182,19 +182,19 @@ const makeStyles = (c, t, s, r) => StyleSheet.create({
   stepDetail: { fontSize: 13, color: c.text3, lineHeight: 19, marginTop: 2 },
 
   checkLabel: {
-    fontSize: 10, fontFamily: FONTS.mono, fontWeight: '800',
-    textTransform: 'uppercase', letterSpacing: 1, color: c.text4, marginBottom: 6,
+    fontSize: 11, fontFamily: FONTS.mono, fontWeight: '800',
+    textTransform: 'uppercase', letterSpacing: 1, color: c.text3, marginBottom: 6,
   },
   checkRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 9, paddingVertical: 5 },
   checkText: { flex: 1, fontSize: 14, color: c.text2, lineHeight: 20 },
 
   loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 8 },
-  loadingText: { fontSize: 12, color: c.text4 },
+  loadingText: { fontSize: 12, color: c.text3 },
 
   vaultRow: {
     flexDirection: 'row', alignItems: 'center', gap: 7,
     marginTop: 12, paddingTop: 10, borderTopWidth: 0.5,
   },
   vaultText: { flex: 1, fontSize: 12, fontWeight: '700', lineHeight: 17 },
-  signedOut: { fontSize: 11, color: c.text4, lineHeight: 16, marginTop: 6 },
+  signedOut: { fontSize: 11, color: c.text3, lineHeight: 16, marginTop: 6 },
 });

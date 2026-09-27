@@ -108,7 +108,7 @@ export default function HelpScreen() {
         paddingHorizontal: s.lg, paddingTop: s.md, paddingBottom: s.md,
         backgroundColor: c.headerBg, borderBottomWidth: 0.5, borderBottomColor: c.border,
       }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4 }}>
+        <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => navigation.goBack()} style={{ padding: 4 }}>
           <Ionicons name="chevron-back" size={22} color={c.teal} />
         </TouchableOpacity>
         <Text style={{ fontSize: t.xl, fontWeight: t.bold, color: c.text1 }}>Help & FAQ</Text>
@@ -162,7 +162,7 @@ export default function HelpScreen() {
         )}
 
         {/* FAQ */}
-        <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.md }}>
+        <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.md }}>
           Frequently Asked Questions
         </Text>
         {FAQ.filter(item => !item.plusOnly || plusOnSale).map((item, i) => {

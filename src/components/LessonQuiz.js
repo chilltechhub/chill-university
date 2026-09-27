@@ -58,7 +58,7 @@ export default function LessonQuiz({ questions = [], color }) {
                   accessibilityRole="button"
                   accessibilityState={{ disabled: done, selected: isPicked }}
                 >
-                  <Text style={[st.optText, done && !isAnswer && !isPicked && { color: c.text4 }]}>{opt}</Text>
+                  <Text style={[st.optText, done && !isAnswer && !isPicked && { color: c.text3 }]}>{opt}</Text>
                   {icon && <Ionicons name={icon} size={17} color={iconColor} />}
                 </TouchableOpacity>
               );

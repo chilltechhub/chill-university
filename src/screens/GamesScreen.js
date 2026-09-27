@@ -189,6 +189,8 @@ export default function GamesScreen() {
               style={styles.avatarWrap}
               onPress={() => (heroTapEnabled ? navigation.navigate('Profile') : heroWalkerRef.current?.jump())}
               activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={heroTapEnabled ? 'Your character. Open your profile' : 'Your character. Make them jump'}
             >
               <LandscapeBackground background={background} height={150} style={{ width: '100%' }}>
                 <CharacterWalker
@@ -414,7 +416,7 @@ export default function GamesScreen() {
                     {showEmojis ? <Text style={styles.skillEmoji}>{game.emoji}</Text> : <Ionicons name="game-controller-outline" size={18} color={c.text3} style={{ marginBottom: 4 }} />}
                     <Text style={styles.skillTitle} numberOfLines={1}>{game.title}</Text>
                     {mechMeta && <Text style={styles.skillMechText}>{showEmojis ? `${mechMeta.emoji} ` : ''}{mechMeta.label}</Text>}
-                    <Text style={[styles.skillLevelText, { color: meta ? LEVEL_TINT[savedLevel] : c.text4 }]}>
+                    <Text style={[styles.skillLevelText, { color: meta ? LEVEL_TINT[savedLevel] : c.text3 }]}>
                       {meta ? `${showEmojis ? `${meta.emoji} ` : ''}${meta.label}` : 'Not started'}
                     </Text>
                   </TouchableOpacity>
@@ -494,7 +496,7 @@ function QuickChip({ icon, iconName, value, label, c, t, s, r }) {
         <Ionicons name={iconName} size={15} color={c.gold} style={{ marginBottom: 2 }} />
       )}
       <Text style={{ fontSize: t.md, fontFamily: FONTS.mono, fontWeight: t.bold, color: c.text1 }}>{value}</Text>
-      <Text style={{ fontSize: 9, color: c.text4, textTransform: 'uppercase', letterSpacing: 0.6 }}>{label}</Text>
+      <Text style={{ fontSize: 11, color: c.text3, textTransform: 'uppercase', letterSpacing: 0.6 }}>{label}</Text>
     </View>
   );
 }
@@ -540,7 +542,7 @@ const makeStyles = (c, t, s, r, sh) => StyleSheet.create({
     alignItems: 'center',
     ...sh.sm,
   },
-  eyebrow: { fontSize: 10, fontFamily: FONTS.mono, color: c.text4, letterSpacing: 2, marginBottom: 2 },
+  eyebrow: { fontSize: 11, fontFamily: FONTS.mono, color: c.text3, letterSpacing: 2, marginBottom: 2 },
   name: { fontSize: t.xl, fontFamily: FONTS.display, fontWeight: t.bold, color: c.text1, marginBottom: s.sm },
   tabs: { flexDirection: 'row', gap: s.xl },
   tab: { alignItems: 'center', paddingBottom: 4 },
@@ -560,7 +562,7 @@ const makeStyles = (c, t, s, r, sh) => StyleSheet.create({
     marginBottom: s.lg,
     ...sh.md,
   },
-  playText: { fontSize: t.lg, fontFamily: FONTS.display, fontWeight: t.bold, color: '#fff', letterSpacing: 2 },
+  playText: { fontSize: t.lg, fontFamily: FONTS.display, fontWeight: t.bold, color: c.onFill, letterSpacing: 2 },
   actionRow: { flexDirection: 'row', gap: s.md, width: '80%' },
   actionBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
@@ -593,9 +595,9 @@ const makeStyles = (c, t, s, r, sh) => StyleSheet.create({
     borderRadius: r.md, paddingVertical: s.md, alignItems: 'center',
   },
   skillEmoji: { fontSize: 20, marginBottom: 4 },
-  skillTitle: { fontSize: 10, fontWeight: t.semibold, color: c.text2, textAlign: 'center', paddingHorizontal: 4 },
-  skillMechText: { fontSize: 8, color: c.text4, marginTop: 2 },
-  skillLevelText: { fontSize: 9, fontWeight: t.bold, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
+  skillTitle: { fontSize: 11, fontWeight: t.semibold, color: c.text2, textAlign: 'center', paddingHorizontal: 4 },
+  skillMechText: { fontSize: 11, color: c.text3, marginTop: 2 },
+  skillLevelText: { fontSize: 11, fontWeight: t.bold, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
   emptyCard: { width: '100%', backgroundColor: c.bg1, borderWidth: 0.5, borderColor: c.border, borderRadius: r.lg, padding: s.lg, alignItems: 'center' },
   emptyCardText: { fontSize: t.sm, color: c.text3 },
   subjectCard: { width: '100%', backgroundColor: c.bg1, borderWidth: 0.5, borderColor: c.border, borderRadius: r.md, padding: s.md, marginBottom: s.sm },
@@ -609,20 +611,20 @@ const makeStyles = (c, t, s, r, sh) => StyleSheet.create({
   filterChip:       { paddingHorizontal: s.md, paddingVertical: 6, borderRadius: r.full, backgroundColor: c.bg1, borderWidth: 0.5, borderColor: c.border },
   filterChipActive: { backgroundColor: c.teal, borderColor: c.teal },
   filterText:       { fontSize: t.xs, color: c.text3, fontWeight: t.medium },
-  filterTextActive: { color: '#fff', fontWeight: t.bold },
+  filterTextActive: { color: c.onFill, fontWeight: t.bold },
   mechanicChip:     { backgroundColor: c.bg2 },
   gameGrid:         { flexDirection: 'row', flexWrap: 'wrap', width: '100%', padding: s.sm },
   gameCard:         { width: '47%', margin: '1.5%', backgroundColor: c.bg1, borderRadius: r.lg, padding: s.md, borderWidth: 0.5, borderColor: c.border, borderTopWidth: 3 },
   gameCardTop:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: s.sm },
   gameEmoji:        { fontSize: 28 },
   mechBadge:        { alignSelf: 'flex-start', backgroundColor: c.bg2, borderRadius: r.full, paddingHorizontal: 6, paddingVertical: 2, marginBottom: s.xs },
-  mechBadgeText:    { fontSize: 9, color: c.text3, fontWeight: t.semibold },
+  mechBadgeText:    { fontSize: 11, color: c.text3, fontWeight: t.semibold },
   levelPill:        { borderWidth: 1, borderRadius: r.full, paddingHorizontal: 6, paddingVertical: 2 },
-  levelPillText:    { fontSize: 8, fontWeight: t.bold },
+  levelPillText:    { fontSize: 11, fontWeight: t.bold },
   levelPillNew:     { backgroundColor: c.teal, borderRadius: r.full, paddingHorizontal: 6, paddingVertical: 2 },
-  levelPillNewText: { fontSize: 8, fontWeight: t.bold, color: '#fff' },
+  levelPillNewText: { fontSize: 11, fontWeight: t.bold, color: c.onFill },
   gameTitle:        { fontSize: t.sm, fontWeight: t.bold, color: c.text1, marginBottom: 3 },
-  gameDesc:         { fontSize: 10, color: c.text3, lineHeight: 14, marginBottom: s.sm },
+  gameDesc:         { fontSize: 11, color: c.text3, lineHeight: 14, marginBottom: s.sm },
   gamePlayBtn:      { borderRadius: r.md, paddingVertical: 7, alignItems: 'center', marginTop: s.sm },
-  gamePlayText:     { fontSize: t.xs, fontWeight: t.bold, color: '#fff' },
+  gamePlayText:     { fontSize: t.xs, fontWeight: t.bold, color: c.onFill },
 });

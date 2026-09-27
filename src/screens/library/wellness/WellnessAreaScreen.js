@@ -184,14 +184,14 @@ export default function WellnessAreaScreen({
                       <Text style={{ fontSize: t.sm, color: c.text1, lineHeight: 20 }}>{parseEntry(entry.content)}</Text>
                       {!!getCategory(entry.content) && (
                         <View style={{ alignSelf: 'flex-start', backgroundColor: accentColor + '1f', borderRadius: r.full, paddingHorizontal: 8, paddingVertical: 2, marginTop: 6 }}>
-                          <Text style={{ fontSize: 10, color: accentColor, fontWeight: '700' }}>{getCategory(entry.content)}</Text>
+                          <Text style={{ fontSize: 11, color: accentColor, fontWeight: '700' }}>{getCategory(entry.content)}</Text>
                         </View>
                       )}
-                      <Text style={{ fontSize: 10, color: c.text4, marginTop: 4 }}>
+                      <Text style={{ fontSize: 11, color: c.text3, marginTop: 4 }}>
                         {new Date(entry.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                       </Text>
                     </View>
-                    <TouchableOpacity onPress={() => del(entry.id)} style={{ padding: 2 }}>
+                    <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={() => del(entry.id)} style={{ padding: 2 }}>
                       <Ionicons name="close" size={14} color={c.text4} />
                     </TouchableOpacity>
                   </View>
@@ -218,7 +218,7 @@ export default function WellnessAreaScreen({
     <View style={{ flex: 1, backgroundColor: c.bg0 }}>
       {/* Header */}
       <View style={{ backgroundColor: c.bg1, padding: s.lg, paddingTop: s.xxl, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: s.sm }}>
+        <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => navigation.goBack()} style={{ marginBottom: s.sm }}>
           <Ionicons name="chevron-back" size={20} color={accentColor} />
         </TouchableOpacity>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md }}>

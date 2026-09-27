@@ -20,7 +20,7 @@ export function SectionLabel({ label, children, action, style }) {
   const plain = st.name === 'plain';
   return (
     <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: s.lg, marginBottom: s.sm, paddingHorizontal: 2 }, style]}>
-      <Text style={{ fontSize: plain ? t.sm : t.xs, color: plain ? c.text3 : c.text4, ...st.sectionLabel }}>
+      <Text style={{ fontSize: plain ? t.sm : t.xs, color: plain ? c.text3 : c.text3, ...st.sectionLabel }}>
         {label ?? children}
       </Text>
       {action && (

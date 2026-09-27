@@ -17,6 +17,7 @@ export const COMMUNITY_NOT_CONFIGURED = 'COMMUNITY_NOT_CONFIGURED';
 export const MINORS_CANNOT_PUBLISH    = 'MINORS_CANNOT_PUBLISH';
 export const MINORS_CANNOT_REQUEST    = 'MINORS_CANNOT_REQUEST_MENTORS';
 export const CONTENT_BLOCKED          = 'CONTENT_BLOCKED';
+export const LINK_NOT_ALLOWED         = 'LINK_NOT_ALLOWED';
 export const NOT_AN_ADMIN             = 'NOT_AN_ADMIN';
 export const ALREADY_SENT_TODAY       = 'ALREADY_SENT_TODAY';
 
@@ -37,6 +38,7 @@ function translate(error) {
   if (msg.includes(MINORS_CANNOT_PUBLISH)) return new Error(MINORS_CANNOT_PUBLISH);
   if (msg.includes(MINORS_CANNOT_REQUEST)) return new Error(MINORS_CANNOT_REQUEST);
   if (msg.includes(CONTENT_BLOCKED))       return new Error(CONTENT_BLOCKED);
+  if (msg.includes(LINK_NOT_ALLOWED))      return new Error(LINK_NOT_ALLOWED);
   if (msg.includes(NOT_AN_ADMIN))          return new Error(NOT_AN_ADMIN);
   if (msg.includes(ALREADY_SENT_TODAY))    return new Error(ALREADY_SENT_TODAY);
   return error;

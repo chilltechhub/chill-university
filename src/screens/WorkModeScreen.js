@@ -60,7 +60,7 @@ function Stepper({ phase, c, t }) {
         return (
           <View key={step.key} style={{ flex: 1, alignItems: 'center' }}>
             <View style={{ height: 3, width: '100%', borderRadius: 2, backgroundColor: isActive ? c.teal : c.border, marginBottom: 4 }} />
-            <Text style={{ fontSize: 8.5, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 0.5, color: isActive ? c.teal : c.text4 }}>
+            <Text style={{ fontSize: 11.5, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 0.5, color: isActive ? c.teal : c.text3 }}>
               {step.label}
             </Text>
           </View>
@@ -175,7 +175,7 @@ export default function WorkModeScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg0 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={{ flexDirection: 'row', alignItems: 'center', height: 52, paddingHorizontal: 14, gap: 10 }}>
-        <TouchableOpacity onPress={() => (phase === 'start' ? navigation.goBack() : discard())} style={{ padding: 4 }}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={phase === 'start' ? 'Back' : 'Discard session'} onPress={() => (phase === 'start' ? navigation.goBack() : discard())} style={{ padding: 4 }}>
           <Ionicons name={phase === 'start' ? 'arrow-back' : 'close'} size={22} color={c.text2} />
         </TouchableOpacity>
         <Text style={{ fontSize: t.sm, fontWeight: '800', color: c.text3, letterSpacing: 1 }}>WORK MODE</Text>
@@ -206,7 +206,7 @@ export default function WorkModeScreen() {
               autoFocus
             />
 
-            <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, fontWeight: t.bold, marginBottom: s.sm }}>
+            <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, fontWeight: t.bold, marginBottom: s.sm }}>
               Life area (optional)
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: s.xl }}>
@@ -254,7 +254,7 @@ export default function WorkModeScreen() {
               </TouchableOpacity>
             </View>
 
-            <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, fontWeight: t.bold, marginBottom: s.sm }}>
+            <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, fontWeight: t.bold, marginBottom: s.sm }}>
               Scratchpad
             </Text>
             <TextInput
@@ -276,7 +276,7 @@ export default function WorkModeScreen() {
 
             <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, alignItems: 'center', marginBottom: s.xl, width: '100%', borderWidth: 1, borderColor: c.border }}>
               <Text style={{ fontSize: 32, fontFamily: FONTS.mono, fontWeight: '800', color }}>{fmtSummary(elapsedSeconds)}</Text>
-              <Text style={{ fontSize: t.xs, color: c.text4, marginTop: 2 }}>logged{areaKey ? ` · ${AREAS[areaKey]?.label}` : ''}</Text>
+              <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>logged{areaKey ? ` · ${AREAS[areaKey]?.label}` : ''}</Text>
               {scratchpad.trim() ? (
                 <Text style={{ fontSize: t.xs, color: c.text3, marginTop: s.md, lineHeight: 17, textAlign: 'left', alignSelf: 'stretch' }} numberOfLines={4}>
                   {scratchpad.trim()}

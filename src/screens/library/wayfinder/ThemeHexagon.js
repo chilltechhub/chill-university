@@ -98,7 +98,7 @@ export default function ThemeHexagon({ interest = {}, experience = {}, size = 28
             <Text style={{ fontSize: 11, fontWeight: '700', color: t.color }} numberOfLines={1}>
               {t.emoji} {t.short}
             </Text>
-            <Text style={{ fontSize: 10, color: c.text3 }}>
+            <Text style={{ fontSize: 11, color: c.text3 }}>
               {score === null || score === undefined ? '—' : score}
             </Text>
           </View>

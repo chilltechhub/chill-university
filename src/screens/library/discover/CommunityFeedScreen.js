@@ -27,9 +27,11 @@ import { useUIPrefs } from '../../../../context/UIPrefsContext';
 import { useUserProgress } from '../../../../context/UserProgressContext';
 import {
   getFeed, getTopTalent, publishPost, deleteMyPost, reportPost, blockUser,
-  COMMUNITY_NOT_CONFIGURED, MINORS_CANNOT_PUBLISH, CONTENT_BLOCKED,
+  COMMUNITY_NOT_CONFIGURED, MINORS_CANNOT_PUBLISH, CONTENT_BLOCKED, LINK_NOT_ALLOWED,
 } from '../../../api/communityService';
 import { communityAccess, restrictionMessage } from '../../../logic/allowed';
+
+const isWebLink = (url) => /^https?:\/\//i.test(String(url || '').trim());
 
 const CREST_COLORS = {
   teal: '#2bb5a0', gold: '#c9a84c', purple: '#8b4fc4', red: '#e05858',
@@ -127,13 +129,24 @@ export default function CommunityFeedScreen() {
   const submit = async () => {
     const titleText = draft.title.trim();
     if (!titleText) return;
+    // "example.com" becomes https://example.com; any other scheme (javascript:,
+    // an app link) is refused here and by the server.
+    const rawLink = draft.link.trim();
+    const link = !rawLink ? null
+      : isWebLink(rawLink) ? rawLink
+      : /^[a-z][a-z0-9+.-]*:/i.test(rawLink) ? undefined
+      : `https://${rawLink}`;
+    if (link === undefined) {
+      Alert.alert('Check the link', 'Links need to be a web address, starting with https://');
+      return;
+    }
     setSaving(true);
     try {
       await publishPost({
         kind: draft.kind,
         title: titleText,
         body: draft.body.trim() || null,
-        link: draft.link.trim() || null,
+        link,
         tags: draft.tags.split(',').map(x => x.trim().toLowerCase()).filter(Boolean),
       });
       setShow(false);
@@ -144,6 +157,8 @@ export default function CommunityFeedScreen() {
           'That post can’t go up',
           'It contains language this community doesn’t allow. Edit it and try again.',
         );
+      } else if (e.message === LINK_NOT_ALLOWED) {
+        Alert.alert('Check the link', 'Links need to be a web address, starting with https://');
       } else if (e.message === MINORS_CANNOT_PUBLISH) {
         Alert.alert('Not available', 'Sharing publicly is only available on adult accounts.');
       } else if (e.message === COMMUNITY_NOT_CONFIGURED) {
@@ -221,8 +236,8 @@ export default function CommunityFeedScreen() {
             onPress={openCompose}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: c.teal,
                      borderRadius: r.full, paddingHorizontal: s.md, paddingVertical: 8 }}>
-            <Ionicons name="add" size={16} color="#fff" />
-            <Text style={{ color: '#fff', fontSize: t.xs, fontWeight: '700' }}>Share</Text>
+            <Ionicons name="add" size={16} color={c.onFill} />
+            <Text style={{ color: c.onFill, fontSize: t.xs, fontWeight: '700' }}>Share</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -306,8 +321,8 @@ export default function CommunityFeedScreen() {
                 <TouchableOpacity onPress={openCompose}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.teal,
                            borderRadius: r.full, paddingHorizontal: s.xl, paddingVertical: 11 }}>
-                  <Ionicons name="add-circle-outline" size={17} color="#fff" />
-                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: t.sm }}>Be the first</Text>
+                  <Ionicons name="add-circle-outline" size={17} color={c.onFill} />
+                  <Text style={{ color: c.onFill, fontWeight: '700', fontSize: t.sm }}>Be the first</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -329,13 +344,13 @@ export default function CommunityFeedScreen() {
                     <Text style={{ fontSize: t.xs, fontWeight: '700', color: c.text1 }} numberOfLines={1}>
                       {post.author_name}{post.is_mine ? ' · you' : ''}
                     </Text>
-                    <Text style={{ fontSize: 10, color: c.text4 }}>
+                    <Text style={{ fontSize: 11, color: c.text3 }}>
                       LV {post.author_level}
                       {active.ranked && post.author_points != null ? ` · ${post.author_points} pts` : ''}
                       {' · '}{timeAgo(post.created_at)}
                     </Text>
                   </View>
-                  <TouchableOpacity onPress={() => openPostMenu(post)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <TouchableOpacity accessibilityRole="button" accessibilityLabel={post.is_mine ? 'Delete post' : 'Post options'} onPress={() => openPostMenu(post)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                     <Ionicons name={post.is_mine ? 'trash-outline' : 'ellipsis-horizontal'} size={15} color={c.text4} />
                   </TouchableOpacity>
                 </View>
@@ -345,7 +360,7 @@ export default function CommunityFeedScreen() {
                 {tab === 'all' && (
                   <View style={{ alignSelf: 'flex-start', backgroundColor: kindTint + '1f', borderRadius: r.full,
                                  paddingHorizontal: 8, paddingVertical: 2, marginBottom: 6 }}>
-                    <Text style={{ fontSize: 10, color: kindTint, fontWeight: '700' }}>{KIND_LABEL[kind]}</Text>
+                    <Text style={{ fontSize: 11, color: kindTint, fontWeight: '700' }}>{KIND_LABEL[kind]}</Text>
                   </View>
                 )}
 
@@ -353,7 +368,9 @@ export default function CommunityFeedScreen() {
                 {!!post.body && (
                   <Text style={{ fontSize: t.sm, color: c.text2, lineHeight: 20, marginTop: 4 }}>{post.body}</Text>
                 )}
-                {!!post.link && (
+                {/* Only web links open. publish_community_post() refuses anything
+                    else now, but older posts predate that check. */}
+                {!!post.link && isWebLink(post.link) && (
                   <TouchableOpacity onPress={() => Linking.openURL(post.link)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: s.sm }}>
                     <Ionicons name="link-outline" size={13} color={c.teal} />
                     <Text style={{ fontSize: t.xs, color: c.teal, flex: 1 }} numberOfLines={1}>{post.link}</Text>
@@ -363,7 +380,7 @@ export default function CommunityFeedScreen() {
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: s.sm }}>
                     {post.tags.map((tag, i) => (
                       <View key={i} style={{ backgroundColor: c.bg2 || c.bg0, borderRadius: r.full, paddingHorizontal: 8, paddingVertical: 2 }}>
-                        <Text style={{ fontSize: 10, color: c.text3 }}>#{tag}</Text>
+                        <Text style={{ fontSize: 11, color: c.text3 }}>#{tag}</Text>
                       </View>
                     ))}
                   </View>
@@ -382,7 +399,7 @@ export default function CommunityFeedScreen() {
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: s.lg }}>
               <Text style={{ fontSize: t.lg, fontWeight: '800', color: c.text1 }}>Share with the community</Text>
-              <TouchableOpacity onPress={() => setShow(false)}><Ionicons name="close" size={22} color={c.text3} /></TouchableOpacity>
+              <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={() => setShow(false)}><Ionicons name="close" size={22} color={c.text3} /></TouchableOpacity>
             </View>
             <ScrollView automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false}>
               {/* Kind picker — one screen now creates all three. */}
@@ -400,7 +417,7 @@ export default function CommunityFeedScreen() {
                   );
                 })}
               </View>
-              <Text style={{ fontSize: t.xs, color: c.text4, marginBottom: s.md }}>
+              <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: s.md }}>
                 {KINDS.find(k => k.key === draft.kind)?.hint}
               </Text>
 
@@ -428,7 +445,7 @@ export default function CommunityFeedScreen() {
                 value={draft.tags} onChangeText={v => setDraft(d => ({ ...d, tags: v }))}
                 placeholder="Tags, comma separated (optional)" placeholderTextColor={c.text4} autoCapitalize="none"
               />
-              <Text style={{ fontSize: 11, color: c.text4, marginBottom: s.md, lineHeight: 16 }}>
+              <Text style={{ fontSize: 11, color: c.text3, marginBottom: s.md, lineHeight: 16 }}>
                 This is public to everyone using the app, and posts are screened before they
                 appear. Don&apos;t include your full name, school, address, or contact details.
               </Text>

@@ -12,11 +12,11 @@
 export const SCREEN_HELP = {
   Home: {
     title: 'Home',
-    body: 'Your dashboard — daily missions, streak, and a snapshot of what needs attention today. One of the widgets is the Compass: one purpose, one objective, and the single next step in it.',
+    body: 'Your dashboard — daily missions, streak, and a snapshot of what needs attention today. One of the widgets is the Compass: one purpose, one goal, and the single next step in it.',
   },
   Compass: {
     title: 'Compass',
-    body: 'Pick the one thing you are here for, and one objective to finish. Everything the app shows you is ordered around that, and finishing an objective is how the deeper screens open. Where a feature has a competence check you can skip the objective by passing it — but only one attempt each, and falling short means doing the objective instead. Experimental features (unfinished work) and Plus features are both listed here too, with what each one actually is.',
+    body: 'Pick the one thing you are here for, and one goal to finish. Everything the app shows you is ordered around that, and finishing a goal is how the deeper screens open. Where a feature has a competence check you can skip the goal by passing it — but only one attempt each, and falling short means doing the goal instead. Experimental features (unfinished work) and Plus features are both listed here too, with what each one actually is.',
   },
   Stats: {
     title: 'Deep Insights',
@@ -44,7 +44,7 @@ export const SCREEN_HELP = {
   },
   ProjectsScreen: {
     title: 'The Workshop',
-    body: 'Every project you’re building, from a rough blueprint to something you’re showing off. Tap + to start a new one.',
+    body: 'Every project, from a rough idea to something you’re showing off. Tap + to start a new one.',
   },
   ProjectDetail: {
     title: 'Build',

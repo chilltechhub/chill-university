@@ -204,7 +204,7 @@ export default function ScienceSortGame({ onGameEnd }) {
           <Text style={s.question}>{topic.question}</Text>
         </View>
 
-        <RushTimerBar active={pace === 'rush' && !feedback} durationMs={4000} resetKey={current} onExpire={() => handleAnswer('__TIMEOUT__')} />
+        <RushTimerBar active={pace === 'rush' && !feedback} level={level} durationMs={4000} resetKey={current} onExpire={() => handleAnswer('__TIMEOUT__')} />
         <View style={s.categories}>
           {topic.categories.map(cat => {
             let bg = G.card, border = G.border;

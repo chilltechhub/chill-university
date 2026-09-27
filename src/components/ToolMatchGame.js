@@ -200,7 +200,7 @@ export default function ToolMatchGame({ onGameEnd }) {
           <Text style={s.toolQuestion}>What is this tool used for?</Text>
         </View>
 
-        <RushTimerBar active={pace === 'rush' && !feedback} durationMs={4000} resetKey={q} onExpire={() => handleAnswer('__TIMEOUT__')} />
+        <RushTimerBar active={pace === 'rush' && !feedback} level={level} durationMs={4000} resetKey={q} onExpire={() => handleAnswer('__TIMEOUT__')} />
         <View style={s.options}>
           {opts.map(opt => {
             let bg = G.card, border = G.border;

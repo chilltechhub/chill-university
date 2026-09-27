@@ -222,7 +222,7 @@ const makeStyles = (G) => StyleSheet.create({
   scroll:         { padding: 16, paddingBottom: 40 },
   recipeName:     { fontSize: 20, fontWeight: '700', color: G.cream, textAlign: 'center', marginBottom: 4 },
   instruction:    { fontSize: 13, color: G.muted, textAlign: 'center', marginBottom: 16 },
-  sectionLabel:   { fontSize: 10, color: G.muted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
+  sectionLabel:   { fontSize: 11, color: G.muted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
   placedSection:  { backgroundColor: G.card, borderRadius: 12, padding: 12, marginBottom: 14, borderWidth: 0.5, borderColor: G.border },
   placedStep:     { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: G.border },
   stepNum:        { width: 22, height: 22, borderRadius: 11, backgroundColor: G.success, alignItems: 'center', justifyContent: 'center' },

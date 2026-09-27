@@ -110,7 +110,7 @@ export function FounderQuestWidget({ userId, profileId, onOpenClasses }) {
       } : null}
     >
       {!started.length && (
-        <Text style={{ fontSize: t.xs, color: c.text4, marginBottom: s.sm }}>
+        <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: s.sm }}>
           Nothing started yet — here's what's first.
         </Text>
       )}
@@ -118,7 +118,7 @@ export function FounderQuestWidget({ userId, profileId, onOpenClasses }) {
         <View key={level.id} style={{ marginBottom: s.sm }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <Text style={{ fontSize: t.sm, color: c.text2 }} numberOfLines={1}>{level.short || level.title}</Text>
-            <Text style={{ fontSize: t.xs, color: c.text4 }}>{complete}/{total}</Text>
+            <Text style={{ fontSize: t.xs, color: c.text3 }}>{complete}/{total}</Text>
           </View>
           <Bar pct={pct} color={level.color || c.purple} />
         </View>
@@ -172,7 +172,7 @@ export function TargetsReadinessWidget({ userId, profile, onOpenProfiles, onOpen
             </Text>
           </View>
           <Bar pct={(readinessDone / readinessTotal) * 100} color={c.success} />
-          <Text style={{ fontSize: 10, color: c.text4, marginTop: 4 }}>
+          <Text style={{ fontSize: 11, color: c.text3, marginTop: 4 }}>
             Completed vault deliverables across the foundation and startup levels.
           </Text>
         </View>

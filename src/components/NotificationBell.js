@@ -30,6 +30,7 @@ export default function NotificationBell({ userId }) {
   return (
     <TouchableOpacity
       onPress={() => navigation.navigate('Notifications')}
+      hitSlop={6}
       accessibilityRole="button"
       accessibilityLabel={unread ? `Notifications, ${unread} new` : 'Notifications'}
       hitSlop={8}
@@ -38,7 +39,7 @@ export default function NotificationBell({ userId }) {
       <Ionicons name={unread ? 'notifications' : 'notifications-outline'} size={20} color={unread ? c.gold : c.text2} />
       {unread > 0 && (
         <View style={{ position: 'absolute', top: 1, right: 0, minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 3, backgroundColor: c.error, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800' }}>{unread > 9 ? '9+' : unread}</Text>
+          <Text style={{ color: c.onFill, fontSize: 9 /* a11y-ok: count badge */, fontWeight: '800' }}>{unread > 9 ? '9+' : unread}</Text>
         </View>
       )}
     </TouchableOpacity>

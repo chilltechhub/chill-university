@@ -24,7 +24,7 @@ export default function PlacementEditor({ visible, userId, components, areaKey, 
           style={{ backgroundColor: c.teal, padding: 16, borderRadius: 12, alignItems: 'center', marginBottom: 12 }}
           onPress={onDone}
         >
-          <Text style={{ color: '#fff', fontWeight: '700' }}>Go to Agenda</Text>
+          <Text style={{ color: c.onFill, fontWeight: '700' }}>Go to Agenda</Text>
         </TouchableOpacity>
 
         <TouchableOpacity

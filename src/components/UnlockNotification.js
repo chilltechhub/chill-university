@@ -26,8 +26,8 @@ import { getFeature } from '../data/featureCatalog';
 import { FONTS } from '../theme';
 
 const VIA_COPY = {
-  test:      'You tested out of it — no objective needed.',
-  objective: 'Earned by finishing your objective.',
+  test:      'You passed the quick check — no goal needed.',
+  objective: 'Earned by finishing your goal.',
   plan:      'Included with your plan.',
 };
 
@@ -230,15 +230,15 @@ const makeStyles = (c, t, sp, r) => StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', padding: sp.xxl },
   card:    { width: '100%', maxWidth: 340, backgroundColor: c.bg1, borderRadius: r.xl, borderWidth: 1, borderColor: c.teal, padding: sp.xl, alignItems: 'center' },
   iconBox: { width: 54, height: 54, borderRadius: r.lg, backgroundColor: c.tealLight, alignItems: 'center', justifyContent: 'center', marginBottom: sp.md },
-  kicker:  { fontSize: 10, color: c.teal, textTransform: 'uppercase', letterSpacing: 1.4, fontWeight: '800' },
+  kicker:  { fontSize: 11, color: c.teal, textTransform: 'uppercase', letterSpacing: 1.4, fontWeight: '800' },
   title:   { fontSize: t.xl, fontFamily: FONTS.displaySemibold, fontWeight: '800', color: c.text1, marginTop: 2, marginBottom: sp.sm, textAlign: 'center' },
   blurb:   { fontSize: t.sm, color: c.text2, textAlign: 'center', lineHeight: 20 },
-  via:     { fontSize: t.xs, color: c.text4, textAlign: 'center', marginTop: sp.sm, marginBottom: sp.lg, fontStyle: 'italic' },
+  via:     { fontSize: t.xs, color: c.text3, textAlign: 'center', marginTop: sp.sm, marginBottom: sp.lg, fontStyle: 'italic' },
   list:    { alignSelf: 'stretch', marginTop: sp.md, marginBottom: sp.lg, gap: 6 },
   listRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   listText:{ flex: 1, fontSize: t.sm, color: c.text2, lineHeight: 19 },
   btn:     { alignSelf: 'stretch', backgroundColor: c.teal, borderRadius: r.md, paddingVertical: sp.md, alignItems: 'center' },
-  btnText: { color: '#fff', fontSize: t.sm, fontWeight: '800' },
+  btnText: { color: c.onFill, fontSize: t.sm, fontWeight: '800' },
   ghost:   { paddingVertical: sp.md },
   ghostText:{ color: c.text3, fontSize: t.xs },
 });

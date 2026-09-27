@@ -30,6 +30,7 @@ import LessonQuiz from '../../../components/LessonQuiz';
 import { FONTS } from '../../../theme';
 import { usePlus } from '../../../../context/PlusContext';
 import { isLessonFree } from '../../../logic/plusContent';
+import { textOn } from '../../../logic/contrast';
 
 export default function ModuleScreen() {
   const { colors: c, typography: t, spacing: s, radius: r, shadows: sh } = useTheme();
@@ -105,7 +106,7 @@ export default function ModuleScreen() {
     >
       {/* ── Header ───────────────────────────────────────────────────── */}
       <View style={st.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: 10 }} hitSlop={8}>
+        <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => navigation.goBack()} style={{ marginBottom: 10 }} hitSlop={8}>
           <Ionicons name="chevron-back" size={22} color={color} />
         </TouchableOpacity>
         <Text style={[st.kicker, { color }]}>
@@ -188,7 +189,7 @@ export default function ModuleScreen() {
               style={st.lessonHead}
             >
               <View style={[st.lessonNum, { backgroundColor: isOpen ? color : color + '22' }]}>
-                <Text style={[st.lessonNumText, { color: isOpen ? '#fff' : color }]}>{li + 1}</Text>
+                <Text style={[st.lessonNumText, { color: isOpen ? textOn(color) : color }]}>{li + 1}</Text>
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={st.lessonTitle}>{lesson.title}</Text>
@@ -302,14 +303,14 @@ const makeStyles = (c, t, s, r, sh, width) => StyleSheet.create({
 
   header: { paddingHorizontal: s.lg, paddingTop: s.lg, paddingBottom: s.sm },
   kicker: {
-    fontSize: 10, fontFamily: FONTS.mono, fontWeight: '800',
+    fontSize: 11, fontFamily: FONTS.mono, fontWeight: '800',
     textTransform: 'uppercase', letterSpacing: 1.1, marginBottom: 6,
   },
   title: { fontSize: 24, fontFamily: FONTS.display, fontWeight: '800', color: c.text1, lineHeight: 30 },
   objective: { fontSize: 14, color: c.text2, lineHeight: 21, marginTop: 8 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10 },
-  metaText: { fontSize: 11, color: c.text4 },
-  metaDot: { fontSize: 11, color: c.text4, marginHorizontal: 3 },
+  metaText: { fontSize: 11, color: c.text3 },
+  metaDot: { fontSize: 11, color: c.text3, marginHorizontal: 3 },
 
   card: {
     marginHorizontal: s.lg, marginBottom: s.md, padding: s.md,
@@ -341,8 +342,8 @@ const makeStyles = (c, t, s, r, sh, width) => StyleSheet.create({
   sectionHeading: { fontSize: 15, fontWeight: '800', marginBottom: 8, lineHeight: 20 },
 
   boxLabel: {
-    fontSize: 10, fontFamily: FONTS.mono, fontWeight: '800',
-    textTransform: 'uppercase', letterSpacing: 1, color: c.text4, marginBottom: 6,
+    fontSize: 11, fontFamily: FONTS.mono, fontWeight: '800',
+    textTransform: 'uppercase', letterSpacing: 1, color: c.text3, marginBottom: 6,
   },
 
   termsBox: { backgroundColor: c.bg0, borderRadius: r.md, padding: 12, marginBottom: 16 },

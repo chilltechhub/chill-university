@@ -97,6 +97,7 @@ export function TourProvider({ children }) {
   // it ended it, e.g. the tap it asked for opened another screen), or
   // 'replaced' (another tour started over it). Only startLesson sets one.
   const onEndRef = useRef(null);
+  const screenTourRouteRef = useRef(null); // the screen a single-screen tutorial belongs to
   const endWith = useCallback((reason) => {
     const cb = onEndRef.current;
     onEndRef.current = null;
@@ -195,11 +196,13 @@ export function TourProvider({ children }) {
     // unspotlighted card while only the synthetic Navigation step (which
     // doesn't read the registry at all) ever lit up.
     setScopedSteps(buildScreenTutorial(routeName, personalization, { can, firstVisit: !!opts?.firstVisit }));
+    screenTourRouteRef.current = routeName;
     setActive(true);
     setStepIndex(0);
   }, [personalization, can]);
 
   const finish = useCallback((reason = 'done') => {
+    screenTourRouteRef.current = null;
     setActive(false);
     endWith(typeof reason === 'string' ? reason : 'done');
     if (scopedSteps) { setScopedSteps(null); return; }
@@ -211,6 +214,15 @@ export function TourProvider({ children }) {
   const skip = useCallback(() => finish('skip'), [finish]);
   // For whoever started a walkthrough to end it themselves.
   const endTour = useCallback((reason = 'handoff') => finish(reason), [finish]);
+
+  // Called on every route change (App.js). A screen's own tutorial ends when
+  // you leave that screen — it used to follow you, pointing at nothing (a
+  // Settings step showed up over the Workshop). The app-wide tour navigates
+  // on purpose, so only a single-screen walkthrough is ended this way.
+  const noteRoute = useCallback((routeName) => {
+    const tourScreen = screenTourRouteRef.current;
+    if (tourScreen && routeName && routeName !== tourScreen) finish('left');
+  }, [finish]);
 
   const next = useCallback(() => {
     if (stepIndex >= steps.length - 1) { finish('done'); return; }
@@ -304,9 +316,9 @@ export function TourProvider({ children }) {
     prefill: currentStep?.prefill || null,
     completeAction,
     quizAnswer, answerQuiz,
-    registerNavigator, registerTarget, unregisterTarget, setPersonalization,
+    registerNavigator, registerTarget, unregisterTarget, setPersonalization, noteRoute,
     startTour: start, startScreenTour, startLesson, startIfFirstTime, nextStep: next, backStep: back, skipTour: skip, endTour,
-  }), [active, stepIndex, targets, steps, currentStep, completeAction, quizAnswer, answerQuiz, registerNavigator, registerTarget, unregisterTarget, setPersonalization, start, startScreenTour, startLesson, startIfFirstTime, next, back, skip, endTour]);
+  }), [active, stepIndex, targets, steps, currentStep, completeAction, quizAnswer, answerQuiz, registerNavigator, registerTarget, unregisterTarget, setPersonalization, noteRoute, start, startScreenTour, startLesson, startIfFirstTime, next, back, skip, endTour]);
 
   return <TourContext.Provider value={value}>{children}</TourContext.Provider>;
 }

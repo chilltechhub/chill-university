@@ -313,14 +313,14 @@ export default function ImportScreen() {
     <View style={{ flex: 1, backgroundColor: c.bg0 }}>
       {/* Header */}
       <View style={{ backgroundColor: c.bg1, borderBottomWidth: 0.5, borderBottomColor: c.border, padding: s.lg, paddingTop: s.xl, flexDirection: 'row', alignItems: 'center', gap: s.md }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4 }}>
+        <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => navigation.goBack()} style={{ padding: 4 }}>
           <Ionicons name="chevron-back" size={22} color={c.teal} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: t.xxl, fontFamily: FONTS.display, fontWeight: t.bold, color: c.text1 }}>⬇️ Import Hub</Text>
           <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>Everything lands in your Inbox — matched items also attach directly</Text>
         </View>
-        <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={{ padding: 4 }}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={hasKey ? 'AI key saved. Open Settings' : 'Add an AI key in Settings'} onPress={() => navigation.navigate('Settings')} style={{ padding: 4 }}>
           <Ionicons name={hasKey ? 'key' : 'key-outline'} size={20} color={hasKey ? c.gold : c.text4} />
         </TouchableOpacity>
       </View>
@@ -370,11 +370,11 @@ export default function ImportScreen() {
             />
             {pasteText.length > 0 && (
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
-                <Text style={{ fontSize: 10, fontFamily: FONTS.mono, color: willUseAI ? c.gold : c.teal }}>
+                <Text style={{ fontSize: 11, fontFamily: FONTS.mono, color: willUseAI ? c.gold : c.teal }}>
                   {format === 'auto' ? `Detected: ${FORMAT_LABEL[detected]}` : `Format: ${FORMAT_LABEL[detected] || detected}`}
                   {willUseAI ? ' · uses AI' : ' · parses instantly, no AI'}
                 </Text>
-                <Text style={{ fontSize: 10, fontFamily: FONTS.mono, color: c.text4 }}>{pasteText.length.toLocaleString()} chars</Text>
+                <Text style={{ fontSize: 11, fontFamily: FONTS.mono, color: c.text3 }}>{pasteText.length.toLocaleString()} chars</Text>
               </View>
             )}
           </View>
@@ -395,7 +395,7 @@ export default function ImportScreen() {
                     borderWidth: 1, borderColor: format === f.key ? c.teal : c.border,
                   }}
                 >
-                  <Text style={{ fontSize: 12, fontWeight: '700', color: format === f.key ? '#fff' : c.text3 }}>{f.label}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: format === f.key ? c.onFill : c.text3 }}>{f.label}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -462,7 +462,7 @@ export default function ImportScreen() {
                     <Text style={{ fontSize: 12, color: c.gold, fontWeight: '700' }}>{enriching ? 'Enriching…' : 'Enrich with AI'}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => setAll(true)}><Text style={{ fontSize: 12, color: c.teal, fontWeight: '700' }}>Select all</Text></TouchableOpacity>
-                  <TouchableOpacity onPress={() => setAll(false)}><Text style={{ fontSize: 12, color: c.text4, fontWeight: '700' }}>Deselect all</Text></TouchableOpacity>
+                  <TouchableOpacity onPress={() => setAll(false)}><Text style={{ fontSize: 12, color: c.text3, fontWeight: '700' }}>Deselect all</Text></TouchableOpacity>
                 </View>
               </View>
 
@@ -476,7 +476,7 @@ export default function ImportScreen() {
                     borderWidth: 0.5, borderColor: item.isDupe ? c.warning : c.border,
                     opacity: item.selected ? 1 : 0.55,
                   }}>
-                    <TouchableOpacity onPress={() => toggleItem(item.localId)} style={{ paddingTop: 2 }}>
+                    <TouchableOpacity accessibilityRole="checkbox" accessibilityState={{ checked: !!item.selected }} accessibilityLabel="Include this item" onPress={() => toggleItem(item.localId)} style={{ paddingTop: 2 }}>
                       <Ionicons name={item.selected ? 'checkbox' : 'square-outline'} size={20} color={item.selected ? c.teal : c.text4} />
                     </TouchableOpacity>
 
@@ -508,29 +508,29 @@ export default function ImportScreen() {
                         {typeMeta && (
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: typeMeta.color + '22', borderRadius: r.full, paddingHorizontal: 7, paddingVertical: 2 }}>
                             <Ionicons name={typeMeta.icon} size={10} color={typeMeta.color} />
-                            <Text style={{ fontSize: 9, fontWeight: '700', color: typeMeta.color }}>{typeMeta.label}</Text>
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: typeMeta.color }}>{typeMeta.label}</Text>
                           </View>
                         )}
                         {item.matchLabel && (
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: c.teal + '22', borderRadius: r.full, paddingHorizontal: 7, paddingVertical: 2 }}>
                             <Ionicons name={item.matchType === 'project' ? 'folder-open-outline' : 'leaf-outline'} size={10} color={c.teal} />
-                            <Text style={{ fontSize: 9, fontWeight: '700', color: c.teal }} numberOfLines={1}>{item.matchLabel}</Text>
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: c.teal }} numberOfLines={1}>{item.matchLabel}</Text>
                           </View>
                         )}
                         {areaMeta && (
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: (areaMeta.color || c.gold) + '22', borderRadius: r.full, paddingHorizontal: 7, paddingVertical: 2 }}>
-                            <Text style={{ fontSize: 10 }}>{areaMeta.emoji}</Text>
-                            <Text style={{ fontSize: 9, fontWeight: '700', color: areaMeta.color || c.gold }}>{areaMeta.label}</Text>
+                            <Text style={{ fontSize: 11 }}>{areaMeta.emoji}</Text>
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: areaMeta.color || c.gold }}>{areaMeta.label}</Text>
                           </View>
                         )}
                         {item.isDupe && (
                           <View style={{ backgroundColor: c.warningLight, borderRadius: r.full, paddingHorizontal: 7, paddingVertical: 2 }}>
-                            <Text style={{ fontSize: 9, fontWeight: '700', color: c.warning }}>Already saved</Text>
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: c.warning }}>Already saved</Text>
                           </View>
                         )}
                         {item.tags.map(tg => (
                           <View key={tg} style={{ backgroundColor: c.bg2, borderRadius: r.full, paddingHorizontal: 7, paddingVertical: 2 }}>
-                            <Text style={{ fontSize: 9, color: c.text4 }}>#{tg}</Text>
+                            <Text style={{ fontSize: 11, color: c.text3 }}>#{tg}</Text>
                           </View>
                         ))}
                       </View>
@@ -554,7 +554,7 @@ export default function ImportScreen() {
                 }}
               >
                 {importing
-                  ? <ActivityIndicator color="#fff" size="small" />
+                  ? <ActivityIndicator color={c.onFill} size="small" />
                   : <Ionicons name="download-outline" size={16} color="#fff" />}
                 <Text style={{ color: '#fff', fontWeight: t.bold, fontSize: t.md }}>
                   {importing

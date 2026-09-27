@@ -37,6 +37,7 @@ import { shareText, reminderText, dayPlanText, fmtTime12, fmtDay } from '../logi
 import ReminderComposer from '../components/ReminderComposer';
 import { FONTS } from '../theme';
 import { todayStr } from '../logic/dateUtils';
+import { textOn } from '../logic/contrast';
 
 const LEADS = [['off', 'Off'], [0, 'At the time'], [5, '5 min'], [15, '15 min'], [30, '30 min']];
 const NUDGE_TIMES = [['08:00', '8 AM'], ['12:00', 'Noon'], ['17:00', '5 PM'], ['20:00', '8 PM']];
@@ -239,8 +240,8 @@ export default function NotificationCenterScreen() {
     <TouchableOpacity key={key || label} onPress={onPress} accessibilityRole="button" accessibilityLabel={label}
       style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: s.md, paddingVertical: 6, borderRadius: r.full,
         backgroundColor: filled ? tone : 'transparent', borderWidth: 1, borderColor: filled ? tone : `${tone}66` }}>
-      {!!icon && <Ionicons name={icon} size={13} color={filled ? '#fff' : tone} />}
-      {!!label && <Text style={{ fontSize: 12, fontWeight: '700', color: filled ? '#fff' : tone }}>{label}</Text>}
+      {!!icon && <Ionicons name={icon} size={13} color={filled ? textOn(tone) : tone} />}
+      {!!label && <Text style={{ fontSize: 12, fontWeight: '700', color: filled ? textOn(tone) : tone }}>{label}</Text>}
     </TouchableOpacity>
   );
   const iconBtn = (icon, label, onPress) => (
@@ -385,10 +386,10 @@ export default function NotificationCenterScreen() {
           {TABS.map(([k, l, n]) => (
             <TouchableOpacity key={k} onPress={() => setTab(k)} accessibilityRole="tab" accessibilityState={{ selected: tab === k }}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: s.md, paddingVertical: 6, borderRadius: r.full, backgroundColor: tab === k ? c.teal : 'transparent' }}>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: tab === k ? '#fff' : c.text2 }}>{l}</Text>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: tab === k ? c.onFill : c.text2 }}>{l}</Text>
               {n > 0 && (
                 <View style={{ minWidth: 18, paddingHorizontal: 4, height: 18, borderRadius: 9, backgroundColor: tab === k ? '#ffffff33' : c.bg2, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 10, fontWeight: '800', color: tab === k ? '#fff' : c.text2 }}>{n}</Text>
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: tab === k ? c.onFill : c.text2 }}>{n}</Text>
                 </View>
               )}
             </TouchableOpacity>

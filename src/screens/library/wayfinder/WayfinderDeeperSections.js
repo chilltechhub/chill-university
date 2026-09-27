@@ -165,7 +165,7 @@ export function PersonalitySection({ answers }) {
           Dashed letters are close to the middle — you could read as {close.map(l => `${l.letter} or ${l.other}`).join(', ')}. That’s normal, and it’s exactly where four-letter types tend to flip.
         </Text>
       )}
-      <Text style={{ fontSize: 12, color: c.text4, lineHeight: 17, marginBottom: 14 }}>
+      <Text style={{ fontSize: 12, color: c.text3, lineHeight: 17, marginBottom: 14 }}>
         Translated from the Big Five, the personality model researchers actually use. It isn’t the official MBTI® assessment, and it describes tendencies — not a box.
       </Text>
 

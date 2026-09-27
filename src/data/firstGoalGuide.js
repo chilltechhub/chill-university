@@ -76,7 +76,7 @@ export const FIRST_GOAL_GUIDE = {
     project: {
       go: 'ProjectsScreen', spot: 'projects-add', mode: 'tap',
       path: 'the Library tab, swipe to the Build page, then The Workshop',
-      say: 'Tap New Build and start your idea as a project. Give it a name you would say out loud.',
+      say: 'Tap New Project and start your idea as a project. Give it a name you would say out loud.',
     },
     drill: DRILL('Tap here and play a round. Budget Balance or Survive the Month is a good start.'),
   },
@@ -91,7 +91,7 @@ export const FIRST_GOAL_GUIDE = {
     project: {
       go: 'ProjectsScreen', spot: 'projects-add', mode: 'tap',
       path: 'the Library tab, swipe to the Build page, then The Workshop',
-      say: 'Tap New Build and start your idea as a project. Fill in the Next step box too: the actual next move, not "work on it". That ticks the last step at the same time.',
+      say: 'Tap New Project and start your idea as a project. Fill in the Next step box too: the actual next move, not "work on it". That ticks the last step at the same time.',
     },
     step: {
       go: 'ProjectsScreen', spot: 'projects-list', mode: 'point',

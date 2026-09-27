@@ -37,7 +37,7 @@ const PERKS = [
     body: 'Your full history, with trends for each subject, not just the last two weeks.' },
   { icon: 'sparkles-outline', title: 'AI Import',
     body: 'Paste messy notes and they get sorted into real tasks, ideas and links.' },
-  { icon: 'git-branch-outline', title: 'Custom Objectives',
+  { icon: 'git-branch-outline', title: 'Custom Goals',
     body: 'Write your own goal and its steps when none of ours fits.' },
   { icon: 'business-outline', title: 'Organizations & Cohorts',
     body: 'Run a class, team or group, with rosters, invites and assignments.' },
@@ -332,13 +332,13 @@ const makeStyles = (c, s, r) => StyleSheet.create({
   planName: { fontSize: 15, fontWeight: '700', color: c.text1 },
   planSub: { fontSize: 12, color: c.text3, marginTop: 2 },
   planPrice: { fontSize: 16, fontWeight: '800', color: c.text1 },
-  saveTag: { fontSize: 10, fontFamily: FONTS.mono, fontWeight: '800', color: c.gold, marginTop: 2 },
+  saveTag: { fontSize: 11, fontFamily: FONTS.mono, fontWeight: '800', color: c.gold, marginTop: 2 },
 
   cta: {
     backgroundColor: c.gold, borderRadius: r.lg, paddingVertical: 15,
     alignItems: 'center', justifyContent: 'center', minHeight: 52,
   },
-  ctaText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  ctaText: { color: c.onFill, fontSize: 16, fontWeight: '800' },
   fine: { fontSize: 11, color: c.text3, lineHeight: 16, textAlign: 'center', marginTop: 10 },
 
   note: { fontSize: 14, color: c.text2, lineHeight: 20, textAlign: 'center', marginVertical: s.md },
@@ -357,5 +357,5 @@ const makeStyles = (c, s, r) => StyleSheet.create({
 
   legalRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 4 },
   legalLink: { fontSize: 12, color: c.text3, textDecorationLine: 'underline' },
-  legalDot: { fontSize: 12, color: c.text4 },
+  legalDot: { fontSize: 12, color: c.text3 },
 });

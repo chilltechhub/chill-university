@@ -44,7 +44,7 @@ export function makeLevelScreen(levelId) {
     return (
       <ScrollView style={st.container} contentContainerStyle={{ paddingBottom: 48 }} showsVerticalScrollIndicator={false}>
         <View style={st.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: 10 }} hitSlop={8}>
+          <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => navigation.goBack()} style={{ marginBottom: 10 }} hitSlop={8}>
             <Ionicons name="chevron-back" size={22} color={level.color} />
           </TouchableOpacity>
           <Text style={[st.kicker, { color: level.color }]}>
@@ -92,7 +92,7 @@ export function makeLevelScreen(levelId) {
                     </View>
                   ) : (
                     <View style={[st.badge, { borderColor: c.border }]}>
-                      <Text style={[st.badgeText, { color: c.text4 }]}>OUTLINE</Text>
+                      <Text style={[st.badgeText, { color: c.text3 }]}>OUTLINE</Text>
                     </View>
                   )}
                 </View>
@@ -116,7 +116,7 @@ const makeStyles = (c, t, s, r, sh) => StyleSheet.create({
   container: { flex: 1, backgroundColor: c.bg0 },
   header: { paddingHorizontal: s.lg, paddingTop: s.lg, paddingBottom: s.sm },
   kicker: {
-    fontSize: 10, fontFamily: FONTS.mono, fontWeight: '800',
+    fontSize: 11, fontFamily: FONTS.mono, fontWeight: '800',
     textTransform: 'uppercase', letterSpacing: 1.1, marginBottom: 6,
   },
   title: { fontSize: 23, fontFamily: FONTS.display, fontWeight: '800', color: c.text1, lineHeight: 29 },
@@ -128,12 +128,12 @@ const makeStyles = (c, t, s, r, sh) => StyleSheet.create({
     borderWidth: 1, borderColor: c.border, borderLeftWidth: 3,
   },
   outcomeLabel: {
-    fontSize: 10, fontFamily: FONTS.mono, fontWeight: '800',
-    textTransform: 'uppercase', letterSpacing: 1, color: c.text4, marginBottom: 4,
+    fontSize: 11, fontFamily: FONTS.mono, fontWeight: '800',
+    textTransform: 'uppercase', letterSpacing: 1, color: c.text3, marginBottom: 4,
   },
   outcomeText: { fontSize: 14, color: c.text2, lineHeight: 21 },
   statLine: {
-    fontSize: 10, fontFamily: FONTS.mono, color: c.text4,
+    fontSize: 11, fontFamily: FONTS.mono, color: c.text3,
     textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 8,
   },
 
@@ -149,12 +149,12 @@ const makeStyles = (c, t, s, r, sh) => StyleSheet.create({
   modTitle: { fontSize: 15, fontWeight: '700', color: c.text1, lineHeight: 20 },
   modObjective: { fontSize: 12, color: c.text3, lineHeight: 17, marginTop: 3 },
   modMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 7 },
-  modMetaText: { fontSize: 11, color: c.text4 },
+  modMetaText: { fontSize: 11, color: c.text3 },
   badge: { borderWidth: 1, borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 },
-  badgeText: { fontSize: 8, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 0.5 },
+  badgeText: { fontSize: 11, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 0.5 },
 
   disclaimer: {
-    fontSize: 11, color: c.text4, lineHeight: 16,
+    fontSize: 11, color: c.text3, lineHeight: 16,
     paddingHorizontal: s.lg, marginTop: s.md,
   },
 });

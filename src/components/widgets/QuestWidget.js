@@ -58,7 +58,7 @@ export default function QuestWidget({ type, onOpenQuest, onOpenAll }) {
         </View>
       )}
       <View style={{ marginTop: s.md }}>
-        <Text style={{ fontSize: 11, color: c.text4, marginBottom: 4 }}>{doneCount} of {quests.length} done</Text>
+        <Text style={{ fontSize: 11, color: c.text3, marginBottom: 4 }}>{doneCount} of {quests.length} done</Text>
         <Bar pct={quests.length ? (doneCount / quests.length) * 100 : 0} color={next?.color || c.success} />
       </View>
     </WidgetCard>

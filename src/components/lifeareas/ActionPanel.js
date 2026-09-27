@@ -119,7 +119,7 @@ export default function ActionPanel({ aa, color, onEdit }) {
                     <Ionicons name={done ? 'checkmark' : TIER_ICONS[slot]} size={done ? 20 : 17} color={done ? INK : accent} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontFamily: FONTS.mono, fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: done ? c.teal : accent }}>
+                    <Text style={{ fontFamily: FONTS.mono, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: done ? c.teal : accent }}>
                       {done ? (slot === 'habit' ? 'Logged today' : 'Done') : tierLabel(action.tier, aa.band)}
                     </Text>
                     <Text style={{ fontSize: aa.band === 'kid' ? t.md + 1 : t.md, fontWeight: t.semibold, color: c.text1, marginTop: 2, lineHeight: 20 }}>{action.title}</Text>

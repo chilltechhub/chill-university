@@ -573,7 +573,7 @@ export default function WayfinderScreen() {
         accessibilityRole="button"
         style={{ backgroundColor: c.teal, borderRadius: r.md, paddingVertical: 15, alignItems: 'center', marginBottom: 18 }}
       >
-        <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>Let’s start</Text>
+        <Text style={{ color: c.onFill, fontWeight: '700', fontSize: 16 }}>Let’s start</Text>
       </TouchableOpacity>
 
       {/* For someone whose first problem isn't "what should I do with my
@@ -741,7 +741,7 @@ export default function WayfinderScreen() {
               </View>
               <Text style={{ fontSize: 13.5, color: c.text2, lineHeight: 19 }}>{x.text}</Text>
               <TouchableOpacity onPress={() => setReflectId(x.id)} style={{ marginTop: 10, alignSelf: 'flex-start', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, backgroundColor: c.teal }}>
-                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>{ticked ? 'You did it — how did it go?' : 'Did it? Say how it went'}</Text>
+                <Text style={{ color: c.onFill, fontSize: 13, fontWeight: '700' }}>{ticked ? 'You did it — how did it go?' : 'Did it? Say how it went'}</Text>
               </TouchableOpacity>
             </View>
           );
@@ -1041,7 +1041,7 @@ export default function WayfinderScreen() {
                 accessibilityRole="button"
                 style={{ flex: 2, paddingVertical: 14, borderRadius: r.md, backgroundColor: c.teal, alignItems: 'center', opacity: nextDisabled ? 0.4 : 1 }}
               >
-                <Text style={{ fontSize: 15, color: '#fff', fontWeight: '700' }}>{nextLabel}</Text>
+                <Text style={{ fontSize: 15, color: c.onFill, fontWeight: '700' }}>{nextLabel}</Text>
               </TouchableOpacity>
             </View>
           </View>

@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   dropdownHint: {
-    fontSize: 10,
+    fontSize: 11,
     color: '#4a7a4a',
     paddingHorizontal: 12,
     paddingTop: 8,
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
   suggestionEmoji: { fontSize: 14 },
   suggestionTitle: { fontSize: 14, color: '#8fbc8f', fontWeight: '500' },
   dropdownTip: {
-    fontSize: 10,
+    fontSize: 11,
     color: '#2a5a2a',
     paddingHorizontal: 12,
     paddingVertical: 6,

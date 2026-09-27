@@ -35,6 +35,7 @@ import { goToScreen } from '../logic/appRoutes';
 import { resumeFirstGoalGuide } from '../logic/useGuidedFirstGoal';
 import { useTour } from '../../context/TourContext';
 import { Button } from './ui';
+import { textOn } from '../logic/contrast';
 
 export default function CompassCard() {
   const navigation = useNavigation();
@@ -126,7 +127,7 @@ export default function CompassCard() {
           {showSubtext && (
             <Text style={s.sub}>
               {crossover ? `You've finished every "${purpose?.label}" goal. ` : ''}
-              {suggestion?.promise || 'One objective at a time. Finishing it opens more of the app.'}
+              {suggestion?.promise || 'One goal at a time. Finishing it opens more of the app.'}
             </Text>
           )}
         </TouchableOpacity>
@@ -146,7 +147,7 @@ export default function CompassCard() {
           </>
         ) : (
           <TouchableOpacity onPress={goCompass} activeOpacity={0.7} style={s.ctaRow}>
-            <Text style={[s.cta, { color: accent }]}>Choose an objective</Text>
+            <Text style={[s.cta, { color: accent }]}>Choose a goal</Text>
             <Ionicons name="arrow-forward" size={14} color={accent} />
           </TouchableOpacity>
         )}
@@ -216,7 +217,7 @@ export default function CompassCard() {
           {before.map(miniStep)}
           <Text style={s.nextLabel}>Next step</Text>
           <View style={s.stepRow}>
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="checkbox" accessibilityState={{ checked: false, disabled: !!nextStep.locked }} accessibilityLabel={nextStep.locked ? `${nextStep.label} (ticks itself)` : `Mark done: ${nextStep.label}`}
               onPress={() => !nextStep.locked && toggleStep(nextStep.id)}
               disabled={nextStep.locked}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -246,12 +247,18 @@ export default function CompassCard() {
               )}
             </View>
             {nextStep.screen && (
+              // The one filled button on Home: this is the thing to do next.
+              // It was a small outline while Study/Play above were the
+              // loudest buttons on the screen.
               <TouchableOpacity
-                style={[s.goBtn, { borderColor: accent }]}
+                style={[s.goBtn, { borderColor: accent, backgroundColor: accent }]}
                 onPress={() => goToScreen(navigation, nextStep.screen, nextStep.params)}
                 activeOpacity={0.8}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel={`Open: ${nextStep.label}`}
               >
-                <Text style={[s.goText, { color: accent }]}>Open</Text>
+                <Text style={[s.goText, { color: textOn(accent) }]}>Open</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -290,7 +297,7 @@ const makeStyles = (c, t, sp, r, ui) => StyleSheet.create({
   headline: { fontSize: t.md, fontWeight: '800', color: c.text1, marginTop: sp.sm, marginBottom: 4 },
   miniRow:  { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 3 },
   miniLabel:{ flex: 1, fontSize: t.xs, color: c.text3 },
-  miniDone: { textDecorationLine: 'line-through', color: c.text4 },
+  miniDone: { textDecorationLine: 'line-through', color: c.text3 },
   sub:      { fontSize: t.xs, color: c.text3, lineHeight: 18 },
 
   ctaRow:   { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: sp.md },
@@ -300,9 +307,9 @@ const makeStyles = (c, t, sp, r, ui) => StyleSheet.create({
   stepRow:  { flexDirection: 'row', alignItems: 'center', gap: sp.md },
   stepLabel:{ fontSize: t.sm, fontWeight: '700', color: c.text1, lineHeight: 19 },
   stepHint: { fontSize: t.xs, color: c.text3, marginTop: 2, lineHeight: 17 },
-  autoNote: { fontSize: t.xs, color: c.text4, marginTop: 3, fontStyle: 'italic' },
-  goBtn:    { borderWidth: 1, borderRadius: r.sm, paddingHorizontal: sp.md, paddingVertical: 6 },
-  goText:   { fontSize: t.xs, fontWeight: '800' },
+  autoNote: { fontSize: t.xs, color: c.text3, marginTop: 3, fontStyle: 'italic' },
+  goBtn:    { borderWidth: 1, borderRadius: r.sm, paddingHorizontal: sp.lg, paddingVertical: 9, minHeight: 36, justifyContent: 'center' },
+  goText:   { fontSize: t.sm, fontWeight: '800' },
 
   previewList:{ marginTop: sp.md, gap: 4 },
   previewStep:{ fontSize: t.xs, color: c.text2, lineHeight: 18 },

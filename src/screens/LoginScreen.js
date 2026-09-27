@@ -230,7 +230,7 @@ export default function LoginScreen({ onSuccess, onClose }) {
     <KeyboardAvoidingView style={s.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {/* Close button */}
       {onClose && (
-        <TouchableOpacity style={s.closeBtn} onPress={onClose}>
+        <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" style={s.closeBtn} onPress={onClose}>
           <Ionicons name="close" size={22} color="rgba(255,255,255,0.5)" />
         </TouchableOpacity>
       )}
@@ -238,7 +238,7 @@ export default function LoginScreen({ onSuccess, onClose }) {
       {/* Stars bg decoration */}
       <View style={s.stars}>
         {['✦','·','✦','·','✦','·','✦'].map((ch, i) => (
-          <Text key={i} style={[s.star, { opacity: 0.1 + i * 0.05, fontSize: 8 + (i % 3) * 4, top: 40 + i * 30, left: 20 + i * 42 }]}>{ch}</Text>
+          <Text key={i} style={[s.star, { opacity: 0.1 + i * 0.05, fontSize: 11 + (i % 3) * 4, top: 40 + i * 30, left: 20 + i * 42 }]}>{ch}</Text>
         ))}
       </View>
 
@@ -355,7 +355,7 @@ export default function LoginScreen({ onSuccess, onClose }) {
                 onChangeText={setPassword}
                 secureTextEntry={!showPass}
               />
-              <TouchableOpacity onPress={() => setShowPass(v => !v)} style={{ padding: 4 }}>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel={showPass ? 'Hide password' : 'Show password'} onPress={() => setShowPass(v => !v)} style={{ padding: 4 }}>
                 <Ionicons name={showPass ? 'eye-off-outline' : 'eye-outline'} size={16} color="rgba(255,255,255,0.3)" />
               </TouchableOpacity>
             </View>
@@ -405,7 +405,7 @@ export default function LoginScreen({ onSuccess, onClose }) {
               ? <ActivityIndicator color="#fff" size="small" />
               : <>
                   <Text style={s.btnText}>
-                    {mode === 'login' ? 'Enter Base' : mode === 'reset' ? 'Send Reset Link' : 'Launch Mission'}
+                    {mode === 'login' ? 'Sign in' : mode === 'reset' ? 'Send Reset Link' : 'Create account'}
                   </Text>
                   <Text style={s.btnEmoji}>{mode === 'login' ? '🚀' : mode === 'reset' ? '📡' : '🛸'}</Text>
                 </>

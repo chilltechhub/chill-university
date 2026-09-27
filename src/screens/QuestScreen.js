@@ -180,7 +180,7 @@ function StepBar({ step, ui: { c, s, accent } }) {
           <View style={{ height: 4, borderRadius: 2, backgroundColor: i <= step ? accent : c.border }} />
           <Text
             numberOfLines={1}
-            style={{ fontSize: 10, marginTop: 4, color: i === step ? c.text1 : c.text4, fontWeight: i === step ? '700' : '500' }}
+            style={{ fontSize: 11, marginTop: 4, color: i === step ? c.text1 : c.text3, fontWeight: i === step ? '700' : '500' }}
           >
             {st.label}
           </Text>
@@ -200,7 +200,7 @@ function Card({ children, ui: { c, s, r }, style }) {
 
 function Label({ children, ui: { c } }) {
   return (
-    <Text style={{ fontSize: 10, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', color: c.text3, marginBottom: 8 }}>
+    <Text style={{ fontSize: 11, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', color: c.text3, marginBottom: 8 }}>
       {children}
     </Text>
   );
@@ -219,7 +219,7 @@ function PrimaryButton({ label, onPress, disabled, busy, ui: { t, s, r, accent, 
     >
       {busy
         ? <ActivityIndicator color={ink} />
-        : <Text style={{ fontSize: t.md, fontWeight: '800', color: disabled ? c.text4 : ink }}>{label}</Text>}
+        : <Text style={{ fontSize: t.md, fontWeight: '800', color: disabled ? c.text4 /* a11y-ok: disabled label */ : ink }}>{label}</Text>}
     </TouchableOpacity>
   );
 }
@@ -396,13 +396,13 @@ function ResearchStep({ quest, progress, onBack, onNext, ui }) {
           style={[input, { minHeight: 110 }]}
         />
         {!longEnough && explanation.length > 0 && (
-          <Text style={{ fontSize: 11, color: c.text4, marginTop: 6 }}>A couple of full sentences.</Text>
+          <Text style={{ fontSize: 11, color: c.text3, marginTop: 6 }}>A couple of full sentences.</Text>
         )}
       </Card>
 
       <PrimaryButton label="On to the check" onPress={onNext} disabled={!hasSource || !longEnough} ui={ui} />
       {(!hasSource || !longEnough) && (
-        <Text style={{ fontSize: 11, color: c.text4, textAlign: 'center', marginTop: 6 }}>
+        <Text style={{ fontSize: 11, color: c.text3, textAlign: 'center', marginTop: 6 }}>
           Add your source and your explanation to go on. Your work is saved as you type.
         </Text>
       )}
@@ -473,7 +473,7 @@ function CheckStep({ quest, progress, onBack, onNext, ui }) {
                     disabled={!Number.isFinite(parseNumber(drafts[i]))}
                     style={{ justifyContent: 'center', paddingHorizontal: 16, borderRadius: r.md, backgroundColor: Number.isFinite(parseNumber(drafts[i])) ? ui.accent : c.bg2 }}
                   >
-                    <Text style={{ fontWeight: '800', color: Number.isFinite(parseNumber(drafts[i])) ? ui.ink : c.text4 }}>Check</Text>
+                    <Text style={{ fontWeight: '800', color: Number.isFinite(parseNumber(drafts[i])) ? ui.ink : c.text4 /* a11y-ok: disabled label */ }}>Check</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -570,7 +570,7 @@ function DoItStep({ quest, progress, userId, firstTime, onFinish, ui }) {
           <SecondaryButton label={`Add it to my tasks for ${dueLabel}`} icon="add-circle-outline" onPress={add} ui={ui} />
         )
       ) : (
-        <Text style={{ fontSize: 12, color: c.text4, textAlign: 'center', marginVertical: 8, lineHeight: 17 }}>
+        <Text style={{ fontSize: 12, color: c.text3, textAlign: 'center', marginVertical: 8, lineHeight: 17 }}>
           Sign in to add this to your tasks and keep your notes in your Vault.
         </Text>
       )}

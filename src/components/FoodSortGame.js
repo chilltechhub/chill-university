@@ -212,7 +212,7 @@ export default function FoodSortGame({ onGameEnd }) {
           <Text style={s.foodName}>How often should you have {q.food.replace(/^\S+\s/, '').toLowerCase()}?</Text>
         </View>
 
-        <RushTimerBar active={pace === 'rush' && !feedback} durationMs={3000} resetKey={q} onExpire={() => handleAnswer('__TIMEOUT__')} />
+        <RushTimerBar active={pace === 'rush' && !feedback} level={level} durationMs={3000} resetKey={q} onExpire={() => handleAnswer('__TIMEOUT__')} />
         <View style={s.options}>
           {Object.entries(CAT_CONFIG).map(([cat, cfg]) => {
             let bg = cfg.bg, border = cfg.color;

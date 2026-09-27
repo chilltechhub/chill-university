@@ -139,7 +139,7 @@ function AddEventForm({ date, userId, onSave, onCancel, c, t, s, r, initialType 
               style={{ flexDirection:'row', alignItems:'center', gap:4, paddingHorizontal:10, paddingVertical:5, borderRadius:r.full, borderWidth:1, borderColor: type===tp.key ? tp.color : c.border, backgroundColor: type===tp.key ? tp.color+'18' : 'transparent' }}
               onPress={() => setType(tp.key)}>
               <Ionicons name={tp.icon} size={12} color={type===tp.key ? tp.color : c.text4} />
-              <Text style={{ fontSize:11, color: type===tp.key ? tp.color : c.text4, fontWeight: type===tp.key ? '700' : '400' }}>{tp.label}</Text>
+              <Text style={{ fontSize:11, color: type===tp.key ? tp.color : c.text3, fontWeight: type===tp.key ? '700' : '400' }}>{tp.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -161,13 +161,13 @@ function AddEventForm({ date, userId, onSave, onCancel, c, t, s, r, initialType 
       </View>
       {!allDay && (
         <View style={{ marginBottom:s.lg }}>
-          <Text style={{ fontSize:10, color:c.text4, marginBottom:s.sm, textTransform:'uppercase', letterSpacing:1 }}>🔔 Remind me</Text>
+          <Text style={{ fontSize:11, color:c.text3, marginBottom:s.sm, textTransform:'uppercase', letterSpacing:1 }}>🔔 Remind me</Text>
           <View style={{ flexDirection:'row', gap:s.sm, flexWrap:'wrap' }}>
             {REMINDER_OPTS.map(opt => (
               <TouchableOpacity key={String(opt.value)}
                 style={{ borderWidth:1, borderRadius:r.full, paddingHorizontal:10, paddingVertical:4, borderColor: reminder===opt.value ? c.teal : c.border, backgroundColor: reminder===opt.value ? (c.tealLight||c.bg2) : 'transparent' }}
                 onPress={() => setReminder(opt.value)}>
-                <Text style={{ fontSize:11, color: reminder===opt.value ? c.teal : c.text4 }}>{opt.label}</Text>
+                <Text style={{ fontSize:11, color: reminder===opt.value ? c.teal : c.text3 }}>{opt.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -350,13 +350,13 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
           <View style={{ flex:1, paddingLeft:14 }}>
             {/* Header */}
             <View style={{ flexDirection:'row', alignItems:'center', paddingRight:12, paddingVertical:10, borderBottomWidth:1, borderBottomColor:lineClr }}>
-              <TouchableOpacity onPress={prevWeek} style={{ padding:5 }}>
+              <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={prevWeek} style={{ padding:5 }}>
                 <Ionicons name="chevron-back" size={16} color={c.text3} />
               </TouchableOpacity>
               <Text style={{ flex:1, textAlign:'center', fontSize:13, fontWeight:'700', color:c.text1 }}>
                 {MONTH_NAMES[anchor.getMonth()]} {anchor.getFullYear()}
               </Text>
-              <TouchableOpacity onPress={nextWeek} style={{ padding:5 }}>
+              <TouchableOpacity accessibilityLabel="Next" accessibilityRole="button" onPress={nextWeek} style={{ padding:5 }}>
                 <Ionicons name="chevron-forward" size={16} color={c.text3} />
               </TouchableOpacity>
               {/* All-profiles toggle. Ownership never changes — this only
@@ -373,12 +373,12 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
                   accessibilityLabel={showingAll ? 'Showing all profiles. Tap to show only this profile.' : 'Showing this profile only. Tap to show all profiles.'}
                 >
                   <Ionicons name={showingAll ? 'layers' : 'person'} size={11} color={showingAll ? c.teal : c.text3} />
-                  <Text style={{ fontSize:9, fontWeight:'800', color: showingAll ? c.teal : c.text3 }}>
+                  <Text style={{ fontSize:11, fontWeight:'800', color: showingAll ? c.teal : c.text3 }}>
                     {showingAll ? 'ALL' : 'THIS'}
                   </Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity onPress={onClose} style={{ padding:5 }}>
+              <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={onClose} style={{ padding:5 }}>
                 <Ionicons name="close" size={16} color={c.text3} />
               </TouchableOpacity>
             </View>
@@ -392,7 +392,7 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
                   return (
                     <View key={pr.id} style={{ flexDirection:'row', alignItems:'center', gap:3 }}>
                       <View style={{ width:7, height:7, borderRadius:4, backgroundColor: meta.color }} />
-                      <Text style={{ fontSize:9, color:c.text3 }} numberOfLines={1}>{meta.name}</Text>
+                      <Text style={{ fontSize:11, color:c.text3 }} numberOfLines={1}>{meta.name}</Text>
                     </View>
                   );
                 })}
@@ -431,7 +431,7 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
                       <View style={{ flexDirection:'row', alignItems:'center', paddingHorizontal:10, paddingVertical:7, borderBottomWidth: dayEvs.length > 0 ? 0.5 : 0, borderBottomColor: lineClr }}>
                         {/* Date circle */}
                         <View style={{ width:32, height:32, borderRadius:16, backgroundColor: isToday ? c.teal : c.border+'44', alignItems:'center', justifyContent:'center', marginRight:10 }}>
-                          <Text style={{ fontSize:13, fontWeight:'800', color: isToday ? '#fff' : c.text1 }}>
+                          <Text style={{ fontSize:13, fontWeight:'800', color: isToday ? c.onFill : c.text1 }}>
                             {day.getDate()}
                           </Text>
                         </View>
@@ -441,7 +441,7 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
                             {DAY_FULL[day.getDay()]}
                           </Text>
                           {dayEvs.length > 0 && (
-                            <Text style={{ fontSize:9, color:c.text4, marginTop:1 }}>
+                            <Text style={{ fontSize:11, color:c.text3, marginTop:1 }}>
                               {dayEvs.length} {dayEvs.length === 1 ? 'item' : 'items'}
                             </Text>
                           )}
@@ -452,14 +452,14 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
                                 const chosen = activeArea === areaKey;
                                 return <TouchableOpacity key={areaKey} onPress={() => setSelectedPlannerArea(chosen ? null : { date: iso, area: areaKey })} style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: area.color + '22', borderWidth: 1, borderColor: chosen ? area.color : area.color + '88', alignItems: 'center', justifyContent: 'center' }} accessibilityLabel={`${items.length} ${areaKey} planner items`}>
                                   <Text style={{ fontSize: 12 }}>{area.emoji}</Text>
-                                  {items.length > 1 && <View style={{ position: 'absolute', right: -4, top: -5, minWidth: 12, height: 12, paddingHorizontal: 2, borderRadius: 6, backgroundColor: area.color, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#fff', fontSize: 7, fontWeight: '800' }}>{items.length}</Text></View>}
+                                  {items.length > 1 && <View style={{ position: 'absolute', right: -4, top: -5, minWidth: 12, height: 12, paddingHorizontal: 2, borderRadius: 6, backgroundColor: area.color, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>{items.length}</Text></View>}
                                 </TouchableOpacity>;
                               })}
                             </View>
                           )}
                         </View>
                         {/* Add button */}
-                        <TouchableOpacity
+                        <TouchableOpacity accessibilityLabel="Add" accessibilityRole="button"
                           onPress={() => setAddDate(new Date(iso + 'T12:00:00'))}
                           style={{ padding:5 }}
                         >
@@ -488,20 +488,20 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
                                   {evt.title}
                                 </Text>
                                 <View style={{ flexDirection:'row', gap:6, marginTop:1 }}>
-                                  {evt.time && <Text style={{ fontSize:9, color:c.teal }}>{fmt12(evt.time)}</Text>}
-                                  <Text style={{ fontSize:9, color:evt.color||c.teal, textTransform:'uppercase', letterSpacing:0.3 }}>{evt.type}</Text>
-                                  {evt._src !== 'calendar' && <Text style={{ fontSize:9, color:c.text4, fontStyle:'italic' }}>· {evt._src}</Text>}
+                                  {evt.time && <Text style={{ fontSize:11, color:c.teal }}>{fmt12(evt.time)}</Text>}
+                                  <Text style={{ fontSize:11, color:evt.color||c.teal, textTransform:'uppercase', letterSpacing:0.3 }}>{evt.type}</Text>
+                                  {evt._src !== 'calendar' && <Text style={{ fontSize:11, color:c.text3, fontStyle:'italic' }}>· {evt._src}</Text>}
                                   {showingAll && evt._profile && profileLookup[evt._profile] && (
-                                    <Text style={{ fontSize:9, fontWeight:'700', color: profileLookup[evt._profile].color }} numberOfLines={1}>
+                                    <Text style={{ fontSize:11, fontWeight:'700', color: profileLookup[evt._profile].color }} numberOfLines={1}>
                                       · {profileLookup[evt._profile].name}
                                     </Text>
                                   )}
-                                  {evt.reminder_min && <Text style={{ fontSize:9, color:c.gold }}>🔔</Text>}
+                                  {evt.reminder_min && <Text style={{ fontSize:11, color:c.gold }}>🔔</Text>}
                                 </View>
                               </View>
                               {/* Delete (calendar events only) */}
                               {evt._src === 'calendar' && (
-                                <TouchableOpacity onPress={() => deleteEvt(evt)} style={{ padding:3 }}>
+                                <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={() => deleteEvt(evt)} style={{ padding:3 }}>
                                   <Ionicons name="close-circle-outline" size={14} color={c.text4} />
                                 </TouchableOpacity>
                               )}

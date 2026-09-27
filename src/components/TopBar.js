@@ -16,6 +16,7 @@ import TourSpot from './TourSpot';
 import NotificationBell from './NotificationBell';
 import { RANK_LABELS } from '../theme';
 import LoginScreen from '../screens/LoginScreen';
+import { readableOn } from '../logic/contrast';
 
 // Profile / Help / Screen Tutorial / Settings / Search — one tap-menu off
 // the crest instead of five separate rows. These used to live on the FAB's
@@ -102,6 +103,7 @@ export default function TopBar({ currentScreen }) {
           <TourSpot id="topbar-menu">
           <TouchableOpacity
             style={s.crest}
+            hitSlop={7}
             onPress={() => setShowCrestMenu(true)}
             activeOpacity={0.75}
             accessibilityLabel="Menu: profile, help, settings, search"
@@ -128,7 +130,7 @@ export default function TopBar({ currentScreen }) {
               noise — still visible on Home and Profile. */}
           {user ? (
             <TourSpot id="topbar-stats" radius={999} style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TouchableOpacity style={s.statPill} onPress={() => navigation.navigate('Profile')} activeOpacity={0.7}>
+            <TouchableOpacity style={s.statPill} hitSlop={7} onPress={() => navigation.navigate('Profile')} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={`Level ${level}, ${points} points. Open your profile`}>
               <Text style={s.statPillText} numberOfLines={1}>LV {level} · {points.toLocaleString()} PTS</Text>
             </TouchableOpacity>
             <NotificationBell userId={user.id} />
@@ -148,6 +150,8 @@ export default function TopBar({ currentScreen }) {
           {user && pendingRewards?.length > 0 && (
             <TouchableOpacity
               style={s.rewardBtn}
+              hitSlop={7}
+              accessibilityLabel={`${pendingRewards.length} rewards waiting`}
               onPress={() => navigation.navigate('Profile', { tab: 'rewards' })}
             >
               {showEmojis ? <Text style={{ fontSize: 20 }}>🎁</Text> : <Ionicons name="gift-outline" size={18} color={colors.gold} />}
@@ -211,7 +215,8 @@ const makeStyles = (c, t, s, sh, accent, ui) => StyleSheet.create({
     paddingHorizontal: s.sm + 2,
     paddingVertical: 6,
   },
-  statPillText: { fontSize: t.sm, fontWeight: t.bold, color: c.gold, fontFamily: ui.numberFont },
+  // Light-mode gold on the pill's bg2 was 4.35:1 — nudged to pass AA.
+  statPillText: { fontSize: t.sm, fontWeight: t.bold, color: readableOn(c.gold, c.bg2), fontFamily: ui.numberFont },
   barBg: { height: 4, backgroundColor: c.bg2, borderRadius: 3, overflow: 'hidden', marginTop: s.sm },
   barFill: { height: 4, backgroundColor: c.goldMid, borderRadius: 3 },
   signInBtn: {
@@ -227,5 +232,5 @@ const makeStyles = (c, t, s, sh, accent, ui) => StyleSheet.create({
     minWidth: 16, height: 16,
     justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3,
   },
-  rewardDotText: { color: '#ffffff', fontSize: 9, fontWeight: t.bold }, // style-ok: white count on the red badge in both modes
+  rewardDotText: { color: '#ffffff', fontSize: 9 /* a11y-ok: count badge */, fontWeight: t.bold }, // style-ok: white count on the red badge in both modes
 });

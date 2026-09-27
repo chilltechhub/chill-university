@@ -44,9 +44,20 @@ export function ageOfDigitalConsent(countryCode) {
   return AODC_BY_COUNTRY[code] ?? DEFAULT_AODC;
 }
 
+// A 'YYYY-MM-DD' string as a LOCAL calendar date. `new Date('2013-09-28')`
+// is UTC midnight, which is the evening of the 27th anywhere west of London —
+// so in the US a child turning 13 tomorrow read as 13 today and skipped the
+// consent step.
+export function parseLocalDate(value) {
+  if (value instanceof Date) return value;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value ?? ''));
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return new Date(value);
+}
+
 // Whole-years age as of today, from a 'YYYY-MM-DD' (or Date) birth date.
 export function calculateAge(dateOfBirth) {
-  const dob = dateOfBirth instanceof Date ? dateOfBirth : new Date(dateOfBirth);
+  const dob = parseLocalDate(dateOfBirth);
   if (Number.isNaN(dob.getTime())) return null;
   const today = new Date();
   let age = today.getFullYear() - dob.getFullYear();

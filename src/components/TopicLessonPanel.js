@@ -12,6 +12,7 @@ import { supabase } from '../api/supabaseClient';
 import { useProfiles } from '../../context/ProfileAccountsContext';
 import { saveVaultDocument, listVaultDocuments } from '../api/personaService';
 import { optionOrder } from '../logic/optionOrder';
+import { textOn } from '../logic/contrast';
 
 function LearnCards({ learn, color, c, t, s, r }) {
   return (
@@ -175,7 +176,7 @@ function ApplyChallenge({ apply, color, topicKey, c, t, s, r }) {
       {tracked && !hydrated && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6 }}>
           <ActivityIndicator size="small" color={color} />
-          <Text style={{ fontSize: 11, color: c.text4 }}>Loading your saved work…</Text>
+          <Text style={{ fontSize: 11, color: c.text3 }}>Loading your saved work…</Text>
         </View>
       )}
 
@@ -202,12 +203,12 @@ function ApplyChallenge({ apply, color, topicKey, c, t, s, r }) {
             {saving && <ActivityIndicator size="small" color={c.text4} />}
           </View>
           {!userId && (
-            <Text style={{ fontSize: 10, color: c.text4, marginTop: 4, lineHeight: 14 }}>
+            <Text style={{ fontSize: 11, color: c.text3, marginTop: 4, lineHeight: 14 }}>
               Sign in to save this to your Vault — right now it only lives on this device.
             </Text>
           )}
           {userId && savedAt && (
-            <Text style={{ fontSize: 10, color: c.text4, marginTop: 4 }}>Saved to your Vault</Text>
+            <Text style={{ fontSize: 11, color: c.text3, marginTop: 4 }}>Saved to your Vault</Text>
           )}
         </View>
       )}
@@ -260,8 +261,8 @@ export default function TopicLessonPanel({ topic, color, c, t, s, r }) {
                   borderWidth: 1, borderColor: color,
                 }}
               >
-                <Ionicons name={tabDef.icon} size={13} color={tab === tabDef.key ? '#fff' : color} />
-                <Text style={{ fontSize: 12, fontWeight: '800', color: tab === tabDef.key ? '#fff' : color }}>{tabDef.label}</Text>
+                <Ionicons name={tabDef.icon} size={13} color={tab === tabDef.key ? textOn(color) : color} />
+                <Text style={{ fontSize: 12, fontWeight: '800', color: tab === tabDef.key ? textOn(color) : color }}>{tabDef.label}</Text>
               </TouchableOpacity>
             ))}
           </View>

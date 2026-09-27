@@ -14,7 +14,7 @@ const norm = u => String(u || '').replace(/^https?:\/\/(www\.)?/, '').replace(/\
 
 function Chip({ text, c, tone }) {
   return (
-    <Text style={{ fontFamily: FONTS.mono, fontSize: 10, color: tone || c.text2, backgroundColor: c.bg2, borderRadius: 5, paddingHorizontal: 6, paddingVertical: 1, overflow: 'hidden' }}>
+    <Text style={{ fontFamily: FONTS.mono, fontSize: 11, color: tone || c.text2, backgroundColor: c.bg2, borderRadius: 5, paddingHorizontal: 6, paddingVertical: 1, overflow: 'hidden' }}>
       {text}
     </Text>
   );

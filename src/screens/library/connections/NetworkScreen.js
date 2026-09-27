@@ -88,7 +88,7 @@ export default function NetworkScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: c.bg0 }}>
       <View style={{ backgroundColor: c.bg1, padding: s.lg, paddingTop: s.xxl, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: s.sm }}>
+        <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => navigation.goBack()} style={{ marginBottom: s.sm }}>
           <Ionicons name="chevron-back" size={20} color={color} />
         </TouchableOpacity>
         <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>{showEmojis ? '🤝 ' : ''}Network</Text>
@@ -119,7 +119,7 @@ export default function NetworkScreen() {
                       <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>{p.name}</Text>
                       {p.role ? <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>{p.role}</Text> : null}
                     </View>
-                    <TouchableOpacity onPress={() => del(entry.id)}>
+                    <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={() => del(entry.id)}>
                       <Ionicons name="close" size={16} color={c.text4} />
                     </TouchableOpacity>
                   </View>
@@ -163,7 +163,7 @@ export default function NetworkScreen() {
                 <TouchableOpacity key={tp.key} onPress={() => setType(tp.key)}
                   style={{ flex: 1, alignItems: 'center', padding: s.sm, borderRadius: r.md, borderWidth: 1.5, borderColor: type === tp.key ? tp.color : c.border, backgroundColor: type === tp.key ? tp.color + '22' : 'transparent' }}>
                   {showEmojis ? <Text style={{ fontSize: 16 }}>{tp.emoji}</Text> : <Ionicons name={tp.icon} size={14} color={type === tp.key ? tp.color : c.text3} />}
-                  <Text style={{ fontSize: 9, color: type === tp.key ? tp.color : c.text3, fontWeight: type === tp.key ? t.bold : t.regular, marginTop: 2 }}>{tp.label}</Text>
+                  <Text style={{ fontSize: 11, color: type === tp.key ? tp.color : c.text3, fontWeight: type === tp.key ? t.bold : t.regular, marginTop: 2 }}>{tp.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>

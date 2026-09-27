@@ -77,7 +77,7 @@ export default function UnlockSheet({ visible, featureId, onClose, onUnlocked })
                 <Text style={s.title}>{feature.label}</Text>
                 <Text style={[s.kicker, { color: toneColor(c, access) }]}>{access.headline}</Text>
               </View>
-              <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Ionicons name="close" size={22} color={c.text3} />
               </TouchableOpacity>
             </View>
@@ -153,7 +153,7 @@ export default function UnlockSheet({ visible, featureId, onClose, onUnlocked })
                   ) : (
                     <Text style={s.testBody}>
                       {access.routes.test.closed
-                        ? `You took this check and got ${access.routes.test.attempt?.score}/${access.routes.test.attempt?.total}. It's spent — the objective is the way in now.`
+                        ? `You took this check and got ${access.routes.test.attempt?.score}/${access.routes.test.attempt?.total}. It's spent — finishing the goal is the way in now.`
                         : 'Already passed.'}
                     </Text>
                   )}
@@ -174,7 +174,7 @@ export default function UnlockSheet({ visible, featureId, onClose, onUnlocked })
                     <Switch
                       value={doorSettings?.[access.routes.setting.key] === true}
                       onValueChange={(on) => { setDoorSetting(access.routes.setting.key, on); if (on) onUnlocked?.(featureId); }}
-                      trackColor={{ false: c.bg3, true: c.teal }}
+                      trackColor={{ false: c.borderStrong, true: c.teal }}
                       thumbColor="#fff"
                     />
                   </View>
@@ -202,7 +202,7 @@ export default function UnlockSheet({ visible, featureId, onClose, onUnlocked })
                     <Switch
                       value={experimentalOn}
                       onValueChange={async (on) => { await setExperimental(on); if (on) onUnlocked?.(featureId); }}
-                      trackColor={{ false: c.bg3, true: c.purple }}
+                      trackColor={{ false: c.borderStrong, true: c.purple }}
                       thumbColor="#fff"
                     />
                   </View>
@@ -276,14 +276,14 @@ const makeStyles = (c, t, sp, r) => StyleSheet.create({
   headerRow:  { flexDirection: 'row', alignItems: 'center', gap: sp.md, marginBottom: sp.lg },
   iconBox:    { width: 44, height: 44, borderRadius: r.md, alignItems: 'center', justifyContent: 'center' },
   title:      { fontSize: t.lg, fontFamily: FONTS.displaySemibold, fontWeight: '800', color: c.text1 },
-  kicker:     { fontSize: 10, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: '800', marginTop: 2 },
+  kicker:     { fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: '800', marginTop: 2 },
 
   blurb:      { fontSize: t.sm, color: c.text1, lineHeight: 20, marginBottom: sp.sm },
   reason:     { fontSize: t.xs, color: c.text3, lineHeight: 18, marginBottom: sp.lg },
 
   panel:      { backgroundColor: c.bg0, borderRadius: r.lg, borderWidth: 0.5, borderColor: c.border, padding: sp.md, marginBottom: sp.md },
   panelSpent: { opacity: 0.75 },
-  panelHead:  { fontSize: 10, color: c.gold, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: '800', marginBottom: sp.sm },
+  panelHead:  { fontSize: 11, color: c.gold, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: '800', marginBottom: sp.sm },
 
   objectiveRow:{ flexDirection: 'row', alignItems: 'center', gap: sp.md, paddingVertical: sp.sm },
   objectiveLabel:{ fontSize: t.sm, fontWeight: '700', color: c.text1 },
@@ -291,21 +291,21 @@ const makeStyles = (c, t, sp, r) => StyleSheet.create({
   progressWrap:{ flexDirection: 'row', alignItems: 'center', gap: sp.sm, marginTop: 6 },
   progressTrack:{ flex: 1, height: 4, borderRadius: 2, backgroundColor: c.bg3, overflow: 'hidden' },
   progressFill:{ height: 4, borderRadius: 2, backgroundColor: c.teal },
-  progressText:{ fontSize: 10, fontFamily: FONTS.mono, color: c.text3 },
-  swapNote:   { fontSize: t.xs, color: c.text4, fontStyle: 'italic', marginTop: sp.sm, lineHeight: 17 },
+  progressText:{ fontSize: 11, fontFamily: FONTS.mono, color: c.text3 },
+  swapNote:   { fontSize: t.xs, color: c.text3, fontStyle: 'italic', marginTop: sp.sm, lineHeight: 17 },
 
   testBody:   { fontSize: t.xs, color: c.text2, lineHeight: 18 },
   testWarn:   { fontSize: t.xs, color: c.warning, lineHeight: 18, marginTop: 6, fontWeight: '600' },
-  noTestNote: { fontSize: t.xs, color: c.text4, fontStyle: 'italic', lineHeight: 18, marginBottom: sp.md },
+  noTestNote: { fontSize: t.xs, color: c.text3, fontStyle: 'italic', lineHeight: 18, marginBottom: sp.md },
   planNote:   { fontSize: t.xs, color: c.text3, lineHeight: 18, marginTop: sp.sm },
 
   switchRow:  { flexDirection: 'row', alignItems: 'center', gap: sp.md },
 
   smallBtn:   { backgroundColor: c.teal, borderRadius: r.sm, paddingHorizontal: sp.md, paddingVertical: sp.sm },
-  smallBtnText:{ color: '#fff', fontSize: t.xs, fontWeight: '800' },
+  smallBtnText:{ color: c.onFill, fontSize: t.xs, fontWeight: '800' },
 
   primaryBtn: { backgroundColor: c.teal, borderRadius: r.md, paddingVertical: sp.md, alignItems: 'center', marginBottom: sp.md },
-  primaryBtnText: { color: '#fff', fontSize: t.sm, fontWeight: '800', letterSpacing: 0.5 },
+  primaryBtnText: { color: c.onFill, fontSize: t.sm, fontWeight: '800', letterSpacing: 0.5 },
 
   outlineBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: c.gold, borderRadius: r.md, paddingVertical: sp.md, marginTop: sp.md },
   outlineBtnText: { color: c.gold, fontSize: t.xs, fontWeight: '800' },

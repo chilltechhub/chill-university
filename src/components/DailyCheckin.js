@@ -33,7 +33,7 @@ function ScalePicker({ value, max = 5, color, onChange }) {
             alignItems: 'center', justifyContent: 'center',
           }}
         >
-          <Text style={{ fontSize: 10, color: n <= (value || 0) ? '#fff' : '#7a6a9a', fontWeight: '700' }}>{n}</Text>
+          <Text style={{ fontSize: 11, color: n <= (value || 0) ? '#fff' : '#7a6a9a', fontWeight: '700' }}>{n}</Text>
         </TouchableOpacity>
       ))}
     </View>

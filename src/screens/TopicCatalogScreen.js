@@ -173,17 +173,17 @@ function TopicCard({ topic, color, onOpen, c, t, s, r }) {
       padding: s.md, marginBottom: s.sm, opacity: topic.built ? 1 : 0.97,
     }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-        <Text style={{ fontSize: 10, fontWeight: '800', letterSpacing: 0.6, color, textTransform: 'uppercase' }}>
+        <Text style={{ fontSize: 11, fontWeight: '800', letterSpacing: 0.6, color, textTransform: 'uppercase' }}>
           Level {topic.level} · {LEVEL_LABELS[topic.level]}
         </Text>
         <View style={{ flex: 1 }} />
         {topic.built ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
             <Ionicons name="checkmark-circle" size={13} color={c.success} />
-            <Text style={{ fontSize: 10, fontWeight: '800', color: c.success, textTransform: 'uppercase', letterSpacing: 0.6 }}>Ready</Text>
+            <Text style={{ fontSize: 11, fontWeight: '800', color: c.success, textTransform: 'uppercase', letterSpacing: 0.6 }}>Ready</Text>
           </View>
         ) : (
-          <Text style={{ fontSize: 10, fontWeight: '800', color: c.text4, textTransform: 'uppercase', letterSpacing: 0.6 }}>Coming soon</Text>
+          <Text style={{ fontSize: 11, fontWeight: '800', color: c.text3, textTransform: 'uppercase', letterSpacing: 0.6 }}>Coming soon</Text>
         )}
       </View>
       <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>{topic.title}</Text>

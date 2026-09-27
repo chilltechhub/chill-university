@@ -89,7 +89,7 @@ export default function RelationshipsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: c.bg0 }}>
       <View style={{ backgroundColor: c.bg1, padding: s.lg, paddingTop: s.xxl, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: s.sm }}>
+        <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => navigation.goBack()} style={{ marginBottom: s.sm }}>
           <Ionicons name="chevron-back" size={20} color={color} />
         </TouchableOpacity>
         <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>{showEmojis ? '❤️ ' : ''}Relationships</Text>
@@ -129,10 +129,10 @@ export default function RelationshipsScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>{p.name}</Text>
                       <View style={{ backgroundColor: tp.color + '22', borderRadius: r.full, paddingHorizontal: 7, paddingVertical: 2, alignSelf: 'flex-start', marginTop: 3 }}>
-                        <Text style={{ fontSize: 9, color: tp.color, fontWeight: t.bold, textTransform: 'uppercase' }}>{tp.label}</Text>
+                        <Text style={{ fontSize: 11, color: tp.color, fontWeight: t.bold, textTransform: 'uppercase' }}>{tp.label}</Text>
                       </View>
                     </View>
-                    <TouchableOpacity onPress={() => del(entry.id)}>
+                    <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={() => del(entry.id)}>
                       <Ionicons name="close" size={16} color={c.text4} />
                     </TouchableOpacity>
                   </View>
@@ -174,7 +174,7 @@ export default function RelationshipsScreen() {
                 <TouchableOpacity key={tp.key} onPress={() => setType(tp.key)}
                   style={{ flex: 1, alignItems: 'center', padding: s.sm, borderRadius: r.md, borderWidth: 1.5, borderColor: type === tp.key ? tp.color : c.border, backgroundColor: type === tp.key ? tp.color + '22' : 'transparent' }}>
                   {showEmojis ? <Text style={{ fontSize: 18 }}>{tp.emoji}</Text> : <Ionicons name={tp.icon} size={16} color={type === tp.key ? tp.color : c.text3} />}
-                  <Text style={{ fontSize: 10, color: type === tp.key ? tp.color : c.text3, fontWeight: type === tp.key ? t.bold : t.regular, marginTop: 3 }}>{tp.label}</Text>
+                  <Text style={{ fontSize: 11, color: type === tp.key ? tp.color : c.text3, fontWeight: type === tp.key ? t.bold : t.regular, marginTop: 3 }}>{tp.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>

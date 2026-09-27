@@ -69,6 +69,18 @@ export async function notificationPermission() {
   try { return (await Notifications.getPermissionsAsync()).status; } catch { return 'unavailable'; }
 }
 
+// Whether a screen is open for this account yet (set by AccessContext). A
+// notice whose button leads to a locked screen isn't shown: on day one the
+// Sunday "Time for your weekly review" opened a lock screen. Unknown screens
+// count as open.
+let screenOpen = () => true;
+export function setNoticeScreenGate(fn) {
+  screenOpen = typeof fn === 'function' ? fn : () => true;
+  recompute();
+  emit();
+}
+const leadsSomewhereOpen = (n) => n.primary?.target?.kind !== 'screen' || screenOpen(n.primary.target.key);
+
 function recompute() {
   if (!feed.data || !prefs || !state) return;
   const now = new Date();
@@ -84,7 +96,7 @@ function recompute() {
     notifyPermission: feed.permission,
     wantsPhone: prefs.autoRemind !== 'off' || prefs.dailyNudge,
     phoneCapable: PHONE_CAPABLE,
-  });
+  }).filter(leadsSomewhereOpen);
   feed.visible = visibleNotices(feed.all, { dismissed: state.dismissed, snoozed: state.snoozed, cats: prefs.cats }, now);
 }
 

@@ -86,7 +86,7 @@ export default function ModerationQueueScreen() {
 
   if (error) {
     const copy = error === 'not_admin'
-      ? { head: 'Admins only', body: 'This account doesn’t have the admin flag set. Set profiles.is_admin to true for the accounts that handle reports.' }
+      ? { head: 'Admins only', body: 'This screen is for the people who review reported posts.' }
       : { head: 'Community isn’t switched on yet', body: 'Run the community_discover migration and this fills in.' };
     return (
       <View style={{ flex: 1, backgroundColor: c.bg0 }}>
@@ -128,11 +128,11 @@ export default function ModerationQueueScreen() {
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: 8, flexWrap: 'wrap' }}>
                   <View style={{ backgroundColor: flag + '1f', borderRadius: r.full, paddingHorizontal: 8, paddingVertical: 2 }}>
-                    <Text style={{ fontSize: 10, color: flag, fontWeight: '700' }}>
+                    <Text style={{ fontSize: 11, color: flag, fontWeight: '700' }}>
                       {reported ? `${item.report_count} report${item.report_count === 1 ? '' : 's'}` : 'Filtered'}
                     </Text>
                   </View>
-                  <Text style={{ fontSize: 10, color: c.text4 }}>
+                  <Text style={{ fontSize: 11, color: c.text3 }}>
                     {KIND_LABEL[item.kind] || item.kind} · {item.author_name} · waiting {ageOf(item.created_at)}
                   </Text>
                 </View>
@@ -160,8 +160,8 @@ export default function ModerationQueueScreen() {
                     onPress={() => decide(item, 'visible')}
                     style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
                              backgroundColor: c.teal, borderRadius: r.md, paddingVertical: 10 }}>
-                    <Ionicons name="checkmark" size={15} color="#fff" />
-                    <Text style={{ color: '#fff', fontWeight: '700', fontSize: t.xs }}>Approve</Text>
+                    <Ionicons name="checkmark" size={15} color={c.onFill} />
+                    <Text style={{ color: c.onFill, fontWeight: '700', fontSize: t.xs }}>Approve</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     disabled={busyId === item.id}

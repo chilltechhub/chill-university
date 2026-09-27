@@ -950,7 +950,7 @@ export default function CareerExplorationScreen() {
       {/* Top Telemetry Header */}
       <View style={styles.header}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <TouchableOpacity
+          <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button"
             onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('LibraryScreen'))}
             style={{ padding: 2 }}
           >
@@ -1020,7 +1020,7 @@ export default function CareerExplorationScreen() {
             placeholderTextColor={c.text4}
           />
           {search ? (
-            <TouchableOpacity onPress={() => setSearch('')}>
+            <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={() => setSearch('')}>
               <Ionicons name="close-circle" size={18} color={c.text4} />
             </TouchableOpacity>
           ) : null}
@@ -1113,7 +1113,7 @@ export default function CareerExplorationScreen() {
                   <Text style={styles.careerField}>{item.field.toUpperCase()}</Text>
                 </View>
 
-                <TouchableOpacity onPress={() => toggleSave(item.id)} style={styles.bookmarkBtn}>
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel={isSaved ? 'Remove from saved' : 'Save'} onPress={() => toggleSave(item.id)} style={styles.bookmarkBtn}>
                   <Ionicons
                     name={isSaved ? "bookmark" : "bookmark-outline"}
                     size={18}
@@ -1234,7 +1234,7 @@ export default function CareerExplorationScreen() {
                     <Text style={styles.modalTitle}>{selectedCareer.title}</Text>
                     <Text style={styles.modalSubtitle}>{selectedCareer.field} Sector</Text>
                   </View>
-                  <TouchableOpacity onPress={() => setSelectedCareer(null)}>
+                  <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={() => setSelectedCareer(null)}>
                     <Ionicons name="close-circle" size={24} color={c.text4} />
                   </TouchableOpacity>
                 </View>
@@ -1417,7 +1417,7 @@ const makeStyles = (c) => StyleSheet.create({
   // half a phone-inch of empty space above every header.
   container: { flex: 1, backgroundColor: c.bg0, paddingTop: 8 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', rowGap: 8, paddingHorizontal: 20, marginBottom: 16 },
-  headerSubtitle: { color: c.financial, fontSize: 10, letterSpacing: 2, fontWeight: '800' },
+  headerSubtitle: { color: c.financial, fontSize: 11, letterSpacing: 2, fontWeight: '800' },
   headerTitle: { color: c.text1, fontSize: 24, fontWeight: 'bold' },
   savedBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.bg1, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, borderWidth: 1, borderColor: c.gold + '4d' },
   savedCountText: { color: c.gold, fontSize: 11, fontWeight: 'bold' },
@@ -1431,7 +1431,7 @@ const makeStyles = (c) => StyleSheet.create({
   fieldChipText: { color: c.text3, fontSize: 12 },
   activeFieldChipText: { color: c.financial, fontWeight: 'bold' },
   sortLabelWrap: { flexDirection: 'row', alignItems: 'center', gap: 4, marginRight: 2 },
-  sortLabel: { color: c.text4, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  sortLabel: { color: c.text3, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
   sortChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: c.bg1, borderWidth: 1, borderColor: c.border },
   activeSortChip: { borderColor: c.teal, backgroundColor: c.teal + '18' },
   activeSortChipText: { color: c.teal, fontWeight: 'bold' },
@@ -1447,7 +1447,7 @@ const makeStyles = (c) => StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6,
     marginHorizontal: 20, marginBottom: 12,
   },
-  activeInterestLabel: { color: c.text4, fontSize: 11, fontWeight: '700' },
+  activeInterestLabel: { color: c.text3, fontSize: 11, fontWeight: '700' },
   activeInterestPill: { backgroundColor: c.gold + '20', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5 },
   activeInterestPillText: { color: c.gold, fontSize: 11, fontWeight: '700' },
   clearInterestsText: { color: c.error, fontSize: 11, fontWeight: '700', marginLeft: 4 },
@@ -1463,23 +1463,23 @@ const makeStyles = (c) => StyleSheet.create({
   iconBox: { width: 40, height: 40, borderRadius: 10, backgroundColor: c.bg2, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: c.border },
   titleArea: { flex: 1 },
   careerTitle: { color: c.text1, fontSize: 15, fontWeight: 'bold' },
-  careerField: { color: c.text3, fontSize: 10, fontWeight: '700', letterSpacing: 0.5, marginTop: 2 },
+  careerField: { color: c.text3, fontSize: 11, fontWeight: '700', letterSpacing: 0.5, marginTop: 2 },
   bookmarkBtn: { padding: 4 },
   cardOverview: { color: c.text3, fontSize: 12, lineHeight: 17, marginBottom: 12 },
   metricsRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' },
   metricBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.bg2, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   metricText: { color: c.text2, fontSize: 11, fontWeight: '600' },
   trajectoryBadge: { marginLeft: 'auto', backgroundColor: c.financial + '22', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  trajectoryText: { color: c.financial, fontSize: 10, fontWeight: 'bold' },
+  trajectoryText: { color: c.financial, fontSize: 11, fontWeight: 'bold' },
   skillsRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 10 },
   skillChip: { backgroundColor: c.bg2, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  skillChipText: { color: c.text3, fontSize: 10 },
-  moreSkillsText: { color: c.text4, fontSize: 10, fontStyle: 'italic' },
+  skillChipText: { color: c.text3, fontSize: 11 },
+  moreSkillsText: { color: c.text3, fontSize: 11, fontStyle: 'italic' },
   tapHint: { flexDirection: 'row', alignItems: 'center', gap: 2, justifyContent: 'flex-end' },
-  tapHintText: { color: c.text4, fontSize: 10, fontStyle: 'italic' },
+  tapHintText: { color: c.text3, fontSize: 11, fontStyle: 'italic' },
   emptyState: { alignItems: 'center', paddingTop: 60 },
   emptyTitle: { color: c.text1, fontSize: 16, fontWeight: 'bold', marginTop: 12 },
-  emptySubtitle: { color: c.text4, fontSize: 12, marginTop: 4 },
+  emptySubtitle: { color: c.text3, fontSize: 12, marginTop: 4 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: c.bg1, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingTop: 12, borderTopWidth: 2, borderTopColor: c.gold, maxHeight: '88%' },
   modalHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: 12 },
@@ -1492,7 +1492,7 @@ const makeStyles = (c) => StyleSheet.create({
   bulletText: { color: c.text3, fontSize: 12.5, lineHeight: 18, flex: 1 },
   statsGrid: { flexDirection: 'row', gap: 10, marginBottom: 20 },
   statBox: { flex: 1, backgroundColor: c.bg2, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: c.border },
-  statBoxLabel: { color: c.text4, fontSize: 9, fontWeight: 'bold', letterSpacing: 1, marginBottom: 4 },
+  statBoxLabel: { color: c.text3, fontSize: 11, fontWeight: 'bold', letterSpacing: 1, marginBottom: 4 },
   statBoxValue: { color: c.financial, fontSize: 14, fontWeight: 'bold' },
   modalSectionTitle: { color: c.teal, fontSize: 11, fontWeight: '800', letterSpacing: 1, marginBottom: 10, marginTop: 4 },
   modalSkillsList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
@@ -1503,7 +1503,7 @@ const makeStyles = (c) => StyleSheet.create({
   roadmapStageRow: { flexDirection: 'row' },
   roadmapRail: { width: 28, alignItems: 'center' },
   roadmapDot: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, backgroundColor: c.bg1, alignItems: 'center', justifyContent: 'center' },
-  roadmapDotText: { fontSize: 10, fontWeight: '800' },
+  roadmapDotText: { fontSize: 11, fontWeight: '800' },
   roadmapLine: { flex: 1, width: 2, backgroundColor: c.border, marginVertical: 2 },
   roadmapStageBody: { flex: 1, paddingBottom: 16, paddingLeft: 10 },
   roadmapStageTitle: { color: c.text1, fontSize: 13, fontWeight: '800', marginBottom: 4 },
@@ -1521,11 +1521,11 @@ const makeStyles = (c) => StyleSheet.create({
   },
   actionIconBox: { width: 36, height: 36, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   actionCardTitle: { color: c.text1, fontSize: 13, fontWeight: '700' },
-  actionCardDesc: { color: c.text4, fontSize: 10.5, marginTop: 1 },
+  actionCardDesc: { color: c.text3, fontSize: 11.5, marginTop: 1 },
   saveCareerBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: c.financial, paddingVertical: 14, borderRadius: 10, marginTop: 6, marginBottom: 12 },
   savedBtnActive: { backgroundColor: c.gold },
-  saveBtnText: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
-  quizEyebrow: { color: c.gold, fontSize: 10, fontWeight: '800', letterSpacing: 1.5, marginBottom: 4 },
+  saveBtnText: { color: c.onFill, fontSize: 13, fontWeight: 'bold' },
+  quizEyebrow: { color: c.gold, fontSize: 11, fontWeight: '800', letterSpacing: 1.5, marginBottom: 4 },
   quizTitle: { color: c.text1, fontSize: 19, fontWeight: 'bold', marginBottom: 6 },
   quizSubtitle: { color: c.text3, fontSize: 12.5, lineHeight: 18, marginBottom: 16 },
   quizGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingBottom: 4 },
@@ -1543,7 +1543,7 @@ const makeStyles = (c) => StyleSheet.create({
   },
   quizSubmitBtn: { backgroundColor: c.gold, borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginTop: 16 },
   quizSubmitBtnDisabled: { opacity: 0.4 },
-  quizSubmitText: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
+  quizSubmitText: { color: c.onFill, fontSize: 14, fontWeight: 'bold' },
   quizSkipBtn: { alignItems: 'center', paddingVertical: 14 },
-  quizSkipText: { color: c.text4, fontSize: 12, fontWeight: '600' },
+  quizSkipText: { color: c.text3, fontSize: 12, fontWeight: '600' },
 });

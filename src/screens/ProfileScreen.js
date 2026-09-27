@@ -32,6 +32,7 @@ import LandscapeBackground from '../components/LandscapeBackground';
 import CharacterWalker from '../components/CharacterWalker';
 import BadgeMedal from '../components/BadgeMedal';
 import TourSpot from '../components/TourSpot';
+import { textOn } from '../logic/contrast';
 
 const WARDROBE_TABS = [
   { key: 'outfitId', label: 'Outfit', icon: 'shirt-outline' },
@@ -150,7 +151,7 @@ export default function ProfileScreen() {
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.header}>
         <Text style={styles.title}>Your Profile</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={styles.gearBtn}>
+        <TouchableOpacity accessibilityLabel="Settings" accessibilityRole="button" onPress={() => navigation.navigate('Settings')} style={styles.gearBtn}>
           <Ionicons name="settings-outline" size={22} color={c.text3} />
         </TouchableOpacity>
       </View>
@@ -270,7 +271,7 @@ function StatChip({ label, value, icon, c, t, s, r }) {
     }}>
       <Ionicons name={icon} size={16} color={c.gold} />
       <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1, marginTop: 4 }}>{value}</Text>
-      <Text style={{ fontSize: t.xs, color: c.text4 }}>{label}</Text>
+      <Text style={{ fontSize: t.xs, color: c.text3 }}>{label}</Text>
     </View>
   );
 }
@@ -293,7 +294,7 @@ function WardrobeModal({ visible, onClose, tab, setTab, loadout, stats, equip, s
         <View style={styles.wardrobeCard}>
           <View style={styles.wardrobeHeader}>
             <Text style={styles.modalTitle}>Customize</Text>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={onClose}>
               <Ionicons name="close" size={22} color={c.text3} />
             </TouchableOpacity>
           </View>
@@ -305,7 +306,7 @@ function WardrobeModal({ visible, onClose, tab, setTab, loadout, stats, equip, s
                 style={[styles.wardrobeTabBtn, tab === wt.key && styles.wardrobeTabBtnActive]}
                 onPress={() => setTab(wt.key)}
               >
-                <Ionicons name={wt.icon} size={15} color={tab === wt.key ? '#fff' : c.text3} />
+                <Ionicons name={wt.icon} size={15} color={tab === wt.key ? textOn(c.goldMid) : c.text3} />
                 <Text style={[styles.wardrobeTabText, tab === wt.key && styles.wardrobeTabTextActive]}>{wt.label}</Text>
               </TouchableOpacity>
             ))}
@@ -411,7 +412,7 @@ const makeStyles = (c, t, s, r) => StyleSheet.create({
   statsRow: { flexDirection: 'row', marginBottom: s.lg, marginHorizontal: -3 },
 
   sectionTitle: { fontSize: t.md, fontWeight: t.bold, color: c.text1, marginTop: s.md, marginBottom: s.sm },
-  emptyText: { fontSize: t.sm, color: c.text4, marginBottom: s.md },
+  emptyText: { fontSize: t.sm, color: c.text3, marginBottom: s.md },
 
   skillsGrid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -3, marginBottom: s.md },
   skillCard: {
@@ -453,10 +454,10 @@ const makeStyles = (c, t, s, r) => StyleSheet.create({
   wardrobeOptionActive: { borderColor: c.gold, borderWidth: 2 },
   wardrobeOptionLocked: { opacity: 0.45 },
   wardrobeOptionName: { fontSize: t.xs, fontWeight: t.semibold, color: c.text1, marginTop: 6, maxWidth: '90%' },
-  wardrobeLockText: { fontSize: 10, color: c.text4, textAlign: 'center', marginTop: 2, maxWidth: '90%' },
-  wardrobeEquippedText: { fontSize: 10, color: c.gold, fontWeight: t.bold, marginTop: 2 },
+  wardrobeLockText: { fontSize: 11, color: c.text3, textAlign: 'center', marginTop: 2, maxWidth: '90%' },
+  wardrobeEquippedText: { fontSize: 11, color: c.gold, fontWeight: t.bold, marginTop: 2 },
 
-  label: { fontSize: t.xs, fontWeight: t.semibold, color: c.text4, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: s.sm, marginTop: s.md },
+  label: { fontSize: t.xs, fontWeight: t.semibold, color: c.text3, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: s.sm, marginTop: s.md },
   value: { fontSize: t.md, color: c.text1, marginBottom: s.sm },
   input: {
     borderWidth: 1, borderColor: c.inputBorder, borderRadius: r.md,

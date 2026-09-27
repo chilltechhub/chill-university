@@ -22,6 +22,8 @@ import { useProfiles } from '../../context/ProfileAccountsContext';
 import { useAccess } from '../../context/AccessContext';
 import { getPersona } from '../data/personas';
 import { confirmAsync, notify } from '../logic/confirm';
+import { signOutAndClear } from '../logic/localUserData';
+import { readableOn } from '../logic/contrast';
 import { supabase } from '../api/supabaseClient';
 import { FONTS } from '../theme';
 
@@ -44,6 +46,9 @@ export default function ProfileSwitcher() {
     switchProfile, addProfile, archive, signOut, signIn, hasPin, setPin, clearPin,
   } = useProfiles();
   const { can } = useAccess();
+  // The persona colour, nudged just enough to read on the header in this
+  // theme (Entrepreneur purple was 3.5:1 on dark, Student blue 2.9:1 on light).
+  const chipColor = readableOn(activeDef?.color, c.bg0);
 
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState('list');       // 'list' | 'add' | 'pin'
@@ -113,7 +118,7 @@ export default function ProfileSwitcher() {
   const signOutAccount = async () => {
     if (!(await confirmAsync('Sign out of your account?', 'You can sign back in any time. Nothing is deleted.', 'Sign out'))) return;
     close();
-    await supabase.auth.signOut();
+    await signOutAndClear();
     navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
   };
 
@@ -180,15 +185,16 @@ export default function ProfileSwitcher() {
   return (
     <>
       <TouchableOpacity
-        style={[st.pill, { borderColor: activeDef.color }]}
+        style={[st.pill, { borderColor: chipColor }]}
+        hitSlop={{ top: 11, bottom: 11, left: 4, right: 4 }}
         onPress={() => setOpen(true)}
         activeOpacity={0.75}
         accessibilityRole="button"
         accessibilityLabel={`Current profile: ${active.name}. Tap to switch.`}
       >
         {showEmojis && <Text style={st.pillEmoji}>{active.emoji || activeDef.emoji}</Text>}
-        <Text style={[st.pillText, { color: activeDef.color }]} numberOfLines={1}>{active.name}</Text>
-        <Ionicons name="chevron-down" size={11} color={activeDef.color} />
+        <Text style={[st.pillText, { color: chipColor }]} numberOfLines={1}>{active.name}</Text>
+        <Ionicons name="chevron-down" size={11} color={chipColor} />
       </TouchableOpacity>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={close}>
@@ -487,7 +493,7 @@ export default function ProfileSwitcher() {
                     <Text style={st.closeText}>Back</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={[st.primaryBtn, { flex: 1, backgroundColor: c.teal }]} onPress={submitPin} disabled={busy}>
-                    {busy ? <ActivityIndicator size="small" color="#fff" />
+                    {busy ? <ActivityIndicator size="small" color={c.onFill} />
                           : <Text style={st.primaryBtnText}>Unlock</Text>}
                   </TouchableOpacity>
                 </View>
@@ -530,7 +536,7 @@ const makeStyles = (c, t, s, sh, r) => StyleSheet.create({
   sheetSub: { fontSize: 12, color: c.text3, lineHeight: 17, marginBottom: s.md },
 
   groupLabel: {
-    fontSize: 10, color: c.text4, fontFamily: FONTS.mono,
+    fontSize: 11, color: c.text3, fontFamily: FONTS.mono,
     textTransform: 'uppercase', letterSpacing: 1, marginTop: 10, marginBottom: 6,
   },
 
@@ -547,7 +553,7 @@ const makeStyles = (c, t, s, sh, r) => StyleSheet.create({
   rowLabel: { fontSize: 14, fontWeight: '700', flexShrink: 1 },
   rowBlurb: { fontSize: 11, color: c.text3, lineHeight: 15 },
   rowQuest: {
-    fontSize: 10, fontFamily: FONTS.mono,
+    fontSize: 11, fontFamily: FONTS.mono,
     textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 2,
   },
   rowActions: { flexDirection: 'row', alignItems: 'center', gap: 2 },
@@ -555,14 +561,14 @@ const makeStyles = (c, t, s, sh, r) => StyleSheet.create({
   // Labelled actions: the old unlabelled 15px icons in the faintest grey
   // were the "what do these even do" part of the profile sheet.
   rowAction: { alignItems: 'center', justifyContent: 'center', minWidth: 44, paddingVertical: 4, paddingHorizontal: 4 },
-  rowActionText: { fontSize: 10, fontWeight: '600', marginTop: 2 },
+  rowActionText: { fontSize: 11, fontWeight: '600', marginTop: 2 },
   accountOut: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
     paddingVertical: 11, marginTop: 8, borderRadius: 12, borderWidth: 1, borderColor: c.error + '55',
   },
 
   masterTag: { borderWidth: 1, borderRadius: 4, paddingHorizontal: 4, paddingVertical: 1 },
-  masterTagText: { fontSize: 8, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 0.5 },
+  masterTagText: { fontSize: 11, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 0.5 },
 
   smallBtn: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 },
   smallBtnText: { fontSize: 11, fontWeight: '700' },
@@ -582,7 +588,7 @@ const makeStyles = (c, t, s, sh, r) => StyleSheet.create({
   rollupText: { flex: 1, fontSize: 13, fontWeight: '600', color: c.text2 },
 
   fieldLabel: {
-    fontSize: 11, color: c.text4, fontFamily: FONTS.mono,
+    fontSize: 11, color: c.text3, fontFamily: FONTS.mono,
     textTransform: 'uppercase', letterSpacing: 1.2, marginTop: 12, marginBottom: 6,
   },
   input: {
@@ -590,7 +596,7 @@ const makeStyles = (c, t, s, sh, r) => StyleSheet.create({
     color: c.text1, borderWidth: 1, borderColor: c.border,
   },
 
-  gateNote: { fontSize: 11, color: c.text4, lineHeight: 15, marginTop: 8 },
+  gateNote: { fontSize: 11, color: c.text3, lineHeight: 15, marginTop: 8 },
 
   primaryBtn: { alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12 },
   primaryBtnText: { fontSize: 13, fontWeight: '800', color: '#fff' },

@@ -44,10 +44,10 @@ function Row({ action, aa, color, c, t, r, onError }) {
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-            <Text style={{ fontFamily: FONTS.mono, fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: accent }}>{tierLabel(action.tier, aa.band)}</Text>
-            {action.custom && <Text style={{ fontFamily: FONTS.mono, fontSize: 10, color: c.gold }}>YOURS</Text>}
-            {action.edited && <Text style={{ fontFamily: FONTS.mono, fontSize: 10, color: c.gold }}>EDITED</Text>}
-            {action.hidden && <Text style={{ fontFamily: FONTS.mono, fontSize: 10, color: c.text3 }}>HIDDEN</Text>}
+            <Text style={{ fontFamily: FONTS.mono, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: accent }}>{tierLabel(action.tier, aa.band)}</Text>
+            {action.custom && <Text style={{ fontFamily: FONTS.mono, fontSize: 11, color: c.gold }}>YOURS</Text>}
+            {action.edited && <Text style={{ fontFamily: FONTS.mono, fontSize: 11, color: c.gold }}>EDITED</Text>}
+            {action.hidden && <Text style={{ fontFamily: FONTS.mono, fontSize: 11, color: c.text3 }}>HIDDEN</Text>}
           </View>
 
           {editing ? (

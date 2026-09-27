@@ -139,7 +139,7 @@ export function InterestsStep({ answers, index, setIndex, onAnswer }) {
         </View>
       ) : (
         <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: 22, borderWidth: 1, borderColor: c.border, minHeight: 150, justifyContent: 'center' }}>
-          <Text style={{ fontSize: 11, color: c.text4, fontFamily: FONTS.mono, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>
+          <Text style={{ fontSize: 11, color: c.text3, fontFamily: FONTS.mono, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>
             Would you enjoy…
           </Text>
           <Text style={{ fontSize: 20, fontWeight: '600', color: c.text1, lineHeight: 28 }}>{activity.text}</Text>

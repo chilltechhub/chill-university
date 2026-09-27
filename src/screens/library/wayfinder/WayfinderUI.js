@@ -124,8 +124,8 @@ export function ResourceRow({ resource, last }) {
               accessibilityLabel={`Call ${resource.label}`}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: r.full, backgroundColor: c.teal }}
             >
-              <Ionicons name="call" size={13} color="#fff" />
-              <Text style={{ fontSize: 12.5, color: '#fff', fontWeight: '700' }}>Call</Text>
+              <Ionicons name="call" size={13} color={c.onFill} />
+              <Text style={{ fontSize: 12.5, color: c.onFill, fontWeight: '700' }}>Call</Text>
             </TouchableOpacity>
           )}
           {!!resource.url && (
@@ -161,7 +161,7 @@ export function StepNav({ onBack, onNext, nextLabel = 'Next', nextDisabled, abov
           accessibilityRole="button"
           style={{ flex: 2, paddingVertical: 14, borderRadius: r.md, backgroundColor: c.teal, alignItems: 'center', opacity: nextDisabled ? 0.4 : 1 }}
         >
-          <Text style={{ fontSize: 15, color: '#fff', fontWeight: '700' }}>{nextLabel}</Text>
+          <Text style={{ fontSize: 15, color: c.onFill, fontWeight: '700' }}>{nextLabel}</Text>
         </TouchableOpacity>
       </View>
     </View>

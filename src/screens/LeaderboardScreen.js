@@ -70,7 +70,7 @@ export default function LeaderboardScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={22} color={c.text2} />
         </TouchableOpacity>
         <Text style={[styles.title, { flex: 1, textAlign: 'center' }]} numberOfLines={1}>🏆 {cohortName ? `${cohortName} Leaderboard` : 'Leaderboard'}</Text>
@@ -168,7 +168,7 @@ const makeStyles = (c, t, s, r, sh) => StyleSheet.create({
   centerSub: { fontSize: t.sm, color: c.text3, textAlign: 'center', lineHeight: 20 },
   centerText: { marginTop: s.md, fontSize: t.sm, color: c.text3 },
   retryBtn: { marginTop: s.lg, backgroundColor: c.teal, borderRadius: r.md, paddingVertical: s.sm, paddingHorizontal: s.xl },
-  retryText: { color: '#fff', fontWeight: t.bold, fontSize: t.sm },
+  retryText: { color: c.onFill, fontWeight: t.bold, fontSize: t.sm },
   list: { padding: s.lg, paddingBottom: s.xxxl },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: s.sm,

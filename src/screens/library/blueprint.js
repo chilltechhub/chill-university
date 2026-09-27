@@ -151,7 +151,7 @@ export function Stamp({ label, color, dashed }) {
       borderRadius: 3, paddingHorizontal: 6, paddingVertical: 2,
       transform: [{ rotate: '-2.5deg' }], alignSelf: 'flex-start',
     }}>
-      <Text style={{ color, fontFamily: FONTS.mono, fontSize: 9, fontWeight: '800', letterSpacing: 1 }}>
+      <Text style={{ color, fontFamily: FONTS.mono, fontSize: 11, fontWeight: '800', letterSpacing: 1 }}>
         {label}
       </Text>
     </View>

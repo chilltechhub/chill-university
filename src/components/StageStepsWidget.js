@@ -99,7 +99,7 @@ export default function StageStepsWidget() {
       key: 'level',
       icon: 'trending-up-outline',
       label: 'Gain a level',
-      detail: 'Training rounds are what levels you up. Either route opens the stage — you only need one.',
+      detail: 'Training rounds level you up. Either one opens it — you only need one.',
       cta: 'Train',
       onPress: () => goToScreen(navigation, 'Training'),
     },
@@ -107,7 +107,9 @@ export default function StageStepsWidget() {
 
   return (
     <WidgetCard
-      title={`Stage ${stage} of ${MAX_STAGE} · ${here.label}`}
+      // No stage number on Home: "Stage 1 of 10", "Next:", "NEXT STEPS" and the
+      // goal card's "Next step" all at once read as four different nexts.
+      title="What opens next"
       icon="layers-outline"
       accent={accent.primary}
       action="Compass →"
@@ -118,15 +120,15 @@ export default function StageStepsWidget() {
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: s.md }}>
         <Ionicons name="lock-open-outline" size={14} color={accent.primary} style={{ marginTop: 2 }} />
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.text1 }}>Next: {nextStage.label}</Text>
+          <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.text1 }}>Next unlock: {nextStage.label}</Text>
           {showSubtext && !!nextStage.blurb && (
             <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2, lineHeight: 17 }}>{nextStage.blurb}</Text>
           )}
         </View>
       </View>
 
-      <Text style={{ fontSize: 10, color: c.text4, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: '800', marginBottom: 6 }}>
-        Next steps
+      <Text style={{ fontSize: 11, color: c.text3, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: '800', marginBottom: 6 }}>
+        How to open it
       </Text>
 
       {routes.map((route, i) => (

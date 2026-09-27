@@ -18,6 +18,7 @@ import { supabase } from '../api/supabaseClient';
 import { getActivityBank, saveLessonPlan } from '../api/lessonBuilderService';
 import { LESSON_FORMATS, LESSON_FORMAT_KEYS, BANK_ROLE_META, BUILDER_GRADE_BANDS } from '../data/lessonPlanTemplates';
 import { CLASS_SUBJECTS } from '../data/classCatalog';
+import { textOn } from '../logic/contrast';
 
 function genId() {
   return 'c' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
@@ -72,7 +73,7 @@ function PickRow({ item, selected, onToggle, onEditCustom, onRemoveCustom, color
         )}
       </View>
       {item.custom && (
-        <TouchableOpacity onPress={() => onRemoveCustom(item.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={() => onRemoveCustom(item.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Ionicons name="close-circle" size={18} color={c.text4} />
         </TouchableOpacity>
       )}
@@ -258,14 +259,14 @@ export default function LessonBuilder() {
   return (
     <ScrollView automaticallyAdjustKeyboardInsets style={{ flex: 1, backgroundColor: c.bg0 }} contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: s.lg }}>
-        <TouchableOpacity onPress={() => (stage === 'build' ? setStage('setup') : navigation.goBack())} style={{ marginRight: 10 }}>
+        <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => (stage === 'build' ? setStage('setup') : navigation.goBack())} style={{ marginRight: 10 }}>
           <Ionicons name="chevron-back" size={22} color={c.teal} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>Classroom Day Builder</Text>
           <Text style={{ fontSize: t.sm, color: c.text3, marginTop: 2 }}>Build a lesson plan from the day-template</Text>
         </View>
-        <TouchableOpacity onPress={() => navigation.navigate('MyLessonPlans')}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="My lesson plans" onPress={() => navigation.navigate('MyLessonPlans')}>
           <Ionicons name="folder-open-outline" size={22} color={c.teal} />
         </TouchableOpacity>
       </View>
@@ -285,8 +286,8 @@ export default function LessonBuilder() {
                   flexDirection: 'row', alignItems: 'center', gap: 6,
                 }}
               >
-                <Ionicons name={sub.icon} size={14} color={subjectTitle === sub.title ? '#fff' : sub.color} />
-                <Text style={{ fontSize: t.sm, fontWeight: '700', color: subjectTitle === sub.title ? '#fff' : c.text1 }}>{sub.title}</Text>
+                <Ionicons name={sub.icon} size={14} color={subjectTitle === sub.title ? textOn(sub.color) : sub.color} />
+                <Text style={{ fontSize: t.sm, fontWeight: '700', color: subjectTitle === sub.title ? textOn(sub.color) : c.text1 }}>{sub.title}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -303,7 +304,7 @@ export default function LessonBuilder() {
                   borderWidth: 1, borderColor: gradeBand === band ? c.teal : c.border,
                 }}
               >
-                <Text style={{ fontSize: t.sm, fontWeight: '700', color: gradeBand === band ? '#fff' : c.text1 }}>{band}</Text>
+                <Text style={{ fontSize: t.sm, fontWeight: '700', color: gradeBand === band ? c.onFill : c.text1 }}>{band}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -320,7 +321,7 @@ export default function LessonBuilder() {
                   borderWidth: 1, borderColor: format === key ? c.teal : c.border,
                 }}
               >
-                <Text style={{ fontSize: t.sm, fontWeight: '800', color: format === key ? '#fff' : c.text1 }}>
+                <Text style={{ fontSize: t.sm, fontWeight: '800', color: format === key ? c.onFill : c.text1 }}>
                   {LESSON_FORMATS[key].label}
                 </Text>
               </TouchableOpacity>
@@ -338,7 +339,7 @@ export default function LessonBuilder() {
           >
             {loadingBank
               ? <ActivityIndicator color="#fff" />
-              : <Text style={{ fontSize: t.md, fontWeight: '800', color: (!subjectTitle || !gradeBand) ? c.text4 : '#fff' }}>Start Building →</Text>
+              : <Text style={{ fontSize: t.md, fontWeight: '800', color: (!subjectTitle || !gradeBand) ? c.text4 /* a11y-ok: disabled label */ : '#fff' }}>Start Building →</Text>
             }
           </TouchableOpacity>
         </View>
@@ -368,7 +369,7 @@ export default function LessonBuilder() {
             <View key={seg.key} style={{ backgroundColor: c.bg1, borderRadius: r.lg, borderWidth: 0.5, borderColor: c.border, borderTopWidth: 3, borderTopColor: color, padding: s.md, marginBottom: s.md }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>{seg.label}</Text>
-                <Text style={{ fontSize: 11, fontWeight: '800', color: c.text4 }}>{seg.minutes} MIN</Text>
+                <Text style={{ fontSize: 11, fontWeight: '800', color: c.text3 }}>{seg.minutes} MIN</Text>
               </View>
               {seg.roles.map(role => (
                 <RoleBlock key={role} role={role} bank={bank} customs={customs} selected={selected[role] || {}} onToggle={toggle} onAddCustom={addCustom} onEditCustom={editCustom} onRemoveCustom={removeCustom} color={color} c={c} t={t} s={s} r={r} />

@@ -291,7 +291,7 @@ const makeStyles = (G) => StyleSheet.create({
   progress:       { fontSize: 11, color: G.muted, textAlign: 'center', marginBottom: 14, textTransform: 'uppercase', letterSpacing: 1 },
   resourceRow:    { flexDirection: 'row', gap: 8, marginBottom: 14 },
   resourceCard:   { flex: 1, backgroundColor: G.card, borderWidth: 1.5, borderRadius: 14, padding: 10, alignItems: 'center' },
-  resourceLabel:  { fontSize: 9, color: G.muted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 },
+  resourceLabel:  { fontSize: 11, color: G.muted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 },
   resourceAmount: { fontSize: 18, fontWeight: '800', marginBottom: 6 },
   riskBarBg:      { width: '100%', height: 5, borderRadius: 3, backgroundColor: G.border, overflow: 'hidden' },
   riskBarFill:    { height: '100%', borderRadius: 3 },

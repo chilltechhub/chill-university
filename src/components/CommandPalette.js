@@ -249,7 +249,7 @@ export default function CommandPalette() {
               {isWeb ? (
                 <View style={styles.kbdHint}><Text style={styles.kbdHintText}>ESC</Text></View>
               ) : (
-                <TouchableOpacity onPress={closePalette} style={{ padding: 4 }}>
+                <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={closePalette} style={{ padding: 4 }}>
                   <Ionicons name="close-circle" size={18} color={c.text4} />
                 </TouchableOpacity>
               )}
@@ -303,10 +303,10 @@ const makeStyles = (c) => StyleSheet.create({
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.border },
   input: { flex: 1, color: c.text1, fontSize: 15, paddingVertical: 2, ...(Platform.OS === 'web' ? { outlineStyle: 'none' } : null) },
   kbdHint: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: c.border, backgroundColor: c.bg2 },
-  kbdHintText: { color: c.text4, fontSize: 9, fontWeight: '700', letterSpacing: 0.5 },
+  kbdHintText: { color: c.text3, fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
 
   results: { maxHeight: 430 },
-  sectionHeader: { color: c.text4, fontSize: 10, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', paddingHorizontal: 14, paddingTop: 12, paddingBottom: 6 },
+  sectionHeader: { color: c.text3, fontSize: 11, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', paddingHorizontal: 14, paddingTop: 12, paddingBottom: 6 },
 
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 9, marginHorizontal: 6, borderRadius: 10, borderWidth: 1, borderColor: 'transparent' },
   rowIcon: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
@@ -315,8 +315,8 @@ const makeStyles = (c) => StyleSheet.create({
 
   empty: { alignItems: 'center', paddingVertical: 32, gap: 6 },
   emptyText: { color: c.text2, fontSize: 13, fontWeight: '600' },
-  emptyHint: { color: c.text4, fontSize: 11 },
+  emptyHint: { color: c.text3, fontSize: 11 },
 
   footer: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 8, borderTopWidth: 1, borderTopColor: c.border, backgroundColor: c.bg2 },
-  footerText: { color: c.text4, fontSize: 10 },
+  footerText: { color: c.text3, fontSize: 11 },
 });

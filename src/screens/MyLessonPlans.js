@@ -34,12 +34,12 @@ function PlanCard({ plan, color, c, t, s, r, onDelete }) {
       >
         <Ionicons name="clipboard" size={18} color={color} style={{ marginRight: 8 }} />
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 10, fontWeight: '800', letterSpacing: 0.5, color, opacity: 0.8 }}>
+          <Text style={{ fontSize: 11, fontWeight: '800', letterSpacing: 0.5, color, opacity: 0.8 }}>
             {plan.subject_title?.toUpperCase()} · {plan.grade_band} · {plan.format} MIN
           </Text>
           <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1, marginTop: 1 }}>{plan.title}</Text>
         </View>
-        <TouchableOpacity onPress={() => onDelete(plan)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginRight: 6 }}>
+        <TouchableOpacity accessibilityLabel="Delete" accessibilityRole="button" onPress={() => onDelete(plan)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ marginRight: 6 }}>
           <Ionicons name="trash-outline" size={18} color={c.text4} />
         </TouchableOpacity>
         <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={20} color={c.text4} />
@@ -122,11 +122,11 @@ export default function MyLessonPlans() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: c.bg0 }} contentContainerStyle={{ padding: s.lg, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: s.lg }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 10 }}>
+        <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => navigation.goBack()} style={{ marginRight: 10 }}>
           <Ionicons name="chevron-back" size={22} color={c.teal} />
         </TouchableOpacity>
         <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1, flex: 1 }}>My Lesson Plans</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('LessonBuilder')}>
+        <TouchableOpacity accessibilityLabel="Add" accessibilityRole="button" onPress={() => navigation.navigate('LessonBuilder')}>
           <Ionicons name="add-circle" size={26} color={c.teal} />
         </TouchableOpacity>
       </View>
@@ -145,7 +145,7 @@ export default function MyLessonPlans() {
             onPress={() => navigation.navigate('LessonBuilder')}
             style={{ marginTop: 16, paddingHorizontal: 18, paddingVertical: 10, borderRadius: r.full, backgroundColor: c.teal }}
           >
-            <Text style={{ color: '#fff', fontWeight: '800', fontSize: t.sm }}>Build a Lesson</Text>
+            <Text style={{ color: c.onFill, fontWeight: '800', fontSize: t.sm }}>Build a Lesson</Text>
           </TouchableOpacity>
         </View>
       ) : (

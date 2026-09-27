@@ -102,7 +102,7 @@ export default function ClassTopicScreen({ title, classKey, fallbackTopics, head
             reads as its five modules instead of one flat list. */}
         {topic.module && (ti === 0 || topics[ti - 1]?.module !== topic.module) && (
           <Text style={{
-            fontSize: 11, color: c.text4, fontFamily: FONTS_MONO,
+            fontSize: 11, color: c.text3, fontFamily: FONTS_MONO,
             textTransform: 'uppercase', letterSpacing: 1, marginTop: ti === 0 ? 4 : s.md, marginBottom: s.sm,
           }}>
             {topic.module}
@@ -119,7 +119,7 @@ export default function ClassTopicScreen({ title, classKey, fallbackTopics, head
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: topic.color }}>{topic.title}</Text>
               {topic.grade && (
-                <Text style={{ fontSize: 10, fontWeight: '800', letterSpacing: 0.5, color: topic.color, marginTop: 2, opacity: 0.8 }}>
+                <Text style={{ fontSize: 11, fontWeight: '800', letterSpacing: 0.5, color: topic.color, marginTop: 2, opacity: 0.8 }}>
                   {adult ? `LEVEL · ${bandLabel(topic.grade, true).toUpperCase()}` : `GRADES ${topic.grade}`}
                 </Text>
               )}
@@ -258,7 +258,7 @@ function TopicGames({ screen, topicKey, color, navigation, c, t, s, r }) {
 
   return (
     <View style={{ marginTop: s.md, paddingTop: s.md, borderTopWidth: 0.5, borderTopColor: c.border }}>
-      <Text style={{ fontSize: 10, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', color: c.text3, marginBottom: s.sm }}>
+      <Text style={{ fontSize: 11, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', color: c.text3, marginBottom: s.sm }}>
         Practise this
       </Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm }}>

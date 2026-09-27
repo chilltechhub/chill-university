@@ -487,10 +487,10 @@ function DetailModal({ item, folders, onClose, onSave, onDelete, onAssignFolder,
               <Text style={[styles.detailKind, { color: accent }]}>{meta.label.toUpperCase()}</Text>
               <Text style={styles.detailTitle} numberOfLines={2}>{item.title || 'Untitled'}</Text>
             </View>
-            <TouchableOpacity onPress={() => onToggleStar(item)} style={styles.iconBtn}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={item.url_meta?.starred ? 'Unstar' : 'Star'} onPress={() => onToggleStar(item)} style={styles.iconBtn}>
               <Ionicons name={item.url_meta?.starred ? 'star' : 'star-outline'} size={19} color={item.url_meta?.starred ? c.gold : c.text4} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={onClose} style={styles.iconBtn}>
+            <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={onClose} style={styles.iconBtn}>
               <Ionicons name="close-circle" size={22} color={c.text4} />
             </TouchableOpacity>
           </View>
@@ -1152,7 +1152,7 @@ export default function KnowledgeScreen() {
             )}
             {!!cite && <Text style={styles.citationInline} numberOfLines={1}>{cite}</Text>}
           </View>
-          <TouchableOpacity onPress={() => toggleStar(item)} style={styles.iconBtn}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel={starred ? 'Unstar' : 'Star'} onPress={() => toggleStar(item)} style={styles.iconBtn}>
             <Ionicons name={starred ? 'star' : 'star-outline'} size={16} color={starred ? c.gold : c.text4} />
           </TouchableOpacity>
         </View>
@@ -1193,18 +1193,18 @@ export default function KnowledgeScreen() {
             )}
           </View>
           <View style={{ flexDirection: 'row' }}>
-            <TouchableOpacity onPress={() => setAssigningEntry(item)} style={styles.iconBtn}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={folder ? 'Change folder' : 'Add to a folder'} onPress={() => setAssigningEntry(item)} style={styles.iconBtn}>
               <Ionicons name={folder ? 'folder' : 'folder-outline'} size={16} color={folder ? folder.color : c.text4} />
             </TouchableOpacity>
             {!!item.url && (
-              <TouchableOpacity onPress={() => openLink(item)} style={styles.iconBtn}>
+              <TouchableOpacity accessibilityLabel="Open" accessibilityRole="button" onPress={() => openLink(item)} style={styles.iconBtn}>
                 <Ionicons name="open-outline" size={16} color={c.teal} />
               </TouchableOpacity>
             )}
-            <TouchableOpacity onPress={() => shareItem(item)} style={styles.iconBtn}>
+            <TouchableOpacity accessibilityLabel="Share" accessibilityRole="button" onPress={() => shareItem(item)} style={styles.iconBtn}>
               <Ionicons name="share-outline" size={16} color={c.text3} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => removeEntry(item.id)} style={styles.iconBtn}>
+            <TouchableOpacity accessibilityLabel="Delete" accessibilityRole="button" onPress={() => removeEntry(item.id)} style={styles.iconBtn}>
               <Ionicons name="trash-outline" size={16} color={c.text4} />
             </TouchableOpacity>
           </View>
@@ -1280,7 +1280,7 @@ export default function KnowledgeScreen() {
             placeholderTextColor={c.text4}
           />
           {search ? (
-            <TouchableOpacity onPress={() => setSearch('')}>
+            <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={() => setSearch('')}>
               <Ionicons name="close-circle" size={16} color={c.text4} />
             </TouchableOpacity>
           ) : null}
@@ -1648,11 +1648,11 @@ const makeStyles = (c) => StyleSheet.create({
   // half a phone-inch of empty space above every header.
   container: { flex: 1, backgroundColor: c.bg0, paddingTop: 8 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', rowGap: 8, paddingHorizontal: 20, marginBottom: 14, gap: 6 },
-  headerSubtitle: { color: c.teal, fontSize: 9, letterSpacing: 1.5, fontWeight: '800' },
+  headerSubtitle: { color: c.teal, fontSize: 11, letterSpacing: 1.5, fontWeight: '800' },
   headerTitle: { color: c.text1, fontSize: 22, fontWeight: 'bold' },
   headerIconBtn: { backgroundColor: c.bg1, borderRadius: 10, padding: 8, borderWidth: 0.5, borderColor: c.border },
   addBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.teal, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 },
-  addBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
+  addBtnText: { color: c.onFill, fontWeight: 'bold', fontSize: 12 },
 
   // Vault / Discover as one control in the header row, instead of two
   // full-size buttons on a row of their own.
@@ -1671,19 +1671,19 @@ const makeStyles = (c) => StyleSheet.create({
   filterBarContainer: { marginBottom: 10 },
   filterScroll: { paddingHorizontal: 20, gap: 8, alignItems: 'center' },
   sortLabelWrap: { flexDirection: 'row', alignItems: 'center', gap: 4, marginRight: 2 },
-  sortLabel: { color: c.text4, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  sortLabel: { color: c.text3, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: c.bg1, borderWidth: 1, borderColor: c.border, marginRight: 8 },
   chipActive: { borderColor: c.purple, backgroundColor: c.purple + '22' },
   chipText: { color: c.text3, fontSize: 11, fontWeight: '600' },
   chipTextActive: { color: c.text1, fontWeight: 'bold' },
   tagChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, backgroundColor: c.bg2, borderWidth: 1, borderColor: c.border, marginRight: 8 },
   tagChipActive: { borderColor: c.financial, backgroundColor: c.financial + '22' },
-  tagChipText: { color: c.text3, fontSize: 10 },
+  tagChipText: { color: c.text3, fontSize: 11 },
   tagChipTextActive: { color: c.financial, fontWeight: 'bold' },
 
   composer: { paddingHorizontal: 20, paddingVertical: 12, backgroundColor: c.bg1, borderTopWidth: 0.5, borderBottomWidth: 0.5, borderColor: c.border, gap: 8, marginBottom: 10 },
   composerClosed: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 20, marginBottom: 10, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 10, borderWidth: 1, borderStyle: 'dashed', borderColor: c.border },
-  composerClosedText: { color: c.text4, fontSize: 13 },
+  composerClosedText: { color: c.text3, fontSize: 13 },
   composerInput: { flex: 1, backgroundColor: c.bg0, borderRadius: 10, padding: 12, fontSize: 13, color: c.text1, borderWidth: 0.5, borderColor: c.border },
   composerBtn: { backgroundColor: c.teal, borderRadius: 10, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
   composerTags: { backgroundColor: c.bg0, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, fontSize: 11, color: c.text1, borderWidth: 0.5, borderColor: c.border },
@@ -1700,7 +1700,7 @@ const makeStyles = (c) => StyleSheet.create({
 
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 10, paddingBottom: 4 },
   sectionHeaderText: { fontSize: 11, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' },
-  sectionHeaderCount: { color: c.text4, fontSize: 10, fontWeight: '600' },
+  sectionHeaderCount: { color: c.text3, fontSize: 11, fontWeight: '600' },
 
   card: { backgroundColor: c.bg1, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: c.border, borderLeftWidth: 4 },
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
@@ -1712,21 +1712,21 @@ const makeStyles = (c) => StyleSheet.create({
   cardBody: { color: c.text2, fontSize: 12, lineHeight: 17, marginTop: 6 },
   discoverTagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
   discoverTag: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
-  discoverTagText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.2 },
+  discoverTagText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
   discoverSummary: { color: c.text2, fontSize: 12.5, lineHeight: 18, marginTop: 10 },
   discoverMore: { color: c.teal, fontSize: 11, fontWeight: '700', marginTop: 10 },
   sourceToggleText: { color: c.teal, fontSize: 12, fontWeight: '700' },
-  citationInline: { color: c.text4, fontSize: 10.5, marginTop: 3, fontStyle: 'italic' },
+  citationInline: { color: c.text3, fontSize: 11.5, marginTop: 3, fontStyle: 'italic' },
   iconBtn: { padding: 6 },
 
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
   cardTagRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, flex: 1 },
   pill: { flexDirection: 'row', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1 },
-  pillText: { fontSize: 10, fontWeight: '700' },
+  pillText: { fontSize: 11, fontWeight: '700' },
   tagPill: { backgroundColor: c.bg2, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: c.border },
-  tagPillText: { color: c.gold, fontSize: 10 },
+  tagPillText: { color: c.gold, fontSize: 11 },
   visitsPill: { flexDirection: 'row', alignItems: 'center', gap: 2, backgroundColor: c.bg2, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6 },
-  visitsPillText: { color: c.text4, fontSize: 10, fontWeight: '600' },
+  visitsPillText: { color: c.text3, fontSize: 11, fontWeight: '600' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: c.bg1, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, borderTopWidth: 2, borderTopColor: c.teal, maxHeight: '88%' },
@@ -1739,12 +1739,12 @@ const makeStyles = (c) => StyleSheet.create({
   cancelBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', backgroundColor: c.bg2, borderRadius: 10, borderWidth: 1, borderColor: c.border },
   cancelBtnText: { color: c.text3, fontSize: 12, fontWeight: 'bold' },
   saveBtn: { flex: 2, paddingVertical: 12, alignItems: 'center', backgroundColor: c.teal, borderRadius: 10 },
-  saveBtnText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
+  saveBtnText: { color: c.onFill, fontSize: 12, fontWeight: 'bold' },
   autoHint: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: -4, marginBottom: 10, paddingHorizontal: 4 },
   autoHintText: { color: c.teal, fontSize: 11, flex: 1 },
 
   detailHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
-  detailKind: { fontSize: 9, fontWeight: '800', letterSpacing: 1.2 },
+  detailKind: { fontSize: 11, fontWeight: '800', letterSpacing: 1.2 },
   detailTitle: { color: c.text1, fontSize: 16, fontWeight: 'bold' },
   detailBodyText: { color: c.text2, fontSize: 13, lineHeight: 20, marginBottom: 4 },
   detailActionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 18, marginTop: 16, marginBottom: 14 },

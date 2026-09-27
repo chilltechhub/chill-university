@@ -139,14 +139,30 @@ export function UserProgressProvider({ children }) {
   // setLoading(false) here could fire before the listener's own loadUserData
   // call had finished, flashing the UI out of its loading state early. One
   // source of truth removes all three.
+  //
+  // The callback must not await Supabase calls. supabase-js runs it while it
+  // still holds its auth lock (it awaits listeners during a token refresh), and
+  // every query inside loadUserData needs that same lock to read the session —
+  // so on a cold start with an expired access token the two waited on each
+  // other forever, getSession() in App.js never resolved, and the app rendered
+  // a blank screen (reproduced 2/2 on 2026-09-27). Deferring with setTimeout
+  // lets the lock release first; this is the pattern the supabase-js docs give.
+  //
+  // It also only reloads when the signed-in user actually changes: an hourly
+  // TOKEN_REFRESHED (or the SIGNED_IN some versions re-emit on tab focus)
+  // used to re-run the whole load and flash the loading state.
+  const loadedForUserRef = useRef(null);
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange(
-      async (_, session) => {
+      (event, session) => {
         const u = session?.user || null;
         setUser(u);
         if (u) {
-          await loadUserData(u.id);
+          if (loadedForUserRef.current === u.id && event !== 'USER_UPDATED') return;
+          loadedForUserRef.current = u.id;
+          setTimeout(() => { loadUserData(u.id); }, 0);
         } else {
+          loadedForUserRef.current = null;
           resetState();
           setLoading(false);
         }
