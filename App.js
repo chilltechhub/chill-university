@@ -76,6 +76,9 @@ import useFirstVisitTutorial from './src/logic/useFirstVisitTutorial';
 import useGuidedFirstGoal from './src/logic/useGuidedFirstGoal';
 import useWelcomeTour from './src/logic/useWelcomeTour';
 import { goToScreen } from './src/logic/appRoutes';
+import { installWebAlertShim } from './src/logic/webAlertShim';
+
+installWebAlertShim(); // web only: Alert.alert → the browser's dialogs
 
 // Compass-gated root routes. Built at module scope so the navigator gets a
 // stable component reference (an inline wrapper would remount the screen on

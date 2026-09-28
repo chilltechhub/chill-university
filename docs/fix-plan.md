@@ -12,7 +12,7 @@ stress test, then the UI/UX + accessibility audit). Nothing here is built yet.
 | 2 | Data that disappears, app that won't open | **applied and verified 2026-09-27** — cold start with an expired token → Home 2/2; + button project and an offline capture both land in the active profile; rejected queue rows dropped; sign-out clears the device. Migration `20260927140000` (orphan backfill + streak day-one fix) applied; backfill checked afterwards |
 | 3 | Accessibility foundation | done in the preview (2026-09-27): dark mode Home/Planner/Idea Garden/Inbox/Compass/Library/Settings all 0 contrast failures and 0 unlabeled icon buttons (each had several before); light mode only the pill fix below. Guards in `scripts/check-a11y.mjs`. Needs a phone: haptics, iOS tab bar safe area |
 | 4 | Clarity: names, goals, tours, screens | mostly done — 4.1 Project, 4.2 goal wording + Compass explainer, 4.3 filled Open on the goal card, 4.4 tours (one tutorial per session, ends when you leave, guide reminder is a pill, hidden during games), 4.5, 4.6 Library tabs + empty states, 4.7 Settings jump links + AI key adults-only (not split into sub-pages), 4.8 Profile says "Level N · tier", 4.9, 4.10, 4.11 all four. **Waiting on you:** 4.8 points economy (below) |
-| 5 | Web-only fixes (testing convenience) | not started |
+| 5 | Web-only fixes (testing convenience) | done 2026-09-28 — `src/logic/webAlertShim.js` maps every `Alert.alert` onto the browser's alert / confirm / prompt (numbered choices) at startup, web only; tab labels fixed in Phase 3 |
 | v2 | Kids (K–2) backlog | parked |
 
 ## Decisions already made
