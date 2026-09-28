@@ -3,6 +3,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { useUserProgress, SUBJECT_CONFIG } from '../../context/UserProgressContext';
 import { useTheme } from '../../context/ThemeContext';
+import { getRankLabel } from '../logic/rankUtils';
 
 export default function StatsScreen() {
   const { loading, profile, points, xp, level, rank, rankProgress, subjectProgress, dailyMissions, weeklyMissions, longtermMissions, gameplayStats } = useUserProgress();
@@ -27,9 +28,9 @@ export default function StatsScreen() {
         <Text style={styles.heroName}>{profile?.display_name || 'Scholar'}</Text>
         <View style={styles.heroStats}>
           <HeroStat label="Points" value={points?.toLocaleString() || '0'} c={c} t={t} />
-          <HeroStat label="Rank"   value={`#${rank}`}   c={c} t={t} />
+          <HeroStat label="Tier"   value={getRankLabel(rank).label} c={c} t={t} />
           <HeroStat label="Level"  value={level || 1}   c={c} t={t} />
-          <HeroStat label="Progress" value={`${Math.round(rankProgress || 0)}%`} c={c} t={t} color={c.teal} />
+          <HeroStat label="Next tier" value={`${Math.round(rankProgress || 0)}%`} c={c} t={t} color={c.teal} />
         </View>
       </View>
 

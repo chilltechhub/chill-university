@@ -41,12 +41,14 @@ export default function LevelUpNotification() {
       <View style={s.overlay}>
         <View style={s.card}>
           <Text style={s.ornament}>✦ · ✦</Text>
-          <Text style={s.bigEmoji}>{isLevel ? '⭐' : (event.rankLabel?.emoji || '🏆')}</Text>
-          <Text style={s.title}>{isLevel ? 'Level Up!' : 'Rank Up!'}</Text>
+          <Text style={s.bigEmoji}>{isLevel ? '⭐' : event.newTier ? (event.rankLabel?.emoji || '🏆') : '🎁'}</Text>
+          <Text style={s.title}>{isLevel ? 'Level Up!' : event.newTier ? 'New Tier!' : 'Unlocked!'}</Text>
           <Text style={s.subtitle}>
             {isLevel
               ? `You reached Level ${event.to}`
-              : `You're now ${event.rankLabel?.label || `Rank ${event.to}`}`}
+              : event.newTier
+                ? `You're now ${event.rankLabel?.label || `Rank ${event.to}`}`
+                : 'Your points opened something new'}
           </Text>
 
           {event.unlocks.length > 0 && (

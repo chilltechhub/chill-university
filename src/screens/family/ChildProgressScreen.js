@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../../context/ThemeContext';
 import LevelRing from '../../components/LevelRing';
-import { getRank, getRankProgress, getRankLabel } from '../../logic/rankUtils';
+import { getRank, getTierProgress, getRankLabel } from '../../logic/rankUtils';
 
 export default function ChildProgressScreen() {
   const navigation = useNavigation();
@@ -21,7 +21,7 @@ export default function ChildProgressScreen() {
   if (!child) return null;
 
   const rank = getRank(child.points || 0);
-  const { progress } = getRankProgress(child.points || 0);
+  const { progress } = getTierProgress(child.points || 0);
   const rankInfo = getRankLabel(rank);
 
   // Same "checked in today" definition as UserProgressContext's streakDays.

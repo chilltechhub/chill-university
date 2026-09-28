@@ -14,6 +14,7 @@
 //     naming convention on inspection.
 
 import { fetchContentPool } from '../api/remoteConfigService';
+import { rankThresholds } from '../logic/rankUtils';
 
 function withUnlock(option) {
   return { ...option, unlock: (stats) => (stats.rank ?? 20) <= option.maxRank };
@@ -131,7 +132,9 @@ export const DEFAULT_BACKGROUND_ID = BACKGROUNDS[0].id;
 
 export function backgroundUnlockLabel(option, stats) {
   if ((stats.rank ?? 20) <= option.maxRank) return null;
-  return `Unlocks at Rank ${option.maxRank} or better`;
+  // Rank numbers aren't shown anywhere any more (tiers are), so say the points.
+  const need = rankThresholds.find(t => t.rank === option.maxRank)?.threshold;
+  return need != null ? `Unlocks at ${need.toLocaleString()} points` : `Unlocks at Rank ${option.maxRank} or better`;
 }
 
 // Admin-added backgrounds from Supabase (app_content, type='background_option')

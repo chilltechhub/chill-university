@@ -16,7 +16,7 @@ import { cacheRead, cacheWrite, isOnline } from '../api/offlineCache';
 import { RANK_LABELS, FONTS, STYLES, ACCENTS } from '../theme';
 import { SectionLabel, Eyebrow, Button, ListRow, Readout } from '../components/ui';
 import LevelRing from '../components/LevelRing';
-import { getRank, getRankProgress } from '../logic/rankUtils';
+import { getRank, getTierProgress } from '../logic/rankUtils';
 import { getUserApiKey, setUserApiKey, clearUserApiKey, maskKey } from '../api/aiKey';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import { resetSeenScreens } from '../logic/useFirstVisitTutorial';
@@ -823,7 +823,7 @@ export default function SettingsScreen() {
         {/* Account card */}
         {profile && (() => {
           const rank = getRank(profile.points || 0);
-          const { progress } = getRankProgress(profile.points || 0);
+          const { progress } = getTierProgress(profile.points || 0);
           const rankInfo = RANK_LABELS[rank] || RANK_LABELS[20];
           return (
             <View style={{ backgroundColor: c.bg1, borderRadius: ui.cardRadius, padding: s.xl, marginBottom: s.lg, borderWidth: ui.borderWidth, borderColor: c.border, borderTopWidth: 2, borderTopColor: c.gold, alignItems: 'center' }}>
