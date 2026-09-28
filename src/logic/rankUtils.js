@@ -65,30 +65,51 @@ export function getRankProgress(points) {
 }
 
 /**
- * Human-readable rank tier labels.
+ * Five named tiers over the 20 ranks, four ranks each. There used to be a
+ * name per rank — twenty near-synonyms (Starter, Newcomer, Recruit,
+ * Initiate…) that said nothing about which was higher. Rank itself stays
+ * 1–20 (the server stores it and backgrounds unlock by it); only the names
+ * collapse. Ordered lowest first; `minRank` is the worst rank in the tier.
  */
-export const rankLabels = {
-  1:  { label: 'Legend',        emoji: '🏆', color: '#FFD700' },
-  2:  { label: 'Grandmaster',   emoji: '💎', color: '#B9F2FF' },
-  3:  { label: 'Master',        emoji: '🔮', color: '#A78BFA' },
-  4:  { label: 'Expert',        emoji: '🌟', color: '#60A5FA' },
-  5:  { label: 'Veteran',       emoji: '⚡', color: '#34D399' },
-  6:  { label: 'Skilled',       emoji: '🔥', color: '#F97316' },
-  7:  { label: 'Advanced',      emoji: '🎯', color: '#EC4899' },
-  8:  { label: 'Proficient',    emoji: '📈', color: '#10B981' },
-  9:  { label: 'Competent',     emoji: '📚', color: '#6366F1' },
-  10: { label: 'Intermediate',  emoji: '🎓', color: '#3B82F6' },
-  11: { label: 'Developing',    emoji: '🌱', color: '#22C55E' },
-  12: { label: 'Learner',       emoji: '📝', color: '#F59E0B' },
-  13: { label: 'Apprentice',    emoji: '🔑', color: '#84CC16' },
-  14: { label: 'Novice',        emoji: '🌙', color: '#06B6D4' },
-  15: { label: 'Beginner',      emoji: '🌤️',  color: '#8B5CF6' },
-  16: { label: 'Explorer',      emoji: '🗺️',  color: '#F43F5E' },
-  17: { label: 'Initiate',      emoji: '🌿', color: '#14B8A6' },
-  18: { label: 'Recruit',       emoji: '⭐', color: '#EAB308' },
-  19: { label: 'Newcomer',      emoji: '🌱', color: '#64748B' },
-  20: { label: 'Starter',       emoji: '🐣', color: '#94A3B8' },
-};
+export const TIERS = [
+  { key: 'starter',  label: 'Starter',  emoji: '🐣', color: '#94A3B8', theme: 'base',   minRank: 20 },
+  { key: 'explorer', label: 'Explorer', emoji: '🗺️', color: '#22C55E', theme: 'base',   minRank: 16 },
+  { key: 'skilled',  label: 'Skilled',  emoji: '🎯', color: '#3B82F6', theme: 'teal',   minRank: 12 },
+  { key: 'expert',   label: 'Expert',   emoji: '🌟', color: '#A78BFA', theme: 'arcane', minRank: 8 },
+  { key: 'legend',   label: 'Legend',   emoji: '🏆', color: '#FFD700', theme: 'gold',   minRank: 4 },
+];
+
+/** Index into TIERS (0 = Starter … 4 = Legend) for a rank 1–20. */
+export function tierIndexForRank(rank) {
+  const r = Math.min(20, Math.max(1, Math.round(Number(rank) || 20)));
+  return Math.min(TIERS.length - 1, Math.floor((20 - r) / 4));
+}
+
+export function tierForRank(rank) {
+  return TIERS[tierIndexForRank(rank)];
+}
+
+/**
+ * Progress (0–100) toward the next TIER, not the next rank — with names
+ * shared by four ranks, "next rank" would often end on the same name.
+ */
+export function getTierProgress(points) {
+  const idx = tierIndexForRank(getRank(points));
+  const thresholdOf = (rank) => rankThresholds.find(t => t.rank === rank).threshold;
+  const from = thresholdOf(TIERS[idx].minRank);
+  if (idx >= TIERS.length - 1) return { tier: TIERS[idx], progress: 100 };
+  const to = thresholdOf(TIERS[idx + 1].minRank);
+  const progress = Math.min(Math.max(((points - from) / (to - from)) * 100, 0), 100);
+  return { tier: TIERS[idx], progress };
+}
+
+/** Label info per rank — the rank's tier. Kept keyed by rank for callers. */
+export const rankLabels = Object.fromEntries(
+  Array.from({ length: 20 }, (_, i) => {
+    const t = tierForRank(i + 1);
+    return [i + 1, { label: t.label, emoji: t.emoji, color: t.color }];
+  }),
+);
 
 /**
  * Get label info for a given rank number.

@@ -183,6 +183,22 @@ export async function tailorDailyDrills(userId, games, type = 'daily') {
   return changed;
 }
 
+/* ─── Confirmed awards, for the top bar ──────────────────────────────────── */
+
+// Points the server just confirmed — a prize card, a pet coin, a mission or
+// drill reward — so the header can show them at once (UserProgressContext
+// listens). Before, a drill's "+15 pts" toast showed while the header kept
+// the old number until the next full profile reload.
+const awardListeners = new Set();
+export function onServerAward(fn) {
+  awardListeners.add(fn);
+  return () => awardListeners.delete(fn);
+}
+function announceAward(points, xp = 0) {
+  if (!points && !xp) return;
+  awardListeners.forEach(fn => { try { fn(points || 0, xp || 0); } catch {} });
+}
+
 /* ─── Core game event handler ────────────────────────────────────────────── */
 
 // One event at a time. Each one reads a mission's count and writes it back
@@ -241,20 +257,23 @@ async function handleGameEventNow(event) {
 
 /* ─── Rewards ────────────────────────────────────────────────────────────── */
 
-// A wrong answer still earns a little XP for the effort, but no points, and a
-// finished game's bonus scales with how much of it was right. Before, letting
-// a Rush timer run out three times paid 33 points while the results screen
-// said "0 points earned" — and walking away from the phone farmed points.
+// Answers and finished games pay XP only. Points come from the prize card
+// picked at the end of each round (claimRoundPrize below), whose range is
+// built from what those answers used to pay — so the number the game shows
+// as "points earned" is the number the account gets. Before, the card was
+// never saved and answers paid points of their own on the side.
+// A wrong answer still earns a little XP for the effort; a finished game's
+// XP scales with how much of it was right, and nothing for none right.
 function calculateRewards({ type, correct, difficulty, metadata = {} }) {
   switch (type) {
-    case 'QUESTION_ANSWERED': return { xp: correct ? 10 * difficulty : 2, points: correct ? 5 * difficulty : 0 };
+    case 'QUESTION_ANSWERED': return { xp: correct ? 10 * difficulty : 2, points: 0 };
     case 'LEVEL_COMPLETED':   return { xp: 50 * difficulty,  points: 25 * difficulty };
     case 'GAME_COMPLETED': {
       const right = Number(metadata.correct) || 0;
       const asked = Number(metadata.attempted) || 0;
       if (right <= 0) return { xp: 0, points: 0 };
       const share = asked > 0 ? Math.min(1, right / asked) : 1;
-      return { xp: Math.max(1, Math.round(30 * difficulty * share)), points: Math.max(1, Math.round(15 * difficulty * share)) };
+      return { xp: Math.max(1, Math.round(30 * difficulty * share)), points: 0 };
     }
     case 'STREAK_BONUS':      return { xp: 20,               points: 10 };
     case 'BONUS_REWARD_CLAIMED': return { xp: 10,            points: 15 };
@@ -392,13 +411,59 @@ async function advanceMissions(userId, event) {
   // to 3,000 points, far past what increment_user_progress now accepts in one
   // call. A database without the function falls back to the old path.
   for (const done of completedIds) {
-    const { error } = await supabase.rpc('claim_mission_reward', { p_user_mission_id: done.id });
-    if (error?.code === 'PGRST202') {
-      await supabase.rpc('increment_user_progress', { p_user_id: userId, p_xp: done.xp, p_points: done.points });
-    } else if (error) {
+    const { data, error } = await supabase.rpc('claim_mission_reward', { p_user_mission_id: done.id });
+    if (!error) {
+      announceAward(data?.points ?? done.points, data?.xp ?? done.xp);
+    } else if (error.code === 'PGRST202') {
+      const { error: oldError } = await supabase.rpc('increment_user_progress', { p_user_id: userId, p_xp: done.xp, p_points: done.points });
+      if (!oldError) announceAward(done.points, done.xp);
+    } else {
       console.warn('[advanceMissions] claim', error.message);
     }
   }
+}
+
+/* ─── Round prizes and pet coins ─────────────────────────────────────────── */
+
+// The server checks both (20260928120000): a prize can't beat what that many
+// right answers can roll and a round with none right pays nothing; pet coins
+// stop at 12 per six hours whatever device or sign-in they come from. A
+// database without the functions falls back to the old award, so points
+// still land before the SQL is run.
+
+/** Credits the picked prize card. Resolves to the points actually added. */
+export async function claimRoundPrize({ userId, points, correct = 0, total = 0 }) {
+  const pts = Math.max(0, Math.round(points || 0));
+  if (!userId || pts <= 0 || correct <= 0) return 0;
+  const { data, error } = await supabase.rpc('claim_round_prize', { p_points: pts, p_correct: correct, p_total: total });
+  if (!error) { const got = data?.points ?? pts; announceAward(got); return got; }
+  if (error.code !== 'PGRST202') { console.warn('[claimRoundPrize]', error.message); return 0; }
+  const capped = Math.min(pts, 150); // increment_user_progress's per-call cap
+  const { error: oldError } = await supabase.rpc('increment_user_progress', { p_user_id: userId, p_xp: 0, p_points: capped });
+  if (oldError) { console.warn('[claimRoundPrize] fallback', oldError.message); return 0; }
+  await logActivity({ userId, type: 'ROUND_PRIZE', subject: 'general', rewards: { xp: 0, points: capped }, metadata: { correct, total } })
+    .catch(() => {});
+  announceAward(capped);
+  return capped;
+}
+
+/**
+ * One coin the pet ate. Resolves to { points, remaining } — points is 0 once
+ * this window's 12 are used; remaining is null on the old path (the device
+ * keeps its own count there).
+ */
+export async function collectPetCoin(userId) {
+  if (!userId) return { points: 0, remaining: null };
+  const { data, error } = await supabase.rpc('collect_pet_coin');
+  if (!error) {
+    const points = data?.points ?? 0;
+    announceAward(points, points);
+    return { points, remaining: data?.remaining ?? null };
+  }
+  if (error.code !== 'PGRST202') { console.warn('[collectPetCoin]', error.message); return { points: 0, remaining: null }; }
+  await handleGameEvent({ type: 'COIN_COLLECTED', userId, subject: 'general' });
+  announceAward(1, 1);
+  return { points: 1, remaining: null };
 }
 
 /* ─── Lesson completion — advances any 'topic_completed' mission ────────── */

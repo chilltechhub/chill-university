@@ -1,7 +1,7 @@
 // src/logic/useGame.js
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useUserProgress } from '../../context/UserProgressContext';
-import { handleGameEvent } from './gamificationService';
+import { handleGameEvent, claimRoundPrize } from './gamificationService';
 import { correctHaptic } from './haptics';
 
 export const DIFFICULTY = { easy: 1, medium: 2, hard: 3 };
@@ -32,6 +32,9 @@ export default function useGame({
   const startTime                 = useRef(Date.now());
   const questionStart             = useRef(Date.now());
   const questionTimes             = useRef([]);
+  // XP the answers have earned so far, the same amounts the server adds
+  // (gamificationService.calculateRewards), so the results screen shows it.
+  const xpRef                     = useRef(0);
 
   const accuracy = attempted > 0 ? Math.round((correct / attempted) * 100) : 0;
 
@@ -64,6 +67,7 @@ export default function useGame({
     questionTimes.current.push(elapsed);
     questionStart.current = Date.now();
     answeredRef.current = true;
+    xpRef.current += isCorrect ? 10 * difficulty : 2;
 
     setAttempt(a => a + 1);
 
@@ -120,10 +124,18 @@ export default function useGame({
     }
   }, [streak, bestStreak, difficulty, user, subject, recordGuestEvent, skillLevel, manualScoring, noteDrillProgress]);
 
-  // For manualScoring games: called when a round-end prize is claimed.
-  const addPoints = useCallback((n) => {
-    setScore(s => s + Math.max(0, Math.round(n)));
-  }, []);
+  // Called when a round-end prize card is picked (RoundCompleteScreen's
+  // onAward, with that round's { correct, total }). The card is what the
+  // round pays: it goes to the server, which checks it against the round,
+  // and the top bar ticks up once it's in (gamificationService announces it).
+  const addPoints = useCallback((n, round = {}) => {
+    const pts = Math.max(0, Math.round(n));
+    setScore(s => s + pts);
+    if (user?.id && pts > 0) {
+      claimRoundPrize({ userId: user.id, points: pts, correct: round.correct ?? 0, total: round.total ?? 0 })
+        .catch(() => {});
+    }
+  }, [user]);
 
   const endGame = useCallback(() => {
     setDone(true);
@@ -133,8 +145,11 @@ export default function useGame({
     const totalSec    = Math.round((Date.now() - startTime.current) / 1000);
     const avgMs       = times.length ? times.reduce((a, b) => a + b, 0) / times.length : 0;
     const fastestMs   = times.length ? Math.min(...times) : 0;
-    const xpEarned    = Math.round(score * 0.5);
-    const pointsEarned = Math.round(score * 0.25);
+    // What the account actually got: the XP above plus the finished-game XP
+    // (nothing for none right), and the prize cards picked — which is `score`.
+    const share        = attempted > 0 ? Math.min(1, correct / attempted) : 1;
+    const xpEarned     = xpRef.current + (correct > 0 ? Math.max(1, Math.round(30 * difficulty * share)) : 0);
+    const pointsEarned = score;
 
     // Fire GAME_COMPLETED event with full metadata, then pull the fresh
     // profile — this is what lets a level-up/rank-up notification fire
@@ -180,6 +195,7 @@ export default function useGame({
     startTime.current     = Date.now();
     questionStart.current = Date.now();
     questionTimes.current = [];
+    xpRef.current         = 0;
   }, []);
 
   return {

@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../src/api/supabaseClient';
 import * as gamificationService from '../src/logic/gamificationService';
-import { getRank, getRankProgress, getRankLabel } from '../src/logic/rankUtils';
+import { getRank, getTierProgress, getRankLabel, tierIndexForRank } from '../src/logic/rankUtils';
 import { getLevelUnlocks, getRankUnlocks, getPointUnlocks } from '../src/logic/unlockUtils';
 import { cacheRead, cacheWrite, isOnline } from '../src/api/offlineCache';
 import { todayStr, daysBetween } from '../src/logic/dateUtils';
@@ -105,12 +105,19 @@ export function UserProgressProvider({ children }) {
         ];
         events.push({ type: 'level', from: prevLevel, to: newLevel, unlocks });
       }
+      // Ranks are 1–20 but share five tier names, so "Rank Up! You're now
+      // Starter" would repeat the name you already had. Announce a new tier,
+      // or a background the rank opened; stay quiet otherwise.
       if (newRank < prevRank) {
-        events.push({
-          type: 'rank', from: prevRank, to: newRank,
-          rankLabel: getRankLabel(newRank),
-          unlocks: getRankUnlocks(prevRank, newRank),
-        });
+        const newTier = tierIndexForRank(newRank) > tierIndexForRank(prevRank);
+        const unlocks = getRankUnlocks(prevRank, newRank);
+        if (newTier || unlocks.length) {
+          events.push({
+            type: 'rank', from: prevRank, to: newRank, newTier,
+            rankLabel: getRankLabel(newRank),
+            unlocks,
+          });
+        }
       }
       if (events.length) setProgressEvents(q => [...q, ...events]);
     }
@@ -404,6 +411,16 @@ export function UserProgressProvider({ children }) {
     await loadUserData(user.id);
   }
 
+  // Points the server just confirmed (a prize card, a pet coin) show in the
+  // top bar at once, without a full reload mid-game. Level/tier notices are
+  // left to the next real refresh — prevPointsRef isn't touched, so it still
+  // sees the jump then — rather than popping up over a round.
+  const notePointsEarned = useCallback((points, xp = 0) => {
+    if (!points && !xp) return;
+    setProfile(p => (p ? { ...p, points: (p.points || 0) + (points || 0), xp: (p.xp || 0) + (xp || 0) } : p));
+  }, []);
+  useEffect(() => gamificationService.onServerAward(notePointsEarned), [notePointsEarned]);
+
   // A finished round counts toward "played" at once. Its answers were
   // already written one by one (useGame → handleGameEvent), but
   // gameplayStats is only rebuilt when the profile reloads, which used to be
@@ -434,7 +451,7 @@ export function UserProgressProvider({ children }) {
   const xp      = user ? (profile?.xp      || 0) : guestXp;
   const level   = profile?.level  || 1;
   const rank    = getRank(points);
-  const { progress: rankProgress } = getRankProgress(points);
+  const { progress: rankProgress } = getTierProgress(points); // toward the next tier
 
   // Streak: how many consecutive days the user has shown up, or 0 once the
   // run is actually broken.
@@ -456,7 +473,7 @@ export function UserProgressProvider({ children }) {
     return 0;                                          // missed a full day
   })();
 
-  // progress % toward next rank (for TopBar progress bar)
+  // progress % toward the next tier (TopBar bar, Games, Stats)
   const progress = rankProgress;
 
   return (
@@ -493,6 +510,7 @@ export function UserProgressProvider({ children }) {
         dismissProgressEvent,
         // refresh
         refreshProfile,
+        notePointsEarned,
         refreshDailyMissions,
         refreshWeeklyMissions,
         // guest

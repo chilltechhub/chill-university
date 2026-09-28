@@ -31,11 +31,19 @@ import { useGameTheme } from './GameShell';
 import { useUIPrefs } from '../../context/UIPrefsContext';
 import { useAccess } from '../../context/AccessContext';
 import { useUserProgress } from '../../context/UserProgressContext';
+import { textOn } from '../logic/contrast';
 
-// Grade tier (1=K-2 … 4=9-12) scales the whole prize pool down for younger
-// bands — same round performance, smaller numbers, so points stay roughly
-// proportional to how much the player is actually expected to know.
-const GRADE_TIER_MULT = { 1: 0.5, 2: 0.75, 3: 1.0, 4: 1.3 };
+// The prize card is what a round pays — the account gets exactly the card
+// picked (useGame.addPoints → claim_round_prize, which re-checks it). Its
+// range is built from what the round's answers used to pay on their own:
+//   each right answer   5 × grade tier     (the old per-question points)
+//   the round itself    5 × tier × accuracy (a share of the old finished-game
+//                                            bonus, 15 per game ≈ 3 rounds)
+// then scaled up for accuracy, so more right answers → a higher range, and a
+// round with none right pays nothing. Grade tier is 1 (K-2) … 4 (9-12).
+// Keep in step with the cap in 20260928120000_round_prizes_and_pet_coins.sql.
+const PER_ANSWER = 5;
+const ROUND_BONUS = 5;
 // "Just for fun" arcade games (Bug Squash, Snack Catch, Speed Racer,
 // Reflex Rush) pay well under half of what an educational game pays for
 // the same round performance — see the `funGame` prop below.
@@ -51,22 +59,23 @@ const FUN_GAME_MULT = 0.45;
 // the absolute size is capped.
 const CORRECT_CAP = 15;
 
+// Three card values, shuffled, or null when nothing was answered right.
 function rollPrizes(correct = 0, total = 1, tier = 2, funGame = false) {
+  if (!(correct > 0)) return null;
   if (total > CORRECT_CAP) {
     const scale = CORRECT_CAP / total;
-    correct = Math.round(correct * scale);
+    correct = Math.max(1, Math.round(correct * scale));
     total = CORRECT_CAP;
   }
-  const gradeMult = GRADE_TIER_MULT[Math.round(tier)] || GRADE_TIER_MULT[2];
+  const gradeTier = Math.min(4, Math.max(1, Math.round(tier) || 2));
   const accuracy = total > 0 ? Math.max(0, Math.min(1, correct / total)) : 1;
-  // A round with a couple of misses in it still pays out (never punish
-  // down to nothing — the round was still cleared), but a clean round
-  // pays noticeably more: 50% accuracy → ~0.65x, 100% → 1x.
+  // A round with misses still pays, but a clean one pays noticeably more:
+  // 50% accuracy → 0.75x, 100% → 1x.
   const accuracyMult = 0.5 + 0.5 * accuracy;
   const funMult = funGame ? FUN_GAME_MULT : 1;
-  const base = Math.max(6, Math.round(Math.max(correct, 0.5) * 12 * gradeMult * accuracyMult * funMult));
-  const tiers = [0.6, 1.0, 1.7];
-  const values = tiers.map(mult => {
+  const base = gradeTier * (PER_ANSWER * correct + ROUND_BONUS * accuracy) * accuracyMult * funMult;
+  const cards = [0.6, 1.0, 1.7];
+  const values = cards.map(mult => {
     const jitter = 0.85 + Math.random() * 0.3;
     return Math.max(5, Math.round((base * mult * jitter) / 5) * 5);
   });
@@ -106,11 +115,11 @@ export default function RoundCompleteScreen({
   const [picked, setPicked] = useState(null);
 
   const handlePick = useCallback((i) => {
-    if (picked !== null) return;
+    if (picked !== null || !prizes) return;
     setPicked(i);
-    onAward(prizes[i]);
+    onAward(prizes[i], { correct, total });
     setTimeout(() => onAdvance(), 1200);
-  }, [picked, prizes, onAward, onAdvance]);
+  }, [picked, prizes, onAward, onAdvance, correct, total]);
 
   return (
     <View style={s.wrap}>
@@ -127,6 +136,17 @@ export default function RoundCompleteScreen({
         </View>
       )}
 
+      {/* None right: no cards, nothing to pick — the round pays 0. */}
+      {!prizes ? (
+        <>
+          <Text style={s.prompt}>No prize this round</Text>
+          <Text style={s.stats}>Get one right next round to earn one.</Text>
+          <TouchableOpacity style={s.continueBtn} onPress={onAdvance} activeOpacity={0.85} accessibilityRole="button">
+            <Text style={s.continueText}>Keep going</Text>
+          </TouchableOpacity>
+        </>
+      ) : (
+      <>
       <Text style={s.prompt}>
         {picked === null ? 'Pick a prize!' : `+${prizes[picked]} points!`}
       </Text>
@@ -157,6 +177,8 @@ export default function RoundCompleteScreen({
           );
         })}
       </View>
+      </>
+      )}
     </View>
   );
 }
@@ -177,4 +199,6 @@ const makeStyles = (G) => StyleSheet.create({
   prizeEmoji:  { fontSize: 32, marginBottom: 6 },
   prizeMystery:{ fontSize: 20, fontWeight: '800', color: G.faint },
   prizePts:    { fontSize: 16, fontWeight: '800', color: G.gold },
+  continueBtn: { backgroundColor: G.gold, borderRadius: 12, paddingHorizontal: 28, paddingVertical: 12 },
+  continueText:{ fontSize: 15, fontWeight: '800', color: textOn(G.gold) },
 });

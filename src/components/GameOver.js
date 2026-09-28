@@ -34,7 +34,6 @@ export default function GameOver({
   streak = 0,
   timeSeconds = null,
   xpEarned = 0,
-  pointsEarned = 0,
   title = 'Quest Complete!',
   onPlayAgain,
   onQuit,
@@ -115,19 +114,13 @@ export default function GameOver({
         <Text style={s.scoreLabel}>points earned</Text>
       </View>
 
-      {/* Rewards */}
-      {(xpEarned > 0 || pointsEarned > 0) && (
+      {/* Rewards. The points are the score above (the prize cards, now
+          what the account gets), so only the XP needs its own pill. */}
+      {xpEarned > 0 && (
         <View style={s.rewardsRow}>
-          {xpEarned > 0 && (
-            <View style={s.rewardPill}>
-              <Text style={s.rewardText}>+{xpEarned} XP</Text>
-            </View>
-          )}
-          {pointsEarned > 0 && (
-            <View style={[s.rewardPill, { borderColor: G.gold, backgroundColor: G.goldL }]}>
-              <Text style={[s.rewardText, { color: G.gold }]}>+{pointsEarned} pts</Text>
-            </View>
-          )}
+          <View style={s.rewardPill}>
+            <Text style={s.rewardText}>+{xpEarned} XP</Text>
+          </View>
         </View>
       )}
 

@@ -2,6 +2,7 @@
 // Base Command — Light + Dark themes
 // Import: import { useTheme } from '../context/ThemeContext';
 // Then: const { theme, colors } = useTheme();
+import { tierForRank } from './logic/rankUtils';
 
 export const THEMES = {
 
@@ -344,25 +345,11 @@ export function getSubjectColor(subject, colors) {
 }
 
 // Rank labels — same across themes
-export const RANK_LABELS = {
-  1:  { label: 'Legend',       emoji: '🏆', tier: 'gold' },
-  2:  { label: 'Grandmaster',  emoji: '💎', tier: 'gold' },
-  3:  { label: 'Master',       emoji: '🔮', tier: 'arcane' },
-  4:  { label: 'Expert',       emoji: '🌟', tier: 'arcane' },
-  5:  { label: 'Veteran',      emoji: '⚡', tier: 'teal' },
-  6:  { label: 'Skilled',      emoji: '🔥', tier: 'teal' },
-  7:  { label: 'Advanced',     emoji: '🎯', tier: 'teal' },
-  8:  { label: 'Proficient',   emoji: '📈', tier: 'teal' },
-  9:  { label: 'Competent',    emoji: '📚', tier: 'base' },
-  10: { label: 'Intermediate', emoji: '🎓', tier: 'base' },
-  11: { label: 'Developing',   emoji: '🌱', tier: 'base' },
-  12: { label: 'Learner',      emoji: '📝', tier: 'base' },
-  13: { label: 'Apprentice',   emoji: '🔑', tier: 'base' },
-  14: { label: 'Novice',       emoji: '🌙', tier: 'base' },
-  15: { label: 'Beginner',     emoji: '☀️',  tier: 'base' },
-  16: { label: 'Explorer',     emoji: '🗺️',  tier: 'base' },
-  17: { label: 'Initiate',     emoji: '🌿', tier: 'base' },
-  18: { label: 'Recruit',      emoji: '⭐', tier: 'base' },
-  19: { label: 'Newcomer',     emoji: '🌱', tier: 'base' },
-  20: { label: 'Starter',      emoji: '🐣', tier: 'base' },
-};
+// Keyed by rank 1–20; the name is the rank's tier (five of them, see
+// TIERS in src/logic/rankUtils.js). `tier` is the colour family.
+export const RANK_LABELS = Object.fromEntries(
+  Array.from({ length: 20 }, (_, i) => {
+    const t = tierForRank(i + 1);
+    return [i + 1, { label: t.label, emoji: t.emoji, tier: t.theme }];
+  }),
+);
