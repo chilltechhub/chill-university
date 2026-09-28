@@ -344,7 +344,7 @@ const STARTER_FEATURES = {
       librarySubTab: 'domains',
     },
     { title: 'Capture', body: "Capture, top-right. Get a thought out of your head now and decide where it belongs later.", id: 'library-capture', librarySubTab: 'domains' },
-    { title: 'Three pages', body: "Life, Build and Knowledge. Swipe left or right anywhere on the page to switch, or tap the title at the top.", id: 'library-views' },
+    { title: 'Three pages', body: "Life, Build and Knowledge. Tap one in the bar under the title to switch — swiping left or right works too.", id: 'library-views' },
     { title: 'More on the way', body: "The Library starts with the tools that fit your profile. Each goal you finish and each level you gain opens a little more, here and across the app." },
   ],
 };
@@ -361,7 +361,7 @@ const FULL_TUTORIAL_AT = { Home: 'dashboard', LibraryScreen: 'all-tools' };
 // steps. Screen Tutorial in the menu always runs the full version.
 const FIRST_VISIT = {
   LibraryScreen: [
-    { title: 'Three pages', body: 'The Library has three pages: Life, Build and Knowledge. Swipe left or right to switch, or tap the title.', id: 'library-views', librarySubTab: 'domains' },
+    { title: 'Three pages', body: 'The Library has three pages: Life, Build and Knowledge. Tap one in the bar under the title to switch.', id: 'library-views', librarySubTab: 'domains' },
     { title: 'Your life areas', body: 'Each circle is one part of your life. Double-tap one, or press and hold it, to open it.', id: 'library-life-areas', librarySubTab: 'domains' },
   ],
   LifeAreaScreen: [

@@ -856,7 +856,7 @@ function CurrentTimeLine({ c }) {
 }
 
 // ─── List daily view ──────────────────────────────────────────────────────────
-function ListView({ instances, onUpdate, onEdit, navigation, c, t, s, r }) {
+function ListView({ instances, onUpdate, onEdit, onAdd, navigation, c, t, s, r }) {
   const { showEmojis } = useUIPrefs();
   const overdue  = instances.filter(i => isOverdue(i));
   const today    = instances.filter(i => !isOverdue(i) && !i.skipped);
@@ -877,7 +877,21 @@ function ListView({ instances, onUpdate, onEdit, navigation, c, t, s, r }) {
     <View style={{ alignItems: 'center', paddingTop: 60 }}>
       {showEmojis ? <Text style={{ fontSize: 44, marginBottom: s.lg }}>📋</Text> : <Ionicons name="clipboard-outline" size={40} color={c.text3} style={{ marginBottom: s.lg }} />}
       <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.sm }}>Nothing scheduled</Text>
-      <Text style={{ fontSize: t.sm, color: c.text3 }}>Tap + to add something</Text>
+      {/* "Tap + to add something" — with two + buttons on screen, which? And
+          no reason to. A why, and the button itself. */}
+      <Text style={{ fontSize: t.sm, color: c.text3, textAlign: 'center', paddingHorizontal: s.xl, lineHeight: 20 }}>
+        A day with one thing on it is easier to start than an empty one.
+      </Text>
+      {!!onAdd && (
+        <TouchableOpacity
+          onPress={onAdd}
+          accessibilityRole="button"
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: s.lg, backgroundColor: c.teal, borderRadius: r.lg, paddingHorizontal: s.lg, paddingVertical: 10 }}
+        >
+          <Ionicons name="add" size={18} color={c.onFill} />
+          <Text style={{ fontSize: t.sm, color: c.onFill, fontWeight: t.bold }}>Plan something for today</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -891,7 +905,7 @@ function ListView({ instances, onUpdate, onEdit, navigation, c, t, s, r }) {
 }
 
 // ─── Daily page ───────────────────────────────────────────────────────────────
-function DailyPage({ userId, date, activeAreas, timeMode, onUpdate, onEdit, navigation, refreshKey, showingAll, c, t, s, r }) {
+function DailyPage({ userId, date, activeAreas, timeMode, onUpdate, onEdit, onAdd, navigation, refreshKey, showingAll, c, t, s, r }) {
   const [instances,  setInstances]  = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -924,7 +938,7 @@ function DailyPage({ userId, date, activeAreas, timeMode, onUpdate, onEdit, navi
 
   if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color={c.teal} />;
 
-  const sharedProps = { instances, onUpdate: handleUpdate, onEdit, navigation, c, t, s, r };
+  const sharedProps = { instances, onUpdate: handleUpdate, onEdit, onAdd, navigation, c, t, s, r };
 
   return (
     <View style={{ flex: 1 }}>
@@ -1421,7 +1435,7 @@ export default function PlannerScreen() {
       ) : view === 'Daily' ? (
         <DailyPage
           key={`daily-${toISO(anchor)}-${showingAll ? 'all' : 'one'}`}
-          userId={userId} date={anchor}
+          userId={userId} date={anchor} onAdd={openAdd}
           activeAreas={activeAreas} timeMode={timeMode}
           onUpdate={() => setRefresh(k => k + 1)}
           onEdit={openEdit}

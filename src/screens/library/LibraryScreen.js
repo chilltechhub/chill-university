@@ -35,6 +35,7 @@ import { useAccess } from '../../../context/AccessContext';
 import { featureForScreen } from '../../data/featureCatalog';
 import { unlockHint } from '../../logic/featureAccess';
 import { todayStr, daysBetween } from '../../logic/dateUtils';
+import { Button } from '../../components/ui';
 
 // Same icon/color-by-type map CaptureInbox and ImportScreen already share,
 // reused here for domain-filter result rows rather than a third copy.
@@ -669,16 +670,14 @@ export default function LibraryScreen() {
     .filter(x => x.days === null || x.days >= CHECKIN_DUE_DAYS)
     .slice(0, 4);
 
-  const renderHub = (hub) => {
-    const accent = c[hub.accentKey] || c.teal;
-    // Each entry is looked up in the feature catalog and ordered so anything
-    // still shut sinks below what's open. What's removed is whatever
-    // access.hidden says: experimental work until it's asked for, and
-    // anything the current stage doesn't show yet — locked tools included,
-    // until the last stage ('doors') or until the goal in flight opens one.
-    // Entries outside the catalog (the Wayfinder) go by isScreenVisible,
-    // which applies the same stage.
-    const visibleItems = hub.items
+  // Each entry is looked up in the feature catalog and ordered so anything
+  // still shut sinks below what's open. What's removed is whatever
+  // access.hidden says: experimental work until it's asked for, and
+  // anything the current stage doesn't show yet — locked tools included,
+  // until the last stage ('doors') or until the goal in flight opens one.
+  // Entries outside the catalog (the Wayfinder) go by isScreenVisible,
+  // which applies the same stage.
+  const visibleItemsFor = (hub) => hub.items
       .filter(item => !hiddenSections.includes(item.screen))
       .map(item => {
         const feature = featureForScreen(item.screen);
@@ -691,6 +690,10 @@ export default function LibraryScreen() {
         if (openA !== openB) return openA ? -1 : 1;
         return 0;
       });
+
+  const renderHub = (hub) => {
+    const accent = c[hub.accentKey] || c.teal;
+    const visibleItems = visibleItemsFor(hub);
     if (visibleItems.length === 0) return null;
     // The screen title already names the view, so a hub whose title says
     // the same thing just repeats itself — keep only its tagline then.
@@ -805,7 +808,7 @@ export default function LibraryScreen() {
         {/* ── Header — the title is the view switcher ── */}
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
-            <TourSpot id="library-views" style={{ alignSelf: 'flex-start' }}>
+            <TourSpot id={orderedTabs.length > 1 ? 'library-title' : 'library-views'} style={{ alignSelf: 'flex-start' }}>
             <TouchableOpacity
               style={styles.titleBtn}
               onPress={() => setTabMenuOpen(o => !o)}
@@ -826,7 +829,7 @@ export default function LibraryScreen() {
             {purpose && showSubtext && (
               <TouchableOpacity onPress={() => navigation.navigate('Compass')} activeOpacity={0.7}>
                 <Text style={styles.purposeLine} numberOfLines={1}>
-                  {showEmojis ? `${purpose.emoji} ` : ''}{purpose.label} · change
+                  {showEmojis ? `${purpose.emoji} ` : ''}Your focus: {purpose.label} · Change
                 </Text>
               </TouchableOpacity>
             )}
@@ -842,6 +845,31 @@ export default function LibraryScreen() {
           </TouchableOpacity>
           </TourSpot>
         </View>
+
+        {/* ── The three pages, always visible. Switching used to mean knowing
+            to swipe or to tap the title (whose menu also held the reorder
+            arrows); the guide had to tell people "swipe to the Knowledge
+            page". The swipe and the title menu still work. ── */}
+        {orderedTabs.length > 1 && (
+          <TourSpot id="library-views">
+          <View style={styles.segRow} accessibilityRole="tablist">
+            {orderedTabs.map(tb => {
+              const on = tb.key === activeTab;
+              return (
+                <TouchableOpacity
+                  key={tb.key}
+                  onPress={() => { setTabMenuOpen(false); setActiveTab(tb.key); }}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: on }}
+                  style={[styles.seg, on && { backgroundColor: accent.primary }]}
+                >
+                  <Text style={[styles.segText, on && { color: accent.onPrimary }]}>{tb.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          </TourSpot>
+        )}
 
         {/* ── Domains tab ── */}
         {activeTab === 'domains' && (
@@ -977,6 +1005,26 @@ export default function LibraryScreen() {
         {/* ── Build / Knowledge tabs ── */}
         {activeTab !== 'domains' && LIBRARY_HUBS.filter(hub => hub.tab === activeTab).map(renderHub)}
 
+        {/* Early on a page can hold one card and a screen of nothing, which
+            reads as broken. Say that it fills up, and where to see what's next. */}
+        {activeTab !== 'domains' && (() => {
+          const open = LIBRARY_HUBS.filter(h => h.tab === activeTab).reduce((n, h) => n + visibleItemsFor(h).length, 0);
+          if (open === 0 || open >= 3) return null;
+          return (
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Compass')}
+              accessibilityRole="button"
+              style={styles.moreSoon}
+            >
+              <Ionicons name="sparkles-outline" size={16} color={accent.primary} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.moreSoonText}>More tools open here as you finish goals.</Text>
+                <Text style={[styles.moreSoonLink, { color: accent.primary }]}>See what opens next →</Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })()}
+
         {/* ── Build previews ── Each only where its own tool is on show. */}
         {activeTab === 'build' && (
           <>
@@ -988,7 +1036,18 @@ export default function LibraryScreen() {
               styles={styles}
             >
               {activeProjects.length === 0 ? (
-                <Text style={styles.previewEmpty}>No projects in progress yet. Start one in the Workshop.</Text>
+                <View>
+                  <Text style={styles.previewEmpty}>No projects in progress yet. An idea with a first step is enough to start one.</Text>
+                  <Button
+                    label="Start a project"
+                    icon="add"
+                    size="sm"
+                    variant="secondary"
+                    fullWidth={false}
+                    style={{ alignSelf: 'flex-start', marginTop: s.sm }}
+                    onPress={() => navigation.navigate('ProjectsScreen', { autoOpen: true })}
+                  />
+                </View>
               ) : (
                 <View style={styles.previewCard}>
                   {activeProjects.slice(0, 5).map((p, i, arr) => (
@@ -1171,6 +1230,19 @@ const makeStyles = (c, t, s, r, ui, accent) =>
     },
     dropdownItemText: { fontSize: t.md, fontWeight: '600', color: c.text1 },
     dropdownHint: { fontSize: 11, color: c.text3, paddingHorizontal: 12, paddingVertical: 8, textAlign: 'center' },
+    moreSoon: {
+      flexDirection: 'row', gap: s.sm, alignItems: 'flex-start',
+      padding: s.md, marginTop: s.sm, marginHorizontal: 20, borderRadius: r.md,
+      borderWidth: 1, borderStyle: 'dashed', borderColor: c.border,
+    },
+    moreSoonText: { fontSize: t.sm, color: c.text2, lineHeight: 19 },
+    moreSoonLink: { fontSize: t.sm, fontWeight: t.bold, marginTop: 2 },
+    segRow: {
+      flexDirection: 'row', gap: 4, padding: 4, marginBottom: s.md, marginHorizontal: 20,
+      backgroundColor: c.bg2, borderRadius: 999,
+    },
+    seg: { flex: 1, minHeight: 36, borderRadius: 999, alignItems: 'center', justifyContent: 'center', paddingVertical: 6 },
+    segText: { fontSize: t.sm, fontWeight: t.bold, color: c.text2 },
     purposeLine: {
       fontSize: t.xs,
       color: c.text3,

@@ -40,7 +40,7 @@
 // at, and the bubble body scrolls internally while the controls never do — a
 // tall target on Training used to push Next off the bottom edge.
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, BackHandler, Dimensions, ScrollView, StyleSheet, Platform } from 'react-native';
 import Svg, { Defs, Mask, Rect, Path } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
@@ -79,7 +79,60 @@ export default function TourOverlay() {
     return () => sub.remove();
   }, [active, skipTour]);
 
+  // A `compact` step (the guide's "here's what's next" reminder) starts as a
+  // one-line pill and opens into the full bubble on tap. The full card came
+  // back on every hub visit and covered what was under it — lesson text,
+  // the goal card — which is most of why the guide read as nagging.
+  const [expandedKey, setExpandedKey] = useState(null);
+  const stepKey = `${stepIndex}:${currentStep?.title || ''}`;
+
   if (!active || !currentStep) return null;
+
+  if (currentStep.compact && expandedKey !== stepKey) {
+    return (
+      <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+        <View
+          pointerEvents="box-none"
+          style={{ position: 'absolute', left: 16, right: 84, bottom: insets.bottom + TAB_BAR_H + 12 }}
+        >
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', gap: 8,
+            backgroundColor: c.bg1, borderRadius: 999, borderWidth: 1, borderColor: c.teal + '55',
+            paddingLeft: 14, paddingRight: 6, paddingVertical: 6,
+          }}>
+            <TouchableOpacity
+              style={{ flex: 1, minHeight: 32, justifyContent: 'center' }}
+              onPress={() => setExpandedKey(stepKey)}
+              accessibilityRole="button"
+              accessibilityLabel={`${guide.name}: ${currentStep.title || 'what’s next'}. Tap for more`}
+            >
+              <Text numberOfLines={1} style={{ fontSize: t.sm, color: c.text2 }}>
+                <Text style={{ fontWeight: t.bold, color: c.teal }}>{guide.name}</Text>
+                {' · '}{(currentStep.title || 'Next step').replace(/^Step \d+ of \d+ · /, 'Next: ')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={nextStep}
+              accessibilityRole="button"
+              accessibilityLabel="Go"
+              style={{ backgroundColor: c.teal, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 }}
+            >
+              <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.onFill }}>Go ›</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={skipTour}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={currentStep.skipLabel || 'Not now'}
+              style={{ padding: 4 }}
+            >
+              <Ionicons name="close" size={18} color={c.text3} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   const { width: SW, height: SH } = Dimensions.get('window');
 

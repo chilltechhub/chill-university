@@ -20,6 +20,7 @@ import FloatingCard from '../components/FloatingCard';
 import { useTour } from '../../context/TourContext';
 import { useAccess } from '../../context/AccessContext';
 import { todayStr, dateStr } from '../logic/dateUtils';
+import { useFabPosition } from '../../context/FabPositionContext';
 
 // supabase-js resolves { data, error } instead of throwing on a failed
 // insert/update — awaiting a call directly silently ignores a rejected
@@ -1194,6 +1195,7 @@ export function QuickCaptureModal({ visible, userId, onSaved, onClose, prefill, 
 
 // ─── Main CaptureInbox ────────────────────────────────────────────────────────
 export default function CaptureInbox() {
+  const { fabPosition } = useFabPosition();
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   const navigation = useNavigation();
   const [captures,   setCaptures]   = useState([]);
@@ -1518,6 +1520,10 @@ export default function CaptureInbox() {
           backgroundColor: c.bg1, borderTopWidth: 0.5, borderTopColor: c.border,
           paddingHorizontal: s.lg, paddingTop: s.md, paddingBottom: s.xl,
           flexDirection: 'row', alignItems: 'center', gap: s.md,
+          // Room for the floating + button when it sits on the bottom corner,
+          // which otherwise covered the Process button.
+          ...(fabPosition === 'bottom-right' && { paddingRight: 84 }),
+          ...(fabPosition === 'bottom-left' && { paddingLeft: 84 }),
         }}>
           <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.text1 }}>
             {selectedIds.size} selected
