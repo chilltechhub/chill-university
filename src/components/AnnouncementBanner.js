@@ -61,7 +61,7 @@ export default function AnnouncementBanner() {
         {!!announcement.title && <Text style={styles.title}>{announcement.title}</Text>}
         {!!announcement.body && <Text style={styles.body}>{announcement.body}</Text>}
       </View>
-      <TouchableOpacity onPress={dismiss} style={styles.closeBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+      <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={dismiss} style={styles.closeBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
         <Ionicons name="close" size={16} color={c.text3} />
       </TouchableOpacity>
     </View>

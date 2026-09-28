@@ -316,7 +316,7 @@ export default function AIBridgeScreen() {
   const stepTitle = (n, label) => (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: s.md }}>
       <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: c.teal, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: '#fff', fontSize: 12, fontWeight: '800' }}>{n}</Text>
+        <Text style={{ color: c.onFill, fontSize: 12, fontWeight: '800' }}>{n}</Text>
       </View>
       <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1, flex: 1 }}>{label}</Text>
     </View>
@@ -328,7 +328,7 @@ export default function AIBridgeScreen() {
         backgroundColor: on ? c.teal : c.bg0, borderWidth: 1, borderColor: on ? c.teal : c.border, opacity: locked ? 0.55 : 1,
       }}>
       <Text style={{ fontSize: 13 }}>{emoji}</Text>
-      <Text style={{ fontSize: 12, fontWeight: '700', color: on ? '#fff' : c.text2 }}>{label}</Text>
+      <Text style={{ fontSize: 12, fontWeight: '700', color: on ? c.onFill : c.text2 }}>{label}</Text>
       {locked && <Ionicons name="lock-closed" size={11} color={c.text3} />}
     </TouchableOpacity>
   );
@@ -366,7 +366,7 @@ export default function AIBridgeScreen() {
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <View style={{ backgroundColor: op.color + '22', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 }}>
-              <Text style={{ fontSize: 9, fontWeight: '800', color: op.color, letterSpacing: 0.5 }}>{op.label}</Text>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: op.color, letterSpacing: 0.5 }}>{op.label}</Text>
             </View>
             <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1, flexShrink: 1, textDecorationLine: ch.op === 'delete' ? 'line-through' : 'none' }}>{d.title}</Text>
           </View>
@@ -374,7 +374,7 @@ export default function AIBridgeScreen() {
           {ch.diff.map(df => (
             <Text key={df.field} style={{ fontSize: 11, color: c.text2, marginTop: 3 }}>
               <Text style={{ fontWeight: '700' }}>{FIELD_LABELS[df.field] || df.field}: </Text>
-              <Text style={{ color: c.text4, textDecorationLine: 'line-through' }}>{fmtValue(df.from, df.field)}</Text>
+              <Text style={{ color: c.text3, textDecorationLine: 'line-through' }}>{fmtValue(df.from, df.field)}</Text>
               <Text>{'  →  '}{fmtValue(df.to, df.field)}</Text>
             </Text>
           ))}
@@ -385,7 +385,7 @@ export default function AIBridgeScreen() {
             return (
               <View key={`${ch.key}-k${i}`} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 4, marginTop: 3 }}>
                 <Ionicons name={doneOnly ? (k.diff[0].to ? 'checkmark' : 'arrow-undo') : KID_ICON[k.op]} size={12} color={tone} style={{ marginTop: 1 }} />
-                <Text style={{ fontSize: 11, color: k.status === 'ok' ? c.text2 : c.text4, flex: 1, textDecorationLine: k.op === 'delete' ? 'line-through' : 'none' }}>
+                <Text style={{ fontSize: 11, color: k.status === 'ok' ? c.text2 : c.text3, flex: 1, textDecorationLine: k.op === 'delete' ? 'line-through' : 'none' }}>
                   {k.kind}: {kd.title}{doneOnly ? (k.diff[0].to ? ' (done)' : ' (not done)') : ''}
                   {k.op === 'update' && !doneOnly ? `  (${k.diff.map(df => FIELD_LABELS[df.field] || df.field).join(', ').toLowerCase()})` : ''}
                   {k.status === 'missing' ? `  (${k.warnings[k.warnings.length - 1] || 'skipped'})` : ''}
@@ -499,7 +499,7 @@ export default function AIBridgeScreen() {
                   textAlignVertical="top"
                   style={{ minHeight: 90, maxHeight: 200, fontSize: t.sm, color: c.text1, backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border, padding: s.md }}
                 />
-                <Text style={{ fontSize: 11, color: c.text4, marginTop: 4 }}>
+                <Text style={{ fontSize: 11, color: c.text3, marginTop: 4 }}>
                   Optional. Leave it blank and type it into the chatbot instead. Try things like "add", "rename", "mark done", "delete the old ones", "reorganize".
                 </Text>
 
@@ -548,7 +548,7 @@ export default function AIBridgeScreen() {
                     </TouchableOpacity>
                   ))}
                 </View>
-                <Text style={{ fontSize: 11, color: c.text4, marginTop: s.sm }}>
+                <Text style={{ fontSize: 11, color: c.text3, marginTop: s.sm }}>
                   Paste it in, answer any questions it asks, and ask for changes until you like the plan. Whatever you paste goes to that chatbot’s company, not to us.
                 </Text>
                 {!!prompt && (
@@ -630,7 +630,7 @@ export default function AIBridgeScreen() {
                       <Text style={{ fontSize: 12, color: c.teal, fontWeight: '700' }}>Select all</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => setSelected(new Set())}>
-                      <Text style={{ fontSize: 12, color: c.text4, fontWeight: '700' }}>Select none</Text>
+                      <Text style={{ fontSize: 12, color: c.text3, fontWeight: '700' }}>Select none</Text>
                     </TouchableOpacity>
                   </View>
 

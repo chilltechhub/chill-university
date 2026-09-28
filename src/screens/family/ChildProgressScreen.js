@@ -32,7 +32,7 @@ export default function ChildProgressScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: c.bg0 }}>
       <View style={{ backgroundColor: c.bg1, padding: s.lg, paddingTop: s.xxl, borderBottomWidth: 0.5, borderBottomColor: c.border, flexDirection: 'row', alignItems: 'center', gap: s.md }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4 }}>
+        <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => navigation.goBack()} style={{ padding: 4 }}>
           <Ionicons name="chevron-back" size={22} color={c.teal} />
         </TouchableOpacity>
         <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>{child.display_name}</Text>
@@ -54,7 +54,7 @@ export default function ChildProgressScreen() {
             ].map((st) => (
               <View key={st.label} style={{ alignItems: 'center' }}>
                 <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: st.color }}>{st.val}</Text>
-                <Text style={{ fontSize: t.xs, color: c.text4 }}>{st.label}</Text>
+                <Text style={{ fontSize: t.xs, color: c.text3 }}>{st.label}</Text>
               </View>
             ))}
           </View>
@@ -67,7 +67,7 @@ export default function ChildProgressScreen() {
           </Text>
         </View>
 
-        <Text style={{ fontSize: 11, color: c.text4, marginTop: s.lg, textAlign: 'center' }}>
+        <Text style={{ fontSize: 11, color: c.text3, marginTop: s.lg, textAlign: 'center' }}>
           This is a read-only view — you can't change anything on their account from here.
         </Text>
       </View>

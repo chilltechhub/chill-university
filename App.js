@@ -3,7 +3,8 @@ import React, { useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator, TransitionPresets } from '@react-navigation/stack';
 import { createBottomTabNavigator, BottomTabBar } from '@react-navigation/bottom-tabs';
-import { View, Platform } from 'react-native';
+import { View, Platform, AppState } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,6 +28,8 @@ import { initPlanReminders } from './src/logic/planReminderActions';
 import { initHubNotifications, flushPendingTarget } from './src/logic/hubNotifications';
 import ShareIntentListener from './src/components/ShareIntentListener';
 import { flushQueue } from './src/api/offlineCache';
+import { onActiveProfileChange } from './src/logic/activeProfile';
+import { notify } from './src/logic/confirm';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import TourOverlay from './src/components/TourOverlay';
 import TourSpot from './src/components/TourSpot';
@@ -80,7 +83,10 @@ import { goToScreen } from './src/logic/appRoutes';
 // rebuild — nothing anywhere linked to it, the same state Discover was in —
 // so this is both its first route and its gate.
 const GatedStats        = gatedScreen('insights', StatsScreen);
-const GatedOrganization = gatedScreen('organization', OrganizationScreen);
+// Organization is NOT gated here: joining a class with a code, and seeing the
+// classes you're in, is free. Only creating an organization is Plus — the
+// screen gates that one section itself, and create_organization() checks the
+// plan server-side.
 
 
 // NOTE: the old OnboardingScreen.js and ProfileQuickSetup.js now live in
@@ -150,11 +156,11 @@ function MainTabs() {
           borderTopColor: c.border,
           paddingBottom: Platform.OS === 'ios' ? 10 : 3,
           paddingTop: 3,
-          height: Platform.OS === 'ios' ? 66 : 52,
+          height: Platform.OS === 'ios' ? 66 : 60, // 52 squeezed the labels to an 8px box on Android/web
         },
         tabBarActiveTintColor:   c.tabActive,
         tabBarInactiveTintColor: c.tabInactive,
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '600', marginTop: 0 },
+        tabBarLabelStyle: { fontSize: 12, lineHeight: 16, fontWeight: '600', marginTop: 0 },
         tabBarIcon: ({ focused, color, size }) => {
           const icons = TAB_ICONS[route.name];
           return <Ionicons name={focused ? icons.active : icons.inactive} size={size} color={color} />;
@@ -230,7 +236,7 @@ function AppInner() {
   // The enabled flag is read inside the hook rather than with useSetting
   // here: useSetting is built on useFocusEffect, and AppInner sits ABOVE
   // NavigationContainer, where there is no navigation context to focus.
-  const { registerNavigator, startScreenTour, active: tourActive } = useTour();
+  const { registerNavigator, startScreenTour, noteRoute, active: tourActive } = useTour();
   // The guide walks a new account through its first goal, and while it
   // does, screens don't also teach themselves (src/logic/useGuidedFirstGoal.js).
   // Before either of those, a new account gets the welcome tour: how to get
@@ -275,14 +281,33 @@ function AppInner() {
     // see src/api/offlineCache.js — so a queued write could sit invisibly
     // in AsyncStorage indefinitely. Safe to call even when the queue is
     // empty; it's a no-op.
-    flushQueue(supabase).then(({ synced, remaining }) => {
-      if (synced) console.log(`[queue] synced ${synced} pending write(s)${remaining ? `, ${remaining} still stuck` : ''}`);
+    // Also replayed when the connection comes back, when the app returns to
+    // the foreground, and once the active profile is known (a row queued by
+    // an older build has no profile_id yet, and gets the active one stamped
+    // at replay). The raw client on purpose: see flushQueue.
+    const flush = () => flushQueue(supabase).then(({ synced, remaining, dropped }) => {
+      if (synced) console.log(`[queue] synced ${synced} pending write(s)${remaining ? `, ${remaining} still waiting` : ''}`);
+      if (dropped) notify(
+        dropped === 1 ? "One change couldn't be saved" : `${dropped} changes couldn't be saved`,
+        'They were made while offline, and the server turned them down when they synced.',
+      );
     }).catch(() => {});
+    flush();
+    let wasOffline = false;
+    const unsubNet = NetInfo.addEventListener((state) => {
+      const offline = state.isConnected === false || state.isInternetReachable === false;
+      if (wasOffline && !offline) flush();
+      wasOffline = offline;
+    });
+    const appStateSub = AppState.addEventListener('change', (s) => { if (s === 'active') flush(); });
+    const unsubProfile = onActiveProfileChange((id) => { if (id) flush(); });
 
     // app.json's "orientation": "portrait" is a manifest hint that iPad
     // (and Expo Go generally) doesn't reliably honor on its own — nothing
     // in this app's layout was built for landscape, so lock it for real.
     ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+
+    return () => { unsubNet?.(); appStateSub?.remove?.(); unsubProfile?.(); };
   }, []);
 
   React.useEffect(() => {
@@ -341,13 +366,30 @@ function AppInner() {
     }
 
     // 3. Normal launch — check auth state.
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    //
+    // `initialRoute` stays null (a blank splash) until this settles, so it
+    // must always settle: a rejection or a hang used to leave the app blank
+    // forever. Any failure, or no answer in 10s, starts at Login — which is
+    // recoverable — instead of nowhere.
+    let settled = false;
+    const startAt = (route) => {
+      if (settled) return;
+      settled = true;
+      setInitialRoute(route);
+      setShowTopBar(!NO_TOPBAR_ROUTES.has(route));
+      setCurrentRouteName(route);
+    };
+    const bootTimeout = setTimeout(() => {
+      console.warn('[boot] session check took over 10s — starting at Login');
+      startAt('Login');
+    }, 10000);
+
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       // No session, or one that hasn't done its two-step code yet (2FA on;
       // LoginScreen asks for the code): start at Login either way.
       if (!session || await needsSecondStep().catch(() => false)) {
-        setInitialRoute('Login');
-        setShowTopBar(false);
-        setCurrentRouteName('Login');
+        startAt('Login');
         return;
       }
       // Logged in — check onboarding
@@ -358,11 +400,14 @@ function AppInner() {
         .maybeSingle();
 
       const needsOnboarding = !profile || profile.onboarding_completed !== true;
-      const route = needsOnboarding ? 'MultiStepOnboarding' : 'MainTabs';
-      setInitialRoute(route);
-      setShowTopBar(!NO_TOPBAR_ROUTES.has(route));
-      setCurrentRouteName(route);
-    });
+      startAt(needsOnboarding ? 'MultiStepOnboarding' : 'MainTabs');
+    })()
+      .catch((e) => {
+        console.warn('[boot] session check failed — starting at Login', e?.message || e);
+        startAt('Login');
+      })
+      .finally(() => clearTimeout(bootTimeout));
+    return () => clearTimeout(bootTimeout);
   }, []);
 
   if (maintenanceOn) return <MaintenanceScreen message={maintenanceCfg?.message} />;
@@ -390,6 +435,7 @@ function AppInner() {
         const name = navigationRef.current?.getCurrentRoute()?.name;
         setShowTopBar(!NO_TOPBAR_ROUTES.has(name));
         setCurrentRouteName(name);
+        noteRoute(name); // a screen's own tutorial ends when you leave it
         maybeTeachScreen(name);
       }}
     >
@@ -427,7 +473,7 @@ function AppInner() {
           <Stack.Screen name="AllProfiles"         component={AllProfilesScreen} />
           <Stack.Screen name="Family"              component={FamilyScreen} />
           <Stack.Screen name="ChildProgress"       component={ChildProgressScreen} />
-          <Stack.Screen name="Organization"        component={GatedOrganization} />
+          <Stack.Screen name="Organization"        component={OrganizationScreen} />
           <Stack.Screen name="CohortRoster"        component={CohortRosterScreen} />
           <Stack.Screen name="Help"                component={HelpScreen} />
           {/* The Compass — purpose, the one active objective, and the

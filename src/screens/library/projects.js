@@ -112,10 +112,10 @@ function timeAgo(dateStr) {
 }
 
 function stageFor(project) {
-  if (project.is_showcase) return { key: 'showcase', label: 'SHOWROOM' };
-  if (project.status === 'completed') return { key: 'completed', label: 'SHIPPED' };
-  if (project.status === 'idea') return { key: 'idea', label: 'BLUEPRINT' };
-  return { key: 'active', label: 'BUILDING' };
+  if (project.is_showcase) return { key: 'showcase', label: 'FEATURED' };
+  if (project.status === 'completed') return { key: 'completed', label: 'DONE' };
+  if (project.status === 'idea') return { key: 'idea', label: 'IDEA' };
+  return { key: 'active', label: 'IN PROGRESS' };
 }
 
 // ─── New Build Modal ───────────────────────────────────────────────────────
@@ -189,7 +189,7 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
 
       await supabase.from('project_milestones').insert({
         user_id: userId, project_id: data.id,
-        title: '🏗️ Build started', type: 'project_created',
+        title: '🏗️ Project started', type: 'project_created',
         date: todayStr(),
       });
 
@@ -197,7 +197,7 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
       onCreated(data);
       reset();
     } catch (e) {
-      Alert.alert('Error', 'Could not start this build');
+      Alert.alert('Error', 'Could not start this project');
     }
     setSaving(false);
   };
@@ -209,15 +209,15 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={s.sheet}>
           <View style={s.handle} />
-          <Text style={s.sheetEyebrow}>NEW BUILD · DRAFT SHEET</Text>
-          <Text style={s.sheetTitle}>{showEmojis ? '🏗️ ' : ''}Start a New Build</Text>
+          <Text style={s.sheetEyebrow}>NEW PROJECT · DRAFT SHEET</Text>
+          <Text style={s.sheetTitle}>{showEmojis ? '🏗️ ' : ''}Start a New Project</Text>
 
           {/* Preview */}
           <View style={{ alignItems: 'center', marginBottom: 20 }}>
             <View style={[s.previewBox, { backgroundColor: color + '18', borderColor: color }]}>
               <Text style={{ fontSize: 36 }}>{emoji}</Text>
             </View>
-            <Text style={[s.previewName, { color }]}>{title || 'BUILD NAME'}</Text>
+            <Text style={[s.previewName, { color }]}>{title || 'PROJECT NAME'}</Text>
           </View>
 
           <ScrollView automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 20 }}>
@@ -237,7 +237,7 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
             )}
             <TextInput style={[s.input, { borderColor: color }]}
               value={title} onChangeText={setTitle}
-              placeholder="Build name..." placeholderTextColor={bp.ink3}
+              placeholder="Project name..." placeholderTextColor={bp.ink3}
               autoFocus />
             <TextInput style={[s.input, { borderColor: bp.border, minHeight: 60, textAlignVertical: 'top' }]}
               value={objective} onChangeText={setObjective}
@@ -247,7 +247,7 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
               value={nextStep} onChangeText={setNextStep}
               placeholder="First next step (optional): the actual next move" placeholderTextColor={bp.ink3} />
 
-            <Text style={s.label}>BUILD ICON</Text>
+            <Text style={s.label}>PROJECT ICON</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 {EMOJIS.map(em => (
@@ -259,7 +259,7 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
               </View>
             </ScrollView>
 
-            <Text style={s.label}>BUILD COLOR</Text>
+            <Text style={s.label}>PROJECT COLOR</Text>
             <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
               {buildColors.map(col => (
                 <TouchableOpacity key={col} onPress={() => setColor(col)}
@@ -267,7 +267,7 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
               ))}
             </View>
 
-            <Text style={s.label}>BUILD TYPE</Text>
+            <Text style={s.label}>PROJECT TYPE</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 {BUILD_TYPES.map(pt => (
@@ -299,12 +299,12 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
 const makeModalStyles = bp => StyleSheet.create({
   sheet:       { backgroundColor: bp.panel, borderTopLeftRadius: 14, borderTopRightRadius: 14, padding: 24, paddingBottom: 48, maxHeight: '92%', borderTopWidth: 1, borderColor: bp.border },
   handle:      { width: 36, height: 4, borderRadius: 2, backgroundColor: bp.border, alignSelf: 'center', marginBottom: 16 },
-  sheetEyebrow:{ color: bp.ink3, fontSize: 9, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 2, textAlign: 'center', marginBottom: 4 },
+  sheetEyebrow:{ color: bp.ink3, fontSize: 11, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 2, textAlign: 'center', marginBottom: 4 },
   sheetTitle:  { color: bp.ink, fontSize: 19, fontFamily: FONTS.displaySemibold, fontWeight: '800', marginBottom: 16, textAlign: 'center' },
   previewBox:  { width: 72, height: 72, borderRadius: 6, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   previewName: { fontSize: 12, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 0.5 },
   input:       { backgroundColor: bp.paper, borderRadius: 4, padding: 14, fontSize: 15, color: bp.ink, borderWidth: 1 },
-  label:       { color: bp.ink3, fontSize: 10, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 1.5, marginTop: 4 },
+  label:       { color: bp.ink3, fontSize: 11, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 1.5, marginTop: 4 },
   emojiBtn:    { width: 40, height: 40, borderRadius: 5, borderWidth: 1.5, borderColor: 'transparent', alignItems: 'center', justifyContent: 'center', backgroundColor: bp.paper },
   colorSwatch: { width: 30, height: 30, borderRadius: 4 },
   colorSwatchSel: { borderWidth: 3, borderColor: bp.ink },
@@ -316,7 +316,7 @@ const makeModalStyles = bp => StyleSheet.create({
 
 // ─── Next step sheet ────────────────────────────────────────────────────────
 // A build with no next action is the one most likely to stall, so the list
-// asks for it right there instead of "open the build to set one". Same
+// asks for it right there instead of "open the project to set one". Same
 // column and wording ProjectDetail's own editor uses.
 function NextStepModal({ project, bp, onSave, onClose }) {
   const s = makeModalStyles(bp);
@@ -421,10 +421,10 @@ function BuildCard({ project, bp, onPress, onFavorite, onDelete, onSetNext }) {
           <Text style={[s.outlineBtnText, { color }]}>ENTER WORKSHOP</Text>
         </View>
         <View style={{ flexDirection: 'row', gap: 14 }}>
-          <TouchableOpacity onPress={() => onFavorite(project)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel={project.is_favorite ? 'Remove from favorites' : 'Add to favorites'} onPress={() => onFavorite(project)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
             <Ionicons name={project.is_favorite ? 'star' : 'star-outline'} size={17} color={bp.stamp} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => onDelete(project)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+          <TouchableOpacity accessibilityLabel="Delete" accessibilityRole="button" onPress={() => onDelete(project)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
             <Ionicons name="trash-outline" size={17} color={bp.danger} />
           </TouchableOpacity>
           <Ionicons name="share-social-outline" size={17} color={bp.ink3} />
@@ -439,17 +439,17 @@ const makeCardStyles = bp => StyleSheet.create({
   topRow:    { flexDirection: 'row', gap: 11 },
   icon:      { width: 42, height: 42, borderRadius: 4, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, backgroundColor: bp.paper },
   badgeRow:  { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 5 },
-  categoryText: { color: bp.ink3, fontSize: 10, flexShrink: 1 },
-  date:      { color: bp.ink3, fontSize: 10, marginLeft: 'auto', fontFamily: FONTS.mono },
+  categoryText: { color: bp.ink3, fontSize: 11, flexShrink: 1 },
+  date:      { color: bp.ink3, fontSize: 11, marginLeft: 'auto', fontFamily: FONTS.mono },
   title:     { color: bp.ink, fontSize: 14.5, fontWeight: '700', marginBottom: 2 },
   objective: { color: bp.ink2, fontSize: 12, lineHeight: 16 },
-  progressText: { fontSize: 9.5, fontFamily: FONTS.mono, color: bp.ink3, marginTop: 5, letterSpacing: 0.4 },
+  progressText: { fontSize: 11.5, fontFamily: FONTS.mono, color: bp.ink3, marginTop: 5, letterSpacing: 0.4 },
   nextActionRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8 },
   nextActionText: { fontSize: 11, fontWeight: '700', flexShrink: 1 },
   setNextRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, alignSelf: 'flex-start', borderWidth: 1, borderStyle: 'dashed', borderRadius: 3, paddingHorizontal: 9, paddingVertical: 5 },
   actions:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 11 },
   outlineBtn:  { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderRadius: 3, paddingHorizontal: 9, paddingVertical: 5 },
-  outlineBtnText: { fontSize: 10, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 0.3 },
+  outlineBtnText: { fontSize: 11, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 0.3 },
 });
 
 // ─── Main ProjectsScreen ──────────────────────────────────────────────────────
@@ -482,11 +482,11 @@ export default function ProjectsScreen() {
   const [pendingPrefill, setPendingPrefill] = useState(null);
 
   const STAGES = [
-    { id: 'all',       label: 'All Builds',   icon: 'apps-outline',              color: bp.accent },
-    { id: 'active',    label: 'Building',     icon: 'hammer-outline',            color: bp.accent },
-    { id: 'idea',      label: 'Blueprints',   icon: 'bulb-outline',              color: bp.draft },
-    { id: 'completed', label: 'Shipped',      icon: 'checkmark-circle-outline',  color: bp.approved },
-    { id: 'showcase',  label: 'Showroom',     icon: 'trophy-outline',            color: bp.stamp },
+    { id: 'all',       label: 'All projects',   icon: 'apps-outline',              color: bp.accent },
+    { id: 'active',    label: 'In progress',     icon: 'hammer-outline',            color: bp.accent },
+    { id: 'idea',      label: 'Ideas',   icon: 'bulb-outline',              color: bp.draft },
+    { id: 'completed', label: 'Done',      icon: 'checkmark-circle-outline',  color: bp.approved },
+    { id: 'showcase',  label: 'Featured',     icon: 'trophy-outline',            color: bp.stamp },
   ];
 
   useEffect(() => {
@@ -498,7 +498,7 @@ export default function ProjectsScreen() {
 
   useFocusEffect(useCallback(() => { if (userId) load(userId); }, [userId]));
 
-  // A deep link (e.g. Career Expeditions' "Start a build") can arrive with
+  // A deep link (e.g. Career Expeditions' "Start a project") can arrive with
   // a build type already chosen and ask us to jump straight to the sheet.
   useFocusEffect(useCallback(() => {
     if (route.params?.autoOpen) {
@@ -561,7 +561,7 @@ export default function ProjectsScreen() {
   };
 
   const deleteProject = (proj) => {
-    Alert.alert('Delete this build?', `"${proj.title}" moves to Recently Deleted in the Capture Inbox, kept for 7 days before it's gone for good.`, [
+    Alert.alert('Delete this project?', `"${proj.title}" moves to Recently Deleted in the Capture Inbox, kept for 7 days before it's gone for good.`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: async () => {
         setProjects(prev => prev.filter(p => p.id !== proj.id));
@@ -608,7 +608,7 @@ export default function ProjectsScreen() {
         {/* Header */}
         <View style={s.header}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <TouchableOpacity
+            <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button"
               onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('LibraryScreen'))}
               style={{ padding: 2 }}
             >
@@ -622,7 +622,7 @@ export default function ProjectsScreen() {
           <TourSpot id="projects-add" radius={4}>
           <TouchableOpacity style={s.newBtn} onPress={() => { setPendingPrefill(tourPrefill); setShowNew(true); completeAction(); }}>
             <Ionicons name="add" size={15} color={bp.onStamp} />
-            <Text style={s.newBtnText}>NEW BUILD</Text>
+            <Text style={s.newBtnText}>NEW PROJECT</Text>
           </TouchableOpacity>
           </TourSpot>
           </View>
@@ -638,7 +638,7 @@ export default function ProjectsScreen() {
           <Ionicons name="search" size={15} color={bp.ink3} style={{ marginRight: 8 }} />
           <TextInput style={s.searchInput}
             value={search} onChangeText={setSearch}
-            placeholder="Search builds..." placeholderTextColor={bp.ink3} />
+            placeholder="Search projects..." placeholderTextColor={bp.ink3} />
         </View>
         </TourSpot>
       </View>
@@ -725,8 +725,8 @@ export default function ProjectsScreen() {
               <View style={s.statsRow}>
                 {[
                   { label: 'TOTAL', val: projects.length, color: bp.accent },
-                  { label: 'BUILDING', val: active, color: bp.ink },
-                  { label: 'SHIPPED', val: projects.filter(p=>p.status==='completed').length, color: bp.approved },
+                  { label: 'IN PROGRESS', val: active, color: bp.ink },
+                  { label: 'DONE', val: projects.filter(p=>p.status==='completed').length, color: bp.approved },
                   { label: 'STARRED', val: favs.length, color: bp.stamp },
                 ].map(st => (
                   <View key={st.label} style={[s.statCard, { borderTopColor: st.color }]}>
@@ -742,14 +742,14 @@ export default function ProjectsScreen() {
               {filter !== 'all' || search ? (
                 <Text style={s.sectionLabel}>{filtered.length} BUILD{filtered.length !== 1 ? 'S' : ''} ON SHEET</Text>
               ) : (
-                <Text style={s.sectionLabel}>ALL BUILDS ({filtered.length})</Text>
+                <Text style={s.sectionLabel}>ALL PROJECTS ({filtered.length})</Text>
               )}
 
               {filtered.length === 0 ? (
                 <View style={s.empty}>
                   {showEmojis ? <Text style={{ fontSize: 40, marginBottom: 12 }}>🧰</Text> : <Ionicons name="construct-outline" size={36} color={bp.ink2} style={{ marginBottom: 12 }} />}
-                  <Text style={s.emptyTitle}>{search ? 'No builds found' : 'No builds yet'}</Text>
-                  <Text style={s.emptyText}>{search ? 'Try a different search' : 'Tap New Build to start your first project'}</Text>
+                  <Text style={s.emptyTitle}>{search ? 'No projects found' : 'No projects yet'}</Text>
+                  <Text style={s.emptyText}>{search ? 'Try a different search' : 'Tap New Project to start your first one'}</Text>
                 </View>
               ) : (
                 filtered.map(proj => (
@@ -786,7 +786,7 @@ export default function ProjectsScreen() {
 const makeStyles = bp => StyleSheet.create({
   screen:      { flex: 1, backgroundColor: bp.paper },
   header:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', rowGap: 8, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10 },
-  headerSub:   { color: bp.ink3, fontSize: 10, fontFamily: FONTS.mono, letterSpacing: 2, fontWeight: '800' },
+  headerSub:   { color: bp.ink3, fontSize: 11, fontFamily: FONTS.mono, letterSpacing: 2, fontWeight: '800' },
   headerTitle: { color: bp.ink, fontSize: 26, fontFamily: FONTS.display, fontWeight: '800' },
   newBtn:      { backgroundColor: bp.stamp, flexDirection: 'row', alignItems: 'center', paddingVertical: 9, paddingHorizontal: 13, borderRadius: 4, gap: 5 },
   newBtnText:  { color: bp.onStamp, fontWeight: '800', fontFamily: FONTS.mono, fontSize: 11.5, letterSpacing: 0.4 },
@@ -796,28 +796,28 @@ const makeStyles = bp => StyleSheet.create({
   searchWrap:  { flexDirection: 'row', alignItems: 'center', backgroundColor: bp.panel, marginHorizontal: 20, borderRadius: 4, paddingHorizontal: 14, borderWidth: 1, borderColor: bp.border, marginBottom: 18 },
   searchInput: { flex: 1, paddingVertical: 12, fontSize: 14, color: bp.ink },
   section:     { paddingHorizontal: 20, marginBottom: 20 },
-  sectionLabel:{ color: bp.ink3, fontSize: 10.5, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 1.5, marginBottom: 12 },
+  sectionLabel:{ color: bp.ink3, fontSize: 11.5, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 1.5, marginBottom: 12 },
   heroCard:    { backgroundColor: bp.panel, borderRadius: 4, borderWidth: 1, borderColor: bp.border, padding: 16 },
   heroTop:     { flexDirection: 'row', gap: 12, alignItems: 'center' },
   emojiBox:    { width: 54, height: 54, borderRadius: 5, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   heroBadgeRow:{ flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 5 },
-  heroMeta:    { color: bp.ink3, fontSize: 10, fontFamily: FONTS.mono, marginLeft: 'auto' },
+  heroMeta:    { color: bp.ink3, fontSize: 11, fontFamily: FONTS.mono, marginLeft: 'auto' },
   heroTitle:   { color: bp.ink, fontSize: 19, fontFamily: FONTS.display, fontWeight: '800' },
   heroObj:     { color: bp.ink2, fontSize: 13, lineHeight: 18, marginTop: 11 },
   heroNextRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 12, borderWidth: 1, borderRadius: 4, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: bp.paper },
   heroNextText: { flex: 1, color: bp.ink, fontSize: 12.5, fontWeight: '700' },
   heroNextTextEmpty: { color: bp.ink3, fontWeight: '600', fontStyle: 'italic' },
-  progressText: { fontSize: 10, fontFamily: FONTS.mono, color: bp.ink3, marginTop: 6, letterSpacing: 0.4 },
+  progressText: { fontSize: 11, fontFamily: FONTS.mono, color: bp.ink3, marginTop: 6, letterSpacing: 0.4 },
   heroFooter:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 },
   outlineBtnLg:{ flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 3, paddingHorizontal: 11, paddingVertical: 7 },
   outlineBtnLgText: { fontSize: 11.5, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 0.4 },
   catBar:      { paddingLeft: 20, marginBottom: 16 },
   catChip:     { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: bp.panel, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 3, marginRight: 9, borderWidth: 1, borderColor: bp.border },
-  catText:     { color: bp.ink3, fontSize: 10.5, fontFamily: FONTS.mono, letterSpacing: 0.4 },
+  catText:     { color: bp.ink3, fontSize: 11.5, fontFamily: FONTS.mono, letterSpacing: 0.4 },
   statsRow:    { flexDirection: 'row', paddingHorizontal: 20, gap: 10, marginBottom: 20 },
   statCard:    { flex: 1, backgroundColor: bp.panel, borderRadius: 3, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: bp.border, borderTopWidth: 3 },
   statVal:     { fontSize: 20, fontFamily: FONTS.mono, fontWeight: '800', marginBottom: 2 },
-  statLabel:   { color: bp.ink3, fontSize: 8.5, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 1 },
+  statLabel:   { color: bp.ink3, fontSize: 11.5, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 1 },
   empty:       { alignItems: 'center', paddingVertical: 56 },
   emptyTitle:  { color: bp.ink, fontSize: 17, fontWeight: 'bold', marginBottom: 6 },
   emptyText:   { color: bp.ink3, fontSize: 13 },

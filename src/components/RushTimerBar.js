@@ -25,7 +25,18 @@ import { View, StyleSheet } from 'react-native';
 
 const STEPS = 30; // how many ticks the bar takes to drain, regardless of durationMs
 
-export default function RushTimerBar({ active, durationMs = 4000, resetKey, color, trackColor, onExpire }) {
+// Time per question by grade band. A flat 3–4 s included reading the
+// question, which a K-2 or 3-5 player can't do in that time — every answer
+// timed out and three timeouts ended the game. Pass `level` (the game's
+// selected band key) and it wins over `durationMs`; the speed-bonus window
+// inside each game is unchanged.
+const RUSH_MS_BY_BAND = { 'K-2': 10000, '3-5': 7000, '6-8': 5000, '9-12': 4000 };
+export function rushDurationFor(level, fallback = 4000) {
+  return RUSH_MS_BY_BAND[level] || fallback;
+}
+
+export default function RushTimerBar({ active, durationMs: fixedMs = 4000, level, resetKey, color, trackColor, onExpire }) {
+  const durationMs = level ? rushDurationFor(level, fixedMs) : fixedMs;
   const [pct, setPct] = useState(100);
   const intervalRef = useRef(null);
   const expiredRef = useRef(false);

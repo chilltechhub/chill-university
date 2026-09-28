@@ -202,7 +202,7 @@ export function PathSheet({ visible, result, experiments, saved, reality, canAdd
                     <Text style={{ fontSize: 13, color: c.text2, fontWeight: '600' }}>Not now</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => commit(rung.id)} style={{ flex: 2, paddingVertical: 11, borderRadius: r.md, backgroundColor: c.teal, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 13, color: '#fff', fontWeight: '700' }}>I’ll do this</Text>
+                    <Text style={{ fontSize: 13, color: c.onFill, fontWeight: '700' }}>I’ll do this</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -313,7 +313,7 @@ export function LifePathSheet({ visible, result, experiments, canAddTask, onClos
                     <Text style={{ fontSize: 13, color: c.text2, fontWeight: '600' }}>Not now</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => { onCommit(path.id, rung.id, canAddTask && addTask); setConfirming(null); }} style={{ flex: 2, paddingVertical: 11, borderRadius: r.md, backgroundColor: c.teal, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 13, color: '#fff', fontWeight: '700' }}>I’ll do this</Text>
+                    <Text style={{ fontSize: 13, color: c.onFill, fontWeight: '700' }}>I’ll do this</Text>
                   </TouchableOpacity>
                 </View>
               </View>

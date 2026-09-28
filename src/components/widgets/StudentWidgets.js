@@ -70,11 +70,11 @@ export function StudyBlocksWidget({ userId, onOpenPlanner }) {
                 color={b.completed ? c.success : def.color}
               />
               <Text
-                style={{ fontSize: t.sm, color: b.completed ? c.text4 : c.text2, flex: 1, textDecorationLine: b.completed ? 'line-through' : 'none' }}
+                style={{ fontSize: t.sm, color: b.completed ? c.text3 : c.text2, flex: 1, textDecorationLine: b.completed ? 'line-through' : 'none' }}
                 numberOfLines={1}>
                 {b.title}
               </Text>
-              {b.start_time && <Text style={{ fontSize: t.xs, color: c.text4 }}>{String(b.start_time).slice(0, 5)}</Text>}
+              {b.start_time && <Text style={{ fontSize: t.xs, color: c.text3 }}>{String(b.start_time).slice(0, 5)}</Text>}
             </View>
           );
         })}
@@ -114,14 +114,14 @@ export function ClassProgressWidget({ subjectProgress, onOpenClasses }) {
             <Text style={{ fontSize: t.sm, color: c.text2, textTransform: 'capitalize' }} numberOfLines={1}>
               {String(sp.subject).replace(/[_-]/g, ' ')}
             </Text>
-            <Text style={{ fontSize: t.xs, color: c.text4 }}>
+            <Text style={{ fontSize: t.xs, color: c.text3 }}>
               {sp.xp} XP{sp.level ? ` · L${sp.level}` : ''}
             </Text>
           </View>
           <Bar pct={(sp.xp / top) * 100} color={c.tech || c.teal} />
         </View>
       ))}
-      <Text style={{ fontSize: 10, color: c.text4, marginTop: 4 }}>
+      <Text style={{ fontSize: 11, color: c.text3, marginTop: 4 }}>
         Bars are relative to your strongest subject.
       </Text>
     </WidgetCard>

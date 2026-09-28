@@ -167,7 +167,7 @@ export function pickFocusHub(data) {
 const FEATURE_RECS = [
   { pattern: 'habits',     icon: 'checkmark-circle-outline', title: 'Daily Check-in',       body: 'A one-tap log for your life areas — Library → any area → Quick Log.' },
   { pattern: 'habits',     icon: 'notifications-outline',     title: 'Daily Reminders',       body: 'Turn on below — a nudge if today\'s drills are open or your streak is at risk.' },
-  { pattern: 'building',   icon: 'hammer-outline',            title: 'The Workshop',          body: 'Start your first build — Library → The Workshop → New Build.' },
+  { pattern: 'building',   icon: 'hammer-outline',            title: 'The Workshop',          body: 'Start your first project — Library → The Workshop → New Project.' },
   { pattern: 'building',   icon: 'briefcase-outline',         title: 'Portfolio Archives',    body: 'Finished builds land here automatically as a running showcase.' },
   { pattern: 'learning',   icon: 'ribbon-outline',            title: 'Academy Classes',       body: 'Structured coursework across every subject — Library → Academy Classes.' },
   { pattern: 'reflecting', icon: 'journal-outline',           title: 'Weekly Reflection',     body: 'A guided prompt on any life area, once a week — good for spotting patterns.' },
@@ -222,7 +222,7 @@ function Chip({ label, selected, color, onPress, emoji, theme }) {
 }
 
 function SectionLabel({ label, theme }) {
-  return <Text style={{ fontSize: 11, color: theme.c.text4, fontFamily: FONTS.mono, textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 10, marginTop: 4 }}>{label}</Text>;
+  return <Text style={{ fontSize: 11, color: theme.c.text3, fontFamily: FONTS.mono, textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 10, marginTop: 4 }}>{label}</Text>;
 }
 
 // ─── Step screens ─────────────────────────────────────────────────────────────
@@ -364,7 +364,7 @@ export function AimStep({ data, set, theme, isMinor, ageBand }) {
       {chosen && first ? (
         <View style={{ marginTop: 6, padding: 14, borderRadius: 12, backgroundColor: c.bg1, borderWidth: 1, borderColor: c.border }}>
           <Text style={{ fontSize: 12.5, color: c.text3, lineHeight: 18, marginBottom: 10 }}>{chosen.blurb}</Text>
-          <Text style={{ fontSize: 11, color: c.text4, fontFamily: FONTS.mono, textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 6 }}>
+          <Text style={{ fontSize: 11, color: c.text3, fontFamily: FONTS.mono, textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 6 }}>
             Where we start · {first.label}
           </Text>
           {first.steps.map((step, i) => (
@@ -377,7 +377,7 @@ export function AimStep({ data, set, theme, isMinor, ageBand }) {
           </Text>
         </View>
       ) : (
-        <Text style={{ fontSize: 12, color: c.text4, lineHeight: 17, marginTop: 4 }}>
+        <Text style={{ fontSize: 12, color: c.text3, lineHeight: 17, marginTop: 4 }}>
           Not sure? “Find my way” is for exactly that.
         </Text>
       )}
@@ -440,12 +440,12 @@ export function PersonaStep({ data, set, theme, isMinor, ageBand }) {
       })}
 
       {ageBand === 'kid' ? (
-        <Text style={{ fontSize: 11, color: c.text4, lineHeight: 16, marginTop: 4 }}>
+        <Text style={{ fontSize: 11, color: c.text3, lineHeight: 16, marginTop: 4 }}>
           Student is built for your age — lessons, study tools and life areas written for you.
           More profile types open up as you get older.
         </Text>
       ) : isMinor && (
-        <Text style={{ fontSize: 11, color: c.text4, lineHeight: 16, marginTop: 4 }}>
+        <Text style={{ fontSize: 11, color: c.text3, lineHeight: 16, marginTop: 4 }}>
           Two more modes — Business Systems and Entrepreneur — cover adult financial topics like
           business credit and taxes. They unlock on an adult account.
         </Text>
@@ -544,7 +544,7 @@ function ExperienceChoice({ selected, emoji, title, tag, body, onPress, theme })
       <View style={{ flex: 1 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 }}>
           <Text style={{ fontSize: 15, fontWeight: '600', color: selected ? c.teal : c.text1 }}>{title}</Text>
-          {tag && <Text style={{ fontSize: 10, color: c.teal, fontFamily: FONTS.mono, textTransform: 'uppercase', letterSpacing: 0.8 }}>{tag}</Text>}
+          {tag && <Text style={{ fontSize: 11, color: c.teal, fontFamily: FONTS.mono, textTransform: 'uppercase', letterSpacing: 0.8 }}>{tag}</Text>}
         </View>
         <Text style={{ fontSize: 12, color: c.text3, lineHeight: 17 }}>{body}</Text>
       </View>
@@ -586,7 +586,7 @@ export function SectorsStep({ data, set, theme }) {
         })}
       </View>
 
-      <Text style={{ fontSize: 11, color: c.text4, textAlign: 'center', marginTop: 8 }}>
+      <Text style={{ fontSize: 11, color: c.text3, textAlign: 'center', marginTop: 8 }}>
         {(data.active_life_areas || []).length} selected — aim for 2-5
       </Text>
     </View>
@@ -637,7 +637,7 @@ export function CharacterStep({ data, set, theme }) {
                 }}
               >
                 <PlayerCharacter outfit={o} accessory={null} size={48} />
-                <Text numberOfLines={1} style={{ fontSize: 10, color: sel ? crestColor : c.text3, fontWeight: sel ? '700' : '400' }}>{o.name}</Text>
+                <Text numberOfLines={1} style={{ fontSize: 11, color: sel ? crestColor : c.text3, fontWeight: sel ? '700' : '400' }}>{o.name}</Text>
               </TouchableOpacity>
             );
           })}
@@ -654,7 +654,7 @@ export function CharacterStep({ data, set, theme }) {
       />
 
       <SectionLabel label="Crest color" theme={theme} />
-      <Text style={{ fontSize: 11, color: c.text4, marginTop: -6, marginBottom: 10 }}>Colors your name card on Home & Portfolio</Text>
+      <Text style={{ fontSize: 11, color: c.text3, marginTop: -6, marginBottom: 10 }}>Colors your name card on Home & Portfolio</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 18 }}>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           {CREST_COLORS.map(cc => {
@@ -662,7 +662,7 @@ export function CharacterStep({ data, set, theme }) {
             return (
               <TouchableOpacity key={cc.key} onPress={() => set('crest_color', cc.key)} style={{ alignItems: 'center', gap: 5 }}>
                 <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: cc.color, borderWidth: 3, borderColor: sel ? c.text1 : 'transparent' }} />
-                <Text style={{ fontSize: 9, color: sel ? c.text1 : c.text4, fontWeight: sel ? '700' : '400' }}>{cc.label}</Text>
+                <Text style={{ fontSize: 11, color: sel ? c.text1 : c.text3, fontWeight: sel ? '700' : '400' }}>{cc.label}</Text>
               </TouchableOpacity>
             );
           })}
@@ -736,12 +736,12 @@ export function PlannerStep({ data, set, theme }) {
             <SectionLabel label={`${area.emoji} ${area.label}`} theme={theme} />
             {comps === 'loading' && <ActivityIndicator color={area.color} style={{ marginVertical: 8 }} />}
             {comps === 'none' && (
-              <Text style={{ fontSize: 12, color: c.text4, fontStyle: 'italic', marginBottom: 4 }}>
+              <Text style={{ fontSize: 12, color: c.text3, fontStyle: 'italic', marginBottom: 4 }}>
                 No starter templates yet for this sector — add your own from the Planner any time.
               </Text>
             )}
             {Array.isArray(comps) && comps.length === 0 && (
-              <Text style={{ fontSize: 12, color: c.text4, fontStyle: 'italic', marginBottom: 4 }}>
+              <Text style={{ fontSize: 12, color: c.text3, fontStyle: 'italic', marginBottom: 4 }}>
                 No starter templates yet for this sector — add your own from the Planner any time.
               </Text>
             )}
@@ -752,7 +752,7 @@ export function PlannerStep({ data, set, theme }) {
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: sel ? area.color + '18' : c.bg0, borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: sel ? area.color : c.border }}>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 14, color: sel ? c.text1 : c.text3, fontWeight: sel ? '700' : '400' }}>{comp.title}</Text>
-                    <Text style={{ fontSize: 11, color: c.text4, marginTop: 2, textTransform: 'capitalize' }}>
+                    <Text style={{ fontSize: 11, color: c.text3, marginTop: 2, textTransform: 'capitalize' }}>
                       {comp.cadence}{comp.duration_minutes ? ` · ${comp.duration_minutes}m` : ''}
                     </Text>
                   </View>
@@ -870,7 +870,7 @@ export function GoalsStep({ data, set, theme }) {
 
       <View style={{ marginTop: 16 }}>
         <SectionLabel label="How will you actually use this?" theme={theme} />
-        <Text style={{ fontSize: 12, color: c.text4, marginTop: -6, marginBottom: 10 }}>
+        <Text style={{ fontSize: 12, color: c.text3, marginTop: -6, marginBottom: 10 }}>
           Pick what fits — shapes what we point out in your tour and recommend below. Pick as many as apply.
         </Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
@@ -915,7 +915,7 @@ export function GoalsStep({ data, set, theme }) {
               <TouchableOpacity key={opt.val} onPress={() => set('daily_minutes', opt.val)}
                 style={{ flex: 1, alignItems: 'center', padding: 10, borderRadius: 12, borderWidth: 1.5, borderColor: sel ? c.error : c.border, backgroundColor: sel ? c.error + '22' : c.bg0 }}>
                 <Text style={{ fontSize: 15, fontWeight: '700', color: sel ? c.error : c.text1 }}>{opt.label}</Text>
-                <Text style={{ fontSize: 10, color: c.text4, marginTop: 2 }}>{opt.desc}</Text>
+                <Text style={{ fontSize: 11, color: c.text3, marginTop: 2 }}>{opt.desc}</Text>
               </TouchableOpacity>
             );
           })}
@@ -939,8 +939,8 @@ export function GoalsStep({ data, set, theme }) {
         <Switch
           value={data.wants_reflection || false}
           onValueChange={v => set('wants_reflection', v)}
-          trackColor={{ false: c.bg2, true: c.success + '88' }}
-          thumbColor={data.wants_reflection ? c.success : c.text4}
+          trackColor={{ false: c.borderStrong, true: c.success + '88' }}
+          thumbColor={data.wants_reflection ? c.success : c.text3}
         />
       </View>
 
@@ -952,8 +952,8 @@ export function GoalsStep({ data, set, theme }) {
         <Switch
           value={remindersEnabled}
           onValueChange={toggleReminders}
-          trackColor={{ false: c.bg2, true: c.gold + '88' }}
-          thumbColor={remindersEnabled ? c.gold : c.text4}
+          trackColor={{ false: c.borderStrong, true: c.gold + '88' }}
+          thumbColor={remindersEnabled ? c.gold : c.text3}
         />
       </View>
     </View>
@@ -1032,7 +1032,7 @@ export function LookStep({ data, set, theme, onThemeChange }) {
         </View>
       ) : (<>
       <SectionLabel label="Library sections" theme={theme} />
-      <Text style={{ fontSize: 12, color: c.text4, marginTop: -6, marginBottom: 10 }}>All on by default — tap to hide any you don't need. Bring them back any time from Settings.</Text>
+      <Text style={{ fontSize: 12, color: c.text3, marginTop: -6, marginBottom: 10 }}>All on by default — tap to hide any you don't need. Bring them back any time from Settings.</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
         {allSections.map(item => {
           const hidden = (data.hidden_sections || []).includes(item.screen);
@@ -1040,7 +1040,7 @@ export function LookStep({ data, set, theme, onThemeChange }) {
             <TouchableOpacity key={item.screen} onPress={() => toggleSection(item.screen)}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: hidden ? c.border : c.teal, backgroundColor: hidden ? c.bg0 : c.teal + '18', opacity: hidden ? 0.5 : 1 }}>
               <Ionicons name={item.icon} size={13} color={hidden ? c.text4 : c.teal} />
-              <Text style={{ fontSize: 12, color: hidden ? c.text4 : c.teal, fontWeight: hidden ? '400' : '700' }}>{item.label}</Text>
+              <Text style={{ fontSize: 12, color: hidden ? c.text3 : c.teal, fontWeight: hidden ? '400' : '700' }}>{item.label}</Text>
             </TouchableOpacity>
           );
         })}

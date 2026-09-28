@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { cacheRead, cacheWrite } from '../api/offlineCache';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { AGE_BANDS, ageCategoryFromDob, isMinorBand } from './profileResolver';
+import { calculateAge } from './ageOfConsent';
 
 export const GRADE_BANDS = [
   { key: 'K-2',  label: 'Grades K–2',  emoji: '🎒', icon: 'happy-outline',  tier: 1 },
@@ -48,8 +49,9 @@ export function isAdultProfile(profile) {
 
 /**
  * Starting band before a player has picked one for a game. Adults start at
- * Foundations, teens at 6–8, and kids or unknown ages at 3–5. The adaptive
- * tier moves them from there either way.
+ * Foundations, teens at 6–8 (9–12 from age 15 — a high-schooler shown
+ * "Grades 6–8" reads it as being talked down to), and kids or unknown ages
+ * at 3–5. The adaptive tier moves them from there either way.
  *
  * Adults used to start at the top tier, which put a brand-new account's
  * very first round (the first goal's "play one game" step) on questions
@@ -61,7 +63,9 @@ export function defaultLevelFor(profile) {
   const band = knownAgeBand(profile);
   if (!band) return '3-5';
   if (!isMinorBand(band)) return '3-5';
-  return band === 'teen' ? '6-8' : '3-5';
+  if (band !== 'teen') return '3-5';
+  const age = calculateAge(profile?.date_of_birth);
+  return age !== null && age >= 15 ? '9-12' : '6-8';
 }
 
 /**

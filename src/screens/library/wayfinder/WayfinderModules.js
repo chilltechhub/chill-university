@@ -104,7 +104,7 @@ export function PersonalityStep({ answers, index, setIndex, onAnswer }) {
       ) : (
         <>
           <View style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: 22, borderWidth: 1, borderColor: c.border, minHeight: 120, justifyContent: 'center' }}>
-            <Text style={{ fontSize: 11, color: c.text4, fontFamily: FONTS.mono, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>How much is this you?</Text>
+            <Text style={{ fontSize: 11, color: c.text3, fontFamily: FONTS.mono, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>How much is this you?</Text>
             <Text style={{ fontSize: 20, fontWeight: '600', color: c.text1, lineHeight: 28 }}>{item.text}</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 6, marginTop: 14 }}>

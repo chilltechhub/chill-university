@@ -51,6 +51,12 @@ async function tutorialsEnabled() {
 // defers before calling startTour.
 const SETTLE_MS = 650;
 
+// At most one first-visit tutorial per app session. A tutorial popped on 7 of
+// 8 first visits in the 2026-09-27 audit; the ones that would have shown are
+// left unseen, so they teach on a later visit instead of all at once.
+const PER_SESSION = 1;
+let shownThisSession = 0;
+
 // Never auto-teach these. Onboarding and auth own their whole screen and
 // have their own explanation built in; interrupting either with a tutorial
 // about it would be talking over the thing doing the talking. Wayfinder
@@ -165,6 +171,7 @@ export default function useFirstVisitTutorial({ tourActive, startScreenTour, pau
     if (seen.current.has(routeName)) return;
     if (!hasScreenTutorial(routeName)) return;
     if (armedFor.current === routeName) return;
+    if (shownThisSession >= PER_SESSION) return;
 
     if (pending.current) clearTimeout(pending.current);
     armedFor.current = routeName;
@@ -174,6 +181,8 @@ export default function useFirstVisitTutorial({ tourActive, startScreenTour, pau
       // Checked here rather than at arm time so toggling it off in Settings
       // takes effect on the very next screen, with no reload.
       if (!(await tutorialsEnabled())) return;
+      if (shownThisSession >= PER_SESSION) return;
+      shownThisSession += 1;
       // Mark before showing, not after: if the user force-quits mid-tutorial
       // we'd rather they never see it again than see it every launch.
       // But one that another walkthrough replaced straight away (an unlock

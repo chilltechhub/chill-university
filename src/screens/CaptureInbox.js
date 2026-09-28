@@ -53,14 +53,14 @@ function DeletedCard({ item, onRestore, onPurge, c, t, s, r }) {
       </View>
       <View style={{ flex: 1 }}>
         <Text numberOfLines={1} style={{ fontSize: t.sm, fontWeight: '700', color: c.text1 }}>{item.title || 'Untitled'}</Text>
-        <Text style={{ fontSize: t.xs, color: c.text4, marginTop: 1 }}>
+        <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 1 }}>
           {meta.label} · {daysLeft > 0 ? `${daysLeft}d left` : 'expiring soon'}
         </Text>
       </View>
-      <TouchableOpacity onPress={() => onRestore(item)} style={{ padding: 6 }}>
+      <TouchableOpacity accessibilityLabel="Undo" accessibilityRole="button" onPress={() => onRestore(item)} style={{ padding: 6 }}>
         <Ionicons name="arrow-undo-outline" size={18} color={c.teal} />
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => onPurge(item)} style={{ padding: 6 }}>
+      <TouchableOpacity accessibilityLabel="Delete" accessibilityRole="button" onPress={() => onPurge(item)} style={{ padding: 6 }}>
         <Ionicons name="trash-outline" size={18} color={c.error} />
       </TouchableOpacity>
     </View>
@@ -88,14 +88,14 @@ export const DESTINATIONS = [
     label: 'Add to Project',
     icon:  'rocket-outline',
     color: '#c9a84c',
-    desc:  'Send to an active mission',
+    desc:  'Add to one of your active projects',
   },
   {
     key:   'new_project',
     label: 'Start New Project',
     icon:  'add-circle-outline',
     color: '#00F0FF',
-    desc:  'Turn this into a new mission',
+    desc:  'Turn this into a new project',
   },
   {
     key:   'idea_garden',
@@ -465,14 +465,14 @@ function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated,
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: editing ? s.md : 4 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, flex: 1 }}>
                   <Ionicons name={TYPE_MAP[current.type]?.icon || 'document-text-outline'} size={14} color={itemColor} />
-                  <Text style={{ fontSize: 10, color: itemColor, fontWeight: '800', textTransform: 'uppercase' }}>{current.type}</Text>
+                  <Text style={{ fontSize: 11, color: itemColor, fontWeight: '800', textTransform: 'uppercase' }}>{current.type}</Text>
                 </View>
                 {!editing && step === 'choose' && (
                   <View style={{ flexDirection: 'row', gap: s.md }}>
-                    <TouchableOpacity onPress={startEditing} style={{ padding: 2 }}>
+                    <TouchableOpacity accessibilityLabel="Edit" accessibilityRole="button" onPress={startEditing} style={{ padding: 2 }}>
                       <Ionicons name="pencil-outline" size={16} color={c.text3} />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={confirmDelete} style={{ padding: 2 }}>
+                    <TouchableOpacity accessibilityLabel="Delete" accessibilityRole="button" onPress={confirmDelete} style={{ padding: 2 }}>
                       <Ionicons name="trash-outline" size={16} color={c.error} />
                     </TouchableOpacity>
                   </View>
@@ -508,8 +508,8 @@ function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated,
                     </TouchableOpacity>
                     <TouchableOpacity onPress={saveEdits} disabled={!editTitle.trim() || savingEdit}
                       style={{ flex: 2, padding: s.sm, alignItems: 'center', backgroundColor: c.teal, borderRadius: r.sm, opacity: !editTitle.trim() ? 0.5 : 1 }}>
-                      {savingEdit ? <ActivityIndicator color="#fff" size="small" />
-                        : <Text style={{ color: '#fff', fontWeight: '700', fontSize: t.xs }}>Save changes</Text>}
+                      {savingEdit ? <ActivityIndicator color={c.onFill} size="small" />
+                        : <Text style={{ color: c.onFill, fontWeight: '700', fontSize: t.xs }}>Save changes</Text>}
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -530,7 +530,7 @@ function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated,
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
                       {current.tags.map((tg, i) => (
                         <View key={i} style={{ backgroundColor: c.bg2, borderRadius: r.full, paddingHorizontal: 6, paddingVertical: 2 }}>
-                          <Text style={{ fontSize: 9, color: c.text4 }}>#{tg}</Text>
+                          <Text style={{ fontSize: 11, color: c.text3 }}>#{tg}</Text>
                         </View>
                       ))}
                     </View>
@@ -542,7 +542,7 @@ function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated,
             {/* Steps */}
             {!editing && step === 'choose' && (
               <>
-                <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.md }}>
+                <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.md }}>
                   Where does this go?
                 </Text>
                 <ScrollView automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
@@ -570,7 +570,7 @@ function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated,
             {step === 'pick_project' && (
               <>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: s.lg }}>
-                  <TouchableOpacity onPress={() => setStep('choose')}>
+                  <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => setStep('choose')}>
                     <Ionicons name="chevron-back" size={20} color={c.teal} />
                   </TouchableOpacity>
                   <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>Choose a Project</Text>
@@ -600,7 +600,7 @@ function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated,
             {step === 'pick_area' && (
               <>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: s.lg }}>
-                  <TouchableOpacity onPress={() => setStep('choose')}>
+                  <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => setStep('choose')}>
                     <Ionicons name="chevron-back" size={20} color={c.teal} />
                   </TouchableOpacity>
                   <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>Choose a Life Area</Text>
@@ -620,15 +620,15 @@ function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated,
             {step === 'task_details' && (
               <>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: s.lg }}>
-                  <TouchableOpacity onPress={() => setStep('choose')}>
+                  <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => setStep('choose')}>
                     <Ionicons name="chevron-back" size={20} color={c.teal} />
                   </TouchableOpacity>
                   <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>Create Task</Text>
                 </View>
-                <Text style={{ fontSize: t.xs, color: c.text4, marginBottom: 6 }}>Task title</Text>
+                <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: 6 }}>Task title</Text>
                 <TextInput style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: '#4caf7d' + '66', marginBottom: s.md }}
                   value={taskTitle} onChangeText={setTaskTitle} autoFocus />
-                <Text style={{ fontSize: t.xs, color: c.text4, marginBottom: 6 }}>Due date (optional)</Text>
+                <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: 6 }}>Due date (optional)</Text>
                 <TextInput style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: c.border, marginBottom: s.lg }}
                   value={taskDueDate} onChangeText={setTaskDueDate} placeholder="YYYY-MM-DD" placeholderTextColor={c.text4} />
                 <TouchableOpacity onPress={() => { setDestination(DESTINATIONS.find(d => d.key === 'task')); process(); }}
@@ -643,18 +643,18 @@ function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated,
             {step === 'project_details' && (
               <>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: s.lg }}>
-                  <TouchableOpacity onPress={() => setStep('choose')}>
+                  <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => setStep('choose')}>
                     <Ionicons name="chevron-back" size={20} color={c.teal} />
                   </TouchableOpacity>
                   <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>Start a Project</Text>
                 </View>
-                <Text style={{ fontSize: t.xs, color: c.text4, marginBottom: 6 }}>Project name</Text>
+                <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: 6 }}>Project name</Text>
                 <TextInput style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: c.border, marginBottom: s.md }}
                   value={projTitle} onChangeText={setProjTitle} autoFocus />
-                <Text style={{ fontSize: t.xs, color: c.text4, marginBottom: 6 }}>First next step (optional)</Text>
+                <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: 6 }}>First next step (optional)</Text>
                 <TextInput style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: c.border, marginBottom: 4 }}
                   value={projNext} onChangeText={setProjNext} placeholder="The next physical move, e.g. email Ms. Lee" placeholderTextColor={c.text4} />
-                <Text style={{ fontSize: t.xs, color: c.text4, marginBottom: s.lg }}>It shows on Home's desk until you change it.</Text>
+                <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: s.lg }}>It shows on Home's desk until you change it.</Text>
                 <TouchableOpacity onPress={process} disabled={!projTitle.trim() || processing}
                   style={{ backgroundColor: '#00a8b5', borderRadius: r.md, padding: s.md, alignItems: 'center', opacity: !projTitle.trim() ? 0.5 : 1 }}>
                   {processing ? <ActivityIndicator color="#fff" size="small" />
@@ -666,7 +666,7 @@ function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated,
             {step === 'plan_details' && (
               <>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: s.lg }}>
-                  <TouchableOpacity onPress={() => setStep('choose')}>
+                  <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => setStep('choose')}>
                     <Ionicons name="chevron-back" size={20} color={c.teal} />
                   </TouchableOpacity>
                   <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>Add to Planner</Text>
@@ -674,7 +674,7 @@ function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated,
                 <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: s.md, lineHeight: 18 }}>
                   The planner is for things with a real day. No day yet? Go back and make it a task instead.
                 </Text>
-                <Text style={{ fontSize: t.xs, color: c.text4, marginBottom: 6 }}>Which day?</Text>
+                <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: 6 }}>Which day?</Text>
                 <View style={{ flexDirection: 'row', gap: s.sm, marginBottom: s.md }}>
                   {[{ d: 0, label: 'Today' }, { d: 1, label: 'Tomorrow' }, { d: 7, label: 'In a week' }].map(o => (
                     <TouchableOpacity key={o.d} onPress={() => setPlanDay(o.d)}
@@ -683,7 +683,7 @@ function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated,
                     </TouchableOpacity>
                   ))}
                 </View>
-                <Text style={{ fontSize: t.xs, color: c.text4, marginBottom: 6 }}>Life area</Text>
+                <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: 6 }}>Life area</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: s.lg }}>
                   {LIFE_AREA_OPTIONS.map(a => (
                     <TouchableOpacity key={a.key} onPress={() => setPlanArea(a.key)}
@@ -704,7 +704,7 @@ function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated,
             {step === 'confirm' && destination && (
               <>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: s.xl }}>
-                  <TouchableOpacity onPress={() => setStep(destination.key === 'project' ? 'pick_project' : destination.key === 'life_area' ? 'pick_area' : 'choose')}>
+                  <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => setStep(destination.key === 'project' ? 'pick_project' : destination.key === 'life_area' ? 'pick_area' : 'choose')}>
                     <Ionicons name="chevron-back" size={20} color={c.teal} />
                   </TouchableOpacity>
                   <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>Confirm</Text>
@@ -868,7 +868,7 @@ function BulkProcessModal({ items, projects, userId, onClose, onProcessed, c, t,
 
             {step === 'choose' && (
               <>
-                <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.md }}>
+                <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.md }}>
                   Send all of them where?
                 </Text>
                 <ScrollView automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
@@ -896,7 +896,7 @@ function BulkProcessModal({ items, projects, userId, onClose, onProcessed, c, t,
             {step === 'pick_project' && (
               <>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: s.lg }}>
-                  <TouchableOpacity onPress={() => setStep('choose')}>
+                  <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => setStep('choose')}>
                     <Ionicons name="chevron-back" size={20} color={c.teal} />
                   </TouchableOpacity>
                   <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>Choose a Project</Text>
@@ -926,7 +926,7 @@ function BulkProcessModal({ items, projects, userId, onClose, onProcessed, c, t,
             {step === 'pick_area' && (
               <>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: s.lg }}>
-                  <TouchableOpacity onPress={() => setStep('choose')}>
+                  <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => setStep('choose')}>
                     <Ionicons name="chevron-back" size={20} color={c.teal} />
                   </TouchableOpacity>
                   <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>Choose a Life Area</Text>
@@ -946,15 +946,15 @@ function BulkProcessModal({ items, projects, userId, onClose, onProcessed, c, t,
             {step === 'task_details' && (
               <>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: s.lg }}>
-                  <TouchableOpacity onPress={() => setStep('choose')}>
+                  <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => setStep('choose')}>
                     <Ionicons name="chevron-back" size={20} color={c.teal} />
                   </TouchableOpacity>
                   <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>Create {items.length} Tasks</Text>
                 </View>
-                <Text style={{ fontSize: t.xs, color: c.text4, marginBottom: s.md, lineHeight: 17 }}>
+                <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: s.md, lineHeight: 17 }}>
                   Each item's own title becomes its own task. Set a due date to apply to all of them (optional).
                 </Text>
-                <Text style={{ fontSize: t.xs, color: c.text4, marginBottom: 6 }}>Due date (optional)</Text>
+                <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: 6 }}>Due date (optional)</Text>
                 <TextInput style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: c.border, marginBottom: s.lg }}
                   value={taskDueDate} onChangeText={setTaskDueDate} placeholder="YYYY-MM-DD" placeholderTextColor={c.text4} />
                 <TouchableOpacity onPress={() => setStep('confirm')}
@@ -967,7 +967,7 @@ function BulkProcessModal({ items, projects, userId, onClose, onProcessed, c, t,
             {step === 'confirm' && destination && (
               <>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: s.xl }}>
-                  <TouchableOpacity onPress={backFromConfirm}>
+                  <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={backFromConfirm}>
                     <Ionicons name="chevron-back" size={20} color={c.teal} />
                   </TouchableOpacity>
                   <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>Confirm</Text>
@@ -1025,14 +1025,14 @@ function CaptureCard({ item, onProcess, onDone, selectMode, selected, onToggleSe
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: 5 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: color + '18', borderRadius: r.full, paddingHorizontal: 7, paddingVertical: 2 }}>
             <Ionicons name={tp.icon} size={10} color={color} />
-            <Text style={{ fontSize: 9, color, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>{item.type}</Text>
+            <Text style={{ fontSize: 11, color, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>{item.type}</Text>
           </View>
           {item.save_for_later && (
             <View style={{ backgroundColor: c.gold + '22', borderRadius: r.full, paddingHorizontal: 6, paddingVertical: 2 }}>
-              <Text style={{ fontSize: 9, color: c.gold }}>{item.save_for_later === 'watch' ? '▶ Watch' : '📖 Read'} later</Text>
+              <Text style={{ fontSize: 11, color: c.gold }}>{item.save_for_later === 'watch' ? '▶ Watch' : '📖 Read'} later</Text>
             </View>
           )}
-          <Text style={{ fontSize: 10, color: c.text4, marginLeft: 'auto' }}>{timeAgo(item.created_at)}</Text>
+          <Text style={{ fontSize: 11, color: c.text3, marginLeft: 'auto' }}>{timeAgo(item.created_at)}</Text>
         </View>
 
         {item.title && (
@@ -1050,7 +1050,7 @@ function CaptureCard({ item, onProcess, onDone, selectMode, selected, onToggleSe
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 5 }}>
             {item.tags.slice(0, 3).map((tag, i) => (
               <View key={i} style={{ backgroundColor: c.bg2, borderRadius: r.full, paddingHorizontal: 6, paddingVertical: 2 }}>
-                <Text style={{ fontSize: 9, color: c.text4 }}>#{tag}</Text>
+                <Text style={{ fontSize: 11, color: c.text3 }}>#{tag}</Text>
               </View>
             ))}
           </View>
@@ -1067,7 +1067,7 @@ function CaptureCard({ item, onProcess, onDone, selectMode, selected, onToggleSe
 
       {/* Done button */}
       {!selectMode && (
-        <TouchableOpacity onPress={() => onDone(item)}
+        <TouchableOpacity accessibilityLabel="Done" accessibilityRole="button" onPress={() => onDone(item)}
           style={{ justifyContent: 'center', paddingHorizontal: s.sm, backgroundColor: c.teal + '12' }}>
           <Ionicons name="checkmark" size={18} color={c.teal} />
         </TouchableOpacity>
@@ -1138,7 +1138,7 @@ export function QuickCaptureModal({ visible, userId, onSaved, onClose, prefill, 
       <View style={{ padding: s.xl, paddingTop: s.sm }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: s.lg }}>
             <Text style={{ fontSize: t.xl, fontWeight: t.bold, color: c.text1 }}>⚡ Quick Capture</Text>
-            <TouchableOpacity onPress={() => { setDraft(''); setType('note'); setTags(''); onClose(); }}>
+            <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={() => { setDraft(''); setType('note'); setTags(''); onClose(); }}>
               <Ionicons name="close" size={22} color={c.text3} />
             </TouchableOpacity>
           </View>
@@ -1183,8 +1183,8 @@ export function QuickCaptureModal({ visible, userId, onSaved, onClose, prefill, 
             </TouchableOpacity>
             <TouchableOpacity onPress={save} disabled={!draft.trim() || saving}
               style={{ flex: 2, backgroundColor: c.teal, borderRadius: r.md, padding: s.md, alignItems: 'center', opacity: (!draft.trim() || saving) ? 0.5 : 1 }}>
-              {saving ? <ActivityIndicator color="#fff" size="small" />
-                : <Text style={{ color: '#fff', fontWeight: t.bold }}>Capture → Process later</Text>}
+              {saving ? <ActivityIndicator color={c.onFill} size="small" />
+                : <Text style={{ color: c.onFill, fontWeight: t.bold }}>Capture → Process later</Text>}
             </TouchableOpacity>
           </View>
       </View>
@@ -1371,21 +1371,21 @@ export default function CaptureInbox() {
           </View>
           <View style={{ flexDirection: 'row', gap: s.sm }}>
             {view !== 'trash' && (
-              <TouchableOpacity onPress={() => selectMode ? exitSelectMode() : enterSelectMode(null)}
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel={selectMode ? 'Cancel selecting' : 'Select items'} onPress={() => selectMode ? exitSelectMode() : enterSelectMode(null)}
                 style={{ backgroundColor: selectMode ? c.teal : c.bg0, borderWidth: 1, borderColor: selectMode ? c.teal : c.border, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name={selectMode ? 'close' : 'checkbox-outline'} size={20} color={selectMode ? '#fff' : c.text3} />
+                <Ionicons name={selectMode ? 'close' : 'checkbox-outline'} size={20} color={selectMode ? c.onFill : c.text3} />
               </TouchableOpacity>
             )}
-            <TouchableOpacity onPress={() => navigation.navigate('ImportScreen')}
+            <TouchableOpacity accessibilityLabel="Import" accessibilityRole="button" onPress={() => navigation.navigate('ImportScreen')}
               style={{ backgroundColor: c.bg0, borderWidth: 1, borderColor: c.border, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}>
               <Ionicons name="download-outline" size={20} color={c.gold} />
             </TouchableOpacity>
             {/* radius 22 matches the 44px circular button below, so the
                 spotlight is a circle rather than a rounded square */}
             <TourSpot id="inbox-capture" radius={22}>
-            <TouchableOpacity onPress={() => { setPendingPrefill(tourPrefill); setShowAdd(true); completeAction(); }}
+            <TouchableOpacity accessibilityLabel="Add" accessibilityRole="button" onPress={() => { setPendingPrefill(tourPrefill); setShowAdd(true); completeAction(); }}
               style={{ backgroundColor: c.teal, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="add" size={24} color="#fff" />
+              <Ionicons name="add" size={24} color={c.onFill} />
             </TouchableOpacity>
             </TourSpot>
           </View>
@@ -1401,7 +1401,7 @@ export default function CaptureInbox() {
           ].map(tab => (
             <TouchableOpacity key={tab.key} onPress={() => setView(tab.key)}
               style={{ flex: 1, paddingVertical: 8, borderRadius: r.md, alignItems: 'center', backgroundColor: view === tab.key ? c.teal : c.bg0, borderWidth: 0.5, borderColor: view === tab.key ? c.teal : c.border }}>
-              <Text style={{ fontSize: 11, fontWeight: t.bold, color: view === tab.key ? '#fff' : c.text3 }}>{tab.label}</Text>
+              <Text style={{ fontSize: 11, fontWeight: t.bold, color: view === tab.key ? c.onFill : c.text3 }}>{tab.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -1412,13 +1412,13 @@ export default function CaptureInbox() {
             contentContainerStyle={{ paddingHorizontal: s.lg, paddingBottom: s.sm, gap: s.sm }}>
             <TouchableOpacity onPress={() => setFilter('all')}
               style={{ paddingHorizontal: s.md, paddingVertical: 5, borderRadius: r.full, borderWidth: 1, borderColor: filter === 'all' ? c.teal : c.border, backgroundColor: filter === 'all' ? c.teal + '18' : 'transparent' }}>
-              <Text style={{ fontSize: 11, color: filter === 'all' ? c.teal : c.text4, fontWeight: filter === 'all' ? '700' : '400' }}>All</Text>
+              <Text style={{ fontSize: 11, color: filter === 'all' ? c.teal : c.text3, fontWeight: filter === 'all' ? '700' : '400' }}>All</Text>
             </TouchableOpacity>
             {CAPTURE_TYPES.map(tp => (
               <TouchableOpacity key={tp.key} onPress={() => setFilter(tp.key)}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: s.md, paddingVertical: 5, borderRadius: r.full, borderWidth: 1, borderColor: filter === tp.key ? tp.color : c.border, backgroundColor: filter === tp.key ? tp.color + '18' : 'transparent' }}>
                 <Ionicons name={tp.icon} size={11} color={filter === tp.key ? tp.color : c.text4} />
-                <Text style={{ fontSize: 11, color: filter === tp.key ? tp.color : c.text4, fontWeight: filter === tp.key ? '700' : '400' }}>{tp.label}</Text>
+                <Text style={{ fontSize: 11, color: filter === tp.key ? tp.color : c.text3, fontWeight: filter === tp.key ? '700' : '400' }}>{tp.label}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -1470,7 +1470,7 @@ export default function CaptureInbox() {
             {view === 'inbox' && (
               <TouchableOpacity onPress={() => setShowAdd(true)}
                 style={{ backgroundColor: c.teal, borderRadius: r.lg, paddingVertical: s.md, paddingHorizontal: s.xl }}>
-                <Text style={{ color: '#fff', fontWeight: t.bold }}>⚡ Capture something</Text>
+                <Text style={{ color: c.onFill, fontWeight: t.bold }}>⚡ Capture something</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -1523,17 +1523,17 @@ export default function CaptureInbox() {
             {selectedIds.size} selected
           </Text>
           <View style={{ flex: 1 }} />
-          <TouchableOpacity onPress={bulkDelete} disabled={selectedIds.size === 0}
+          <TouchableOpacity accessibilityLabel="Delete selected" accessibilityRole="button" onPress={bulkDelete} disabled={selectedIds.size === 0}
             style={{ padding: s.sm, opacity: selectedIds.size === 0 ? 0.35 : 1 }}>
             <Ionicons name="trash-outline" size={20} color={c.error} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={bulkMarkDone} disabled={selectedIds.size === 0}
+          <TouchableOpacity accessibilityLabel="Mark selected as done" accessibilityRole="button" onPress={bulkMarkDone} disabled={selectedIds.size === 0}
             style={{ padding: s.sm, opacity: selectedIds.size === 0 ? 0.35 : 1 }}>
             <Ionicons name="checkmark-circle-outline" size={20} color={c.teal} />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setBulkProcessing(true)} disabled={selectedIds.size === 0}
             style={{ backgroundColor: c.teal, borderRadius: r.md, paddingHorizontal: s.lg, paddingVertical: s.sm, opacity: selectedIds.size === 0 ? 0.35 : 1 }}>
-            <Text style={{ color: '#fff', fontWeight: t.bold, fontSize: t.sm }}>Process</Text>
+            <Text style={{ color: c.onFill, fontWeight: t.bold, fontSize: t.sm }}>Process</Text>
           </TouchableOpacity>
         </View>
       )}

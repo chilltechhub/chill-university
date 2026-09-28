@@ -105,7 +105,7 @@ export default function PrivacyScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg0 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={{ backgroundColor: c.bg1, padding: s.lg, paddingTop: s.xxl, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: s.sm }}>
+        <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => navigation.goBack()} style={{ marginBottom: s.sm }}>
           <Ionicons name="chevron-back" size={20} color={color} />
         </TouchableOpacity>
         <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>{showEmojis ? '🔒 ' : ''}Privacy</Text>
@@ -140,7 +140,7 @@ export default function PrivacyScreen() {
               {checked[item.id] && <Ionicons name="checkmark" size={14} color="#fff" />}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1 }, checked[item.id] && { textDecorationLine: 'line-through', color: c.text4 }]}>{item.label}</Text>
+              <Text style={[{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1 }, checked[item.id] && { textDecorationLine: 'line-through', color: c.text3 }]}>{item.label}</Text>
               <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 4, lineHeight: 18 }}>{item.tip}</Text>
               {item.link && (
                 <TouchableOpacity onPress={() => Linking.openURL(item.link)}>
@@ -190,11 +190,11 @@ export default function PrivacyScreen() {
           <View key={entry.id} style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: color, flexDirection: 'row', alignItems: 'flex-start', gap: s.sm }}>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: t.sm, color: c.text1, lineHeight: 20 }}>{entry.content.replace(SCREEN_TAG, '').trim()}</Text>
-              <Text style={{ fontSize: 10, color: c.text4, marginTop: 4 }}>
+              <Text style={{ fontSize: 11, color: c.text3, marginTop: 4 }}>
                 {new Date(entry.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </Text>
             </View>
-            <TouchableOpacity onPress={() => delLog(entry.id)} style={{ padding: 2 }}>
+            <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={() => delLog(entry.id)} style={{ padding: 2 }}>
               <Ionicons name="close" size={14} color={c.text4} />
             </TouchableOpacity>
           </View>

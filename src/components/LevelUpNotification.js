@@ -13,9 +13,10 @@
 // ranked up from one big game) shows them back to back instead of
 // merging into one confusing popup.
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, Modal, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
+import { successHaptic } from '../logic/haptics';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { useTour } from '../../context/TourContext';
 
@@ -29,6 +30,8 @@ export default function LevelUpNotification() {
   // bubble. It shows the moment that walkthrough ends.
   const { active: tourActive } = useTour();
   const event = progressEvents?.[0];
+  const shownKey = event && !tourActive ? JSON.stringify(event) : null;
+  useEffect(() => { if (shownKey) successHaptic(); }, [shownKey]);
   if (!event || tourActive) return null;
 
   const isLevel = event.type === 'level';

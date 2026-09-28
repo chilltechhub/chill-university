@@ -37,26 +37,22 @@ import LockBadge from '../components/LockBadge';
 import UnlockSheet from '../components/UnlockSheet';
 import { FONTS } from '../theme';
 
-// The three words this screen runs on. Written out because "purpose",
-// "objective" and "stage" are three different things here and, read cold,
-// all three sound like "goal" — which is how somebody ends up asking what
-// the Compass is while standing on it.
+// The words this screen runs on, kept to three plain ones. It used to define
+// purpose, objective, steps and stage and then add a "Stages are not goals"
+// note — four near-synonyms for "goal" is how someone ends up asking what the
+// Compass is while standing on it. Users now see "goal" and "unlocks" only.
 const EXPLAINER_TERMS = [
   {
     word: 'Purpose',
-    text: 'The one thing you are here for. Picked once, changeable any time. Everything the app leads with is ordered around it.',
+    text: 'What you are here for. Change it any time.',
   },
   {
-    word: 'Objective',
-    text: 'Your goal: one finishable achievement, a few steps, days rather than months. Exactly one runs at a time, because the whole point is that there is one answer to "what now".',
+    word: 'Goal',
+    text: 'One thing to finish, a few steps long. One at a time, so there is always one clear next thing. Most steps tick themselves when you do them.',
   },
   {
-    word: 'Steps',
-    text: 'What the goal breaks into. Most tick themselves the moment you actually do the thing — the rest are the handful nothing can honestly observe, so you tick those yourself.',
-  },
-  {
-    word: 'Stage',
-    text: 'How much of the app is on the map right now. It is not something you choose or work on; it opens as you finish goals and gain levels.',
+    word: 'Unlocks',
+    text: 'Finishing a goal or gaining a level opens more of the app. You don’t pick these — they come as you go.',
   },
 ];
 
@@ -132,7 +128,7 @@ export default function CompassScreen() {
     const swapping = activeObjective?.active && activeObjective.objective.id !== objectiveId;
     if (swapping) {
       Alert.alert(
-        'Swap objectives?',
+        'Swap goals?',
         `"${activeObjective.objective.label}" gets set aside at ${activeObjective.done}/${activeObjective.total}. Your ticks are kept if you come back to it.`,
         [
           { text: 'Keep going', style: 'cancel' },
@@ -178,7 +174,7 @@ export default function CompassScreen() {
 
         <View style={s.header}>
           <Text style={s.headerTitle}>Compass</Text>
-          {showSubtext && <Text style={s.headerSub}>One purpose, one objective, and what each one opens.</Text>}
+          {showSubtext && <Text style={s.headerSub}>What you’re here for, the goal you’re on, and what it opens.</Text>}
         </View>
 
         {/* ── What this screen is ──
@@ -211,15 +207,6 @@ export default function CompassScreen() {
                   <Text style={s.termText}>{term.text}</Text>
                 </View>
               ))}
-              <View style={s.explainerNote}>
-                <Ionicons name="git-compare-outline" size={13} color={c.gold} style={{ marginTop: 2 }} />
-                <Text style={s.explainerNoteText}>
-                  <Text style={{ fontWeight: '800', color: c.text2 }}>Stages are not goals.</Text>{' '}
-                  A goal is the thing you are doing. A stage is how much of the app is on the map while you
-                  do it. Finishing a goal — or gaining a level — opens the next stage, so the two move
-                  together, but you never pick a stage and you cannot work on one directly.
-                </Text>
-              </View>
             </View>
           )}
         </View>
@@ -296,7 +283,7 @@ export default function CompassScreen() {
 
         {/* ── 2. The objective ── */}
         <SectionHead
-          title="The objective"
+          title="Your goal"
           action={activeObjective?.active ? 'Set aside' : null}
           onAction={dropObjective}
           c={c} t={t} sp={sp}
@@ -320,7 +307,7 @@ export default function CompassScreen() {
               const isNext = !step.done && activeObjective.nextStep?.id === step.id;
               return (
                 <View key={step.id} style={[s.stepRow, isNext && { backgroundColor: accent + '10', borderColor: accent }]}>
-                  <TouchableOpacity
+                  <TouchableOpacity accessibilityRole="checkbox" accessibilityState={{ checked: !!step.done, disabled: !!step.locked }} accessibilityLabel={step.label}
                     onPress={() => !step.locked && toggleStep(step.id)}
                     disabled={step.locked}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -400,7 +387,7 @@ export default function CompassScreen() {
               gets out of the way until it's done.
             </Text>
             <TouchableOpacity onPress={() => setPickingObjective(true)} activeOpacity={0.7}>
-              <Text style={[s.inlineAction, { color: accent }]}>Pick an objective</Text>
+              <Text style={[s.inlineAction, { color: accent }]}>Pick a goal</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -482,7 +469,7 @@ export default function CompassScreen() {
           <Switch
             value={experimentalOn}
             onValueChange={setExperimental}
-            trackColor={{ false: c.bg3, true: c.purple }}
+            trackColor={{ false: c.borderStrong, true: c.purple }}
             thumbColor="#fff"
           />
         </View>
@@ -574,7 +561,7 @@ function FeatureRow({ entry, onPress, c, t, sp, r, showSubtext }) {
           </Text>
         )}
         {!!hint && !access.available && (
-          <Text style={{ fontSize: 10, color: c.text4, marginTop: 3, fontStyle: 'italic' }} numberOfLines={1}>
+          <Text style={{ fontSize: 11, color: c.text3, marginTop: 3, fontStyle: 'italic' }} numberOfLines={1}>
             {hint}
           </Text>
         )}
@@ -598,29 +585,29 @@ const makeStyles = (c, t, sp, r) => StyleSheet.create({
   explainerBody:  { paddingHorizontal: sp.md, paddingBottom: sp.md, gap: sp.sm },
   explainerLead:  { fontSize: t.xs, color: c.text3, lineHeight: 18 },
   termRow:        { borderLeftWidth: 2, borderLeftColor: c.teal, paddingLeft: sp.sm },
-  termWord:       { fontSize: 10, color: c.teal, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: '800', marginBottom: 2 },
+  termWord:       { fontSize: 11, color: c.teal, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: '800', marginBottom: 2 },
   termText:       { fontSize: t.xs, color: c.text2, lineHeight: 18 },
   explainerNote:  { flexDirection: 'row', gap: 6, backgroundColor: c.gold + '12', borderRadius: r.md, padding: sp.sm, marginTop: 2 },
   explainerNoteText: { flex: 1, fontSize: t.xs, color: c.text3, lineHeight: 18 },
 
   stageCard:   { marginHorizontal: sp.xl, marginBottom: sp.lg, backgroundColor: c.bg1, borderRadius: r.lg, borderWidth: 0.5, borderColor: c.border, padding: sp.md },
-  stageKicker: { fontSize: 10, color: c.teal, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: '800', marginBottom: 4 },
+  stageKicker: { fontSize: 11, color: c.teal, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: '800', marginBottom: 4 },
   stageText:   { fontSize: t.xs, color: c.text2, lineHeight: 18 },
 
   section:      { backgroundColor: c.bg1, marginHorizontal: sp.xl, borderRadius: r.lg, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, padding: sp.lg },
-  sectionKicker:{ fontSize: 10, color: c.text4, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: '800', marginBottom: 6 },
+  sectionKicker:{ fontSize: 11, color: c.text3, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: '800', marginBottom: 6 },
   sectionNote:  { fontSize: t.xs, color: c.text3, paddingHorizontal: sp.xl, marginBottom: sp.sm, lineHeight: 18 },
 
   purposeLabel: { fontSize: t.lg, fontFamily: FONTS.displaySemibold, fontWeight: '800', color: c.text1 },
   purposeBlurb: { fontSize: t.xs, color: c.text3, marginTop: 4, lineHeight: 18 },
   inlineAction: { fontSize: t.xs, fontWeight: '800', marginTop: sp.md },
-  inlineActionMuted: { fontSize: t.xs, color: c.text4, marginTop: sp.md, textAlign: 'center' },
+  inlineActionMuted: { fontSize: t.xs, color: c.text3, marginTop: sp.md, textAlign: 'center' },
 
   purposeGrid:  { flexDirection: 'row', flexWrap: 'wrap', gap: sp.sm, marginTop: sp.md },
   purposeTile:  { width: '31%', backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 1, borderColor: c.border, padding: sp.sm, alignItems: 'center', minHeight: 84, justifyContent: 'center' },
   purposeEmoji: { fontSize: 20, marginBottom: 4 },
-  purposeTileLabel: { fontSize: 10, fontWeight: '700', color: c.text1, textAlign: 'center', lineHeight: 14 },
-  suggestTag:   { fontSize: 8, color: c.teal, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 3 },
+  purposeTileLabel: { fontSize: 11, fontWeight: '700', color: c.text1, textAlign: 'center', lineHeight: 14 },
+  suggestTag:   { fontSize: 11, color: c.teal, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 3 },
 
   objectiveCard:{ backgroundColor: c.bg1, marginHorizontal: sp.xl, borderRadius: r.lg, borderWidth: 0.5, borderColor: c.border, padding: sp.lg },
   objTopRow:    { flexDirection: 'row', alignItems: 'flex-start', gap: sp.md },
@@ -632,11 +619,11 @@ const makeStyles = (c, t, sp, r) => StyleSheet.create({
 
   stepRow:   { flexDirection: 'row', alignItems: 'center', gap: sp.md, paddingVertical: sp.sm, paddingHorizontal: sp.sm, borderRadius: r.sm, borderWidth: 1, borderColor: 'transparent', marginBottom: 4 },
   stepLabel: { fontSize: t.sm, color: c.text1, fontWeight: '600', lineHeight: 19 },
-  stepDone:  { color: c.text4, textDecorationLine: 'line-through' },
+  stepDone:  { color: c.text3, textDecorationLine: 'line-through' },
   stepHint:  { fontSize: t.xs, color: c.text3, marginTop: 2, lineHeight: 17 },
-  autoNote:  { fontSize: 10, color: c.text4, marginTop: 2, fontStyle: 'italic' },
+  autoNote:  { fontSize: 11, color: c.text3, marginTop: 2, fontStyle: 'italic' },
   goBtn:     { borderWidth: 1, borderRadius: r.sm, paddingHorizontal: sp.sm, paddingVertical: 5 },
-  goText:    { fontSize: 10, fontWeight: '800' },
+  goText:    { fontSize: 11, fontWeight: '800' },
 
   unlockNote:    { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: sp.md, paddingTop: sp.md, borderTopWidth: 0.5, borderTopColor: c.border },
   unlockNoteText:{ flex: 1, fontSize: t.xs, color: c.text3, lineHeight: 17 },
@@ -650,7 +637,7 @@ const makeStyles = (c, t, sp, r) => StyleSheet.create({
   pickTopRow:  { flexDirection: 'row', alignItems: 'center', gap: 6 },
   pickLabel:   { fontSize: t.sm, fontWeight: '700', color: c.text1 },
   pickPromise: { fontSize: t.xs, color: c.text3, marginTop: 2, lineHeight: 17 },
-  pickMeta:    { fontSize: 10, color: c.text4, marginTop: 4 },
+  pickMeta:    { fontSize: 11, color: c.text3, marginTop: 4 },
 
   rosterWrap:  { paddingHorizontal: sp.xl },
 

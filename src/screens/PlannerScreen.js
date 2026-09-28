@@ -36,6 +36,7 @@ import FillWithAIButton from '../components/FillWithAIButton';
 import { CLASS_SUBJECTS, CLASS_SCREEN_MAP } from '../data/classCatalog';
 import { getEnabledGames, getGame } from '../services/gameRegistry';
 import { dateStr } from '../logic/dateUtils';
+import { textOn } from '../logic/contrast';
 
 const { width: SW } = Dimensions.get('window');
 const PANEL_W      = Math.min(SW * 0.82, 370);
@@ -82,19 +83,19 @@ function MiniCalendar({ value, onChange, color, c, t, s, r }) {
   return (
     <View style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, borderWidth: 1, borderColor: color + '44' }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: s.sm }}>
-        <TouchableOpacity onPress={() => setViewMonth(new Date(year, month - 1, 1))} style={{ padding: 4 }}>
+        <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => setViewMonth(new Date(year, month - 1, 1))} style={{ padding: 4 }}>
           <Ionicons name="chevron-back" size={16} color={color} />
         </TouchableOpacity>
         <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.text1 }}>
           {viewMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
         </Text>
-        <TouchableOpacity onPress={() => setViewMonth(new Date(year, month + 1, 1))} style={{ padding: 4 }}>
+        <TouchableOpacity accessibilityLabel="Next" accessibilityRole="button" onPress={() => setViewMonth(new Date(year, month + 1, 1))} style={{ padding: 4 }}>
           <Ionicons name="chevron-forward" size={16} color={color} />
         </TouchableOpacity>
       </View>
       <View style={{ flexDirection: 'row', marginBottom: 4 }}>
         {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-          <Text key={i} style={{ flex: 1, textAlign: 'center', fontSize: 10, fontWeight: '700', color: c.text4 }}>{d}</Text>
+          <Text key={i} style={{ flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '700', color: c.text3 }}>{d}</Text>
         ))}
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
@@ -111,7 +112,7 @@ function MiniCalendar({ value, onChange, color, c, t, s, r }) {
                 backgroundColor: isSel ? color : 'transparent',
                 borderWidth: isToday && !isSel ? 1 : 0, borderColor: color,
               }}>
-                <Text style={{ fontSize: 12, fontWeight: isSel ? '800' : '500', color: isSel ? '#fff' : isToday ? color : c.text1 }}>{day}</Text>
+                <Text style={{ fontSize: 12, fontWeight: isSel ? '800' : '500', color: isSel ? textOn(color) : isToday ? color : c.text1 }}>{day}</Text>
               </View>
             </TouchableOpacity>
           );
@@ -374,11 +375,11 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
               {isEdit ? 'Edit Item' : 'Add to Agenda'}
             </Text>
             {isEdit && (
-              <TouchableOpacity onPress={deleteInstance} style={{ padding: s.sm, marginRight: s.sm }}>
+              <TouchableOpacity accessibilityLabel="Delete" accessibilityRole="button" onPress={deleteInstance} style={{ padding: s.sm, marginRight: s.sm }}>
                 <Ionicons name="trash-outline" size={18} color={c.error || '#e05858'} />
               </TouchableOpacity>
             )}
-            <TouchableOpacity onPress={onClose} style={{ padding: s.sm }}>
+            <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={onClose} style={{ padding: s.sm }}>
               <Ionicons name="close" size={20} color={c.text3} />
             </TouchableOpacity>
           </View>
@@ -399,7 +400,7 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
                 src/data/plannerSuggestions.js. */}
             {suggestions.length > 0 && !title.trim() && (
               <View>
-                <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>
+                <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>
                   {AREAS[area]?.label || 'Life area'} ideas
                 </Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm }}>
@@ -413,7 +414,7 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
                     >
                       <Ionicons name={sg.forGoal ? 'flag' : 'add'} size={12} color={areaColor} />
                       <Text style={{ fontSize: t.xs, color: c.text2, fontWeight: sg.forGoal ? t.bold : undefined }}>{sg.title}</Text>
-                      <Text style={{ fontSize: 10, color: areaColor, fontWeight: t.bold }}>{sg.cadence}</Text>
+                      <Text style={{ fontSize: 11, color: areaColor, fontWeight: t.bold }}>{sg.cadence}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -422,7 +423,7 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
 
             {/* Date */}
             <View>
-              <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Date</Text>
+              <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Date</Text>
               <TouchableOpacity onPress={() => setShowCal(v => !v)}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, borderWidth: 1, borderColor: c.border, borderRadius: r.md, padding: s.md, backgroundColor: c.bg0 }}>
                 <Ionicons name="calendar-outline" size={16} color={areaColor} />
@@ -441,7 +442,7 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
 
             {/* Area picker */}
             <View>
-              <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Life Area</Text>
+              <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Life Area</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={{ flexDirection: 'row', gap: s.sm }}>
                   {Object.entries(AREAS).map(([key, ar]) => (
@@ -457,7 +458,7 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
 
             {/* Cadence */}
             <View>
-              <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Repeats</Text>
+              <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Repeats</Text>
               <View style={{ flexDirection: 'row', gap: s.sm }}>
                 {['once','daily','weekly','monthly'].map(cad => (
                   <TouchableOpacity key={cad} onPress={() => setCadence(cad)}
@@ -470,7 +471,7 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
 
             {/* Link to Class / Project / Game */}
             <View>
-              <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Link to (optional)</Text>
+              <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Link to (optional)</Text>
               <View style={{ flexDirection: 'row', gap: s.sm, marginBottom: s.sm }}>
                 {[
                   { key: null,      label: 'None',    icon: 'close-outline' },
@@ -490,7 +491,7 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: areaColor + '15', borderRadius: r.md, padding: s.sm }}>
                   <Ionicons name="link-outline" size={13} color={areaColor} />
                   <Text style={{ flex: 1, fontSize: t.xs, color: areaColor, fontWeight: t.semibold }} numberOfLines={1}>{linkLabel}</Text>
-                  <TouchableOpacity onPress={clearLink}>
+                  <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={clearLink}>
                     <Ionicons name="close-circle" size={15} color={areaColor} />
                   </TouchableOpacity>
                 </View>
@@ -525,7 +526,7 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
               {linkType === 'project' && !linkLabel && (
                 loadingProjects ? <ActivityIndicator color={areaColor} style={{ marginTop: s.sm }} /> :
                 !projects || projects.length === 0 ? (
-                  <Text style={{ fontSize: t.xs, color: c.text4, marginTop: s.sm }}>No open projects in the Workshop yet.</Text>
+                  <Text style={{ fontSize: t.xs, color: c.text3, marginTop: s.sm }}>No open projects in the Workshop yet.</Text>
                 ) : (
                   <View style={{ gap: 6, marginTop: s.sm }}>
                     {projects.map(p => (
@@ -545,7 +546,7 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
                     <TouchableOpacity key={g.id} onPress={() => pickGame(g)}
                       style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 14, borderWidth: 1, borderColor: c.border, backgroundColor: c.bg0 }}>
                       <Text style={{ fontSize: 11 }}>{g.icon}</Text>
-                      <Text style={{ fontSize: 10, color: c.text3, fontWeight: '600' }}>{g.name}</Text>
+                      <Text style={{ fontSize: 11, color: c.text3, fontWeight: '600' }}>{g.name}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -555,11 +556,11 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
             {/* Time + duration */}
             <View style={{ flexDirection: 'row', gap: s.sm }}>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Time</Text>
+                <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Time</Text>
                 <TimePickerField value={timeVal} onChange={setTimeVal} placeholder="Any time" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Duration (min)</Text>
+                <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Duration (min)</Text>
                 <TextInput
                   style={{ borderWidth: 1, borderColor: c.border, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, backgroundColor: c.bg0 }}
                   value={duration} onChangeText={setDuration}
@@ -572,10 +573,10 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
             {/* Reminder */}
             <View>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: reminder ? s.sm : 0 }}>
-                <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1 }}>{showEmojis ? '🔔 ' : ''}Reminder</Text>
+                <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1 }}>{showEmojis ? '🔔 ' : ''}Reminder</Text>
                 <Switch value={reminder} onValueChange={setReminder}
-                  trackColor={{ false: c.bg2, true: areaColor + '88' }}
-                  thumbColor={reminder ? areaColor : c.text4} />
+                  trackColor={{ false: c.borderStrong, true: areaColor + '88' }}
+                  thumbColor={reminder ? areaColor : c.text3} />
               </View>
               {reminder && (
                 <View style={{ flexDirection: 'row', gap: s.sm }}>
@@ -591,7 +592,7 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
 
             {/* Notes */}
             <View>
-              <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Notes</Text>
+              <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Notes</Text>
               <TextInput
                 style={{ borderWidth: 1, borderColor: c.border, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, backgroundColor: c.bg0, minHeight: 60, textAlignVertical: 'top' }}
                 value={notes} onChangeText={setNotes}
@@ -695,12 +696,12 @@ function AgendaRow({ instance, onUpdate, onEdit, navigation, c, t, s, r }) {
 
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <Text style={{ fontSize: t.sm, fontWeight: t.medium, color: done ? c.text4 : c.text1, textDecorationLine: done ? 'line-through' : 'none', flex: 1 }} numberOfLines={expanded ? 0 : 1}>
+            <Text style={{ fontSize: t.sm, fontWeight: t.medium, color: done ? c.text3 : c.text1, textDecorationLine: done ? 'line-through' : 'none', flex: 1 }} numberOfLines={expanded ? 0 : 1}>
               {instance.title}
             </Text>
             {overdue && !done && (
               <View style={{ backgroundColor: '#e0585822', borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1 }}>
-                <Text style={{ fontSize: 9, color: '#e05858', fontWeight: t.bold }}>MISSED</Text>
+                <Text style={{ fontSize: 11, color: '#e05858', fontWeight: t.bold }}>MISSED</Text>
               </View>
             )}
             {/* Only shown when the item belongs to a profile other than the
@@ -709,20 +710,20 @@ function AgendaRow({ instance, onUpdate, onEdit, navigation, c, t, s, r }) {
             {rowProfile && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1, backgroundColor: rowProfile.color + '22', borderWidth: 0.5, borderColor: rowProfile.color + '88' }}>
                 <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: rowProfile.color }} />
-                <Text style={{ fontSize: 9, color: rowProfile.color, fontWeight: t.bold }} numberOfLines={1}>{rowProfile.name}</Text>
+                <Text style={{ fontSize: 11, color: rowProfile.color, fontWeight: t.bold }} numberOfLines={1}>{rowProfile.name}</Text>
               </View>
             )}
           </View>
           <View style={{ flexDirection: 'row', gap: s.sm, marginTop: 2, alignItems: 'center' }}>
-            <Text style={{ fontSize: 10 }}>{area.emoji}</Text>
+            <Text style={{ fontSize: 11 }}>{area.emoji}</Text>
             {instance.start_time && (
               <Text style={{ fontSize: t.xs, color: area.color, fontWeight: t.semibold }}>{fmt12(instance.start_time)}</Text>
             )}
             {instance.duration_minutes && (
-              <Text style={{ fontSize: t.xs, color: c.text4 }}>· {instance.duration_minutes}m</Text>
+              <Text style={{ fontSize: t.xs, color: c.text3 }}>· {instance.duration_minutes}m</Text>
             )}
             {instance.cadence && instance.cadence !== 'once' && (
-              <Text style={{ fontSize: t.xs, color: c.text4 }}>· {instance.cadence}</Text>
+              <Text style={{ fontSize: t.xs, color: c.text3 }}>· {instance.cadence}</Text>
             )}
           </View>
         </View>
@@ -795,7 +796,7 @@ function TimeView({ instances, onUpdate, onEdit, navigation, c, t, s, r }) {
       {/* Untimed items at top */}
       {untimed.length > 0 && (
         <View style={{ padding: s.lg, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
-          <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>No time set</Text>
+          <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>No time set</Text>
           {untimed.map(inst => (
             <AgendaRow key={inst.id} instance={inst} onUpdate={onUpdate} onEdit={onEdit} navigation={navigation} c={c} t={t} s={s} r={r} />
           ))}
@@ -806,7 +807,7 @@ function TimeView({ instances, onUpdate, onEdit, navigation, c, t, s, r }) {
       <View style={{ position: 'relative', paddingLeft: 56 }}>
         {hours.map(h => (
           <View key={h} style={{ height: HOUR_H, borderTopWidth: 0.5, borderTopColor: c.border }}>
-            <Text style={{ position: 'absolute', left: -48, top: -8, fontSize: 10, color: c.text4, width: 44, textAlign: 'right' }}>
+            <Text style={{ position: 'absolute', left: -48, top: -8, fontSize: 11, color: c.text3, width: 44, textAlign: 'right' }}>
               {h % 12 || 12}{h < 12 ? 'am' : 'pm'}
             </Text>
           </View>
@@ -826,7 +827,7 @@ function TimeView({ instances, onUpdate, onEdit, navigation, c, t, s, r }) {
                 {inst.title}
               </Text>
               {inst.duration_minutes && (
-                <Text style={{ fontSize: 9, color: area.color, opacity: 0.8 }}>
+                <Text style={{ fontSize: 11, color: area.color, opacity: 0.8 }}>
                   {fmt12(inst.start_time)} · {inst.duration_minutes}m
                 </Text>
               )}
@@ -863,7 +864,7 @@ function ListView({ instances, onUpdate, onEdit, navigation, c, t, s, r }) {
 
   const Section = ({ label, items, color }) => items.length === 0 ? null : (
     <View style={{ marginBottom: s.lg }}>
-      <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: color || c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>
+      <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: color || c.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>
         {label} · {items.filter(i => i.completed).length}/{items.length}
       </Text>
       {items.map(inst => (
@@ -984,13 +985,13 @@ function WeeklyView({ userId, anchor, activeAreas, onDayPress, refreshKey, showi
             style={{ backgroundColor: c.bg1, borderRadius: 12, marginBottom: s.sm, borderWidth: isToday ? 1.5 : 0.5, borderColor: isToday ? c.teal : missed > 0 ? '#e05858' : c.border, overflow: 'hidden' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', padding: s.md, gap: s.sm }}>
               <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: isToday ? c.teal : c.bg2, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 13, fontWeight: '800', color: isToday ? '#fff' : c.text1 }}>{day.getDate()}</Text>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: isToday ? c.onFill : c.text1 }}>{day.getDate()}</Text>
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: isToday ? c.teal : c.text1 }}>
                   {day.toLocaleDateString('en-US', { weekday: 'long' })}
                 </Text>
-                <Text style={{ fontSize: t.xs, color: c.text4, marginTop: 1 }}>
+                <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 1 }}>
                   {items.length} items · {done} done{missed > 0 ? ` · ${missed} missed` : ''}
                 </Text>
               </View>
@@ -999,12 +1000,12 @@ function WeeklyView({ userId, anchor, activeAreas, onDayPress, refreshKey, showi
             {items.slice(0, 3).map((inst, j) => (
               <View key={j} style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, paddingHorizontal: s.md, paddingVertical: 4, borderTopWidth: 0.5, borderTopColor: c.border }}>
                 <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: AREAS[inst.area]?.color || c.teal }} />
-                <Text style={{ flex: 1, fontSize: t.xs, color: inst.completed ? c.text4 : c.text1, textDecorationLine: inst.completed ? 'line-through' : 'none' }} numberOfLines={1}>{inst.title}</Text>
-                {inst.start_time && <Text style={{ fontSize: 9, color: c.text4 }}>{fmt12(inst.start_time)}</Text>}
+                <Text style={{ flex: 1, fontSize: t.xs, color: inst.completed ? c.text3 : c.text1, textDecorationLine: inst.completed ? 'line-through' : 'none' }} numberOfLines={1}>{inst.title}</Text>
+                {inst.start_time && <Text style={{ fontSize: 11, color: c.text3 }}>{fmt12(inst.start_time)}</Text>}
               </View>
             ))}
             {items.length > 3 && (
-              <Text style={{ fontSize: t.xs, color: c.text4, padding: s.sm, paddingLeft: s.md }}>+{items.length - 3} more</Text>
+              <Text style={{ fontSize: t.xs, color: c.text3, padding: s.sm, paddingLeft: s.md }}>+{items.length - 3} more</Text>
             )}
           </TouchableOpacity>
         );
@@ -1049,7 +1050,7 @@ function MonthlyView({ userId, anchor, activeAreas, onDayPress, refreshKey, show
     <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 80 }}>
       <View style={{ flexDirection: 'row', marginBottom: s.sm }}>
         {['S','M','T','W','T','F','S'].map((d, i) => (
-          <Text key={i} style={{ flex: 1, textAlign: 'center', fontSize: 10, fontWeight: '700', color: c.text4 }}>{d}</Text>
+          <Text key={i} style={{ flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '700', color: c.text3 }}>{d}</Text>
         ))}
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
@@ -1064,7 +1065,7 @@ function MonthlyView({ userId, anchor, activeAreas, onDayPress, refreshKey, show
             <TouchableOpacity key={day} onPress={() => onDayPress(new Date(year, month, day))}
               style={{ width: '14.28%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center', padding: 2 }}>
               <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: isToday ? c.teal : 'transparent', borderWidth: count > 0 && !isToday ? 1 : 0, borderColor: allDone ? c.teal : c.border, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 13, fontWeight: isToday ? '800' : '500', color: isToday ? '#fff' : allDone ? c.teal : c.text1 }}>{day}</Text>
+                <Text style={{ fontSize: 13, fontWeight: isToday ? '800' : '500', color: isToday ? c.onFill : allDone ? c.teal : c.text1 }}>{day}</Text>
               </View>
               {count > 0 && !allDone && (
                 <View style={{ position: 'absolute', bottom: 3, width: 4, height: 4, borderRadius: 2, backgroundColor: c.gold }} />
@@ -1137,7 +1138,7 @@ function SidePanel({ visible, onClose, userId, onAdded, c, t, s, r }) {
       <Animated.View style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: PANEL_W, backgroundColor: c.bg0, transform: [{ translateX: slideX }], shadowColor: '#000', shadowOffset: { width: -4, height: 0 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 20 }}>
         {/* Header */}
         <View style={{ backgroundColor: c.headerBg, padding: s.lg, borderBottomWidth: 0.5, borderBottomColor: c.border, flexDirection: 'row', alignItems: 'center', gap: s.md }}>
-          <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
+          <TouchableOpacity accessibilityLabel="Next" accessibilityRole="button" onPress={onClose} style={{ padding: 4 }}>
             <Ionicons name="chevron-forward" size={22} color={c.text3} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
@@ -1192,7 +1193,7 @@ function SidePanel({ visible, onClose, userId, onAdded, c, t, s, r }) {
                     if (!items.length) return null;
                     return (
                       <View key={cad} style={{ marginBottom: s.lg }}>
-                        <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>{cad}</Text>
+                        <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>{cad}</Text>
                         {items.map(comp => {
                           const done = scheduled.has(comp.id);
                           const isBusy = busy[comp.id];
@@ -1205,9 +1206,9 @@ function SidePanel({ visible, onClose, userId, onAdded, c, t, s, r }) {
                               }
                               <View style={{ flex: 1 }}>
                                 <Text style={{ fontSize: t.xs, fontWeight: t.medium, color: done ? c.text3 : c.text1, textDecorationLine: done ? 'line-through' : 'none' }}>{comp.title}</Text>
-                                {comp.duration_minutes && <Text style={{ fontSize: 10, color: areaColor, marginTop: 2 }}>⏱ {comp.duration_minutes}m</Text>}
+                                {comp.duration_minutes && <Text style={{ fontSize: 11, color: areaColor, marginTop: 2 }}>⏱ {comp.duration_minutes}m</Text>}
                               </View>
-                              {done && <Text style={{ fontSize: 10, color: areaColor, fontWeight: t.bold }}>Added</Text>}
+                              {done && <Text style={{ fontSize: 11, color: areaColor, fontWeight: t.bold }}>Added</Text>}
                             </TouchableOpacity>
                           );
                         })}
@@ -1322,27 +1323,27 @@ export default function PlannerScreen() {
           <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1, flex: 1 }}>{showEmojis ? '📓 ' : ''}Planner</Text>
           <View style={{ flexDirection: 'row', gap: s.sm }}>
             <FillWithAIButton target="planner" />
-            <TouchableOpacity
+            <TouchableOpacity accessibilityLabel="Stats" accessibilityRole="button"
               onPress={() => navigation.navigate('WeeklyReviewScreen')}
               style={{ padding: 6, borderRadius: r.md, backgroundColor: c.bg2, borderWidth: 0.5, borderColor: c.border }}>
               <Ionicons name="stats-chart-outline" size={18} color={c.text3} />
             </TouchableOpacity>
             {view === 'Daily' && (
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel={timeMode ? 'List view' : 'Time view'}
                 onPress={() => setTimeMode(m => !m)}
                 style={{ padding: 6, borderRadius: r.md, backgroundColor: timeMode ? c.teal : c.bg2, borderWidth: 0.5, borderColor: timeMode ? c.teal : c.border }}>
-                <Ionicons name={timeMode ? 'list' : 'time-outline'} size={18} color={timeMode ? '#fff' : c.text3} />
+                <Ionicons name={timeMode ? 'list' : 'time-outline'} size={18} color={timeMode ? c.onFill : c.text3} />
               </TouchableOpacity>
             )}
             <TourSpot id="planner-add">
             <TouchableOpacity
               onPress={openAdd}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.teal, borderRadius: r.lg, paddingHorizontal: s.md, paddingVertical: 6 }}>
-              <Ionicons name="add" size={16} color="#fff" />
-              <Text style={{ fontSize: t.xs, color: '#fff', fontWeight: t.bold }}>Add</Text>
+              <Ionicons name="add" size={16} color={c.onFill} />
+              <Text style={{ fontSize: t.xs, color: c.onFill, fontWeight: t.bold }}>Add</Text>
             </TouchableOpacity>
             </TourSpot>
-            <TouchableOpacity onPress={() => setPanel(true)}
+            <TouchableOpacity accessibilityLabel="Layout" accessibilityRole="button" onPress={() => setPanel(true)}
               style={{ padding: 6, borderRadius: r.md, backgroundColor: c.bg2, borderWidth: 0.5, borderColor: c.border }}>
               <Ionicons name="grid-outline" size={18} color={c.text3} />
             </TouchableOpacity>
@@ -1355,7 +1356,7 @@ export default function PlannerScreen() {
           {VIEWS.map(v => (
             <TouchableOpacity key={v} onPress={() => setView(v)}
               style={{ paddingHorizontal: s.md, paddingVertical: 5, borderRadius: 20, backgroundColor: view === v ? c.teal : 'transparent', borderWidth: 1, borderColor: view === v ? c.teal : c.border }}>
-              <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: view === v ? '#fff' : c.text3 }}>{v}</Text>
+              <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: view === v ? c.onFill : c.text3 }}>{v}</Text>
             </TouchableOpacity>
           ))}
 
@@ -1382,14 +1383,14 @@ export default function PlannerScreen() {
 
         {/* Period nav */}
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: s.lg, paddingBottom: s.sm }}>
-          <TouchableOpacity onPress={prevPeriod} style={{ padding: 6 }}>
+          <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={prevPeriod} style={{ padding: 6 }}>
             <Ionicons name="chevron-back" size={18} color={c.text3} />
           </TouchableOpacity>
           <TouchableOpacity style={{ flex: 1, alignItems: 'center' }} onPress={() => setAnchor(new Date())}>
             <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: isToday ? c.teal : c.text1 }}>{periodLabel()}</Text>
-            {!isToday && view === 'Daily' && <Text style={{ fontSize: 10, color: c.text4 }}>tap to return to today</Text>}
+            {!isToday && view === 'Daily' && <Text style={{ fontSize: 11, color: c.text3 }}>tap to return to today</Text>}
           </TouchableOpacity>
-          <TouchableOpacity onPress={nextPeriod} style={{ padding: 6 }}>
+          <TouchableOpacity accessibilityLabel="Next" accessibilityRole="button" onPress={nextPeriod} style={{ padding: 6 }}>
             <Ionicons name="chevron-forward" size={18} color={c.text3} />
           </TouchableOpacity>
         </View>

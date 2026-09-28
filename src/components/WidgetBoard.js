@@ -124,7 +124,7 @@ function DraggableWidget({ widgetKey, index, y, editing, offsetsRef, onSwap, onL
         {children}
         {editing && (
           <>
-            <TouchableOpacity onPress={onHide} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            <TouchableOpacity accessibilityLabel="Remove" accessibilityRole="button" onPress={onHide} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               style={{ position: 'absolute', top: -6, left: s.lg - 6, width: 22, height: 22, borderRadius: 11, backgroundColor: c.error, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: c.bg0, zIndex: 5 }}>
               <Ionicons name="remove" size={14} color="#ffffff" /> {/* style-ok: white on the red remove badge */}
             </TouchableOpacity>

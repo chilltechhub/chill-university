@@ -78,7 +78,7 @@ export default function AllProfilesScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.teal} />}
     >
       <View style={st.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginBottom: 10 }}>
+        <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => navigation.goBack()} style={{ marginBottom: 10 }}>
           <Ionicons name="chevron-back" size={22} color={c.teal} />
         </TouchableOpacity>
         <Text style={st.headerTitle}>{showEmojis ? '🗂️ ' : ''}All profiles</Text>
@@ -221,13 +221,13 @@ const makeStyles = (c, t, s, r, sh) => StyleSheet.create({
     borderRadius: r.lg, backgroundColor: c.bg1, borderWidth: 1, borderColor: c.border,
   },
   sharedLabel: {
-    fontSize: 10, color: c.text4, fontFamily: FONTS.mono,
+    fontSize: 11, color: c.text3, fontFamily: FONTS.mono,
     textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8,
   },
   sharedRow: { flexDirection: 'row', justifyContent: 'space-between' },
   sharedStat: { alignItems: 'center', flex: 1 },
   sharedNum: { fontSize: 17, fontWeight: '800', color: c.gold, fontFamily: FONTS.mono },
-  sharedCap: { fontSize: 9, color: c.text4, textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 2 },
+  sharedCap: { fontSize: 11, color: c.text3, textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 2 },
 
   notice: {
     flexDirection: 'row', gap: 8, alignItems: 'flex-start',
@@ -236,7 +236,7 @@ const makeStyles = (c, t, s, r, sh) => StyleSheet.create({
   },
   noticeText: { flex: 1, fontSize: 12, color: c.text3, lineHeight: 17 },
 
-  empty: { textAlign: 'center', color: c.text4, fontSize: 13, marginTop: 30 },
+  empty: { textAlign: 'center', color: c.text3, fontSize: 13, marginTop: 30 },
 
   card: {
     marginHorizontal: s.lg, marginBottom: s.sm, padding: s.md,
@@ -250,14 +250,14 @@ const makeStyles = (c, t, s, r, sh) => StyleSheet.create({
   cardType: { fontSize: 11, fontWeight: '600', marginTop: 1 },
 
   tag: { borderWidth: 1, borderRadius: 4, paddingHorizontal: 4, paddingVertical: 1 },
-  tagText: { fontSize: 8, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 0.5 },
+  tagText: { fontSize: 11, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 0.5 },
 
   baselineRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
   baselineChip: {
     flexDirection: 'row', gap: 5, alignItems: 'center',
     backgroundColor: c.bg0, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4,
   },
-  baselineKey: { fontSize: 9, color: c.text4, textTransform: 'uppercase', letterSpacing: 0.5 },
+  baselineKey: { fontSize: 11, color: c.text3, textTransform: 'uppercase', letterSpacing: 0.5 },
   baselineVal: { fontSize: 11, color: c.text2, fontWeight: '600', maxWidth: 120 },
 
   countRow: { flexDirection: 'row', gap: 6, marginTop: 10 },
@@ -273,5 +273,5 @@ const makeStyles = (c, t, s, r, sh) => StyleSheet.create({
   barBg: { height: 5, backgroundColor: c.bg2, borderRadius: 3, overflow: 'hidden' },
   barFill: { height: 5, borderRadius: 3 },
 
-  lastSeen: { fontSize: 10, color: c.text4, marginTop: 7 },
+  lastSeen: { fontSize: 11, color: c.text3, marginTop: 7 },
 });

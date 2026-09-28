@@ -38,6 +38,7 @@ import { shareMyDataExport } from '../api/dataExport';
 import { isMinorRequiringConsent } from '../logic/ageOfConsent';
 import { dobFromParts } from '../logic/dateUtils';
 import { confirmAsync } from '../logic/confirm';
+import { signOutAndClear, clearLocalUserData } from '../logic/localUserData';
 import TwoFactorSheet from '../components/TwoFactorSheet';
 
 // `alwaysShowSubtitle` is for the Show Emojis / Show Subtitles rows
@@ -74,7 +75,7 @@ function UnlockSummary({ accessFor, c, t, s, r, onPress }) {
           <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>
             {open === gated.length
               ? 'Everything is open.'
-              : 'The Compass lists what each one needs: an objective, a check, or a switch.'}
+              : 'The Compass lists what each one needs: a goal, a quick check, or a switch.'}
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={16} color={c.text4} />
@@ -130,7 +131,7 @@ function AppearancePicker({ c, t, s }) {
               style={{ flex: 1, borderRadius: st.cardRadius, borderWidth: on ? 2 : 1, borderColor: on ? accent.primary : c.border, backgroundColor: c.bg0, padding: s.md }}
             >
               {/* A tiny sample of the style itself: its label and a card. */}
-              <Text style={{ fontSize: 10, color: c.text3, ...st.sectionLabel }}>{st.name === 'plain' ? 'Today' : 'TODAY'}</Text>
+              <Text style={{ fontSize: 11, color: c.text3, ...st.sectionLabel }}>{st.name === 'plain' ? 'Today' : 'TODAY'}</Text>
               <View style={{ marginTop: 6, height: 22, borderRadius: st.cardRadius / 2, backgroundColor: c.bg1, borderWidth: st.borderWidth, borderColor: c.border, justifyContent: 'center', paddingHorizontal: 8 }}>
                 <View style={{ width: '60%', height: 5, borderRadius: 3, backgroundColor: c.text4 }} />
               </View>
@@ -274,7 +275,7 @@ function LibrarySectionsPicker({ hidden, onToggle, c, t, s, r }) {
               style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: isHidden ? c.border : c.gold, backgroundColor: isHidden ? c.bg0 : c.gold + '18', opacity: isHidden ? 0.5 : 1 }}
             >
               <Ionicons name={item.icon} size={13} color={isHidden ? c.text4 : c.gold} />
-              <Text style={{ fontSize: 12, color: isHidden ? c.text4 : c.gold, fontWeight: isHidden ? '400' : '700' }}>{item.label}</Text>
+              <Text style={{ fontSize: 12, color: isHidden ? c.text3 : c.gold, fontWeight: isHidden ? '400' : '700' }}>{item.label}</Text>
             </TouchableOpacity>
           );
         })}
@@ -301,7 +302,7 @@ function CrestModal({ visible, crestColor, roleBadge, onClose, onSave, c, t, s, 
           <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: s.lg }}>
             <Text style={{ fontSize: t.lg, fontWeight: '800', color: c.text1 }}>Crest</Text>
-            <TouchableOpacity onPress={onClose}><Ionicons name="close" size={22} color={c.text3} /></TouchableOpacity>
+            <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={onClose}><Ionicons name="close" size={22} color={c.text3} /></TouchableOpacity>
           </View>
 
           <Eyebrow style={{ marginBottom: s.sm }}>Crest color</Eyebrow>
@@ -310,7 +311,7 @@ function CrestModal({ visible, crestColor, roleBadge, onClose, onSave, c, t, s, 
               {CREST_COLORS.map(cc => (
                 <TouchableOpacity key={cc.key} onPress={() => setColor(cc.key)} style={{ alignItems: 'center', gap: 5 }}>
                   <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: cc.color, borderWidth: 3, borderColor: color === cc.key ? c.text1 : 'transparent' }} />
-                  <Text style={{ fontSize: 9, color: color === cc.key ? c.text1 : c.text4 }}>{cc.label}</Text>
+                  <Text style={{ fontSize: 11, color: color === cc.key ? c.text1 : c.text3 }}>{cc.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -375,7 +376,7 @@ function DeleteAccountModal({ visible, onClose, onConfirm, deleting, c, t, s, r 
             <>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: s.md }}>
                 <Text style={{ fontSize: t.lg, fontWeight: '800', color: c.text1 }}>We're sad to see you go 😢</Text>
-                <TouchableOpacity onPress={onClose}><Ionicons name="close" size={22} color={c.text3} /></TouchableOpacity>
+                <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={onClose}><Ionicons name="close" size={22} color={c.text3} /></TouchableOpacity>
               </View>
               <Text style={{ fontSize: t.sm, color: c.text3, lineHeight: 20, marginBottom: s.lg }}>
                 Mind telling us why? Totally optional — it just helps us improve.
@@ -425,7 +426,7 @@ function DeleteAccountModal({ visible, onClose, onConfirm, deleting, c, t, s, r 
                   <Ionicons name="chevron-back" size={18} color={c.text3} />
                   <Text style={{ fontSize: t.sm, color: c.text3 }}>Back</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={onClose} disabled={deleting}><Ionicons name="close" size={22} color={c.text3} /></TouchableOpacity>
+                <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={onClose} disabled={deleting}><Ionicons name="close" size={22} color={c.text3} /></TouchableOpacity>
               </View>
               <Text style={{ fontSize: t.lg, fontWeight: '800', color: c.error, marginBottom: s.md }}>Delete Account</Text>
               <Text style={{ fontSize: t.sm, color: c.text2, lineHeight: 20, marginBottom: s.lg }}>
@@ -482,7 +483,7 @@ function BirthDateModal({ visible, onClose, onSave, saving, c, t, s, r }) {
           <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: s.sm }}>
             <Text style={{ fontSize: t.lg, fontWeight: '800', color: c.text1 }}>Your birth date</Text>
-            <TouchableOpacity onPress={onClose}><Ionicons name="close" size={22} color={c.text3} /></TouchableOpacity>
+            <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={onClose}><Ionicons name="close" size={22} color={c.text3} /></TouchableOpacity>
           </View>
           <Text style={{ fontSize: t.sm, color: c.text3, lineHeight: 20, marginBottom: s.lg }}>
             It decides which parts of the app fit your age. You can add it once; after that it can't be changed here.
@@ -684,7 +685,8 @@ export default function SettingsScreen() {
   const signOut = async () => {
     if (!(await confirmAsync('Sign out?', 'You can sign back in any time. Nothing is deleted.', 'Sign out'))) return;
     setSigningOut(true);
-    await supabase.auth.signOut();
+    // Leaves nothing of this person on the device (cache, queue, drafts, key).
+    await signOutAndClear();
     // reset(), not replace() — replace() only swaps the current
     // (Settings) entry; MainTabs is still sitting underneath it in
     // history, so swiping back after signing out would land right back
@@ -714,14 +716,19 @@ export default function SettingsScreen() {
     try {
       // Needs parental consent: send them back through onboarding's age gate,
       // the one place that handles it, rather than a second copy of that flow.
-      const { error } = await supabase.from('profiles')
+      // is_minor is derived server-side from the birth date (20260927120000);
+      // route on the saved value rather than the local guess.
+      const { data: saved, error } = await supabase.from('profiles')
         .update({ date_of_birth: dateOfBirth, is_minor: isMinor, ...(isMinor && { onboarding_completed: false }) })
         .eq('id', userId)
-        .is('date_of_birth', null);
+        .is('date_of_birth', null)
+        .select('is_minor')
+        .maybeSingle();
       if (error) throw error;
       setShowDobModal(false);
       await refreshProfile?.();
-      if (isMinor) navigation.reset({ index: 0, routes: [{ name: 'MultiStepOnboarding' }] });
+      const minor = typeof saved?.is_minor === 'boolean' ? saved.is_minor : isMinor;
+      if (minor) navigation.reset({ index: 0, routes: [{ name: 'MultiStepOnboarding' }] });
     } catch (e) {
       Alert.alert('Save error', e.message || 'Could not save your birth date.');
     } finally {
@@ -768,6 +775,7 @@ export default function SettingsScreen() {
         return;
       }
       await cancelAllReminders();
+      await clearLocalUserData(userId);
       await supabase.auth.signOut();
       setShowDeleteModal(false);
       navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
@@ -788,7 +796,7 @@ export default function SettingsScreen() {
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg0 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {/* Header */}
       <View style={{ backgroundColor: c.bg1, padding: s.lg, paddingTop: s.xxl, borderBottomWidth: 0.5, borderBottomColor: c.border, flexDirection: 'row', alignItems: 'center', gap: s.md }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4 }}>
+        <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => navigation.goBack()} style={{ padding: 4 }}>
           <Ionicons name="chevron-back" size={22} color={c.teal} />
         </TouchableOpacity>
         <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>{showEmojis ? '⚙️ ' : ''}Settings</Text>
@@ -824,7 +832,7 @@ export default function SettingsScreen() {
                 ].map(st => (
                   <View key={st.label} style={{ alignItems: 'center' }}>
                     <Readout size={t.lg} color={st.color}>{st.val}</Readout>
-                    <Text style={{ fontSize: t.xs, fontFamily: ui.numberFont, color: c.text4 }}>{st.label}</Text>
+                    <Text style={{ fontSize: t.xs, fontFamily: ui.numberFont, color: c.text3 }}>{st.label}</Text>
                   </View>
                 ))}
               </View>
@@ -847,8 +855,8 @@ export default function SettingsScreen() {
             <Switch
               value={homeBgMode === 'player'}
               onValueChange={(v) => setHomeBgMode(v ? 'player' : 'plain')}
-              trackColor={{ false: c.bg2, true: c.teal + '88' }}
-              thumbColor={homeBgMode === 'player' ? c.teal : c.text4}
+              trackColor={{ false: c.borderStrong, true: c.teal + '88' }}
+              thumbColor={homeBgMode === 'player' ? c.teal : c.text3}
             />
           }
           c={c} t={t} s={s} r={r}
@@ -862,8 +870,8 @@ export default function SettingsScreen() {
             <Switch
               value={libraryBgMode === 'player'}
               onValueChange={(v) => setLibraryBgMode(v ? 'player' : 'plain')}
-              trackColor={{ false: c.bg2, true: c.gold + '88' }}
-              thumbColor={libraryBgMode === 'player' ? c.gold : c.text4}
+              trackColor={{ false: c.borderStrong, true: c.gold + '88' }}
+              thumbColor={libraryBgMode === 'player' ? c.gold : c.text3}
             />
           }
           c={c} t={t} s={s} r={r}
@@ -879,8 +887,8 @@ export default function SettingsScreen() {
             <Switch
               value={showEmojis}
               onValueChange={setShowEmojis}
-              trackColor={{ false: c.bg2, true: c.gold + '88' }}
-              thumbColor={showEmojis ? c.gold : c.text4}
+              trackColor={{ false: c.borderStrong, true: c.gold + '88' }}
+              thumbColor={showEmojis ? c.gold : c.text3}
             />
           }
           c={c} t={t} s={s} r={r}
@@ -895,8 +903,8 @@ export default function SettingsScreen() {
             <Switch
               value={showSubtext}
               onValueChange={setShowSubtext}
-              trackColor={{ false: c.bg2, true: c.teal + '88' }}
-              thumbColor={showSubtext ? c.teal : c.text4}
+              trackColor={{ false: c.borderStrong, true: c.teal + '88' }}
+              thumbColor={showSubtext ? c.teal : c.text3}
             />
           }
           c={c} t={t} s={s} r={r}
@@ -929,8 +937,8 @@ export default function SettingsScreen() {
             <Switch
               value={experienceMode === 'full'}
               onValueChange={(on) => setExperienceMode(on ? 'full' : 'auto')}
-              trackColor={{ false: c.bg2, true: c.teal + '88' }}
-              thumbColor={experienceMode === 'full' ? c.teal : c.text4}
+              trackColor={{ false: c.borderStrong, true: c.teal + '88' }}
+              thumbColor={experienceMode === 'full' ? c.teal : c.text3}
             />
           }
           c={c} t={t} s={s} r={r}
@@ -946,7 +954,7 @@ export default function SettingsScreen() {
           label={purpose ? purpose.label : 'Set your purpose'}
           subtitle={activeObjective?.active
             ? `On "${activeObjective.objective.label}" — ${activeObjective.done} of ${activeObjective.total} steps done`
-            : 'One purpose, one objective at a time. Finishing one opens more of the app.'}
+            : 'One goal at a time. Finishing one opens more of the app.'}
           alwaysShowSubtitle
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
           onPress={() => navigation.navigate('Compass')}
@@ -966,8 +974,8 @@ export default function SettingsScreen() {
             <Switch
               value={experimentalOn}
               onValueChange={setExperimental}
-              trackColor={{ false: c.bg2, true: c.purple + '88' }}
-              thumbColor={experimentalOn ? c.purple : c.text4}
+              trackColor={{ false: c.borderStrong, true: c.purple + '88' }}
+              thumbColor={experimentalOn ? c.purple : c.text3}
             />
           }
           c={c} t={t} s={s} r={r}
@@ -977,8 +985,8 @@ export default function SettingsScreen() {
           iconColor={c.gold}
           label={isPlus ? 'Plus' : 'Free plan'}
           subtitle={isPlus
-            ? 'Business courses, Deep Insights, AI Import, custom objectives and Organizations are included. Manage your plan here.'
-            : 'Get Plus for the business courses, Deep Insights, AI Import, custom objectives and Organizations. Everything else works the same on the free plan.'}
+            ? 'Business courses, Deep Insights, AI Import, custom goals and Organizations are included. Manage your plan here.'
+            : 'Get Plus for the business courses, Deep Insights, AI Import, custom goals and Organizations. Everything else works the same on the free plan.'}
           alwaysShowSubtitle
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
           onPress={() => navigation.navigate('Plus')}
@@ -1001,8 +1009,8 @@ export default function SettingsScreen() {
             <Switch
               value={educatorMode === true}
               onValueChange={setEducatorMode}
-              trackColor={{ false: c.bg2, true: c.purple + '88' }}
-              thumbColor={educatorMode === true ? c.purple : c.text4}
+              trackColor={{ false: c.borderStrong, true: c.purple + '88' }}
+              thumbColor={educatorMode === true ? c.purple : c.text3}
             />
           }
           c={c} t={t} s={s} r={r}
@@ -1025,8 +1033,8 @@ export default function SettingsScreen() {
             <Switch
               value={heroTapEnabled}
               onValueChange={setHeroTapEnabled}
-              trackColor={{ false: c.bg2, true: c.teal + '88' }}
-              thumbColor={heroTapEnabled ? c.teal : c.text4}
+              trackColor={{ false: c.borderStrong, true: c.teal + '88' }}
+              thumbColor={heroTapEnabled ? c.teal : c.text3}
             />
           }
           c={c} t={t} s={s} r={r} />
@@ -1061,8 +1069,8 @@ export default function SettingsScreen() {
             <Switch
               value={remindersEnabled}
               onValueChange={toggleReminders}
-              trackColor={{ false: c.bg2, true: c.teal + '88' }}
-              thumbColor={remindersEnabled ? c.teal : c.text4}
+              trackColor={{ false: c.borderStrong, true: c.teal + '88' }}
+              thumbColor={remindersEnabled ? c.teal : c.text3}
             />
           }
           c={c} t={t} s={s} r={r} />
@@ -1114,8 +1122,8 @@ export default function SettingsScreen() {
             <Switch
               value={screenTutorials !== false}
               onValueChange={setScreenTutorials}
-              trackColor={{ false: c.bg2, true: c.teal + '88' }}
-              thumbColor={screenTutorials !== false ? c.teal : c.text4}
+              trackColor={{ false: c.borderStrong, true: c.teal + '88' }}
+              thumbColor={screenTutorials !== false ? c.teal : c.text3}
             />
           }
           c={c} t={t} s={s} r={r} />
@@ -1143,7 +1151,7 @@ export default function SettingsScreen() {
           onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Deskartes support')}`)}
           c={c} t={t} s={s} r={r} />
         <SettingRow icon="information-circle-outline" iconColor={c.teal} label="App Version" subtitle="Deskartes · ChillTech Hub LLC"
-          right={<Text style={{ fontSize: t.xs, color: c.text4 }}>v1.0.0</Text>}
+          right={<Text style={{ fontSize: t.xs, color: c.text3 }}>v1.0.0</Text>}
           c={c} t={t} s={s} r={r} />
         <SettingRow icon="globe-outline" iconColor={c.math} label="Privacy Policy"
           right={<Ionicons name="open-outline" size={16} color={c.text4} />}

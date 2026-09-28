@@ -20,7 +20,7 @@ const TABS = [
 const EMPTY = {
   daily:    { emoji: '⚔️', title: 'No drills yet today', sub: "Today's three appear the next time the app loads. They reset at midnight." },
   weekly:   { emoji: '📅', title: 'No weekly challenges',  sub: 'New ones start each week.' },
-  longterm: { emoji: '🏆', title: 'No achievements yet',   sub: 'Complete objectives to earn achievement badges.' },
+  longterm: { emoji: '🏆', title: 'No achievements yet',   sub: 'Complete challenges to earn badges.' },
 };
 
 // Active missions closest to completion float to the top (most motivating);
@@ -114,7 +114,7 @@ export default function MissionsScreen({ onClose, initialTab = 'daily', onPlay }
       {loading ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color={c.teal} />
-          <Text style={styles.loadingText}>Loading objectives...</Text>
+          <Text style={styles.loadingText}>Loading challenges...</Text>
         </View>
       ) : (
         <ScrollView

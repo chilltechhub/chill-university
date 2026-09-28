@@ -47,7 +47,7 @@ function Stepper({ step, color, c, t }) {
       {STEPS.map((label, i) => (
         <View key={label} style={{ flex: 1, alignItems: 'center' }}>
           <View style={{ height: 3, width: '100%', borderRadius: 2, backgroundColor: i <= step ? color : c.border, marginBottom: 4 }} />
-          <Text style={{ fontSize: 8.5, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 0.5, color: i <= step ? color : c.text4 }}>
+          <Text style={{ fontSize: 11.5, fontFamily: FONTS.mono, fontWeight: '800', letterSpacing: 0.5, color: i <= step ? color : c.text3 }}>
             {label.toUpperCase()}
           </Text>
         </View>
@@ -60,7 +60,7 @@ function StatCard({ value, label, color, c, t }) {
   return (
     <View style={{ flex: 1, backgroundColor: c.bg1, borderRadius: 12, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: c.border, borderTopWidth: 3, borderTopColor: color }}>
       <Text style={{ fontSize: 24, fontFamily: FONTS.mono, fontWeight: '800', color }}>{value}</Text>
-      <Text style={{ fontSize: 9.5, color: c.text4, textAlign: 'center', marginTop: 4, lineHeight: 13 }}>{label}</Text>
+      <Text style={{ fontSize: 11.5, color: c.text3, textAlign: 'center', marginTop: 4, lineHeight: 13 }}>{label}</Text>
     </View>
   );
 }
@@ -204,7 +204,7 @@ export default function WeeklyReviewScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg0 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={{ flexDirection: 'row', alignItems: 'center', height: 52, paddingHorizontal: 14, gap: 10 }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4 }}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={step === 0 ? 'Back' : 'Close'} onPress={() => navigation.goBack()} style={{ padding: 4 }}>
           <Ionicons name={step === 0 ? 'arrow-back' : 'close'} size={22} color={c.text2} />
         </TouchableOpacity>
         <Text style={{ fontSize: t.sm, fontWeight: '800', color: c.text3, letterSpacing: 1 }}>WEEKLY REVIEW</Text>
@@ -227,7 +227,7 @@ export default function WeeklyReviewScreen() {
               </View>
               <View style={{ flexDirection: 'row', gap: s.sm, marginBottom: s.sm }}>
                 <StatCard value={`${captureStats.processed}/${captureStats.added}`} label="CAPTURES PROCESSED" color="#8b4fc4" c={c} t={t} />
-                <StatCard value={`${projectStats.withNextAction}/${projectStats.active}`} label="BUILDS WITH A NEXT STEP" color="#c9a84c" c={c} t={t} />
+                <StatCard value={`${projectStats.withNextAction}/${projectStats.active}`} label="PROJECTS WITH A NEXT STEP" color="#c9a84c" c={c} t={t} />
               </View>
 
               {/* Stale inbox items — the "this week" stat above can't see
@@ -247,12 +247,12 @@ export default function WeeklyReviewScreen() {
                       <View key={item.id} style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, paddingVertical: 5 }}>
                         <Ionicons name={meta.icon} size={15} color={meta.color} />
                         <Text style={{ flex: 1, fontSize: t.xs, color: c.text2 }} numberOfLines={1}>{item.title || 'Untitled'}</Text>
-                        <Text style={{ fontSize: t.xs, color: c.text4 }}>{daysAgo(item.created_at)}d</Text>
+                        <Text style={{ fontSize: t.xs, color: c.text3 }}>{daysAgo(item.created_at)}d</Text>
                       </View>
                     );
                   })}
                   {staleCaptures.length > 5 && (
-                    <Text style={{ fontSize: t.xs, color: c.text4, marginTop: 2 }}>+{staleCaptures.length - 5} more</Text>
+                    <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>+{staleCaptures.length - 5} more</Text>
                   )}
                   <TouchableOpacity onPress={() => navigation.navigate('CaptureInbox')} style={{ marginTop: s.sm, alignSelf: 'flex-start' }}>
                     <Text style={{ fontSize: t.xs, color: c.teal, fontWeight: t.bold }}>Review Inbox →</Text>
@@ -260,7 +260,7 @@ export default function WeeklyReviewScreen() {
                 </View>
               ) : (
                 <View style={{ marginBottom: s.xl }}>
-                  <Text style={{ fontSize: t.xs, color: c.text4 }}>
+                  <Text style={{ fontSize: t.xs, color: c.text3 }}>
                     {showEmojis ? '✅ ' : ''}Inbox is current — nothing's been sitting more than {STALE_DAYS} days.
                   </Text>
                 </View>
@@ -281,7 +281,7 @@ export default function WeeklyReviewScreen() {
               </Text>
 
               {winCandidates.length === 0 ? (
-                <Text style={{ fontSize: t.sm, color: c.text4, marginBottom: s.md }}>Nothing completed this week yet — add your own win below.</Text>
+                <Text style={{ fontSize: t.sm, color: c.text3, marginBottom: s.md }}>Nothing completed this week yet — add your own win below.</Text>
               ) : (
                 <View style={{ marginBottom: s.md }}>
                   {winCandidates.map(item => {
@@ -292,7 +292,7 @@ export default function WeeklyReviewScreen() {
                         <Ionicons name={picked ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={picked ? color : c.text4} />
                         <View style={{ flex: 1 }}>
                           <Text style={{ fontSize: t.sm, fontWeight: t.medium, color: c.text1 }} numberOfLines={1}>{item.title}</Text>
-                          <Text style={{ fontSize: t.xs, color: c.text4 }}>{item.source}</Text>
+                          <Text style={{ fontSize: t.xs, color: c.text3 }}>{item.source}</Text>
                         </View>
                       </TouchableOpacity>
                     );
@@ -307,13 +307,13 @@ export default function WeeklyReviewScreen() {
                   placeholder="Add your own win..." placeholderTextColor={c.text4}
                   editable={selectedWins.length < 3} onSubmitEditing={addCustomWin}
                 />
-                <TouchableOpacity onPress={addCustomWin} disabled={!customWin.trim() || selectedWins.length >= 3}
+                <TouchableOpacity accessibilityLabel="Add" accessibilityRole="button" onPress={addCustomWin} disabled={!customWin.trim() || selectedWins.length >= 3}
                   style={{ backgroundColor: color, borderRadius: r.md, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', opacity: (!customWin.trim() || selectedWins.length >= 3) ? 0.5 : 1 }}>
                   <Ionicons name="add" size={18} color="#fff" />
                 </TouchableOpacity>
               </View>
 
-              <Text style={{ fontSize: t.xs, color: c.text4, textAlign: 'center', marginBottom: s.md }}>{selectedWins.length}/3 selected</Text>
+              <Text style={{ fontSize: t.xs, color: c.text3, textAlign: 'center', marginBottom: s.md }}>{selectedWins.length}/3 selected</Text>
               <TouchableOpacity onPress={() => setStep(2)}
                 style={{ backgroundColor: color, borderRadius: r.md, paddingVertical: 16, alignItems: 'center' }}>
                 <Text style={{ color: '#fff', fontWeight: t.bold, fontSize: t.md }}>Continue</Text>

@@ -54,6 +54,7 @@ import {
 } from '../api/onboardingService';
 import { LIFE_AREAS } from './library/LifeAreaScreen';
 import { isMinorRequiringConsent } from '../logic/ageOfConsent';
+import { clearLocalUserData } from '../logic/localUserData';
 import { dobFromParts } from '../logic/dateUtils';
 import { startParentVerification, getVerificationStatus } from '../api/kwsVerification';
 import { DEFAULT_PERSONA, personasFor, defaultPersonaFor, getPersona } from '../data/personas';
@@ -321,11 +322,19 @@ export default function MultiStepOnboarding() {
 
     setGateBusy(true);
     try {
-      const { error } = await supabase.from('profiles').upsert({
+      // Birth date and country are set-once and is_minor is derived on the
+      // server (20260927120000), so route on what was actually saved: going
+      // Back and typing an older year no longer changes anything.
+      const { data: saved, error } = await supabase.from('profiles').upsert({
         id: userId, date_of_birth: dateOfBirth, country_code: countryCode, is_minor: isMinor,
-      });
+      }).select('date_of_birth, is_minor').maybeSingle();
       if (error) throw error;
-      setPhase(isMinor ? (kidsClosed ? 'kids_closed' : 'parent_email') : 'main');
+      const minor = typeof saved?.is_minor === 'boolean' ? saved.is_minor : isMinor;
+      if (saved?.date_of_birth) {
+        dobRef.current = saved.date_of_birth;
+        setAgeBand(ageCategoryFromDob(saved.date_of_birth));
+      }
+      setPhase(minor ? (kidsClosed ? 'kids_closed' : 'parent_email') : 'main');
     } catch (e) {
       Alert.alert('Save error', e.message || 'Could not save your birth date.');
     } finally {
@@ -354,6 +363,9 @@ export default function MultiStepOnboarding() {
       if (error) console.warn('close under-age account', error);
     } catch (e) { console.warn('close under-age account', e); }
     clearOnboardingDraft();
+    // "Closing it deletes everything, including your email and birthday" —
+    // including the copies cached on this device.
+    await clearLocalUserData(userId);
     await supabase.auth.signOut();
     setGateBusy(false);
     if (!deleted) {
@@ -404,10 +416,19 @@ export default function MultiStepOnboarding() {
     }
     setGateBusy(true);
     try {
-      const { error } = await supabase.from('profiles').upsert({
-        id: userId, parent_consent_given: true, parent_consent_at: new Date().toISOString(),
-      });
-      if (error) throw error;
+      // Server-side now: record_parent_consent() only accepts it once KWS has
+      // verified the parent. The columns are no longer client-writable
+      // (20260927120000); the direct write is the fallback for a database
+      // that hasn't been migrated yet.
+      const { error: rpcError } = await supabase.rpc('record_parent_consent');
+      if (rpcError?.code === 'PGRST202') {
+        const { error } = await supabase.from('profiles').upsert({
+          id: userId, parent_consent_given: true, parent_consent_at: new Date().toISOString(),
+        });
+        if (error) throw error;
+      } else if (rpcError) {
+        throw rpcError;
+      }
       setPhase('main');
     } catch (e) {
       Alert.alert('Save error', e.message || 'Could not save consent.');
@@ -799,7 +820,7 @@ export default function MultiStepOnboarding() {
         {/* Top nav */}
         <View style={cs.topNav}>
           {step > 0 ? (
-            <TouchableOpacity onPress={goBack} style={cs.navBtn}>
+            <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={goBack} style={cs.navBtn}>
               <Ionicons name="chevron-back" size={20} color={c.text3} />
             </TouchableOpacity>
           ) : <View style={{ width: 36 }} />}
@@ -858,9 +879,9 @@ const chromeStyles = ({ c, r }) => StyleSheet.create({
   navBtn:       { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   // Wider than navBtn: at 36px "Skip for now" wrapped onto three lines.
   skipBtn:      { minWidth: 36, height: 36, alignItems: 'flex-end', justifyContent: 'center' },
-  stepNum:      { fontSize: 11, color: c.text4, fontFamily: FONTS.mono, textTransform: 'uppercase', letterSpacing: 1 },
+  stepNum:      { fontSize: 11, color: c.text3, fontFamily: FONTS.mono, textTransform: 'uppercase', letterSpacing: 1 },
   stepName:     { fontSize: 14, color: c.text1, fontFamily: FONTS.displaySemibold, fontWeight: '600', marginTop: 2 },
-  skipText:     { fontSize: 13, color: c.text4 },
+  skipText:     { fontSize: 13, color: c.text3 },
   progressBar:  { height: 2, backgroundColor: c.bg2, marginHorizontal: 20, borderRadius: 1, overflow: 'hidden', marginBottom: 16 },
   progressFill: { height: 2, backgroundColor: c.teal, borderRadius: 1 },
   dots:         { flexDirection: 'row', justifyContent: 'center', gap: 6, marginBottom: 20 },
@@ -872,7 +893,7 @@ const chromeStyles = ({ c, r }) => StyleSheet.create({
   card:         { flex: 1, minHeight: 0, marginHorizontal: 16, backgroundColor: c.bg1, borderRadius: r.xxl, borderWidth: 0.5, borderColor: c.border, overflow: 'hidden' },
   bottomBar:    { padding: 20, paddingBottom: 40 },
   nextBtn:      { backgroundColor: c.teal, borderRadius: r.xl, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  nextBtnText:  { color: '#fff', fontWeight: '700', fontSize: 16 },
+  nextBtnText:  { color: c.onFill, fontWeight: '700', fontSize: 16 },
 });
 
 // ─── Age gate / parent verification / consent styles ───────────────────────
@@ -899,7 +920,7 @@ const gateStyles = ({ c, r }) => StyleSheet.create({
   },
   choiceSelected: { backgroundColor: c.teal, borderColor: c.teal },
   choiceText: { fontSize: 14, color: c.text1, fontWeight: '600' },
-  choiceTextSelected: { color: '#fff' },
+  choiceTextSelected: { color: c.onFill },
 
   consentBody: { fontSize: 13, color: c.text3, lineHeight: 19, marginBottom: 14 },
   linkText: { fontSize: 13, color: c.teal, fontWeight: '600' },

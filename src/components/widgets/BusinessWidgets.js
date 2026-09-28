@@ -108,7 +108,7 @@ export function SystemsCheckWidget({ areas, onOpenLibrary }) {
             <Text style={{ fontSize: t.sm, color: area.color, fontWeight: t.bold }}>{rating}%</Text>
           </View>
           <Bar pct={rating} color={area.color} />
-          <Text style={{ fontSize: 10, color: c.text4, marginTop: 2 }}>
+          <Text style={{ fontSize: 11, color: c.text3, marginTop: 2 }}>
             {days === null ? 'never checked' : days === 0 ? 'checked today' : `checked ${days}d ago`}
           </Text>
         </View>
@@ -157,12 +157,12 @@ export function RecurringOpsWidget({ userId, onOpenPlanner }) {
           <View key={op.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 }}>
             <Ionicons name="ellipse" size={7} color={def.color} />
             <Text style={{ fontSize: t.sm, color: c.text2, flex: 1 }} numberOfLines={1}>{op.title}</Text>
-            <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'capitalize' }}>{op.cadence}</Text>
+            <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'capitalize' }}>{op.cadence}</Text>
           </View>
         );
       })}
       {(ops || []).length > 5 && (
-        <Text style={{ fontSize: t.xs, color: c.text4, marginTop: s.sm }}>+{ops.length - 5} more</Text>
+        <Text style={{ fontSize: t.xs, color: c.text3, marginTop: s.sm }}>+{ops.length - 5} more</Text>
       )}
     </WidgetCard>
   );

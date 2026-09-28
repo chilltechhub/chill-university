@@ -170,7 +170,7 @@ export default function GameShell({
     <SafeAreaView style={s.safe}>
       {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity style={s.quitBtn} onPress={handleQuit}>
+        <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" style={s.quitBtn} onPress={handleQuit}>
           <Ionicons name="close" size={20} color={G.muted} />
         </TouchableOpacity>
 
@@ -258,19 +258,19 @@ const makeStyles = (G) => StyleSheet.create({
   titleArea:  { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
   emoji:      { fontSize: 22 },
   title:      { fontSize: 15, fontWeight: '700', color: G.cream },
-  subject:    { fontSize: 10, color: G.muted, marginTop: 1, textTransform: 'uppercase', letterSpacing: 0.8 },
+  subject:    { fontSize: 11, color: G.muted, marginTop: 1, textTransform: 'uppercase', letterSpacing: 0.8 },
   timePill:   { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: G.border, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4 },
   timePillUrgent: { backgroundColor: '#3a0808' },
   timeText:   { fontSize: 12, color: G.muted, fontVariant: ['tabular-nums'] },
   statsBar:   { flexDirection: 'row', backgroundColor: G.card, paddingVertical: 10, paddingHorizontal: 20, borderBottomWidth: 0.5, borderBottomColor: G.border, justifyContent: 'space-between' },
   statItem:   { alignItems: 'center', gap: 3 },
-  statLabel:  { fontSize: 9, color: G.faint, textTransform: 'uppercase', letterSpacing: 1 },
+  statLabel:  { fontSize: 11, color: G.faint, textTransform: 'uppercase', letterSpacing: 1 },
   statValue:  { fontSize: 16, fontWeight: '700', color: G.gold },
   streakRow:  { flexDirection: 'row', alignItems: 'center' },
   progressBg: { height: 3, backgroundColor: G.border },
   progressFill:{ height: 3, backgroundColor: G.teal },
   content:    { flex: 1 },
   factToast:  { position: 'absolute', top: 10, left: 12, right: 12, backgroundColor: G.card, borderWidth: 1, borderColor: G.gold, borderRadius: 12, padding: 12, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 6 },
-  factToastLabel: { fontSize: 10, color: G.gold, fontWeight: '700', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 },
+  factToastLabel: { fontSize: 11, color: G.gold, fontWeight: '700', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 },
   factToastText:  { fontSize: 12, color: G.cream, lineHeight: 16 },
 });

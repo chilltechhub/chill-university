@@ -59,7 +59,7 @@ const GUIDE_SIZE = 92;
 const BUBBLE_MIN = 132;      // smallest the bubble is allowed to get
 const TAIL_W = 18;
 const TAIL_H = 12;
-const TAB_BAR_H = Platform.OS === 'ios' ? 66 : 52;
+const TAB_BAR_H = Platform.OS === 'ios' ? 66 : 60; // keep in step with App.js tabBarStyle.height
 
 export default function TourOverlay() {
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
@@ -274,7 +274,7 @@ export default function TourOverlay() {
                             style={{ marginTop: 1 }}
                           />
                         )}
-                        <Text style={{ flex: 1, fontSize: t.sm, color: answered && !isRight && !isPicked ? c.text4 : c.text2, lineHeight: 19 }}>
+                        <Text style={{ flex: 1, fontSize: t.sm, color: answered && !isRight && !isPicked ? c.text3 : c.text2, lineHeight: 19 }}>
                           {opt}
                         </Text>
                       </TouchableOpacity>
@@ -298,7 +298,7 @@ export default function TourOverlay() {
               {/* `hideSkip`: a one-bubble note whose Done already says it all. */}
               {currentStep.hideSkip ? <View /> : (
                 <TouchableOpacity onPress={skipTour} accessibilityRole="button" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                  <Text style={{ fontSize: 12, color: c.text4, fontWeight: t.bold }}>{currentStep.skipLabel || 'Skip'}</Text>
+                  <Text style={{ fontSize: 12, color: c.text3, fontWeight: t.bold }}>{currentStep.skipLabel || 'Skip'}</Text>
                 </TouchableOpacity>
               )}
 
@@ -315,7 +315,7 @@ export default function TourOverlay() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md }}>
                 {stepIndex > 0 && (
                   <TouchableOpacity onPress={backStep} accessibilityRole="button" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                    <Text style={{ fontSize: 12, color: c.text4, fontWeight: t.bold }}>Back</Text>
+                    <Text style={{ fontSize: 12, color: c.text3, fontWeight: t.bold }}>Back</Text>
                   </TouchableOpacity>
                 )}
                 {/* A passthrough step is completed by doing the thing, not by

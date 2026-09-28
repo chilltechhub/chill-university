@@ -216,7 +216,7 @@ export default function WordTypeGame({ onGameEnd }) {
           </Text>
         </View>
 
-        <RushTimerBar active={pace === 'rush' && !feedback} durationMs={3000} resetKey={q} onExpire={() => handleAnswer('__TIMEOUT__')} />
+        <RushTimerBar active={pace === 'rush' && !feedback} level={level} durationMs={3000} resetKey={q} onExpire={() => handleAnswer('__TIMEOUT__')} />
         <View style={s.options}>
           {q.options.map(opt => {
             let bg = G.card;

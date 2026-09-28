@@ -104,14 +104,14 @@ function ItemCard({ item, accent, onDelete, th }) {
         </View>
         {item.source && (
           <View style={[ic.tag, { backgroundColor: th.bg2, borderColor: th.border }]}>
-            <Text style={[ic.tagText, { color: th.text4 }]}>{item.source}</Text>
+            <Text style={[ic.tagText, { color: th.text3 }]}>{item.source}</Text>
           </View>
         )}
         {item.status && (
           <Text style={[ic.status, { color: accent }]}>{item.status}</Text>
         )}
         {!item.source && (
-          <TouchableOpacity onPress={onDelete} style={{ marginLeft: 'auto', padding: 2 }}>
+          <TouchableOpacity accessibilityLabel="Delete" accessibilityRole="button" onPress={onDelete} style={{ marginLeft: 'auto', padding: 2 }}>
             <Ionicons name="trash-outline" size={15} color={th.text4} />
           </TouchableOpacity>
         )}
@@ -131,8 +131,8 @@ const ic = StyleSheet.create({
   card:     { borderRadius: 12, padding: 14, borderWidth: 1, borderLeftWidth: 4, marginBottom: 12 },
   row:      { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 8, flexWrap: 'wrap' },
   tag:      { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1 },
-  tagText:  { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.3 },
-  status:   { fontSize: 10, fontWeight: '800', marginLeft: 2 },
+  tagText:  { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.3 },
+  status:   { fontSize: 11, fontWeight: '800', marginLeft: 2 },
   title:    { fontSize: 15, fontWeight: 'bold', marginBottom: 4 },
   desc:     { fontSize: 13, lineHeight: 18, marginBottom: 8 },
   linkRow:  { flexDirection: 'row', alignItems: 'center', gap: 5 },
@@ -383,7 +383,7 @@ export default function PortfolioScreen() {
             {/* ── Header bar ── */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, marginBottom: 14 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <TouchableOpacity
+                <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button"
                   onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('LibraryScreen'))}
                   style={{ padding: 2 }}
                 >
@@ -416,7 +416,7 @@ export default function PortfolioScreen() {
                   {primaryGoal ? <Text style={[ph.goal, { color: th.cyan }]}>{showEmojis ? '🎯 ' : ''}{primaryGoal}</Text> : null}
                 </View>
 
-                <TouchableOpacity onPress={sharePortfolio} style={[ph.shareBtn, { backgroundColor: th.gold + '18', borderColor: th.gold + '55' }]}>
+                <TouchableOpacity accessibilityLabel="Share" accessibilityRole="button" onPress={sharePortfolio} style={[ph.shareBtn, { backgroundColor: th.gold + '18', borderColor: th.gold + '55' }]}>
                   <Ionicons name="share-social-outline" size={18} color={th.gold} />
                 </TouchableOpacity>
               </View>
@@ -432,7 +432,7 @@ export default function PortfolioScreen() {
                 ].map(st => (
                   <View key={st.label} style={ph.stat}>
                     <Text style={[ph.statVal, { color: st.color }]}>{st.val}</Text>
-                    <Text style={[ph.statLabel, { color: th.text4 }]}>{st.label}</Text>
+                    <Text style={[ph.statLabel, { color: th.text3 }]}>{st.label}</Text>
                   </View>
                 ))}
               </View>
@@ -451,7 +451,7 @@ export default function PortfolioScreen() {
                     return (
                       <View key={i} style={{ alignItems: 'center', backgroundColor: col + '18', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: col + '44' }}>
                         {showEmojis ? <Text style={{ fontSize: 16 }}>{areaEmojis[area] || '⭐'}</Text> : <Ionicons name={`${areaIcons[area] || 'star'}-outline`} size={15} color={col} />}
-                        <Text style={{ fontSize: 10, color: col, fontWeight: '700', marginTop: 2, textTransform: 'capitalize' }}>{area}</Text>
+                        <Text style={{ fontSize: 11, color: col, fontWeight: '700', marginTop: 2, textTransform: 'capitalize' }}>{area}</Text>
                       </View>
                     );
                   })}
@@ -470,9 +470,9 @@ export default function PortfolioScreen() {
                     <TouchableOpacity key={sec.key} onPress={() => setActiveSection(sec.key)}
                       style={[ch.chip, { backgroundColor: th.bg1, borderColor: isAct ? secAccent : th.border }]}>
                       <Ionicons name={sec.icon} size={15} color={isAct ? secAccent : th.text4} />
-                      <Text style={[ch.label, { color: isAct ? th.text1 : th.text4, fontWeight: isAct ? '700' : '400' }]}>{sec.label}</Text>
+                      <Text style={[ch.label, { color: isAct ? th.text1 : th.text3, fontWeight: isAct ? '700' : '400' }]}>{sec.label}</Text>
                       <View style={[ch.count, { backgroundColor: isAct ? secAccent + '22' : th.bg2 }]}>
-                        <Text style={[ch.countText, { color: isAct ? secAccent : th.text4 }]}>{(data[sec.key] || []).length}</Text>
+                        <Text style={[ch.countText, { color: isAct ? secAccent : th.text3 }]}>{(data[sec.key] || []).length}</Text>
                       </View>
                     </TouchableOpacity>
                   );
@@ -488,7 +488,7 @@ export default function PortfolioScreen() {
                 <Text style={{ color: accent, fontSize: 12, fontWeight: '800', letterSpacing: 1.5 }}>
                   {currentSection?.label.toUpperCase()}
                 </Text>
-                <Text style={{ color: th.text4, fontSize: 12 }}>({currentItems.length})</Text>
+                <Text style={{ color: th.text3, fontSize: 12 }}>({currentItems.length})</Text>
               </View>
               <TourSpot id="portfolio-add">
               <TouchableOpacity onPress={() => setShowAdd(true)}
@@ -502,7 +502,7 @@ export default function PortfolioScreen() {
             {/* Auto-populate notice for experience */}
             {activeSection === 'experience' && currentItems.length === 0 && (
               <View style={[{ backgroundColor: th.bg1, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: th.border, marginBottom: 12 }]}>
-                <Text style={{ color: th.text4, fontSize: 12, lineHeight: 18 }}>
+                <Text style={{ color: th.text3, fontSize: 12, lineHeight: 18 }}>
                   {showEmojis ? '💼 ' : ''}Add your work history, roles, internships, and other experience here. Tap "Add Entry" to get started.
                 </Text>
               </View>
@@ -521,7 +521,7 @@ export default function PortfolioScreen() {
             <Text style={{ color: th.text1, fontSize: 16, fontWeight: 'bold', marginBottom: 6 }}>
               No {currentSection?.label} yet
             </Text>
-            <Text style={{ color: th.text4, fontSize: 13, textAlign: 'center' }}>
+            <Text style={{ color: th.text3, fontSize: 13, textAlign: 'center' }}>
               {activeSection === 'projects'
                 ? 'Your projects will auto-appear here as you add them in Mission Control.'
                 : activeSection === 'skills'
@@ -558,7 +558,7 @@ const ph = StyleSheet.create({
   avatarCircle:{ width: 64, height: 64, borderRadius: 32, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   suitBody:    { width: 32, height: 20, borderRadius: 6, alignItems: 'center', justifyContent: 'center', marginTop: -4 },
   levelBadge:  { position: 'absolute', bottom: -4, right: -4, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
-  levelText:   { fontSize: 9, fontWeight: '800' },
+  levelText:   { fontSize: 11, fontWeight: '800' },
   name:        { fontSize: 18, fontWeight: 'bold', marginBottom: 2 },
   sub:         { fontSize: 12, marginBottom: 4 },
   goal:        { fontSize: 12, fontWeight: '600' },
@@ -566,12 +566,12 @@ const ph = StyleSheet.create({
   statsRow:    { flexDirection: 'row', borderTopWidth: 1, paddingTop: 12, marginTop: 4 },
   stat:        { flex: 1, alignItems: 'center' },
   statVal:     { fontSize: 18, fontWeight: '800', marginBottom: 2 },
-  statLabel:   { fontSize: 9, fontWeight: '700', letterSpacing: 0.8 },
+  statLabel:   { fontSize: 11, fontWeight: '700', letterSpacing: 0.8 },
 });
 
 const ch = StyleSheet.create({
   chip:      { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8 },
   label:     { fontSize: 12 },
   count:     { borderRadius: 10, paddingHorizontal: 6, paddingVertical: 1 },
-  countText: { fontSize: 10, fontWeight: '700' },
+  countText: { fontSize: 11, fontWeight: '700' },
 });

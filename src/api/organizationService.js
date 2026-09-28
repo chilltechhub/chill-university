@@ -147,3 +147,16 @@ export async function removeCohortMember(cohortId, userId) {
   const { error } = await supabase.rpc('remove_cohort_member', { p_cohort_id: cohortId, p_user_id: userId });
   if (error) unwrap(error);
 }
+
+// Owner/admin — removes someone from the whole organization and every cohort
+// in it (20260927120000_lock_down_profile_fields.sql).
+export async function removeOrgMember(organizationId, userId) {
+  const { error } = await supabase.rpc('remove_org_member', { p_organization_id: organizationId, p_user_id: userId });
+  if (error) unwrap(error);
+}
+
+// Owner-only — deletes the organization, its cohorts, codes and memberships.
+export async function deleteOrganization(organizationId) {
+  const { error } = await supabase.rpc('delete_organization', { p_organization_id: organizationId });
+  if (error) unwrap(error);
+}

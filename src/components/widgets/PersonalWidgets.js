@@ -113,8 +113,8 @@ export function LifeAreasWidget({ areas, onOpenArea, onOpenLibrary }) {
           style={{ marginBottom: s.sm }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text style={{ fontSize: t.sm, color: c.text2 }}>{area.emoji} {area.label}</Text>
-            <Text style={{ fontSize: t.xs, color: days === null ? c.text4 : days > 7 ? c.error : c.text4 }}>
-              {days === null ? 'never' : days === 0 ? 'today' : `${days}d ago`}
+            <Text style={{ fontSize: t.xs, color: days === null ? c.text3 : days > 7 ? c.error : c.text3 }}>
+              {days === null ? 'not rated yet' : days === 0 ? 'today' : `${days}d ago`}
             </Text>
           </View>
           <Bar pct={rating} color={area.color} />
@@ -151,7 +151,7 @@ export function DailyDrillsWidget({ onOpenTraining, onOpenDrills, onPlay }) {
 
       {next ? (
         <View style={{ marginTop: s.md, padding: s.md, borderRadius: 10, borderWidth: 1, borderColor: c.gold + '66', backgroundColor: c.gold + '12' }}>
-          <Text style={{ fontSize: 9, fontWeight: '800', color: c.gold, letterSpacing: 1 }}>UP NEXT · {next.progress} / {next.target}</Text>
+          <Text style={{ fontSize: 11, fontWeight: '800', color: c.gold, letterSpacing: 1 }}>UP NEXT · {next.progress} / {next.target}</Text>
           <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.text1, marginTop: 2 }}>{next.title}</Text>
           <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2, lineHeight: 16 }}>{next.how}</Text>
           {!!next.playGameId && (
@@ -177,11 +177,11 @@ export function DailyDrillsWidget({ onOpenTraining, onOpenDrills, onPlay }) {
           <View key={m.id || i} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 3 }}>
             <Ionicons name={m.done ? 'checkmark-circle' : 'ellipse-outline'} size={15} color={m.done ? c.success : c.text4} />
             <Text
-              style={{ fontSize: t.sm, color: m.done ? c.text4 : c.text2, flex: 1, textDecorationLine: m.done ? 'line-through' : 'none' }}
+              style={{ fontSize: t.sm, color: m.done ? c.text3 : c.text2, flex: 1, textDecorationLine: m.done ? 'line-through' : 'none' }}
               numberOfLines={1}>
               {m.title || 'Drill'}
             </Text>
-            {!m.done && <Text style={{ fontSize: t.xs, color: c.text4 }}>{m.progress}/{m.target}</Text>}
+            {!m.done && <Text style={{ fontSize: t.xs, color: c.text3 }}>{m.progress}/{m.target}</Text>}
           </View>
         ))}
       </View>

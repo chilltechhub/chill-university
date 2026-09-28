@@ -91,7 +91,7 @@ export const FEATURES = [
     gate: 'open',
     depth: 'core',
     purposes: ['build', 'career'],
-    blurb: 'Every project you are building, from blueprint to shipped.',
+    blurb: 'Every project, from idea to done.',
   },
   {
     id: 'idea-garden',
@@ -141,7 +141,7 @@ export const FEATURES = [
     gate: 'open',
     depth: 'first-step',
     purposes: ['habits', 'build', 'learn', 'wellbeing', 'money', 'career'],
-    blurb: 'Your purpose, the one objective you are on, and what it opens.',
+    blurb: 'What you are here for, the goal you are on, and what it opens.',
   },
 
   /* ── Locked — earned by finishing an objective, or tested out of ──────── */
@@ -347,15 +347,15 @@ export const FEATURES = [
   },
   {
     id: 'custom-paths',
-    label: 'Custom Objectives',
+    label: 'Custom Goals',
     screen: null,
     parent: 'compass',
     icon: 'git-branch-outline',
     gate: 'paid',
     depth: 'deep',
     purposes: ['habits', 'build', 'learn', 'wellbeing', 'money', 'career'],
-    blurb: 'Write your own objective and its steps instead of picking one of ours.',
-    why: 'For when none of the nine built-in objectives is the thing you are actually trying to do.',
+    blurb: 'Write your own goal and its steps instead of picking one of ours.',
+    why: 'For when none of the nine built-in goals is the thing you are actually trying to do.',
   },
 ];
 

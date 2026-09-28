@@ -479,7 +479,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#b0703f', alignItems: 'center', justifyContent: 'center',
     borderWidth: 1.5, borderColor: '#e0a878',
   },
-  coinText: { fontSize: 8, fontWeight: '900', color: '#fff2e0' },
+  coinText: { fontSize: 11, fontWeight: '900', color: '#fff2e0' },
   popupText: {
     color: '#fff', fontSize: 16, fontWeight: '800',
     textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,

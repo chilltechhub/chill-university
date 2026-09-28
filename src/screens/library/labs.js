@@ -93,11 +93,11 @@ export default function LabsScreen() {
           placeholder="Start a new experiment..." placeholderTextColor={c.text4}
           onSubmitEditing={add}
         />
-        <TouchableOpacity
+        <TouchableOpacity accessibilityLabel="Add" accessibilityRole="button"
           style={{ backgroundColor: c.teal, borderRadius: r.md, padding: s.md, alignItems: 'center', justifyContent: 'center' }}
           onPress={add}
         >
-          <Ionicons name="add" size={20} color="#fff" />
+          <Ionicons name="add" size={20} color={c.onFill} />
         </TouchableOpacity>
       </View>
 
@@ -127,7 +127,7 @@ export default function LabsScreen() {
         renderItem={({ item }) => (
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: s.md, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: c.teal }}>
             <Text style={{ flex: 1, fontSize: t.sm, color: c.text1, lineHeight: 20 }}>{item.text}</Text>
-            <TouchableOpacity onPress={() => remove(item.id)}>
+            <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={() => remove(item.id)}>
               <Ionicons name="close-circle-outline" size={18} color={c.text4} />
             </TouchableOpacity>
           </View>

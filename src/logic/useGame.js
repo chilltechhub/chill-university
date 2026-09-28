@@ -2,6 +2,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { handleGameEvent } from './gamificationService';
+import { correctHaptic } from './haptics';
 
 export const DIFFICULTY = { easy: 1, medium: 2, hard: 3 };
 
@@ -67,6 +68,7 @@ export default function useGame({
     setAttempt(a => a + 1);
 
     if (isCorrect) {
+      correctHaptic();
       const streakBonus = streak * 3;
       const pts = Math.round((10 + streakBonus + speedBonus) * difficulty);
       if (!manualScoring) setScore(s => s + pts);

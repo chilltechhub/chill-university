@@ -167,7 +167,7 @@ export default function FellowScholarsScreen() {
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: s.sm }}>
                       {topics.map((topic, i) => (
                         <View key={i} style={{ backgroundColor: c.bg0, borderRadius: r.full, paddingHorizontal: 8, paddingVertical: 2, borderWidth: 0.5, borderColor: c.border }}>
-                          <Text style={{ fontSize: 10, color: c.text3 }}>{topic}</Text>
+                          <Text style={{ fontSize: 11, color: c.text3 }}>{topic}</Text>
                         </View>
                       ))}
                     </View>
@@ -175,7 +175,7 @@ export default function FellowScholarsScreen() {
                 </View>
 
                 <View style={{ alignItems: 'flex-end', gap: s.sm }}>
-                  <TouchableOpacity onPress={() => promptBlock(person)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <TouchableOpacity accessibilityLabel="More options" accessibilityRole="button" onPress={() => promptBlock(person)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                     <Ionicons name="ellipsis-horizontal" size={15} color={c.text4} />
                   </TouchableOpacity>
                   <TouchableOpacity

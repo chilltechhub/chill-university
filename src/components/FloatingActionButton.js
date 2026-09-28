@@ -44,7 +44,10 @@ import { useTheme } from '../../context/ThemeContext';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { useFabPosition } from '../../context/FabPositionContext';
 import { useAccess } from '../../context/AccessContext';
-import { supabase } from '../api/supabaseClient';
+// The profile-scoped client, like every other screen that writes content: the
+// raw one here saved + button projects with no profile_id, which no profile
+// then showed.
+import { supabase } from '../api/profileScopedClient';
 import { offlineWrite, isOnline } from '../api/offlineCache';
 import { addCapture } from '../api/captureService';
 import CalendarModal from './CalendarModal';
@@ -74,9 +77,11 @@ const POSITION_OPTIONS = [
   { key: 'bottom-right', glyph: '↘', label: 'Bottom Right' },
 ];
 
-const FAB_SIZE     = 30;
-const MOVE_BTN_SIZE = 32;
-const TAB_BAR_H = Platform.OS === 'ios' ? 66 : 52;
+// 52 / 40 / 44: every tap target at or over the 44pt minimum. The FAB was
+// 30 — the app's main action, at two-thirds of the smallest recommended size.
+const FAB_SIZE     = 52;
+const MOVE_BTN_SIZE = 40;
+const TAB_BAR_H = Platform.OS === 'ios' ? 66 : 60; // keep in step with App.js tabBarStyle.height
 // Rough visible height of TopBar.js — it isn't a fixed constant there
 // (padding + content), so this is a comfortable overestimate rather than a
 // pixel-exact measurement. Only matters for the 'top' FAB position.
@@ -119,7 +124,7 @@ function QuickNoteModal({ visible, userId, onSaved, onClose, c, t, s, r }) {
       <View style={{ padding: s.xl, paddingTop: s.sm }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: s.lg }}>
           <Text style={{ fontSize: t.xl, fontWeight: t.bold, color: c.text1 }}>📝 New Note</Text>
-          <TouchableOpacity onPress={close}>
+          <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={close}>
             <Ionicons name="close" size={22} color={c.text3} />
           </TouchableOpacity>
         </View>
@@ -149,7 +154,7 @@ function QuickNoteModal({ visible, userId, onSaved, onClose, c, t, s, r }) {
 }
 
 // ─── Quick Project popup ────────────────────────────────────────────────────
-// A minimal version of the Workshop's own "New Build" sheet — just enough to
+// A minimal version of the Workshop's own "New Project" sheet — just enough to
 // start a project. Icon, color, and type can be set from the Workshop later.
 function QuickProjectModal({ visible, userId, onCreated, onClose, c, t, s, r }) {
   const [title,     setTitle]     = useState('');
@@ -186,7 +191,7 @@ function QuickProjectModal({ visible, userId, onCreated, onClose, c, t, s, r }) 
       if (!queued && (await isOnline())) {
         await supabase.from('project_milestones').insert({
           user_id: userId, project_id: data.id,
-          title: '🏗️ Build started', type: 'project_created',
+          title: '🏗️ Project started', type: 'project_created',
           date: todayStr(),
         });
       }
@@ -208,7 +213,7 @@ function QuickProjectModal({ visible, userId, onCreated, onClose, c, t, s, r }) 
       <View style={{ padding: s.xl, paddingTop: s.sm }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: s.lg }}>
           <Text style={{ fontSize: t.xl, fontWeight: t.bold, color: c.text1 }}>🏗️ New Project</Text>
-          <TouchableOpacity onPress={close}>
+          <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={close}>
             <Ionicons name="close" size={22} color={c.text3} />
           </TouchableOpacity>
         </View>
@@ -227,7 +232,7 @@ function QuickProjectModal({ visible, userId, onCreated, onClose, c, t, s, r }) 
           value={nextStep} onChangeText={setNextStep}
           placeholder="First next step (optional): the actual next move" placeholderTextColor={c.text4}
         />
-        <Text style={{ fontSize: t.xs, color: c.text4, marginBottom: s.lg }}>
+        <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: s.lg }}>
           The next step shows on Home's desk. Icon, color and type can be set from the Workshop.
         </Text>
         <View style={{ flexDirection: 'row', gap: s.sm }}>
@@ -236,7 +241,7 @@ function QuickProjectModal({ visible, userId, onCreated, onClose, c, t, s, r }) 
           </TouchableOpacity>
           <TouchableOpacity onPress={start} disabled={!title.trim() || saving}
             style={{ flex: 2, backgroundColor: c.gold, borderRadius: r.md, padding: s.md, alignItems: 'center', opacity: (!title.trim() || saving) ? 0.5 : 1 }}>
-            {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontWeight: t.bold }}>Start Building</Text>}
+            {saving ? <ActivityIndicator color={c.onFill} size="small" /> : <Text style={{ color: c.onFill, fontWeight: t.bold }}>Start Building</Text>}
           </TouchableOpacity>
         </View>
       </View>
@@ -428,7 +433,7 @@ export default function FloatingActionButton({ currentScreen }) {
           accessibilityLabel={pickerOpen ? 'Close move button picker' : 'Move quick actions button'}
           style={[styles.moveBtn, sh.sm, { backgroundColor: c.bg1, borderColor: pickerOpen ? c.teal : c.border }]}
         >
-          <Ionicons name="move-outline" size={14} color={pickerOpen ? c.teal : c.text3} />
+          <Ionicons name="move-outline" size={18} color={pickerOpen ? c.teal : c.text3} />
         </TouchableOpacity>
       </Animated.View>
 
@@ -442,7 +447,7 @@ export default function FloatingActionButton({ currentScreen }) {
         style={[styles.fabBtn, sh.lg, { backgroundColor: c.teal }]}
       >
         <Animated.View style={{ transform: [{ rotate }] }}>
-          <Ionicons name="add" size={28} color="#fff" />
+          <Ionicons name="add" size={28} color={c.onFill} />
         </Animated.View>
       </TouchableOpacity>
       </TourSpot>
@@ -515,7 +520,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 6,
   },
   dialIcon: {
-    width: 38, height: 38, borderRadius: 19,
+    width: 44, height: 44, borderRadius: 22,
     borderWidth: 1.5,
     alignItems: 'center', justifyContent: 'center',
   },

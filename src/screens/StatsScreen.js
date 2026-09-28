@@ -79,7 +79,7 @@ function HeroStat({ label, value, c, t, color }) {
   return (
     <View style={{ alignItems: 'center' }}>
       <Text style={{ fontSize: 20, fontWeight: t.bold, color: color || c.gold }}>{value}</Text>
-      <Text style={{ fontSize: 10, color: c.text4, marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.8 }}>{label}</Text>
+      <Text style={{ fontSize: 11, color: c.text3, marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.8 }}>{label}</Text>
     </View>
   );
 }
@@ -144,7 +144,7 @@ const makeStyles = (c, t, s, r) => StyleSheet.create({
   section: { marginBottom: s.lg },
   sectionTitle: { fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.sm },
   card: { backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg, borderWidth: 0.5, borderColor: c.border },
-  empty: { color: c.text4, textAlign: 'center', paddingVertical: s.lg, fontSize: t.sm },
+  empty: { color: c.text3, textAlign: 'center', paddingVertical: s.lg, fontSize: t.sm },
   statRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: s.sm, borderBottomWidth: 0.5, borderBottomColor: c.border },
   statLabel: { fontSize: t.sm, color: c.text3 },
   statValue: { fontSize: t.sm, fontWeight: t.semibold, color: c.text1 },
@@ -156,7 +156,7 @@ const makeStyles = (c, t, s, r) => StyleSheet.create({
   subjectAcc: { fontSize: t.sm, fontWeight: t.bold },
   xpBg: { height: 4, backgroundColor: c.bg2, borderRadius: 2, overflow: 'hidden', marginBottom: 4 },
   xpFill: { height: 4, borderRadius: 2 },
-  xpText: { fontSize: 10, color: c.text4 },
+  xpText: { fontSize: 11, color: c.text3 },
   missionRow: { marginBottom: s.md },
   missionTitle: { fontSize: t.sm, fontWeight: t.medium, color: c.text1 },
   missionProg: { fontSize: t.xs, color: c.text3, marginTop: 2 },

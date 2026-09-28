@@ -72,7 +72,7 @@ export const LIBRARY_HUBS = [
     icon: 'hammer-outline',
     accentKey: 'teal',
     items: [
-      { label: 'The Workshop', screen: 'ProjectsScreen', icon: 'hammer-outline', desc: 'Blueprints, builds & shipped work', featured: true },
+      { label: 'The Workshop', screen: 'ProjectsScreen', icon: 'hammer-outline', desc: 'Your projects, from idea to done', featured: true },
       { label: 'Portfolio Archives', screen: 'PortfolioScreen', icon: 'briefcase-outline', desc: 'Mastery & showcase' },
       // For the step before any of the above: not knowing yet what you want
       // to build, or be. Sits next to Career Expeditions, which it links into.
@@ -172,7 +172,7 @@ function TabDropdown({ tabs, active, onChange, onClose, onMove, styles, c }) {
               {/* Reorder — also sets which sub-view opens by default, since
                   that's just "whichever is first" (see LIBRARY_TAB_ORDER). */}
               <View style={{ flexDirection: 'row', gap: 2 }}>
-                <TouchableOpacity
+                <TouchableOpacity accessibilityLabel="Move up" accessibilityRole="button"
                   onPress={() => onMove(i, -1)}
                   disabled={i === 0}
                   hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
@@ -180,7 +180,7 @@ function TabDropdown({ tabs, active, onChange, onClose, onMove, styles, c }) {
                 >
                   <Ionicons name="chevron-up" size={15} color={c.text3} />
                 </TouchableOpacity>
-                <TouchableOpacity
+                <TouchableOpacity accessibilityLabel="Move down" accessibilityRole="button"
                   onPress={() => onMove(i, 1)}
                   disabled={i === tabs.length - 1}
                   hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
@@ -219,7 +219,7 @@ function DomainContentRow({ item, onToggleTask, onPress, c, t, s }) {
     >
       <Ionicons name={icon} size={17} color={color} />
       <Text
-        style={{ flex: 1, fontSize: t.sm, color: item.done ? c.text4 : c.text1, textDecorationLine: item.done && item.kind === 'task' ? 'line-through' : 'none' }}
+        style={{ flex: 1, fontSize: t.sm, color: item.done ? c.text3 : c.text1, textDecorationLine: item.done && item.kind === 'task' ? 'line-through' : 'none' }}
         numberOfLines={1}
       >
         {item.title}
@@ -277,7 +277,7 @@ function AddAreaModal({ visible, hidden, onAdd, onClose, c, t, s, r }) {
           <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: s.lg }}>
             <Text style={{ fontSize: t.lg, fontWeight: '800', color: c.text1 }}>Add a Life Area</Text>
-            <TouchableOpacity onPress={onClose}><Ionicons name="close" size={22} color={c.text3} /></TouchableOpacity>
+            <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={onClose}><Ionicons name="close" size={22} color={c.text3} /></TouchableOpacity>
           </View>
           {hidden.length === 0 ? (
             <Text style={{ fontSize: t.sm, color: c.text3, textAlign: 'center', paddingVertical: s.xl }}>
@@ -939,7 +939,7 @@ export default function LibraryScreen() {
                             ? <Text style={{ fontSize: 13 }}>{area.emoji}</Text>
                             : <Ionicons name={area.icon} size={13} color={area.color || c.teal} />}
                           <Text style={[styles.dueChipText, { color: area.color || c.teal }]}>{area.label}</Text>
-                          <Text style={styles.dueChipDays}>{days === null ? 'never' : `${days}d`}</Text>
+                          <Text style={styles.dueChipDays}>{days === null ? 'not rated yet' : `${days}d`}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -982,13 +982,13 @@ export default function LibraryScreen() {
           <>
             {isScreenVisible('ProjectsScreen') && (
             <PreviewSection
-              title="Active builds"
+              title="Active projects"
               action="Workshop →"
               onAction={() => navigation.navigate('ProjectsScreen')}
               styles={styles}
             >
               {activeProjects.length === 0 ? (
-                <Text style={styles.previewEmpty}>No builds in progress — start one from the Workshop.</Text>
+                <Text style={styles.previewEmpty}>No projects in progress yet. Start one in the Workshop.</Text>
               ) : (
                 <View style={styles.previewCard}>
                   {activeProjects.slice(0, 5).map((p, i, arr) => (
@@ -1010,7 +1010,7 @@ export default function LibraryScreen() {
 
             {trophies.length > 0 && isScreenVisible('PortfolioScreen') && (
               <PreviewSection
-                title="Recently shipped"
+                title="Recently finished"
                 action="Portfolio →"
                 onAction={() => navigation.navigate('PortfolioScreen')}
                 styles={styles}
@@ -1170,7 +1170,7 @@ const makeStyles = (c, t, s, r, ui, accent) =>
       borderBottomWidth: 0.5, borderBottomColor: c.border,
     },
     dropdownItemText: { fontSize: t.md, fontWeight: '600', color: c.text1 },
-    dropdownHint: { fontSize: 10, color: c.text4, paddingHorizontal: 12, paddingVertical: 8, textAlign: 'center' },
+    dropdownHint: { fontSize: 11, color: c.text3, paddingHorizontal: 12, paddingVertical: 8, textAlign: 'center' },
     purposeLine: {
       fontSize: t.xs,
       color: c.text3,
@@ -1240,11 +1240,11 @@ const makeStyles = (c, t, s, r, ui, accent) =>
       minWidth: 14, height: 14, borderRadius: 7, paddingHorizontal: 3,
       alignItems: 'center', justifyContent: 'center',
     },
-    bubbleDotText: { fontSize: 8, fontFamily: ui.numberFont, fontWeight: '800', color: '#ffffff' }, // style-ok: white count on a coloured dot
+    bubbleDotText: { fontSize: 8 /* a11y-ok: count badge */, fontFamily: ui.numberFont, fontWeight: '800', color: '#ffffff' }, // style-ok: white count on a coloured dot
     areaEmoji: { fontSize: 16 },
-    areaLabel: { fontSize: 9, fontWeight: '700', color: c.text1, textAlign: 'center', marginTop: 5 },
-    domainHint: { fontSize: 11, color: c.text4, textAlign: 'center', marginTop: 14, paddingHorizontal: 20 },
-    domainEmptyText: { fontSize: t.sm, color: c.text4, paddingHorizontal: 20, lineHeight: 19 },
+    areaLabel: { fontSize: 11, fontWeight: '700', color: c.text1, textAlign: 'center', marginTop: 5 },
+    domainHint: { fontSize: 11, color: c.text3, textAlign: 'center', marginTop: 14, paddingHorizontal: 20 },
+    domainEmptyText: { fontSize: t.sm, color: c.text3, paddingHorizontal: 20, lineHeight: 19 },
     domainResultsCard: {
       marginHorizontal: 20,
       backgroundColor: c.bg1, borderRadius: ui.cardRadius, padding: 14,
@@ -1268,7 +1268,7 @@ const makeStyles = (c, t, s, r, ui, accent) =>
     // real information someone reads, and text4 measures badly against
     // both bg1 surfaces (see the contrast pass in the previous round).
     previewMeta: { fontSize: 11, color: c.text3, fontFamily: ui.numberFont },
-    previewEmpty: { fontSize: t.sm, color: c.text4, paddingHorizontal: 20, lineHeight: 19 },
+    previewEmpty: { fontSize: t.sm, color: c.text3, paddingHorizontal: 20, lineHeight: 19 },
     chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 20 },
     dueChip: {
       flexDirection: 'row', alignItems: 'center', gap: 6,

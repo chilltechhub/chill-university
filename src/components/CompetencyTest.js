@@ -81,7 +81,7 @@ export default function CompetencyTest({ visible, featureId, feature, onClose, o
               <Text style={s.kicker}>Competence check</Text>
               <Text style={s.title}>{test.title}</Text>
             </View>
-            <TouchableOpacity onPress={close} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={close} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Ionicons name="close" size={22} color={c.text3} />
             </TouchableOpacity>
           </View>
@@ -176,7 +176,7 @@ export default function CompetencyTest({ visible, featureId, feature, onClose, o
                 <Text style={s.verdictScore}>{result.score} of {result.total} right</Text>
                 <Text style={s.verdictBody}>
                   {result.passed
-                    ? 'You skipped the objective and went straight through. It stays unlocked.'
+                    ? 'You passed the check, so you skipped the goal. It stays unlocked.'
                     : `The check is spent. ${feature?.label || 'This'} opens by finishing its objective now — the steps are in the Compass.`}
                 </Text>
               </View>
@@ -218,7 +218,7 @@ const makeStyles = (c, t, sp, r) => StyleSheet.create({
   sheet:      { backgroundColor: c.bg1, borderTopLeftRadius: r.xl, borderTopRightRadius: r.xl, paddingHorizontal: sp.xl, paddingTop: sp.md, paddingBottom: 34, maxHeight: '90%' },
   grabber:    { width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: sp.lg },
   headerRow:  { flexDirection: 'row', alignItems: 'flex-start', marginBottom: sp.md },
-  kicker:     { fontSize: 10, color: c.teal, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: '700', marginBottom: 2 },
+  kicker:     { fontSize: 11, color: c.teal, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: '700', marginBottom: 2 },
   title:      { fontSize: t.lg, fontFamily: FONTS.displaySemibold, fontWeight: '800', color: c.text1 },
   body:       { fontSize: t.sm, color: c.text2, lineHeight: 20, marginBottom: sp.lg },
 
@@ -227,31 +227,31 @@ const makeStyles = (c, t, sp, r) => StyleSheet.create({
   warnTitle:  { fontSize: t.sm, fontWeight: '800', color: c.warning, textTransform: 'uppercase', letterSpacing: 0.8 },
   warnBody:   { fontSize: t.xs, color: c.text2, lineHeight: 18 },
 
-  fineprint:  { fontSize: t.xs, color: c.text4, marginBottom: sp.lg, fontStyle: 'italic' },
+  fineprint:  { fontSize: t.xs, color: c.text3, marginBottom: sp.lg, fontStyle: 'italic' },
 
   qBlock:     { marginBottom: sp.xl },
-  qNumber:    { fontSize: 10, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 },
+  qNumber:    { fontSize: 11, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 },
   qPrompt:    { fontSize: t.md, fontWeight: '700', color: c.text1, lineHeight: 21, marginBottom: sp.md },
   option:     { flexDirection: 'row', alignItems: 'center', gap: sp.sm, backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border, padding: sp.md, marginBottom: sp.sm },
   optionPicked:{ borderColor: c.teal, backgroundColor: c.tealLight },
   optionText: { flex: 1, fontSize: t.sm, color: c.text2, lineHeight: 19 },
 
   footer:     { borderTopWidth: 0.5, borderTopColor: c.border, paddingTop: sp.md },
-  footerCount:{ fontSize: t.xs, color: c.text4, textAlign: 'center' },
+  footerCount:{ fontSize: t.xs, color: c.text3, textAlign: 'center' },
 
   verdict:    { alignItems: 'center', borderWidth: 1, borderRadius: r.lg, padding: sp.lg, marginBottom: sp.lg, backgroundColor: c.bg0 },
   verdictTitle:{ fontSize: t.lg, fontWeight: '800', color: c.text1, marginTop: sp.sm },
   verdictScore:{ fontSize: t.sm, fontFamily: FONTS.mono, color: c.text3, marginTop: 2, marginBottom: sp.sm },
   verdictBody:{ fontSize: t.sm, color: c.text2, textAlign: 'center', lineHeight: 20 },
 
-  reviewHead: { fontSize: 10, color: c.gold, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: '800', marginBottom: sp.sm },
+  reviewHead: { fontSize: 11, color: c.gold, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: '800', marginBottom: sp.sm },
   reviewRow:  { flexDirection: 'row', gap: sp.sm, paddingVertical: sp.sm, borderBottomWidth: 0.5, borderBottomColor: c.border },
   reviewPrompt:{ fontSize: t.xs, fontWeight: '700', color: c.text1, lineHeight: 18 },
   reviewAnswer:{ fontSize: t.xs, color: c.error, marginTop: 3, lineHeight: 17 },
   reviewExplain:{ fontSize: t.xs, color: c.text3, marginTop: 3, lineHeight: 17, fontStyle: 'italic' },
 
   primaryBtn: { backgroundColor: c.teal, borderRadius: r.md, paddingVertical: sp.md, alignItems: 'center', marginTop: sp.lg },
-  primaryBtnText: { color: '#fff', fontSize: t.sm, fontWeight: '800', letterSpacing: 0.5 },
+  primaryBtnText: { color: c.onFill, fontSize: t.sm, fontWeight: '800', letterSpacing: 0.5 },
   btnDisabled:{ backgroundColor: c.bg3 },
   ghostBtn:   { paddingVertical: sp.md, alignItems: 'center' },
   ghostBtnText:{ color: c.text3, fontSize: t.sm },

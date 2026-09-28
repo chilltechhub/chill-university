@@ -269,7 +269,7 @@ function evaluateGate(feature, ctx = {}) {
     available: false,
     method: null,
     headline: 'Locked',
-    reason: feature.why || 'Finish the objective that opens this.',
+    reason: feature.why || 'Finish the goal that opens this.',
     hidden: false,
     routes: {
       objectives: routeObjectives,
@@ -309,7 +309,7 @@ function earnedHeadline(method) {
 
 function earnedReason(method, feature) {
   if (method === 'test') return `You passed the ${feature.label} check first time.`;
-  if (method === 'objective') return `Opened by finishing an objective.`;
+  if (method === 'objective') return `Opened by finishing a goal.`;
   if (method === 'granted') return 'Switched on for your account.';
   if (method === 'setting') return `Opened by ${SETTING_KEY_LABELS[feature.settingKey] || 'a switch'} in Settings.`;
   return 'Unlocked.';
@@ -385,21 +385,21 @@ export function unlockHint(access) {
   const test = access.routes.test;
 
   // Where several objectives open the same feature, naming one of them
-  // arbitrarily would be a half-truth — say "an objective" instead.
+  // arbitrarily would be a half-truth — say "a goal" instead.
   const inFlight = objectives.find(o => o.active);
   const named = inFlight
     ? `${inFlight.done}/${inFlight.total} of ${inFlight.label}`
     : objectives.length === 1
       ? `Finish ${objectives[0].label}`
       : objectives.length > 1
-        ? 'Finish an objective'
+        ? 'Finish a goal'
         : null;
 
   const setting = access.routes.setting;
   if (!named && !test && setting) return `Switch on ${setting.label} in Settings`;
 
-  if (test?.available) return named ? `${named} — or test out` : 'Test out of it';
-  if (test?.closed)    return named ? `${named} — the test is spent` : 'The test is spent';
+  if (test?.available) return named ? `${named} — or pass a quick check` : 'Pass a quick check';
+  if (test?.closed)    return named ? `${named} — the quick check is used up` : 'The quick check is used up';
 
   return named || 'Locked';
 }

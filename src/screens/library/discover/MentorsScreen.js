@@ -181,7 +181,7 @@ export default function MentorsScreen() {
                     </Text>
                   )}
                 </View>
-                <TouchableOpacity onPress={() => promptBlock(mentor)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <TouchableOpacity accessibilityLabel="More options" accessibilityRole="button" onPress={() => promptBlock(mentor)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   <Ionicons name="ellipsis-horizontal" size={15} color={c.text4} />
                 </TouchableOpacity>
               </View>
@@ -194,14 +194,14 @@ export default function MentorsScreen() {
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: s.sm }}>
                   {mentor.subjects.map((sub, i) => (
                     <View key={i} style={{ backgroundColor: c.bg0, borderRadius: r.full, paddingHorizontal: 8, paddingVertical: 2, borderWidth: 0.5, borderColor: c.border }}>
-                      <Text style={{ fontSize: 10, color: c.text3 }}>{sub}</Text>
+                      <Text style={{ fontSize: 11, color: c.text3 }}>{sub}</Text>
                     </View>
                   ))}
                 </View>
               )}
 
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: s.md }}>
-                <Text style={{ fontSize: t.xs, color: c.text4 }}>
+                <Text style={{ fontSize: t.xs, color: c.text3 }}>
                   {mentor.hourly_rate ? `From $${Number(mentor.hourly_rate).toFixed(0)}/hr · arranged directly` : 'Rate discussed directly'}
                 </Text>
                 <TouchableOpacity
@@ -229,7 +229,7 @@ export default function MentorsScreen() {
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: s.sm }}>
               <Text style={{ fontSize: t.lg, fontWeight: '800', color: c.text1 }}>Request {target?.display_name}</Text>
-              <TouchableOpacity onPress={() => setTarget(null)}><Ionicons name="close" size={22} color={c.text3} /></TouchableOpacity>
+              <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={() => setTarget(null)}><Ionicons name="close" size={22} color={c.text3} /></TouchableOpacity>
             </View>
             <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: s.lg, lineHeight: 17 }}>
               They&apos;ll see this once. Say what you&apos;re working on and what you want help with.
@@ -240,7 +240,7 @@ export default function MentorsScreen() {
               value={message} onChangeText={setMessage} multiline maxLength={1000} autoFocus
               placeholder="I'm working on… I'd like help with…" placeholderTextColor={c.text4}
             />
-            <Text style={{ fontSize: 11, color: c.text4, marginBottom: s.md, lineHeight: 16 }}>
+            <Text style={{ fontSize: 11, color: c.text3, marginBottom: s.md, lineHeight: 16 }}>
               Don&apos;t share your address, school, phone number or anything else private in a first message.
             </Text>
             <TouchableOpacity onPress={send} disabled={sending || !message.trim()}

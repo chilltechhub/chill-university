@@ -42,6 +42,7 @@ export const THEMES = {
     text2:      '#454f66',   // body
     text3:      '#5f6880',   // secondary — AA (was #7a839c, ~3.3:1)
     text4:      '#a7b0c6',   // placeholders / decoration only — below AA on purpose
+    onFill:     '#ffffff',   // text/icons on a filled teal/gold/purple/error button
 
     // Semantic
     success:    '#237a3f',
@@ -82,7 +83,7 @@ export const THEMES = {
     // UI chrome
     tabBar:     '#ffffff',
     tabActive:  '#9a7228',
-    tabInactive:'#a7b0c6',
+    tabInactive:'#5f6880',   // = text3: inactive tab labels are text, and #a7b0c6 was 2.2:1
     headerBg:   '#eef1f6',
     modalBg:    '#ffffff',
     inputBg:    '#dbe1ec',
@@ -124,6 +125,7 @@ export const THEMES = {
     text2:      '#a7b0c6',
     text3:      '#8a92ab',   // AA (was #6d7690, ~3.6:1)
     text4:      '#414a68',
+    onFill:     '#0d1119',   // text/icons on a filled teal/gold/purple/error button — white is 2:1 on these bright fills
 
     success:    '#3ac860',
     successLight:'#0a2818',
@@ -160,7 +162,7 @@ export const THEMES = {
 
     tabBar:     '#12161f',
     tabActive:  '#e8b34a',
-    tabInactive:'#414a68',
+    tabInactive:'#8a92ab',   // = text3: inactive tab labels are text, and #414a68 was 2.1:1
     headerBg:   '#12161f',
     modalBg:    '#1a2030',
     inputBg:    '#212942',

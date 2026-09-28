@@ -22,7 +22,7 @@ import { getRank, getRankLabel } from '../../logic/rankUtils';
 import TourSpot from '../../components/TourSpot';
 
 function SectionLabel({ label, c, t, s }) {
-  return <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.sm, marginTop: s.lg, paddingHorizontal: 2 }}>{label}</Text>;
+  return <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.sm, marginTop: s.lg, paddingHorizontal: 2 }}>{label}</Text>;
 }
 
 export default function FamilyScreen() {
@@ -108,7 +108,7 @@ export default function FamilyScreen() {
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg0 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={{ backgroundColor: c.bg1, padding: s.lg, paddingTop: s.xxl, borderBottomWidth: 0.5, borderBottomColor: c.border, flexDirection: 'row', alignItems: 'center', gap: s.md }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4 }}>
+        <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => navigation.goBack()} style={{ padding: 4 }}>
           <Ionicons name="chevron-back" size={22} color={c.teal} />
         </TouchableOpacity>
         <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>👨‍👩‍👧 Family</Text>
@@ -148,7 +148,7 @@ export default function FamilyScreen() {
           })
         )}
         {children.length > 0 && (
-          <Text style={{ fontSize: 11, color: c.text4, marginTop: 2 }}>Long-press a child to unlink.</Text>
+          <Text style={{ fontSize: 11, color: c.text3, marginTop: 2 }}>Long-press a child to unlink.</Text>
         )}
 
         {/* ── Link a child (enter their code) ── */}
@@ -174,7 +174,7 @@ export default function FamilyScreen() {
               disabled={redeeming || !codeInput.trim()}
               style={{ backgroundColor: c.teal, borderRadius: r.md, paddingHorizontal: s.lg, alignItems: 'center', justifyContent: 'center', opacity: (redeeming || !codeInput.trim()) ? 0.5 : 1 }}
             >
-              {redeeming ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '800', fontSize: t.sm }}>Link</Text>}
+              {redeeming ? <ActivityIndicator size="small" color={c.onFill} /> : <Text style={{ color: c.onFill, fontWeight: '800', fontSize: t.sm }}>Link</Text>}
             </TouchableOpacity>
           </View>
         </View>
@@ -190,7 +190,7 @@ export default function FamilyScreen() {
           {code ? (
             <>
               <Text style={{ fontSize: 32, fontWeight: '800', letterSpacing: 6, color: c.gold, fontFamily: 'monospace', marginBottom: 4 }}>{code}</Text>
-              <Text style={{ fontSize: t.xs, color: c.text4, marginBottom: s.md }}>
+              <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: s.md }}>
                 {minutesLeft > 0 ? `Expires in ${minutesLeft} min` : 'Expired — generate a new one'}
               </Text>
               <View style={{ flexDirection: 'row', gap: s.sm }}>
@@ -210,7 +210,7 @@ export default function FamilyScreen() {
               disabled={generating}
               style={{ backgroundColor: c.gold, borderRadius: r.md, paddingVertical: s.md, paddingHorizontal: s.xl, alignItems: 'center', opacity: generating ? 0.6 : 1 }}
             >
-              {generating ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '800', fontSize: t.sm }}>Generate Invite Code</Text>}
+              {generating ? <ActivityIndicator size="small" color={c.onFill} /> : <Text style={{ color: c.onFill, fontWeight: '800', fontSize: t.sm }}>Generate Invite Code</Text>}
             </TouchableOpacity>
           )}
         </View>
@@ -223,7 +223,7 @@ export default function FamilyScreen() {
           ])}
           style={{ marginTop: s.lg, alignItems: 'center' }}
         >
-          <Text style={{ fontSize: 12, color: c.text4 }}>Unlink my parent</Text>
+          <Text style={{ fontSize: 12, color: c.text3 }}>Unlink my parent</Text>
         </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>

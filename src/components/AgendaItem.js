@@ -77,16 +77,16 @@ export default function AgendaItem({ instance, onUpdate }) {
               </Text>
             )}
             {instance.start_time && (
-              <Text style={[styles.metaText, { color: c.text4 }]}>
+              <Text style={[styles.metaText, { color: c.text3 }]}>
                 {formatTime(instance.start_time)}
               </Text>
             )}
-            {isSkip && <Text style={[styles.metaText, { color: c.text4 }]}>skipped</Text>}
+            {isSkip && <Text style={[styles.metaText, { color: c.text3 }]}>skipped</Text>}
           </View>
         </View>
 
         {/* Expand toggle */}
-        <TouchableOpacity onPress={() => setExpanded(e => !e)} style={{ padding: 4 }}>
+        <TouchableOpacity accessibilityLabel="More options" accessibilityRole="button" onPress={() => setExpanded(e => !e)} style={{ padding: 4 }}>
           <Ionicons name="ellipsis-horizontal" size={16} color={c.text4} />
         </TouchableOpacity>
       </TouchableOpacity>
@@ -116,13 +116,13 @@ export default function AgendaItem({ instance, onUpdate }) {
             {isDone && (
               <TouchableOpacity style={[styles.actionBtn, { borderColor: c.text4 }]} onPress={handleComplete}>
                 <Ionicons name="refresh-outline" size={14} color={c.text4} />
-                <Text style={[styles.actionText, { color: c.text4 }]}>Undo</Text>
+                <Text style={[styles.actionText, { color: c.text3 }]}>Undo</Text>
               </TouchableOpacity>
             )}
             {!isDone && !isSkip && (
               <TouchableOpacity style={[styles.actionBtn, { borderColor: c.text4 }]} onPress={handleSkip}>
                 <Ionicons name="arrow-forward-outline" size={14} color={c.text4} />
-                <Text style={[styles.actionText, { color: c.text4 }]}>Skip</Text>
+                <Text style={[styles.actionText, { color: c.text3 }]}>Skip</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
   check:     { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   title:     { fontSize: 13, fontWeight: '500', lineHeight: 18 },
   meta:      { flexDirection: 'row', gap: 8, marginTop: 2 },
-  metaText:  { fontSize: 10, fontWeight: '500' },
+  metaText:  { fontSize: 11, fontWeight: '500' },
   expanded:  { borderTopWidth: 0.5, padding: 10, gap: 8 },
   noteInput: { borderWidth: 1, borderRadius: 8, padding: 8, fontSize: 12, minHeight: 40, textAlignVertical: 'top' },
   actions:   { flexDirection: 'row', gap: 8 },

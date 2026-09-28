@@ -24,6 +24,7 @@ import ActionPanel from '../../components/lifeareas/ActionPanel';
 import ActionEditSheet from '../../components/lifeareas/ActionEditSheet';
 import DetailsDrawer from '../../components/lifeareas/DetailsDrawer';
 import GoDeeperList from '../../components/lifeareas/GoDeeperList';
+import { textOn } from '../../logic/contrast';
 
 // ─── Section configs — all 18 missing sub-sections ───────────────────────────
 export const SECTION_CONFIGS = {
@@ -302,7 +303,7 @@ function RatingInput({ label, value, onChange, color, c, t, s }) {
         {[1,2,3,4,5].map(v => (
           <TouchableOpacity key={v} onPress={() => onChange(v)}
             style={{ flex: 1, height: 36, borderRadius: 8, backgroundColor: value >= v ? color : color + '18', borderWidth: 1, borderColor: color + '55', alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: value >= v ? '#fff' : color }}>{v}</Text>
+            <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: value >= v ? textOn(color) : color }}>{v}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -507,14 +508,14 @@ export default function AreaSectionScreen() {
                 <View key={entry.id} style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: color }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
                     <View style={{ backgroundColor: color + '22', borderRadius: r.full, paddingHorizontal: 8, paddingVertical: 2 }}>
-                      <Text style={{ fontSize: 10, color, fontWeight: t.bold }}>{getCategory(entry.content)}</Text>
+                      <Text style={{ fontSize: 11, color, fontWeight: t.bold }}>{getCategory(entry.content)}</Text>
                     </View>
-                    <TouchableOpacity onPress={() => del(entry.id)}>
+                    <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={() => del(entry.id)}>
                       <Ionicons name="close" size={14} color={c.text4} />
                     </TouchableOpacity>
                   </View>
                   <Text style={{ fontSize: t.sm, color: c.text2, lineHeight: 20 }}>{parseEntry(entry.content)}</Text>
-                  <Text style={{ fontSize: 10, color: c.text4, marginTop: 4 }}>
+                  <Text style={{ fontSize: 11, color: c.text3, marginTop: 4 }}>
                     {new Date(entry.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                   </Text>
                 </View>
@@ -550,7 +551,7 @@ export default function AreaSectionScreen() {
             <View key={entry.id} style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border }}>
               <Ionicons name="checkmark-circle" size={18} color={color} />
               <Text style={{ flex: 1, fontSize: t.sm, color: c.text2 }}>{entry.content.replace(/\[[^\]]+\]/g, '').replace('✅', '').trim()}</Text>
-              <Text style={{ fontSize: 10, color: c.text4 }}>
+              <Text style={{ fontSize: 11, color: c.text3 }}>
                 {new Date(entry.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </Text>
             </View>

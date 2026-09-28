@@ -38,7 +38,7 @@ export default function GradeSelectCard({
   return (
     <SafeAreaView style={s.safe}>
       <ScrollView contentContainerStyle={s.scroll}>
-        <TouchableOpacity style={s.quitBtn} onPress={onQuit || (() => navigation.goBack())}>
+        <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" style={s.quitBtn} onPress={onQuit || (() => navigation.goBack())}>
           <Ionicons name="close" size={20} color={G.muted} />
         </TouchableOpacity>
 
@@ -125,7 +125,7 @@ const makeStyles = (G) => StyleSheet.create({
   paceEmoji:   { fontSize: 22, marginBottom: 4 },
   paceLabel:   { fontSize: 14, fontWeight: '700', color: G.cream },
   paceLabelActive: { color: G.gold },
-  paceBlurb:   { fontSize: 10.5, color: G.muted, marginTop: 1 },
+  paceBlurb:   { fontSize: 11.5, color: G.muted, marginTop: 1 },
   startBtn:    { width: '100%', backgroundColor: G.gold, borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 10, marginBottom: 14 },
   startBtnText:{ fontSize: 16, fontWeight: '800', color: G.bg, letterSpacing: 1 },
   hint:        { fontSize: 11, color: G.faint, textAlign: 'center', lineHeight: 16, paddingHorizontal: 8 },

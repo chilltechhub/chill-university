@@ -29,7 +29,7 @@ export default function BadgeMedal({ badge, earned, size = 64 }) {
         <Text style={{ fontSize: size * 0.42 }}>{earned ? badge.icon : '🔒'}</Text>
       </View>
       <Text
-        style={[styles.name, { color: earned ? c.text1 : c.text4 }]}
+        style={[styles.name, { color: earned ? c.text1 : c.text3 }]}
         numberOfLines={2}
       >
         {badge.name}

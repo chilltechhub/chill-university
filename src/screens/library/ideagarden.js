@@ -29,6 +29,7 @@ import TourSpot from '../../components/TourSpot';
 import FillWithAIButton from '../../components/FillWithAIButton';
 import { useTour } from '../../../context/TourContext';
 import { useAccess } from '../../../context/AccessContext';
+import { textOn } from '../../logic/contrast';
 
 // SW/SH/CANVAS_H are now dynamic via useWindowDimensions inside the component
 
@@ -509,7 +510,7 @@ function NotePanel({ item, editing, cores, plantTypes, petalTypes, onClose, onSa
 
   return (
     <View style={styles.panel}>
-      <TouchableOpacity style={styles.panelClose} onPress={onClose}>
+      <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" style={styles.panelClose} onPress={onClose}>
         <Ionicons name="close" size={18} color={gc.text4} />
       </TouchableOpacity>
 
@@ -605,7 +606,7 @@ function NotePanel({ item, editing, cores, plantTypes, petalTypes, onClose, onSa
           <Ionicons name={isEditing ? 'eye-outline' : 'pencil'} size={16} color={gc.text2} />
           <Text style={styles.panelBtnText}>{isEditing ? 'View' : 'Edit'}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.panelBtn, styles.panelBtnDanger]} onPress={onDelete}>
+        <TouchableOpacity accessibilityLabel="Delete" accessibilityRole="button" style={[styles.panelBtn, styles.panelBtnDanger]} onPress={onDelete}>
           <Ionicons name="trash-outline" size={16} color={gc.danger} />
         </TouchableOpacity>
       </View>
@@ -952,7 +953,7 @@ export default function IdeaGardenScreen() {
       {/* Top bar */}
       <View style={styles.topbar}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <TouchableOpacity
+          <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button"
             onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('LibraryScreen'))}
             style={styles.backBtn}
           >
@@ -964,21 +965,21 @@ export default function IdeaGardenScreen() {
           {/* radius 16 matches styles.connectBtn — a pill, and the spotlight
               should trace it as one */}
           <TourSpot id="garden-vine" radius={16}>
-          <TouchableOpacity style={[styles.connectBtn, connectMode && styles.connectBtnActive]} onPress={toggleConnectMode}>
+          <TouchableOpacity style={[styles.connectBtn, connectMode && styles.connectBtnActive]} onPress={toggleConnectMode} accessibilityRole="button" accessibilityLabel="Link two ideas">
             <Ionicons name="git-network" size={16} color={connectMode ? gc.white : gc.text2} />
-            <Text style={[styles.connectBtnText, connectMode && { color: gc.white }]}>Vine</Text>
+            <Text style={[styles.connectBtnText, connectMode && { color: gc.white }]}>Link ideas</Text>
           </TouchableOpacity>
           </TourSpot>
           <TourSpot id="garden-view" radius={8}>
           <View style={styles.viewToggle}>
             {['map', 'list'].map(v => (
-              <TouchableOpacity key={v} style={[styles.viewBtn, view === v && styles.viewBtnActive]} onPress={() => setView(v)}>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel={v === 'map' ? 'Map view' : 'List view'} accessibilityState={{ selected: view === v }} key={v} style={[styles.viewBtn, view === v && styles.viewBtnActive]} onPress={() => setView(v)}>
                 <Ionicons name={v === 'map' ? 'leaf' : 'list'} size={14} color={view === v ? gc.bg0 : gc.text2} />
               </TouchableOpacity>
             ))}
           </View>
           </TourSpot>
-          <TouchableOpacity style={styles.exportBtn} onPress={exportGarden}>
+          <TouchableOpacity accessibilityLabel="Share" accessibilityRole="button" style={styles.exportBtn} onPress={exportGarden}>
             <Ionicons name="share-outline" size={18} color={gc.text2} />
           </TouchableOpacity>
           {/* Historic id — it wraps the ADD button, not a list. A labelled
@@ -986,7 +987,7 @@ export default function IdeaGardenScreen() {
               people couldn't find where to add an idea. */}
           <TourSpot id="ideas-list" radius={17}>
           <TouchableOpacity style={styles.addBtn} onPress={openNewCore} accessibilityRole="button" accessibilityLabel="Plant a new idea">
-            <Ionicons name="add" size={17} color={gc.white} />
+            <Ionicons name="add" size={17} color={textOn(gc.green)} />
             <Text style={styles.addBtnText}>Plant</Text>
           </TouchableOpacity>
           </TourSpot>
@@ -1063,7 +1064,7 @@ export default function IdeaGardenScreen() {
                       </Text>
                     </View>
                   </View>
-                  <TouchableOpacity onPress={() => openEditCore(core)} style={{ padding: 4 }}>
+                  <TouchableOpacity accessibilityLabel="Edit" accessibilityRole="button" onPress={() => openEditCore(core)} style={{ padding: 4 }}>
                     <Ionicons name="pencil" size={14} color={gc.text4} />
                   </TouchableOpacity>
                 </View>
@@ -1122,7 +1123,7 @@ export default function IdeaGardenScreen() {
             <View style={styles.emptyList}>
               <Text style={styles.emptyListText}>No ideas yet. Rough is fine: it only has to be written down.</Text>
               <TouchableOpacity style={[styles.addBtn, { marginTop: 14, height: 40, paddingHorizontal: 18 }]} onPress={openNewCore} accessibilityRole="button">
-                <Ionicons name="add" size={18} color={gc.white} />
+                <Ionicons name="add" size={18} color={textOn(gc.green)} />
                 <Text style={styles.addBtnText}>Plant your first idea</Text>
               </TouchableOpacity>
             </View>
@@ -1188,7 +1189,7 @@ export default function IdeaGardenScreen() {
       {/* Vine panel */}
       {openVine && (
         <View style={styles.vinePanel}>
-          <TouchableOpacity style={styles.panelClose} onPress={() => setOpenVine(null)}>
+          <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" style={styles.panelClose} onPress={() => setOpenVine(null)}>
             <Ionicons name="close" size={18} color={gc.text4} />
           </TouchableOpacity>
           <View style={styles.vinePanelHeader}>
@@ -1235,7 +1236,7 @@ export default function IdeaGardenScreen() {
               placeholder="Label this vine (e.g. 'inspires', 'blocks')"
               placeholderTextColor={gc.text4}
             />
-            <TouchableOpacity
+            <TouchableOpacity accessibilityLabel="Delete" accessibilityRole="button"
               style={styles.vineDeleteBtn}
               onPress={() => {
                 Alert.alert('Remove vine?', 'This connection will be deleted.', [
@@ -1431,7 +1432,7 @@ const makeStyles = (gc) => StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: gc.bg0 },
   topbar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', rowGap: 8, padding: 14, paddingTop: 16, backgroundColor: gc.bg1, borderBottomWidth: 0.5, borderBottomColor: gc.border },
   backBtn: { padding: 2 },
-  topbarSub: { fontSize: 10, color: gc.text4, letterSpacing: 1, textTransform: 'uppercase' },
+  topbarSub: { fontSize: 11, color: gc.text3, letterSpacing: 1, textTransform: 'uppercase' },
   topbarTitle: { fontSize: 17, fontWeight: '600', color: gc.text2 },
   // Wraps and shrinks: with the title gone there's room, but a small
   // phone plus a long label must never push the add button off-screen.
@@ -1444,11 +1445,12 @@ const makeStyles = (gc) => StyleSheet.create({
   viewBtnActive: { backgroundColor: gc.green },
   exportBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
   addBtn: { height: 34, borderRadius: 17, paddingHorizontal: 12, gap: 4, flexDirection: 'row', backgroundColor: gc.green, alignItems: 'center', justifyContent: 'center' },
-  addBtnText: { color: gc.white, fontSize: 13, fontWeight: '700' },
+  // textOn: the success green is bright in dark mode, where white was 2.2:1.
+  addBtnText: { color: textOn(gc.green), fontSize: 13, fontWeight: '700' },
   canvasWrap: { flex: 1, position: 'relative', overflow: 'hidden' },
   emptyGarden: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' },
-  emptyGardenText: { fontSize: 16, color: gc.text4, fontWeight: '500' },
-  emptyGardenSub: { fontSize: 13, color: gc.text4, marginTop: 4 },
+  emptyGardenText: { fontSize: 16, color: gc.text3, fontWeight: '500' },
+  emptyGardenSub: { fontSize: 13, color: gc.text3, marginTop: 4 },
   listView: { flex: 1, backgroundColor: gc.bg0 },
   listCard: { backgroundColor: gc.bg1, borderRadius: 12, padding: 14, borderLeftWidth: 4, borderWidth: 0.5, borderColor: gc.border, marginBottom: 8 },
   // Gold ring around just the name — this idea is also a real Workshop build.
@@ -1457,15 +1459,15 @@ const makeStyles = (gc) => StyleSheet.create({
   listCardLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
   listCardEmoji: { fontSize: 22 },
   listCardTitle: { fontSize: 15, fontWeight: '600', color: gc.text1 },
-  listCardMeta: { fontSize: 11, color: gc.text4, marginTop: 1 },
+  listCardMeta: { fontSize: 11, color: gc.text3, marginTop: 1 },
   listCardDesc: { fontSize: 13, color: gc.text3, lineHeight: 18, marginBottom: 8 },
   petalList: { gap: 4, marginBottom: 10 },
   petalRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
   petalRowText: { fontSize: 13, color: gc.text2 },
-  petalDone: { textDecorationLine: 'line-through', color: gc.text4 },
+  petalDone: { textDecorationLine: 'line-through', color: gc.text3 },
   listCardActions: { flexDirection: 'row', gap: 8, marginTop: 4 },
   listAction: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 10, backgroundColor: gc.bg2, borderRadius: 8 },
-  listActionText: { fontSize: 12, color: gc.text4 },
+  listActionText: { fontSize: 12, color: gc.text3 },
   emptyList: { alignItems: 'center', paddingTop: 60 },
   emptyListText: { fontSize: 14, color: gc.text3, textAlign: 'center', paddingHorizontal: 32, lineHeight: 20 },
   panel: { backgroundColor: gc.bg1, borderTopWidth: 0.5, borderTopColor: gc.border, padding: 16, paddingBottom: 24 },
@@ -1473,7 +1475,7 @@ const makeStyles = (gc) => StyleSheet.create({
   panelHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6, paddingRight: 30 },
   panelEmoji: { fontSize: 24 },
   panelTitle: { fontSize: 16, fontWeight: '600', color: gc.text1 },
-  panelMeta: { fontSize: 11, color: gc.text4, marginTop: 2 },
+  panelMeta: { fontSize: 11, color: gc.text3, marginTop: 2 },
   panelDesc: { fontSize: 13, color: gc.text3, lineHeight: 18, marginBottom: 10 },
   panelActions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   panelBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: gc.bg2, borderRadius: 8 },
@@ -1485,57 +1487,57 @@ const makeStyles = (gc) => StyleSheet.create({
   modalCardCentered: { width: '100%', maxWidth: 440, maxHeight: '86%', backgroundColor: gc.bg0, borderRadius: 20, borderWidth: 0.5, borderColor: gc.border },
   modalCard: { backgroundColor: gc.bg0, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, borderTopWidth: 0.5, borderColor: gc.border },
   modalTitle: { fontSize: 17, fontWeight: '700', color: gc.text1, marginBottom: 14 },
-  modalLabel: { fontSize: 11, fontWeight: '600', color: gc.text4, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
+  modalLabel: { fontSize: 11, fontWeight: '600', color: gc.text3, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
   modalInput: { borderWidth: 1, borderColor: gc.border, borderRadius: 10, padding: 12, fontSize: 15, color: gc.text1, backgroundColor: gc.bg1, marginBottom: 12 },
   modalBtns: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 8 },
   modalCancel: { paddingVertical: 12, paddingHorizontal: 18 },
-  modalCancelText: { fontSize: 14, color: gc.text4 },
+  modalCancelText: { fontSize: 14, color: gc.text3 },
   modalSave: { backgroundColor: gc.green, borderRadius: 10, paddingVertical: 12, paddingHorizontal: 22 },
   modalSaveText: { color: gc.white, fontWeight: '700', fontSize: 14 },
   typeChip: { width: 120, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: gc.border, marginRight: 8, backgroundColor: gc.bg1 },
   typeChipEmoji: { fontSize: 20, marginBottom: 4 },
   typeChipLabel: { fontSize: 13, fontWeight: '600', color: gc.text2, marginBottom: 2 },
-  typeChipDesc: { fontSize: 10, color: gc.text4, lineHeight: 13 },
+  typeChipDesc: { fontSize: 11, color: gc.text3, lineHeight: 13 },
   projectToggle: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, marginBottom: 8 },
   projectToggleText: { fontSize: 14, color: gc.text2 },
   statusRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 12 },
   statusChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: gc.border, backgroundColor: gc.bg1 },
   statusChipActive: { backgroundColor: gc.bg2, borderColor: gc.green },
-  statusChipText: { fontSize: 12, color: gc.text4 },
+  statusChipText: { fontSize: 12, color: gc.text3 },
   statusChipTextActive: { color: gc.text2 },
   petalTypeRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 12 },
   petalTypeChip: { alignItems: 'center', padding: 8, borderRadius: 10, borderWidth: 1, borderColor: gc.border, backgroundColor: gc.bg1, minWidth: 58 },
   petalTypeChipActive: { backgroundColor: gc.bg2, borderColor: gc.green },
   petalTypeEmoji: { fontSize: 18, marginBottom: 2 },
-  petalTypeLabel: { fontSize: 11, color: gc.text4 },
+  petalTypeLabel: { fontSize: 11, color: gc.text3 },
   petalTypeLabelActive: { color: gc.text2 },
   updateEntry: { backgroundColor: gc.bg1, borderRadius: 8, padding: 10, marginBottom: 6, borderLeftWidth: 2, borderLeftColor: gc.green },
-  updateDate: { fontSize: 10, color: gc.text4, marginBottom: 2 },
+  updateDate: { fontSize: 11, color: gc.text3, marginBottom: 2 },
   updateText: { fontSize: 13, color: gc.text3 },
   progressBig: { fontSize: 48, fontWeight: '700', color: gc.text1, textAlign: 'center', marginBottom: 8 },
   progressTrack: { height: 8, backgroundColor: gc.bg2, borderRadius: 4, overflow: 'hidden', marginBottom: 16 },
   progressFill: { height: 8, borderRadius: 4 },
   quickBtns: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   quickBtn: { flex: 1, alignItems: 'center', paddingVertical: 10, backgroundColor: gc.bg2, borderRadius: 8 },
-  quickBtnText: { fontSize: 13, fontWeight: '600', color: gc.text4 },
+  quickBtnText: { fontSize: 13, fontWeight: '600', color: gc.text3 },
   // Note panel
   noteBody: { flex: 1, minHeight: 60, maxHeight: 120, marginBottom: 10 },
   noteTitleInput: { fontSize: 16, fontWeight: '600', color: gc.text1, paddingVertical: 2, borderBottomWidth: 0.5, borderBottomColor: gc.green, marginBottom: 4 },
   noteBodyInput: { fontSize: 14, color: gc.text2, lineHeight: 20, minHeight: 60, textAlignVertical: 'top' },
-  noteBodyPlaceholder: { fontSize: 14, color: gc.text4, fontStyle: 'italic' },
+  noteBodyPlaceholder: { fontSize: 14, color: gc.text3, fontStyle: 'italic' },
   // Vine panel
   vinePanel: { backgroundColor: gc.bg1, borderTopWidth: 0.5, borderTopColor: gc.border, padding: 16, paddingBottom: 20 },
   vinePanelHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10, paddingRight: 28 },
   vinePanelEmoji: { fontSize: 20 },
   vinePanelTitle: { fontSize: 15, fontWeight: '600', color: gc.text1 },
-  vinePanelMeta: { fontSize: 11, color: gc.text4, marginTop: 2 },
+  vinePanelMeta: { fontSize: 11, color: gc.text3, marginTop: 2 },
   vineNoteInput: { fontSize: 14, color: gc.text2, borderWidth: 0.5, borderColor: gc.border, borderRadius: 8, padding: 10, minHeight: 60, textAlignVertical: 'top', marginBottom: 10, backgroundColor: gc.bg0 },
   linkedRow: { flexDirection: 'row', marginBottom: 10 },
   linkedChip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 5, marginRight: 6, backgroundColor: gc.bg1 },
   linkedChipEmoji: { fontSize: 13 },
   linkedChipText: { fontSize: 12, fontWeight: '500' },
   vineNoteText: { fontSize: 14, color: gc.text3, lineHeight: 20, marginBottom: 10 },
-  vineNotePlaceholder: { fontSize: 13, color: gc.text4, fontStyle: 'italic', marginBottom: 10 },
+  vineNotePlaceholder: { fontSize: 13, color: gc.text3, fontStyle: 'italic', marginBottom: 10 },
   vineLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   vineLabelInput: { flex: 1, fontSize: 13, color: gc.text2, borderWidth: 0.5, borderColor: gc.border, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: gc.bg0 },
   vineDeleteBtn: { padding: 8 },

@@ -252,7 +252,7 @@ const APPLY = {
       }], undo, PROJECT_CASCADE);
       projectId = row.id;
       must(await supabase.from('project_milestones').insert({
-        user_id: userId, project_id: projectId, title: '🏗️ Build started', type: 'project_created', date: todayStr(),
+        user_id: userId, project_id: projectId, title: '🏗️ Project started', type: 'project_created', date: todayStr(),
       }));
     } else {
       const cols = projectCols(ch.fields);

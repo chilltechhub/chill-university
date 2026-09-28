@@ -28,6 +28,7 @@ import { FONTS } from '../../theme';
 import useAreaHubActions from '../../logic/useAreaHubActions';
 import { ReadSheet, TimerSheet } from '../../components/lifeareas/ActionSheets';
 import { INK, tierLabel, tierColor, buttonLabel, buttonIcon } from '../../components/lifeareas/actionUi';
+import { textOn } from '../../logic/contrast';
 
 // ─── Life area config ─────────────────────────────────────────────────────────
 export const LIFE_AREAS = [
@@ -195,7 +196,7 @@ function SectionCard({ section, color, access, onPress, next, doneHere, band, bu
           {isNavigable && <Ionicons name={open ? 'chevron-forward' : 'information-circle-outline'} size={16} color={accent} />}
         </View>
         {access && !open && (
-          <Text style={{ fontSize: t.xs, color: c.text4, fontStyle: 'italic', marginTop: s.sm }}>
+          <Text style={{ fontSize: t.xs, color: c.text3, fontStyle: 'italic', marginTop: s.sm }}>
             {unlockHint(access)}
           </Text>
         )}
@@ -205,7 +206,7 @@ function SectionCard({ section, color, access, onPress, next, doneHere, band, bu
       {open && next && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, paddingHorizontal: s.lg, paddingBottom: s.lg }}>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: FONTS.mono, fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: nextAccent }}>
+            <Text style={{ fontFamily: FONTS.mono, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: nextAccent }}>
               {tierLabel(next.tier, band)}
             </Text>
             <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1, marginTop: 2, lineHeight: 19 }}>{next.title}</Text>
@@ -232,8 +233,8 @@ function NoteCard({ note, color, onDelete, c, t, s, r }) {
   return (
     <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: color }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-        <Text style={{ fontSize: 10, color, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>{date}</Text>
-        <TouchableOpacity onPress={onDelete}>
+        <Text style={{ fontSize: 11, color, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>{date}</Text>
+        <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={onDelete}>
           <Ionicons name="close" size={14} color={c.text4} />
         </TouchableOpacity>
       </View>
@@ -459,20 +460,20 @@ export default function LifeAreaScreen() {
           {/* Rating */}
           <TourSpot id="lifearea-rating">
           <View style={{ marginTop: s.lg }}>
-            <Text style={{ fontSize: t.xs, color: c.text4, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>How's this area right now?</Text>
+            <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>How's this area right now?</Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {[1,2,3,4,5].map(val => (
                 <TouchableOpacity key={val} onPress={() => saveRating(val)}
                   style={{ flex: 1, height: 36, borderRadius: 8, backgroundColor: rating >= val ? color : color + '22', borderWidth: 1, borderColor: color + '55', alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: rating >= val ? '#fff' : color }}>{val}</Text>
+                  <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: rating >= val ? textOn(color) : color }}>{val}</Text>
                 </TouchableOpacity>
               ))}
             </View>
             {/* Which end is which. Without this, "1" read as either "top
                 priority" or "worst", depending on who was asked. */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-              <Text style={{ fontSize: 10, color: c.text4 }}>1 = struggling</Text>
-              <Text style={{ fontSize: 10, color: c.text4 }}>5 = going great</Text>
+              <Text style={{ fontSize: 11, color: c.text3 }}>1 = struggling</Text>
+              <Text style={{ fontSize: 11, color: c.text3 }}>5 = going great</Text>
             </View>
             {ratingEntry && (ratingNoteSaved ? (
               <Text style={{ fontSize: t.xs, color: c.text3, marginTop: s.sm }}>Note saved with this rating.</Text>
@@ -504,7 +505,7 @@ export default function LifeAreaScreen() {
                   {hub.band === 'kid' ? 'Do this today' : 'Today’s focus'}
                 </Text>
                 <View style={{ backgroundColor: color + '1a', borderWidth: 1, borderColor: color + '66', borderRadius: r.xl, padding: 18 }}>
-                  {!!from && <Text style={{ fontFamily: FONTS.mono, fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', color: c.text3 }}>{from}</Text>}
+                  {!!from && <Text style={{ fontFamily: FONTS.mono, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: c.text3 }}>{from}</Text>}
                   <Text style={{ fontSize: t.xl, fontWeight: t.bold, color: c.text1, lineHeight: 26, marginTop: 4 }}>{f.title}</Text>
                   {!!f.why && <Text style={{ fontSize: t.sm, color: c.text2, lineHeight: 20, marginTop: 8 }}>{f.why}</Text>}
                   <TouchableOpacity onPress={() => actOnHub(f)} disabled={busyKey === f.key} accessibilityRole="button"

@@ -57,6 +57,8 @@ import {
 } from '../src/logic/experienceStage';
 import { forgetSeenScreens } from '../src/logic/useFirstVisitTutorial';
 import { getEnabledGames } from '../src/services/gameRegistry';
+import { tapHaptic } from '../src/logic/haptics';
+import { setNoticeScreenGate } from '../src/logic/noticeStore';
 
 const AccessContext = createContext(null);
 
@@ -377,6 +379,15 @@ export function AccessProvider({ children }) {
     [gateCtx]
   );
 
+  // Notices (src/logic/noticeStore.js) skip anything whose button leads to a
+  // screen this account hasn't opened yet.
+  useEffect(() => {
+    setNoticeScreenGate((screen) => {
+      const feature = featureForScreen(screen);
+      return !feature || evaluateAccess(feature, gateCtx).available;
+    });
+  }, [gateCtx]);
+
   const isOpen = useCallback((featureId) => {
     const feature = getFeature(featureId);
     // Anything not in the catalog is not gated. A screen that nobody has
@@ -546,6 +557,7 @@ export function AccessProvider({ children }) {
     // so "tick it by hand" means jump to done rather than flip a flag.
     const steps = { ...current, [stepId]: target.done ? false : true };
     if (!steps[stepId]) delete steps[stepId];
+    else tapHaptic();
     stepsRef.current = { ...stepsRef.current, [activeObjectiveId]: steps };
 
     applyLocal(prev => ({

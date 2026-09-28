@@ -143,7 +143,7 @@ const WIDGET_DEFS = [
   { key: 'desk',        title: 'On the Desk' },
   { key: 'ideas',       title: 'Latest Ideas' },
   { key: 'streak',      title: 'Streak & Level' },
-  { key: 'builds',      title: 'Active Builds' },
+  { key: 'builds',      title: 'Active Projects' },
   { key: 'checkins',    title: 'Check-ins Due' },
   // Not tied to one persona — see personas.defaultWidgets and the
   // `exploring` option on layoutForPersona.
@@ -310,7 +310,7 @@ function CommanderCard({ profile, rank, progress, c, t, onPress }) {
           <Text style={cmd.crestEmoji}>{rankInfo.emoji}</Text>
           {badgeEmoji && (
             <View style={[cmd.badgeDot, { backgroundColor: c.bg1, borderColor: crestColor }]}>
-              <Text style={{ fontSize: 9 }}>{badgeEmoji}</Text>
+              <Text style={{ fontSize: 11 }}>{badgeEmoji}</Text>
             </View>
           )}
         </View>
@@ -380,7 +380,7 @@ function FocusModal({ visible, draft, setDraft, onSave, onClose, presets, onAddP
                 <TouchableOpacity key={i} onPress={() => setDraft(preset)}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: draft === preset ? c.teal + '33' : c.bg0, borderRadius: r.full, paddingHorizontal: s.sm, paddingVertical: 6, borderWidth: 1, borderColor: draft === preset ? c.teal : c.border }}>
                   <Text style={{ fontSize: t.xs, color: draft === preset ? c.teal : c.text2 }}>{preset}</Text>
-                  <TouchableOpacity onPress={() => onDeletePreset(i)} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
+                  <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={() => onDeletePreset(i)} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
                     <Ionicons name="close-circle" size={13} color={draft === preset ? c.teal : c.text4} />
                   </TouchableOpacity>
                 </TouchableOpacity>
@@ -388,7 +388,7 @@ function FocusModal({ visible, draft, setDraft, onSave, onClose, presets, onAddP
               <TouchableOpacity onPress={() => setShowPresetInput(true)}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: r.full, paddingHorizontal: s.sm, paddingVertical: 6, borderWidth: 1, borderColor: c.border, borderStyle: 'dashed' }}>
                 <Ionicons name="add" size={13} color={c.text4} />
-                <Text style={{ fontSize: t.xs, color: c.text4 }}>Add preset</Text>
+                <Text style={{ fontSize: t.xs, color: c.text3 }}>Add preset</Text>
               </TouchableOpacity>
             </View>
             {showPresetInput && (
@@ -464,14 +464,14 @@ function AffirmationModal({ visible, affirmations, onSave, onClose, c, t, s, r }
           {/* List */}
           <ScrollView automaticallyAdjustKeyboardInsets style={{ maxHeight: 200 }} showsVerticalScrollIndicator={false}>
             {list.length === 0 ? (
-              <Text style={{ fontSize: t.sm, color: c.text4, textAlign: 'center', paddingVertical: s.lg }}>
+              <Text style={{ fontSize: t.sm, color: c.text3, textAlign: 'center', paddingVertical: s.lg }}>
                 No affirmations yet — add one above
               </Text>
             ) : (
               list.map((aff, i) => (
                 <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, marginBottom: s.sm, borderLeftWidth: 3, borderLeftColor: c.gold }}>
                   <Text style={{ flex: 1, fontSize: t.sm, color: c.text1 }}>{aff}</Text>
-                  <TouchableOpacity onPress={() => remove(i)}>
+                  <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={() => remove(i)}>
                     <Ionicons name="close-circle-outline" size={18} color={c.text4} />
                   </TouchableOpacity>
                 </View>
@@ -527,16 +527,16 @@ function IdeaPreviewCard({ idea, visible, onClose, c, t, s, r }) {
               <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: 4 }}>{idea.title}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm }}>
                 <View style={{ backgroundColor: ideaColor + '22', borderRadius: r.full, paddingHorizontal: 8, paddingVertical: 3 }}>
-                  <Text style={{ fontSize: 10, color: ideaColor, fontWeight: t.bold }}>{plantLabel}</Text>
+                  <Text style={{ fontSize: 11, color: ideaColor, fontWeight: t.bold }}>{plantLabel}</Text>
                 </View>
                 {idea.is_project && (
                   <View style={{ backgroundColor: c.gold + '22', borderRadius: r.full, paddingHorizontal: 8, paddingVertical: 3 }}>
-                    <Text style={{ fontSize: 10, color: c.gold, fontWeight: t.bold }}>{showEmojis ? '🚀 ' : ''}Project</Text>
+                    <Text style={{ fontSize: 11, color: c.gold, fontWeight: t.bold }}>{showEmojis ? '🚀 ' : ''}Project</Text>
                   </View>
                 )}
               </View>
             </View>
-            <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
+            <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={onClose} style={{ padding: 4 }}>
               <Ionicons name="close" size={20} color={c.text3} />
             </TouchableOpacity>
           </View>
@@ -566,12 +566,12 @@ function IdeaPreviewCard({ idea, visible, onClose, c, t, s, r }) {
                     <View style={{ width: 16, height: 16, borderRadius: 8, borderWidth: 1.5, borderColor: task.completed ? ideaColor : c.border, backgroundColor: task.completed ? ideaColor : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
                       {task.completed && <Ionicons name="checkmark" size={9} color={c.bg1} />}
                     </View>
-                    <Text style={{ fontSize: t.xs, color: task.completed ? c.text4 : c.text1, textDecorationLine: task.completed ? 'line-through' : 'none', flex: 1 }} numberOfLines={1}>
+                    <Text style={{ fontSize: t.xs, color: task.completed ? c.text3 : c.text1, textDecorationLine: task.completed ? 'line-through' : 'none', flex: 1 }} numberOfLines={1}>
                       {task.title}
                     </Text>
                   </View>
                 ))}
-                {tasks.length > 4 && <Text style={{ fontSize: 10, color: c.text4, marginTop: 4 }}>+{tasks.length - 4} more tasks</Text>}
+                {tasks.length > 4 && <Text style={{ fontSize: 11, color: c.text3, marginTop: 4 }}>+{tasks.length - 4} more tasks</Text>}
               </View>
             )}
 
@@ -649,7 +649,7 @@ function NextUpCard({ item, actions, onAdd, c, t, s, r }) {
         style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border, borderStyle: 'dashed' }}
         onPress={onAdd}>
         <Ionicons name="add-circle-outline" size={18} color={c.text4} />
-        <Text style={{ flex: 1, fontSize: t.sm, color: c.text4 }}>Add priorities from your projects, notes and ideas</Text>
+        <Text style={{ flex: 1, fontSize: t.sm, color: c.text3 }}>Add priorities from your projects, notes and ideas</Text>
       </TouchableOpacity>
     );
   }
@@ -669,7 +669,7 @@ function NextUpCard({ item, actions, onAdd, c, t, s, r }) {
         <View style={{ backgroundColor: color + '22', borderRadius: r.full, paddingHorizontal: 8, paddingVertical: 2 }}>
           <Text style={{ fontSize: ui.name === 'plain' ? 11 : 9, color, ...ui.eyebrow }}>{badgeLabel}</Text>
         </View>
-        {item.notes ? <Text style={{ flex: 1, fontSize: 10, color: c.text4 }} numberOfLines={1}>{item.notes}</Text> : null}
+        {item.notes ? <Text style={{ flex: 1, fontSize: 11, color: c.text3 }} numberOfLines={1}>{item.notes}</Text> : null}
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm }}>
         <Ionicons name={icon} size={18} color={color} />
@@ -700,8 +700,8 @@ function ActivityRow({ item, onPress, c, t, s, r }) {
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1 }} numberOfLines={1}>{item.title}</Text>
         <View style={{ flexDirection: 'row', gap: 6, marginTop: 1 }}>
-          {item.time && <Text style={{ fontSize: 10, color: item.color || meta.color, fontWeight: t.bold }}>{fmtActivityTime(item.time)}</Text>}
-          <Text style={{ fontSize: 10, color: c.text3, ...ui.eyebrow, marginBottom: 0 }}>{meta.label}</Text>
+          {item.time && <Text style={{ fontSize: 11, color: item.color || meta.color, fontWeight: t.bold }}>{fmtActivityTime(item.time)}</Text>}
+          <Text style={{ fontSize: 11, color: c.text3, ...ui.eyebrow, marginBottom: 0 }}>{meta.label}</Text>
         </View>
       </View>
       <Ionicons name="chevron-forward" size={16} color={c.text4} />
@@ -802,7 +802,7 @@ function DeskTicker({ items, onItemPress, onAdd, c, t, s, r }) {
         style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border, borderStyle: 'dashed' }}
         onPress={onAdd}>
         <Ionicons name="add-circle-outline" size={18} color={c.text4} />
-        <Text style={{ flex: 1, fontSize: t.sm, color: c.text4 }}>Add priorities from your projects, notes and ideas</Text>
+        <Text style={{ flex: 1, fontSize: t.sm, color: c.text3 }}>Add priorities from your projects, notes and ideas</Text>
       </TouchableOpacity>
     );
   }
@@ -1245,6 +1245,9 @@ export default function HomeScreen() {
     const known = introducedRef.current;
     const fresh = shown.filter(k => !known.has(k) && WIDGET_INTROS[k]);
     if (!fresh.length) return undefined;
+    // A crowd arriving at once ("Show everything" brings ~10) is a choice to
+    // see it all, not a cue for a ten-step lecture: note them, explain none.
+    if (fresh.length > 3) { persist(new Set([...known, ...fresh])); return undefined; }
     // Long enough for a widget that has just been added to lay out and
     // measure, so its highlight lands on it.
     const timer = setTimeout(() => {
@@ -1575,6 +1578,7 @@ export default function HomeScreen() {
   };
 
   const dateStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const sceneChip = { backgroundColor: c.bg1 + 'E6', borderRadius: 12, paddingHorizontal: s.sm, paddingVertical: 3 };
 
   // Jumping straight into a nested screen on a tab that hasn't been
   // visited yet in this session (the app opens on Home) makes React
@@ -1854,7 +1858,11 @@ export default function HomeScreen() {
       >
         {/* ── Date + streak + widget edit toggle ── */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: s.lg, paddingTop: s.md, paddingBottom: s.sm }}>
-          <Text style={{ fontSize: t.xs, color: c.text3, ...ui.eyebrow, marginBottom: 0 }}>{dateStr}</Text>
+          {/* Over a scenic background these sit on the landscape itself (grey on
+              a pale sky); a chip like the streak badge keeps them readable. */}
+          <View style={bgMode === 'player' ? sceneChip : null}>
+            <Text style={{ fontSize: t.xs, color: c.text3, ...ui.eyebrow, marginBottom: 0 }}>{dateStr}</Text>
+          </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm }}>
             {(streakDays || 0) > 0 && !editingWidgets && (
               <View style={{ backgroundColor: c.bg1, borderRadius: 12, paddingHorizontal: s.sm, paddingVertical: 3, borderWidth: 0.5, borderColor: c.gold }}>
@@ -1863,8 +1871,9 @@ export default function HomeScreen() {
             )}
             {canEditWidgets && (
             <TouchableOpacity onPress={() => (editingWidgets ? exitWidgetEdit() : setEditingWidgets(true))}
-              style={{ paddingHorizontal: s.sm, paddingVertical: 3 }}>
-              <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: editingWidgets ? c.teal : c.text4 }}>
+              hitSlop={10}
+              style={[{ paddingHorizontal: s.sm, paddingVertical: 3 }, bgMode === 'player' && sceneChip]}>
+              <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: editingWidgets ? c.teal : c.text3 }}>
                 {editingWidgets ? 'Done' : 'Edit'}
               </Text>
             </TouchableOpacity>
@@ -1931,7 +1940,7 @@ export default function HomeScreen() {
                 <View style={{ backgroundColor: c.bg1, borderRadius: ui.cardRadius, padding: s.lg, marginHorizontal: s.lg, borderLeftWidth: 3, borderLeftColor: c.teal, borderWidth: ui.borderWidth, borderColor: c.border }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: s.sm }}>
                     <Text style={{ fontSize: ui.name === 'plain' ? 12 : 10, color: c.teal, ...ui.eyebrow }}>{showEmojis ? '✦ ' : ''}Today's Wisdom</Text>
-                    <TouchableOpacity onPress={() => setEditAffirm(true)}>
+                    <TouchableOpacity accessibilityLabel="Add" accessibilityRole="button" onPress={() => setEditAffirm(true)}>
                       <Ionicons name="add-circle-outline" size={20} color={c.gold} />
                     </TouchableOpacity>
                   </View>
@@ -1960,7 +1969,7 @@ export default function HomeScreen() {
                     style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border }}
                     onPress={() => { setFocusDraft(todayFocus || ''); setEditFocus(true); }}>
                     <Ionicons name="bookmark" size={14} color={c.teal} />
-                    <Text style={{ flex: 1, fontSize: t.sm, color: todayFocus ? c.text1 : c.text4, lineHeight: 20 }} numberOfLines={2}>
+                    <Text style={{ flex: 1, fontSize: t.sm, color: todayFocus ? c.text1 : c.text3, lineHeight: 20 }} numberOfLines={2}>
                       {todayFocus || "Set today's focus..."}
                     </Text>
                   </TouchableOpacity>
@@ -1983,7 +1992,7 @@ export default function HomeScreen() {
                   editingWidgets ? (
                     <View style={{ paddingHorizontal: s.lg }}>
                       <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border, borderStyle: 'dashed' }}>
-                        <Text style={{ fontSize: t.xs, color: c.text4 }}>Today's Activities — nothing scheduled today</Text>
+                        <Text style={{ fontSize: t.xs, color: c.text3 }}>Today's Activities — nothing scheduled today</Text>
                       </View>
                     </View>
                   ) : <View />
@@ -1996,7 +2005,7 @@ export default function HomeScreen() {
                     ))}
                     {todayActivities.length > 3 && (
                       <TouchableOpacity onPress={() => setShowCalendar(true)}>
-                        <Text style={{ fontSize: t.xs, color: c.text4, textAlign: 'center', marginTop: 2 }}>
+                        <Text style={{ fontSize: t.xs, color: c.text3, textAlign: 'center', marginTop: 2 }}>
                           +{todayActivities.length - 3} more today
                         </Text>
                       </TouchableOpacity>
@@ -2063,7 +2072,7 @@ export default function HomeScreen() {
                   editingWidgets ? (
                     <View style={{ paddingHorizontal: s.lg }}>
                       <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border, borderStyle: 'dashed' }}>
-                        <Text style={{ fontSize: t.xs, color: c.text4 }}>Latest Ideas — nothing planted yet</Text>
+                        <Text style={{ fontSize: t.xs, color: c.text3 }}>Latest Ideas — nothing planted yet</Text>
                       </View>
                     </View>
                   ) : <View />
@@ -2084,7 +2093,7 @@ export default function HomeScreen() {
                               {idea.title}
                             </Text>
                             {(idea.garden_petals?.length > 0) && (
-                              <Text style={{ fontSize: 9, color: idea.color || c.teal }}>
+                              <Text style={{ fontSize: 11, color: idea.color || c.teal }}>
                                 {idea.garden_petals.length} petals
                               </Text>
                             )}
@@ -2117,19 +2126,19 @@ export default function HomeScreen() {
               ),
             },
             {
-              key: 'builds', title: 'Active Builds',
+              key: 'builds', title: 'Active Projects',
               render: () => (
                 activeBuilds.length === 0 ? (
                   editingWidgets ? (
                     <View style={{ paddingHorizontal: s.lg }}>
                       <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border, borderStyle: 'dashed' }}>
-                        <Text style={{ fontSize: t.xs, color: c.text4 }}>Active Builds — nothing in progress</Text>
+                        <Text style={{ fontSize: t.xs, color: c.text3 }}>Active Projects — nothing in progress</Text>
                       </View>
                     </View>
                   ) : <View />
                 ) : (
                   <View style={{ paddingHorizontal: s.lg }}>
-                    <SectionHead title="Active Builds" action="Workshop →" onAction={() => navigation.navigate('ProjectsScreen')} c={c} t={t} />
+                    <SectionHead title="Active Projects" action="Workshop →" onAction={() => navigation.navigate('ProjectsScreen')} c={c} t={t} />
                     <View style={{ backgroundColor: c.bg1, borderRadius: ui.cardRadius, borderWidth: ui.borderWidth, borderColor: c.border, paddingHorizontal: s.md }}>
                       {activeBuilds.slice(0, 4).map((p, i, arr) => (
                         <TouchableOpacity key={p.id} onPress={() => navigation.navigate('Library', { screen: 'ProjectDetail', params: { project: p } })} activeOpacity={0.7}
@@ -2154,7 +2163,7 @@ export default function HomeScreen() {
                   editingWidgets ? (
                     <View style={{ paddingHorizontal: s.lg }}>
                       <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border, borderStyle: 'dashed' }}>
-                        <Text style={{ fontSize: t.xs, color: c.text4 }}>Check-ins Due — every domain is current</Text>
+                        <Text style={{ fontSize: t.xs, color: c.text3 }}>Check-ins Due — every domain is current</Text>
                       </View>
                     </View>
                   ) : <View />
@@ -2172,7 +2181,7 @@ export default function HomeScreen() {
                             ? <Text style={{ fontSize: 13 }}>{area.emoji}</Text>
                             : <Ionicons name={area.icon} size={13} color={area.color || c.teal} />}
                           <Text style={{ fontSize: 12, fontWeight: '700', color: area.color || c.teal }}>{area.label}</Text>
-                          <Readout size={11} color={c.text3} weight="400">{days === null ? 'never' : `${days}d`}</Readout>
+                          <Readout size={11} color={c.text3} weight="400">{days === null ? 'not rated yet' : `${days}d`}</Readout>
                         </TouchableOpacity>
                       ))}
                     </View>
@@ -2350,7 +2359,7 @@ export default function HomeScreen() {
               </Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => closeWidgetOffer(false)} style={{ paddingVertical: s.md, alignItems: 'center' }}>
-              <Text style={{ fontSize: t.sm, color: c.text4, fontWeight: t.semibold }}>Not now</Text>
+              <Text style={{ fontSize: t.sm, color: c.text3, fontWeight: t.semibold }}>Not now</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -2489,7 +2498,7 @@ export default function HomeScreen() {
                   <Text style={{ fontSize: 20 }}>{game.emoji}</Text>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: t.sm, color: c.text1, fontWeight: '600' }}>{game.title}</Text>
-                    <Text style={{ fontSize: 11, color: c.text4 }}>{game.subject}</Text>
+                    <Text style={{ fontSize: 11, color: c.text3 }}>{game.subject}</Text>
                   </View>
                 </TouchableOpacity>
               ))}

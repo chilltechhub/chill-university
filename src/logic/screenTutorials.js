@@ -64,7 +64,7 @@ const SCREEN_FEATURES = {
     },
     {
       title: 'Build',
-      body: "The Workshop holds active builds with their own tasks, research and journal. Portfolio Archives is what you've finished. The Research Vault keeps sources that don't belong to any one build, and Career Expeditions is for exploring where this all goes.",
+      body: "The Workshop holds active projects with their own tasks, research and journal. Portfolio Archives is what you've finished. The Research Vault keeps sources that don't belong to any one project, and Career Expeditions is for exploring where this all goes.",
       id: 'hub-section-academic',
       librarySubTab: 'build',
     },
@@ -82,7 +82,7 @@ const SCREEN_FEATURES = {
       // rendered with no highlight at all, describing a screen the user
       // couldn't see. Now points at the card that actually holds it.
       title: 'Portfolio Archives',
-      body: "Ship something — finish a build, complete a class — and it lands in here on its own. This is the honest record of what you've actually done, and it's what you'd show someone.",
+      body: "Ship something — finish a project, complete a class — and it lands in here on its own. This is the honest record of what you've actually done, and it's what you'd show someone.",
       id: 'hub-PortfolioScreen',
       librarySubTab: 'build',
     },
@@ -124,12 +124,12 @@ const SCREEN_FEATURES = {
   // opens pre-filled with EXAMPLES.project — editable, and nothing is saved
   // until the user presses Start themselves.
   ProjectsScreen: [
-    { title: 'This is the Workshop', body: "Every build lives here, from a one-line idea to something you're shipping. A build holds its own tasks, research and journal, so the whole thing stays in one place instead of scattered across notes.", id: 'projects-list' },
-    { title: 'Stages', body: 'Blueprints are ideas you haven’t started. Building is in progress. Shipped is done — and shipped builds land in your Portfolio on their own, which is the record you’d actually show someone.', id: 'projects-list' },
+    { title: 'This is the Workshop', body: "Every project lives here, from a one-line idea to something you're shipping. A build holds its own tasks, research and journal, so the whole thing stays in one place instead of scattered across notes.", id: 'projects-list' },
+    { title: 'Stages', body: 'Ideas are ones you haven’t started. In progress is underway. Done is finished — and finished projects land in your Portfolio on their own, which is the record you’d actually show someone.', id: 'projects-list' },
     { title: 'Finding one later', body: 'Search by name once you have a few. Worth knowing now so you don’t end up scrolling for something you made three months ago.', id: 'projects-search' },
     {
       title: "Let's make one",
-      body: "Tap NEW BUILD. I've put an example in for you — a Grow Shed sensor rig — so you can see the shape of a good one: a clear title, and an objective that says what done looks like. Change it to whatever you're actually building, or clear it.",
+      body: "Tap NEW PROJECT. I've put an example in for you — a Grow Shed sensor rig — so you can see the shape of a good one: a clear title, and an objective that says what done looks like. Change it to whatever you're actually building, or clear it.",
       id: 'projects-add',
       passthrough: true,
       prefill: EXAMPLES.project,
@@ -183,8 +183,8 @@ const SCREEN_FEATURES = {
       id: 'garden-view',
     },
     {
-      title: 'Vining two together',
-      body: "Tap Vine, then tap two plants to link them. Say you have “sell the rig as a kit” and “3D-print the enclosures in-house” — the kit needs an enclosure and you already print them. That's a vine, and it's exactly the connection you'd otherwise forget you'd made.",
+      title: 'Linking two ideas',
+      body: "Tap Link ideas, then tap two plants to link them. Say you have “sell the rig as a kit” and “3D-print the enclosures in-house” — the kit needs an enclosure and you already print them. That's a vine, and it's exactly the connection you'd otherwise forget you'd made.",
       id: 'garden-vine',
     },
     // Last on purpose. A passthrough step hands control back to the app,
@@ -193,7 +193,7 @@ const SCREEN_FEATURES = {
     // behind that sheet.
     {
       title: "Now plant one",
-      body: "Tap +. I've put an example in — an idea that came out of the sensor rig build. Give it a title and a line about what it actually is; the description is what makes it worth something when you come back in a month.",
+      body: "Tap +. I've put an example in — an idea that came out of the sensor rig project. Give it a title and a line about what it actually is; the description is what makes it worth something when you come back in a month.",
       id: 'ideas-list',
       passthrough: true,
       prefill: EXAMPLES.ideas[0],
@@ -202,7 +202,7 @@ const SCREEN_FEATURES = {
   NotesScreen: [
     { title: 'Quick notes', body: "Type in the box under the folders and tap + to save. No title, no folder, no decisions — the point is that writing something down costs you nothing.", id: 'notes-input' },
     { title: 'Same vault as everything else', body: "Notes sit alongside your links, papers and tools rather than in their own silo, so one search finds all of it.", id: 'resources-list' },
-    { title: 'When a note outgrows itself', body: "If a note turns into something you're actually going to do, send it to the Workshop as a build, or plant it in the Idea Garden to see what it connects to.", id: 'resources-list' },
+    { title: 'When a note outgrows itself', body: "If a note turns into something you're actually going to do, send it to the Workshop as a project, or plant it in the Idea Garden to see what it connects to.", id: 'resources-list' },
   ],
   // The route name React Navigation reports for the Classes list is
   // 'ClassesMain' (the initial screen inside the ClassesStack nested

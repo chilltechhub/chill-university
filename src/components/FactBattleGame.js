@@ -238,7 +238,7 @@ const makeStyles = (G) => StyleSheet.create({
   instruction: { fontSize: 12, color: G.gold, textAlign: 'center', marginBottom: 16 },
   cardsRow:    { flexDirection: 'row', gap: 10, marginBottom: 16 },
   card:        { flex: 1, backgroundColor: G.card, borderRadius: 14, padding: 12, borderWidth: 0.5, borderColor: G.border, alignItems: 'center' },
-  cardLabel:   { fontSize: 10, color: G.muted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 },
+  cardLabel:   { fontSize: 11, color: G.muted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 },
   cardEmoji:   { fontSize: 40, marginBottom: 4 },
   cardName:    { fontSize: 13, fontWeight: '700', color: G.cream, marginBottom: 10, textAlign: 'center' },
   statRow:     { flexDirection: 'row', justifyContent: 'space-between', width: '100%', backgroundColor: G.bg, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 10, marginBottom: 6, borderWidth: 1, borderColor: G.border },

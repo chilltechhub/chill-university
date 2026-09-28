@@ -62,7 +62,7 @@ export default function ResetPasswordScreen({ linkInvalid }) {
     <KeyboardAvoidingView style={s.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={s.stars}>
         {['✦','·','✦','·','✦','·','✦'].map((ch, i) => (
-          <Text key={i} style={[s.star, { opacity: 0.1 + i * 0.05, fontSize: 8 + (i % 3) * 4, top: 40 + i * 30, left: 20 + i * 42 }]}>{ch}</Text>
+          <Text key={i} style={[s.star, { opacity: 0.1 + i * 0.05, fontSize: 11 + (i % 3) * 4, top: 40 + i * 30, left: 20 + i * 42 }]}>{ch}</Text>
         ))}
       </View>
 
@@ -101,7 +101,7 @@ export default function ResetPasswordScreen({ linkInvalid }) {
                   secureTextEntry={!showPass}
                   autoFocus
                 />
-                <TouchableOpacity onPress={() => setShowPass(v => !v)} style={{ padding: 4 }}>
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel={showPass ? 'Hide password' : 'Show password'} onPress={() => setShowPass(v => !v)} style={{ padding: 4 }}>
                   <Ionicons name={showPass ? 'eye-off-outline' : 'eye-outline'} size={16} color="rgba(255,255,255,0.3)" />
                 </TouchableOpacity>
               </View>

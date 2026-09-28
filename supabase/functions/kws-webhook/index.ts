@@ -28,6 +28,12 @@ const WEBHOOK_SECRETS = [
   Deno.env.get('KWS_WEBHOOK_SECRET_PREVIOUS'), // set only while a secret rotation is in flight
 ].filter(Boolean) as string[];
 
+// How old a signed event may be before it's treated as a replay. Generous on
+// purpose: KWS retries a failed delivery, and whether a retry is re-signed is
+// not documented, so a tight window could drop a real verification. A day
+// still stops an old captured event being replayed at will.
+const MAX_EVENT_AGE_SECONDS = 24 * 60 * 60;
+
 // Supabase auto-injects these — nothing to set for these two.
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -70,6 +76,11 @@ async function isValidSignature(header: string, rawBody: string): Promise<boolea
     .map((p) => p.trim().slice(3));
 
   if (!timestamp || providedSigs.length === 0 || WEBHOOK_SECRETS.length === 0) return false;
+
+  // A captured, correctly signed request must not be replayable later: the
+  // signed timestamp has to be recent. KWS timestamps are Unix seconds.
+  const ageSeconds = Math.abs(Date.now() / 1000 - Number(timestamp));
+  if (!Number.isFinite(ageSeconds) || ageSeconds > MAX_EVENT_AGE_SECONDS) return false;
 
   const message = `${timestamp}.${rawBody}`;
   for (const secret of WEBHOOK_SECRETS) {
@@ -119,7 +130,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const resp = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${uid}`, {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(uid)}`, {
       method: 'PATCH',
       headers: {
         'content-type': 'application/json',

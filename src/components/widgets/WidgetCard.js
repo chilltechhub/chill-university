@@ -41,7 +41,7 @@ export default function WidgetCard({
             and shove the action link off it. */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1, marginRight: action ? 8 : 0 }}>
           {icon && <Ionicons name={icon} size={14} color={edge} />}
-          <Text numberOfLines={2} style={{ flexShrink: 1, fontSize: ui.name === 'plain' ? t.sm : t.xs, color: ui.name === 'plain' ? c.text2 : c.text4, ...ui.sectionLabel }}>
+          <Text numberOfLines={2} style={{ flexShrink: 1, fontSize: ui.name === 'plain' ? t.sm : t.xs, color: ui.name === 'plain' ? c.text2 : c.text3, ...ui.sectionLabel }}>
             {title}
           </Text>
         </View>

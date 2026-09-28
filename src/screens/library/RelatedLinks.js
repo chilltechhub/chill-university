@@ -116,12 +116,12 @@ export default function RelatedLinks({ areaId, color, c, t, s, r }) {
               <TouchableOpacity onPress={() => openPicker(kind.key)} disabled={!userId}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: color + '18', borderRadius: r.full, paddingHorizontal: 8, paddingVertical: 3 }}>
                 <Ionicons name="add" size={12} color={color} />
-                <Text style={{ fontSize: 10, color, fontWeight: '700' }}>Link</Text>
+                <Text style={{ fontSize: 11, color, fontWeight: '700' }}>Link</Text>
               </TouchableOpacity>
             </View>
 
             {loading ? null : items.length === 0 ? (
-              <Text style={{ fontSize: t.xs, color: c.text4, fontStyle: 'italic' }}>Nothing linked yet</Text>
+              <Text style={{ fontSize: t.xs, color: c.text3, fontStyle: 'italic' }}>Nothing linked yet</Text>
             ) : (
               items.map(item => (
                 <View key={item.id} style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.sm, marginBottom: 6, borderWidth: 0.5, borderColor: c.border }}>
@@ -129,7 +129,7 @@ export default function RelatedLinks({ areaId, color, c, t, s, r }) {
                     <Text style={{ fontSize: t.xs, color: c.text1, flex: 1 }} numberOfLines={1}>{item.title}</Text>
                     <Ionicons name="open-outline" size={12} color={color} />
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => unlink(item.id)} style={{ padding: 2 }}>
+                  <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={() => unlink(item.id)} style={{ padding: 2 }}>
                     <Ionicons name="close" size={13} color={c.text4} />
                   </TouchableOpacity>
                 </View>

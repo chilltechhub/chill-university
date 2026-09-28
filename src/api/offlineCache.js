@@ -4,6 +4,8 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
+import { SCOPED_TABLES } from './profileScopedClient';
+import { getActiveProfileId } from '../logic/activeProfile';
 
 const PREFIX = '@cth_cache_';
 
@@ -85,8 +87,16 @@ function genLocalId() {
 // that looks exactly like what a real insert would have returned, so the
 // caller can push it straight into its list — no separate "pending" data
 // shape to maintain, and nothing to reconcile once it actually syncs.
+//
+// Profile-scoped tables get the active profile stamped on the row HERE,
+// before either path. The scoped client stamps inserts itself, but a queued
+// row never goes through it — it was replayed later with no profile_id, and
+// scoped reads never return a null-profile row, so anything saved offline
+// vanished once it synced (and so did every project made from the + button,
+// which used the raw client). Stamping at write time also means a replay
+// lands in the profile it was written in, not whichever is active later.
 export async function offlineWrite(supabase, table, data, { type = 'INSERT', selectQuery = '*' } = {}) {
-  const row = { ...data, id: data.id || genLocalId() };
+  const row = withActiveProfile(table, { ...data, id: data.id || genLocalId() });
 
   if (await isOnline()) {
     const query = type === 'UPSERT'
@@ -114,27 +124,58 @@ export async function clearQueue() {
 // isOnline() said no) sat in AsyncStorage forever, invisible, and never
 // reached the account. Call this on launch and whenever connectivity comes
 // back, so a queued write is a delay, not a silent loss.
-export async function flushQueue(supabase) {
+//
+// Pass the RAW client: the rows already carry their profile_id (see
+// offlineWrite), and the scoped client would filter an UPDATE/DELETE to the
+// profile that happens to be active now.
+//
+// Only the signed-in user's writes are replayed; another account's stay
+// queued for when they sign back in. A write the server rejects for good (bad
+// data, a constraint, a permission) is dropped instead of retried on every
+// launch forever, and counted in `dropped` so the caller can say so. One flush
+// runs at a time — launch, reconnect and foreground can all ask at once.
+let flushing = null;
+export function flushQueue(supabase) {
+  if (!flushing) flushing = doFlush(supabase).finally(() => { flushing = null; });
+  return flushing;
+}
+
+async function doFlush(supabase) {
   const queue = await getQueue();
-  if (queue.length === 0) return { synced: 0, remaining: 0 };
+  if (queue.length === 0) return { synced: 0, remaining: 0, dropped: 0 };
+
+  let uid = null;
+  try { uid = (await supabase.auth.getSession())?.data?.session?.user?.id || null; } catch {}
+  if (!uid) return { synced: 0, remaining: queue.length, dropped: 0 };
 
   const remaining = [];
   let synced = 0;
-  for (const op of queue) {
+  let dropped = 0;
+  for (const raw of queue) {
+    const op = { ...raw, data: withActiveProfile(raw.table, raw.data || {}) };
+    if (op.data.user_id && op.data.user_id !== uid) { remaining.push(raw); continue; }
     try {
       let query = supabase.from(op.table);
       if (op.type === 'INSERT')      query = query.insert(op.data);
       else if (op.type === 'UPSERT') query = query.upsert(op.data);
       else if (op.type === 'UPDATE') query = query.update(op.data).eq('id', op.data.id);
       else if (op.type === 'DELETE') query = query.delete().eq('id', op.data.id);
-      else { remaining.push(op); continue; } // unknown op — keep it, don't drop silently
+      else { remaining.push(raw); continue; } // unknown op — keep it, don't drop silently
 
-      const { error } = await query;
-      if (error) throw error;
+      const { error, status } = await query;
+      if (error) throw Object.assign(error, { status });
       synced++;
     } catch (e) {
+      // The same id is already there: an earlier attempt landed but its
+      // response was lost. That's a success, not a failure.
+      if (e?.code === '23505' && (op.type === 'INSERT' || op.type === 'UPSERT')) { synced++; continue; }
+      if (isPermanentError(e)) {
+        dropped++;
+        console.warn('[queue] server refused, dropping', op.table, op.type, e?.code, e?.message);
+        continue;
+      }
       console.warn('[queue] replay failed, keeping queued', op.table, op.type, e?.message || e);
-      remaining.push(op);
+      remaining.push(raw);
     }
   }
 
@@ -143,7 +184,32 @@ export async function flushQueue(supabase) {
   } else {
     await clearQueue();
   }
-  return { synced, remaining: remaining.length };
+  return { synced, remaining: remaining.length, dropped };
+}
+
+// Drops the queued writes that belong to one account — used on sign-out, after
+// a last flush attempt, so they can't replay under whoever signs in next.
+export async function clearQueueFor(userId) {
+  const queue = await getQueue();
+  const keep = queue.filter(op => op?.data?.user_id && op.data.user_id !== userId);
+  if (keep.length) await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(keep));
+  else await clearQueue();
+}
+
+// Postgres data/constraint/permission classes (22, 23, 42), PostgREST request
+// errors, and 4xx other than timeout/rate-limit will fail the same way every
+// time. Network errors carry no code and are worth retrying.
+function isPermanentError(e) {
+  const code = String(e?.code || '');
+  if (/^(22|23|42|PGRST)/.test(code)) return true;
+  const status = Number(e?.status || 0);
+  return status >= 400 && status < 500 && status !== 408 && status !== 429;
+}
+
+function withActiveProfile(table, row) {
+  if (!SCOPED_TABLES.has(table) || row.profile_id !== undefined) return row;
+  const profileId = getActiveProfileId();
+  return profileId ? { ...row, profile_id: profileId } : row;
 }
 
 // ─── Network check ────────────────────────────────────────────────────────────
