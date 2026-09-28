@@ -32,7 +32,7 @@ export const SCREEN_HELP = {
   },
   PlannerScreen: {
     title: 'Planner',
-    body: 'Your agenda. Switch between Daily, Weekly, and Monthly views, filter by life area, and tap Add (or the grid icon) to schedule something. Reminders you create here can send a notification before the scheduled time.',
+    body: 'Your agenda. Switch between Daily, Weekly, and Monthly views, filter by life area, and tap Add to schedule something (⋯ → Add from ideas has ready-made ones). Reminders you create here can send a notification before the scheduled time.',
   },
   CaptureInbox: {
     title: 'Capture Inbox',

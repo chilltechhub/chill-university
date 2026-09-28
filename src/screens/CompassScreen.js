@@ -573,7 +573,7 @@ function FeatureRow({ entry, onPress, c, t, sp, r, showSubtext }) {
 
 const makeStyles = (c, t, sp, r) => StyleSheet.create({
   container: { flex: 1, backgroundColor: c.bg0 },
-  scroll:    { paddingBottom: 60, paddingTop: sp.lg },
+  scroll:    { paddingBottom: 96, paddingTop: sp.lg }, // clears the + button and the guide pill
 
   header:      { paddingHorizontal: sp.xl, marginBottom: sp.lg },
   headerTitle: { fontSize: t.xxxl, fontFamily: FONTS.display, fontWeight: '800', color: c.text1 },

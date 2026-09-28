@@ -229,7 +229,7 @@ export default function CompassCard() {
               />
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
-              <Text style={s.stepLabel}>
+              <Text style={s.stepLabel} numberOfLines={3}>
                 {nextStep.label}
                 {nextStep.needed ? ` · ${nextStep.count} of ${nextStep.needed}` : ''}
               </Text>

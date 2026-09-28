@@ -36,7 +36,7 @@ const VIA_COPY = {
 const CAP_TARGETS = {
   'all-games': { screen: 'Training', label: 'Training', body: 'Every game is open now. In Training, use the subject and type filters to find one, and the Progress tab to see how each subject is going.' },
   'dashboard': { screen: 'Home', label: 'Home', body: 'Home is yours to arrange now. Tap Edit at the top right of Home to move cards, hide them, or add ones you want. Any new card gets pointed out when it arrives.' },
-  'all-tools': { screen: 'LibraryScreen', label: 'the Library', body: 'Every tool is on the map now. Swipe through the Life, Build and Knowledge pages to see what is new.' },
+  'all-tools': { screen: 'LibraryScreen', label: 'the Library', body: 'Every tool is on the map now. Look through Life, Build and Knowledge in the Library to see what is new.' },
   'doors':     { screen: 'Compass', label: 'the Compass', body: 'Locked tools now show up, each with what opens it: finish a goal, pass a short test, or switch it on. The Compass lists them all.' },
 };
 

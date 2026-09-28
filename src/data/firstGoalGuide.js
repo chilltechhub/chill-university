@@ -36,7 +36,7 @@ export const FIRST_GOAL_GUIDE = {
     },
     habit: {
       go: 'PlannerScreen', spot: 'planner-add', mode: 'tap',
-      path: 'the Library tab, swipe to the Knowledge page, then Planner',
+      path: 'the Library tab, tap Knowledge at the top, then Planner',
       say: 'Tap Add and put in one small habit, something you could do most days. A glass of water counts. Set it to repeat daily, then save it. Each day, tap the circle next to it to check it off.',
     },
     drill: DRILL('Tap here and play one round: a few quick questions. The step ticks itself when the round ends.'),
@@ -44,13 +44,13 @@ export const FIRST_GOAL_GUIDE = {
   'first-study-session': {
     class: {
       go: 'ClassesMain', mode: 'point',
-      path: 'the Library tab, swipe to the Knowledge page, then Academy Classes',
+      path: 'the Library tab, tap Knowledge at the top, then Academy Classes',
       say: 'Pick any subject below, then open one topic inside it. You can switch any time.',
     },
     drill: DRILL('Tap here and play one round: a few quick questions. The step ticks itself when the round ends.'),
     block: {
       go: 'PlannerScreen', spot: 'planner-add', mode: 'tap',
-      path: 'the Library tab, swipe to the Knowledge page, then Planner',
+      path: 'the Library tab, tap Knowledge at the top, then Planner',
       say: 'Tap Add and put in one study block. Twenty minutes on a real day counts.',
     },
   },
@@ -62,7 +62,7 @@ export const FIRST_GOAL_GUIDE = {
     },
     routine: {
       go: 'PlannerScreen', spot: 'planner-add', mode: 'tap',
-      path: 'the Library tab, swipe to the Knowledge page, then Planner',
+      path: 'the Library tab, tap Knowledge at the top, then Planner',
       say: 'Tap Add and put in one routine that repeats: payroll, a restock, a report. Set it to weekly.',
     },
     drill: DRILL('Tap here and play a round. Register Ready or Shift Manager is a good start.'),
@@ -70,12 +70,12 @@ export const FIRST_GOAL_GUIDE = {
   'first-founder-step': {
     seed: {
       go: 'IdeaGardenScreen', spot: 'ideas-list', mode: 'tap',
-      path: 'the Library tab, swipe to the Knowledge page, then Idea Garden',
+      path: 'the Library tab, tap Knowledge at the top, then Idea Garden',
       say: 'Tap the lit-up + and plant your idea: one line on the problem it solves. Rough is fine.',
     },
     project: {
       go: 'ProjectsScreen', spot: 'projects-add', mode: 'tap',
-      path: 'the Library tab, swipe to the Build page, then The Workshop',
+      path: 'the Library tab, tap Build at the top, then The Workshop',
       say: 'Tap New Project and start your idea as a project. Give it a name you would say out loud.',
     },
     drill: DRILL('Tap here and play a round. Budget Balance or Survive the Month is a good start.'),
@@ -85,29 +85,29 @@ export const FIRST_GOAL_GUIDE = {
   'first-build': {
     seed: {
       go: 'IdeaGardenScreen', spot: 'ideas-list', mode: 'tap',
-      path: 'the Library tab, swipe to the Knowledge page, then Idea Garden',
+      path: 'the Library tab, tap Knowledge at the top, then Idea Garden',
       say: 'Tap the lit-up + and plant your idea: one line on what it is or the problem it solves. Rough is fine; it only has to be written down.',
     },
     project: {
       go: 'ProjectsScreen', spot: 'projects-add', mode: 'tap',
-      path: 'the Library tab, swipe to the Build page, then The Workshop',
+      path: 'the Library tab, tap Build at the top, then The Workshop',
       say: 'Tap New Project and start your idea as a project. Fill in the Next step box too: the actual next move, not "work on it". That ticks the last step at the same time.',
     },
     step: {
       go: 'ProjectsScreen', spot: 'projects-list', mode: 'point',
-      path: 'the Library tab, swipe to the Build page, then The Workshop',
+      path: 'the Library tab, tap Build at the top, then The Workshop',
       say: 'Open your project and write its next step: the actual next move, like "sketch the home screen" or "ask Sam about pricing".',
     },
   },
   'first-direction': {
     map: {
       go: 'WayfinderScreen', params: { stage: 'core' }, mode: 'point',
-      path: 'the Library tab, swipe to the Build page, then Wayfinder',
+      path: 'the Library tab, tap Build at the top, then Wayfinder',
       say: 'Three short sets of questions: what you have done, what pulls you, and what matters to you. There are no wrong answers, and it saves as you go. At the end you get a map.',
     },
     try: {
       go: 'WayfinderScreen', params: { stage: 'map' }, mode: 'point',
-      path: 'the Library tab, swipe to the Build page, then Wayfinder',
+      path: 'the Library tab, tap Build at the top, then Wayfinder',
       say: 'Pick a path on your map that looks interesting and commit to one small experiment, something you could do this week. You come back afterwards and say how it felt, and the map learns from it.',
     },
   },
@@ -119,12 +119,12 @@ export const FIRST_GOAL_GUIDE = {
     },
     plan: {
       go: 'PlannerScreen', spot: 'planner-add', mode: 'tap',
-      path: 'the Library tab, swipe to the Knowledge page, then Planner',
+      path: 'the Library tab, tap Knowledge at the top, then Planner',
       say: 'This is the Planner: your days, habits and to-dos. Tap Add and put in one real thing on a real day.',
     },
     vault: {
       go: 'KnowledgeScreen', spot: 'notes-input', mode: 'tap',
-      path: 'the Library tab, swipe to the Knowledge page, then Knowledge Vault',
+      path: 'the Library tab, tap Knowledge at the top, then Knowledge Vault',
       say: 'This is the Knowledge Vault: notes, links and tools you want to find again. Tap here, type a note, and tap + to save it.',
     },
   },
@@ -143,7 +143,7 @@ export const FIRST_GOAL_GUIDE = {
     },
     plan: {
       go: 'PlannerScreen', spot: 'planner-add', mode: 'tap',
-      path: 'the Library tab, swipe to the Knowledge page, then Planner',
+      path: 'the Library tab, tap Knowledge at the top, then Planner',
       say: 'Tap Add, pick the same area under Life Area, and plan one small thing for it on a real day.',
     },
   },
@@ -162,7 +162,7 @@ export const FIRST_GOAL_GUIDE = {
     },
     situation: {
       go: 'WayfinderScreen', params: { stage: 'situation' }, mode: 'point',
-      path: 'the Library tab, swipe to the Build page, then Wayfinder',
+      path: 'the Library tab, tap Build at the top, then Wayfinder',
       say: 'Pick whatever fits what is going on for you right now, then tap See my plan. You get a few steps for each, one at a time.',
     },
   },
@@ -174,7 +174,7 @@ export const FIRST_GOAL_GUIDE = {
     },
     note: {
       go: 'KnowledgeScreen', spot: 'notes-input', mode: 'tap',
-      path: 'the Library tab, swipe to the Knowledge page, then Knowledge Vault',
+      path: 'the Library tab, tap Knowledge at the top, then Knowledge Vault',
       say: 'The Vault keeps things for good. Tap here, type a note you would want again in a month, and tap + to save it.',
     },
     sort: {
@@ -186,7 +186,7 @@ export const FIRST_GOAL_GUIDE = {
   'first-rhythm': {
     habit: {
       go: 'PlannerScreen', spot: 'planner-add', mode: 'tap',
-      path: 'the Library tab, swipe to the Knowledge page, then Planner',
+      path: 'the Library tab, tap Knowledge at the top, then Planner',
       say: 'Tap Add and put in one small habit, something you could do most days. Set it to repeat daily, then save it.',
     },
     capture: {

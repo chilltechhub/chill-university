@@ -217,6 +217,11 @@ export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
           skipLabel: 'Not now',
           nonBlocking: true,
           placement: inGame ? 'top' : undefined,
+          // After the first hello, a reminder is a one-line pill (tap it for
+          // the full card, Go to be taken there). The full card came back on
+          // every hub visit and sat over the goal card and lesson text. The
+          // first greeting and the finish stay full: those are the moments.
+          compact: !first && key !== 'claim' && !inGame,
         }, pointAt];
 
     // The guide just taught Home's one important card, so Home's own

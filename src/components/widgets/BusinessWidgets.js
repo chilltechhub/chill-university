@@ -71,7 +71,7 @@ export function OrgSnapshotWidget({ userId, onOpenOrg }) {
     >
       {org && (
         <>
-          <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1, marginBottom: 6 }}>{org.name}</Text>
+          <Text numberOfLines={2} style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1, marginBottom: 6 }}>{org.name}</Text>
           <StatRow label="Your role" value={String(org.role || 'member')} />
           {org.members !== null && <StatRow label="Members" value={org.members} />}
         </>

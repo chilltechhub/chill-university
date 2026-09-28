@@ -33,6 +33,7 @@ import { suggestionsForArea } from '../data/plannerSuggestions';
 import DailyCheckin from '../components/DailyCheckin';
 import TourSpot from '../components/TourSpot';
 import FillWithAIButton from '../components/FillWithAIButton';
+import MoreMenu from '../components/MoreMenu';
 import { CLASS_SUBJECTS, CLASS_SCREEN_MAP } from '../data/classCatalog';
 import { getEnabledGames, getGame } from '../services/gameRegistry';
 import { dateStr } from '../logic/dateUtils';
@@ -856,7 +857,7 @@ function CurrentTimeLine({ c }) {
 }
 
 // ─── List daily view ──────────────────────────────────────────────────────────
-function ListView({ instances, onUpdate, onEdit, navigation, c, t, s, r }) {
+function ListView({ instances, onUpdate, onEdit, onAdd, navigation, c, t, s, r }) {
   const { showEmojis } = useUIPrefs();
   const overdue  = instances.filter(i => isOverdue(i));
   const today    = instances.filter(i => !isOverdue(i) && !i.skipped);
@@ -877,7 +878,21 @@ function ListView({ instances, onUpdate, onEdit, navigation, c, t, s, r }) {
     <View style={{ alignItems: 'center', paddingTop: 60 }}>
       {showEmojis ? <Text style={{ fontSize: 44, marginBottom: s.lg }}>📋</Text> : <Ionicons name="clipboard-outline" size={40} color={c.text3} style={{ marginBottom: s.lg }} />}
       <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.sm }}>Nothing scheduled</Text>
-      <Text style={{ fontSize: t.sm, color: c.text3 }}>Tap + to add something</Text>
+      {/* "Tap + to add something" — with two + buttons on screen, which? And
+          no reason to. A why, and the button itself. */}
+      <Text style={{ fontSize: t.sm, color: c.text3, textAlign: 'center', paddingHorizontal: s.xl, lineHeight: 20 }}>
+        A day with one thing on it is easier to start than an empty one.
+      </Text>
+      {!!onAdd && (
+        <TouchableOpacity
+          onPress={onAdd}
+          accessibilityRole="button"
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: s.lg, backgroundColor: c.teal, borderRadius: r.lg, paddingHorizontal: s.lg, paddingVertical: 10 }}
+        >
+          <Ionicons name="add" size={18} color={c.onFill} />
+          <Text style={{ fontSize: t.sm, color: c.onFill, fontWeight: t.bold }}>Plan something for today</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -891,7 +906,7 @@ function ListView({ instances, onUpdate, onEdit, navigation, c, t, s, r }) {
 }
 
 // ─── Daily page ───────────────────────────────────────────────────────────────
-function DailyPage({ userId, date, activeAreas, timeMode, onUpdate, onEdit, navigation, refreshKey, showingAll, c, t, s, r }) {
+function DailyPage({ userId, date, activeAreas, timeMode, onUpdate, onEdit, onAdd, navigation, refreshKey, showingAll, c, t, s, r }) {
   const [instances,  setInstances]  = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -924,7 +939,7 @@ function DailyPage({ userId, date, activeAreas, timeMode, onUpdate, onEdit, navi
 
   if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color={c.teal} />;
 
-  const sharedProps = { instances, onUpdate: handleUpdate, onEdit, navigation, c, t, s, r };
+  const sharedProps = { instances, onUpdate: handleUpdate, onEdit, onAdd, navigation, c, t, s, r };
 
   return (
     <View style={{ flex: 1 }}>
@@ -1323,18 +1338,6 @@ export default function PlannerScreen() {
           <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1, flex: 1 }}>{showEmojis ? '📓 ' : ''}Planner</Text>
           <View style={{ flexDirection: 'row', gap: s.sm }}>
             <FillWithAIButton target="planner" />
-            <TouchableOpacity accessibilityLabel="Stats" accessibilityRole="button"
-              onPress={() => navigation.navigate('WeeklyReviewScreen')}
-              style={{ padding: 6, borderRadius: r.md, backgroundColor: c.bg2, borderWidth: 0.5, borderColor: c.border }}>
-              <Ionicons name="stats-chart-outline" size={18} color={c.text3} />
-            </TouchableOpacity>
-            {view === 'Daily' && (
-              <TouchableOpacity accessibilityRole="button" accessibilityLabel={timeMode ? 'List view' : 'Time view'}
-                onPress={() => setTimeMode(m => !m)}
-                style={{ padding: 6, borderRadius: r.md, backgroundColor: timeMode ? c.teal : c.bg2, borderWidth: 0.5, borderColor: timeMode ? c.teal : c.border }}>
-                <Ionicons name={timeMode ? 'list' : 'time-outline'} size={18} color={timeMode ? c.onFill : c.text3} />
-              </TouchableOpacity>
-            )}
             <TourSpot id="planner-add">
             <TouchableOpacity
               onPress={openAdd}
@@ -1343,10 +1346,17 @@ export default function PlannerScreen() {
               <Text style={{ fontSize: t.xs, color: c.onFill, fontWeight: t.bold }}>Add</Text>
             </TouchableOpacity>
             </TourSpot>
-            <TouchableOpacity accessibilityLabel="Layout" accessibilityRole="button" onPress={() => setPanel(true)}
-              style={{ padding: 6, borderRadius: r.md, backgroundColor: c.bg2, borderWidth: 0.5, borderColor: c.border }}>
-              <Ionicons name="grid-outline" size={18} color={c.text3} />
-            </TouchableOpacity>
+            {/* Three unlabeled icons (a chart, a clock, a grid) used to sit
+                here; nobody could tell what they did. Named, in one menu. */}
+            <MoreMenu items={[
+              { label: 'Add from ideas', icon: 'grid-outline', onPress: () => setPanel(true) },
+              view === 'Daily' && {
+                label: timeMode ? 'Show as a list' : 'Show by time of day',
+                icon: timeMode ? 'list' : 'time-outline',
+                onPress: () => setTimeMode(m => !m),
+              },
+              { label: 'Weekly review', icon: 'stats-chart-outline', onPress: () => navigation.navigate('WeeklyReviewScreen') },
+            ]} />
           </View>
         </View>
 
@@ -1421,7 +1431,7 @@ export default function PlannerScreen() {
       ) : view === 'Daily' ? (
         <DailyPage
           key={`daily-${toISO(anchor)}-${showingAll ? 'all' : 'one'}`}
-          userId={userId} date={anchor}
+          userId={userId} date={anchor} onAdd={openAdd}
           activeAreas={activeAreas} timeMode={timeMode}
           onUpdate={() => setRefresh(k => k + 1)}
           onEdit={openEdit}
