@@ -33,6 +33,7 @@ import CharacterWalker from '../components/CharacterWalker';
 import BadgeMedal from '../components/BadgeMedal';
 import TourSpot from '../components/TourSpot';
 import { textOn } from '../logic/contrast';
+import { RANK_LABELS } from '../theme';
 
 const WARDROBE_TABS = [
   { key: 'outfitId', label: 'Outfit', icon: 'shirt-outline' },
@@ -170,7 +171,8 @@ export default function ProfileScreen() {
           />
           <View style={styles.heroLabel}>
             <Text style={styles.heroName} numberOfLines={1}>{displayName || 'Commander'}</Text>
-            <Text style={styles.heroSub}>Level {level} · Rank #{rank}</Text>
+            {/* The tier's name, not "Rank #20": a number here read as a leaderboard place. */}
+            <Text style={styles.heroSub}>Level {level} · {(RANK_LABELS[rank] || RANK_LABELS[20]).label}</Text>
           </View>
           <TouchableOpacity style={styles.customizeBtn} onPress={() => setWardrobeOpen(true)}>
             <Ionicons name="color-palette-outline" size={15} color="#fff" />
@@ -184,7 +186,7 @@ export default function ProfileScreen() {
           <StatChip label="Level" value={level} icon="trending-up-outline" c={c} t={t} s={s} r={r} />
           <StatChip label="Points" value={points.toLocaleString()} icon="star-outline" c={c} t={t} s={s} r={r} />
           <StatChip label="Streak" value={`${streakDays}d`} icon="flame-outline" c={c} t={t} s={s} r={r} />
-          <StatChip label="Rank" value={`#${rank}`} icon="ribbon-outline" c={c} t={t} s={s} r={r} />
+          <StatChip label="Tier" value={(RANK_LABELS[rank] || RANK_LABELS[20]).label} icon="ribbon-outline" c={c} t={t} s={s} r={r} />
         </View>
         </TourSpot>
 

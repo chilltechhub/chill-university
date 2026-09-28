@@ -370,7 +370,7 @@ export default function GamesScreen() {
                   {(RANK_LABELS[rank] || RANK_LABELS[20]).label}
                 </Text>
                 <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>
-                  Rank {rank || 20} · {Math.round(progress || 0)}% to next rank
+                  {Math.round(progress || 0)}% of the way to the next tier
                 </Text>
               </View>
             </View>

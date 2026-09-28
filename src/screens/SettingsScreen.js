@@ -1,7 +1,7 @@
 // src/screens/SettingsScreen.js
 // App settings — theme toggle controls app-wide dark/light mode
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   Switch, Alert, ActivityIndicator, TextInput, Linking, Modal,
@@ -40,6 +40,7 @@ import { dobFromParts } from '../logic/dateUtils';
 import { confirmAsync } from '../logic/confirm';
 import { signOutAndClear, clearLocalUserData } from '../logic/localUserData';
 import TwoFactorSheet from '../components/TwoFactorSheet';
+import { isAdultProfile } from '../logic/useGradeLevel';
 
 // `alwaysShowSubtitle` is for the Show Emojis / Show Subtitles rows
 // themselves — hiding the explanation of what "show subtitles" does the
@@ -614,6 +615,22 @@ export default function SettingsScreen() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const { dailyMissions, profile: liveProfile, streakDays, refreshProfile } = useUserProgress();
+  // Jump links at the top: this is one long page (~170 rows), and Sign out
+  // sat five screens down. Section offsets are measured as they lay out.
+  const scrollRef = useRef(null);
+  const sectionY = useRef({});
+  const sectionNode = useRef({});
+  const markSection = (key) => ({
+    ref: (n) => { sectionNode.current[key] = n; },
+    onLayout: (e) => { sectionY.current[key] = e.nativeEvent.layout.y; },
+  });
+  const jumpTo = (key) => {
+    // On web the page scrolls rather than the ScrollView, so let the browser find the section.
+    const node = sectionNode.current[key];
+    if (Platform.OS === 'web' && node?.scrollIntoView) { node.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+    const y = sectionY.current[key];
+    if (y != null) scrollRef.current?.scrollTo({ y: Math.max(0, y - 8), animated: true });
+  };
   const [showDobModal, setShowDobModal] = useState(false);
   const [show2fa, setShow2fa] = useState(false);
   const [savingDob, setSavingDob] = useState(false);
@@ -802,7 +819,7 @@ export default function SettingsScreen() {
         <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>{showEmojis ? '⚙️ ' : ''}Settings</Text>
       </View>
 
-      <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }}>
+      <ScrollView ref={scrollRef} automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 140 }}>
         {/* Account card */}
         {profile && (() => {
           const rank = getRank(profile.points || 0);
@@ -841,7 +858,20 @@ export default function SettingsScreen() {
         })()}
 
         {/* Appearance */}
-        <SectionLabel label="Appearance" c={c} t={t} s={s} />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm, marginBottom: s.md }}>
+          {[['appearance', 'Appearance'], ['experience', 'Learning'], ['privacy', 'Privacy'], ['account', 'Account']].map(([key, label]) => (
+            <TouchableOpacity
+              key={key}
+              onPress={() => jumpTo(key)}
+              accessibilityRole="button"
+              accessibilityLabel={`Jump to ${label}`}
+              style={{ paddingHorizontal: s.md, paddingVertical: 8, minHeight: 36, justifyContent: 'center', borderRadius: 999, borderWidth: 1, borderColor: c.border, backgroundColor: c.bg1 }}
+            >
+              <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text2 }}>{label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <View {...markSection('appearance')}><SectionLabel label="Appearance" c={c} t={t} s={s} /></View>
         <TourSpot id="settings-appearance">
         <AppearancePicker c={c} t={t} s={s} />
         </TourSpot>
@@ -914,7 +944,7 @@ export default function SettingsScreen() {
         {/* App experience — how much of the app is on show. First, because
             it's the answer to "where did X go?" for anyone not at the last
             stage. See src/data/experienceStages.js. */}
-        <SectionLabel label="App experience" c={c} t={t} s={s} />
+        <View {...markSection('experience')}><SectionLabel label="App experience" c={c} t={t} s={s} /></View>
         <SettingRow
           icon="layers-outline"
           iconColor={c.teal}
@@ -1075,12 +1105,15 @@ export default function SettingsScreen() {
           }
           c={c} t={t} s={s} r={r} />
 
-        {/* AI Import */}
+        {/* AI Import — bring-your-own Anthropic key. A developer tool, so it
+            isn't offered to under-18 accounts (or guests, whose age is unknown). */}
+        {isAdultProfile(liveProfile) && (<>
         <SectionLabel label="AI Import" c={c} t={t} s={s} />
         <AIKeyCard c={c} t={t} s={s} r={r} />
+        </>)}
 
         {/* Data */}
-        <SectionLabel label="Data & Privacy" c={c} t={t} s={s} />
+        <View {...markSection('privacy')}><SectionLabel label="Data & Privacy" c={c} t={t} s={s} /></View>
         {userId && !liveProfile?.date_of_birth && (
           <SettingRow icon="calendar-outline" iconColor={c.warning} label="Birth Date" subtitle="Not added yet. Some features need it"
             alwaysShowSubtitle
@@ -1165,7 +1198,7 @@ export default function SettingsScreen() {
         ) : null}
 
         {/* Sign out */}
-        <SectionLabel label="Account" c={c} t={t} s={s} />
+        <View {...markSection('account')}><SectionLabel label="Account" c={c} t={t} s={s} /></View>
         <TouchableOpacity onPress={signOut} disabled={signingOut}
           style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: s.sm, backgroundColor: c.error + '18', borderRadius: r.md, padding: s.lg, borderWidth: 1, borderColor: c.error + '44' }}>
           {signingOut
