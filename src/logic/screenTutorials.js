@@ -91,7 +91,7 @@ const SCREEN_FEATURES = {
   PlannerScreen: [
     { title: 'Three views', body: "Daily for today, Weekly to see the shape of the week, Monthly for the long view. Filter by life area to check one part of your life at a time.", id: 'planner-views' },
     { title: 'Habits vs. events', body: "A one-off event happens once. A recurring habit regenerates on a cadence — daily, weekly, monthly — and it's the recurring ones that feed the Habits widget on Home.", id: 'planner-add' },
-    { title: 'Add', body: 'Tap Add (or the grid icon) to schedule something — a one-off event, or a recurring habit. Reminders can send a notification before the scheduled time.', id: 'planner-add' },
+    { title: 'Add', body: 'Tap Add to schedule something — a one-off event, or a recurring habit. ⋯ → Add from ideas has ready-made ones. Reminders can send a notification before the scheduled time.', id: 'planner-add' },
   ],
   // Capture -> label -> process, in that order, because that's the actual
   // loop: the whole point of the inbox is that capturing is separated from

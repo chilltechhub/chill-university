@@ -98,6 +98,7 @@ export function TourProvider({ children }) {
   // 'replaced' (another tour started over it). Only startLesson sets one.
   const onEndRef = useRef(null);
   const screenTourRouteRef = useRef(null); // the screen a single-screen tutorial belongs to
+  const [routeName, setRouteName] = useState(null); // the focused screen, from noteRoute
   const endWith = useCallback((reason) => {
     const cb = onEndRef.current;
     onEndRef.current = null;
@@ -219,9 +220,10 @@ export function TourProvider({ children }) {
   // you leave that screen — it used to follow you, pointing at nothing (a
   // Settings step showed up over the Workshop). The app-wide tour navigates
   // on purpose, so only a single-screen walkthrough is ended this way.
-  const noteRoute = useCallback((routeName) => {
+  const noteRoute = useCallback((name) => {
+    setRouteName(name || null);
     const tourScreen = screenTourRouteRef.current;
-    if (tourScreen && routeName && routeName !== tourScreen) finish('left');
+    if (tourScreen && name && name !== tourScreen) finish('left');
   }, [finish]);
 
   const next = useCallback(() => {
@@ -316,9 +318,9 @@ export function TourProvider({ children }) {
     prefill: currentStep?.prefill || null,
     completeAction,
     quizAnswer, answerQuiz,
-    registerNavigator, registerTarget, unregisterTarget, setPersonalization, noteRoute,
+    registerNavigator, registerTarget, unregisterTarget, setPersonalization, noteRoute, routeName,
     startTour: start, startScreenTour, startLesson, startIfFirstTime, nextStep: next, backStep: back, skipTour: skip, endTour,
-  }), [active, stepIndex, targets, steps, currentStep, completeAction, quizAnswer, answerQuiz, registerNavigator, registerTarget, unregisterTarget, setPersonalization, noteRoute, start, startScreenTour, startLesson, startIfFirstTime, next, back, skip, endTour]);
+  }), [active, stepIndex, targets, steps, currentStep, completeAction, quizAnswer, answerQuiz, registerNavigator, registerTarget, unregisterTarget, setPersonalization, noteRoute, routeName, start, startScreenTour, startLesson, startIfFirstTime, next, back, skip, endTour]);
 
   return <TourContext.Provider value={value}>{children}</TourContext.Provider>;
 }

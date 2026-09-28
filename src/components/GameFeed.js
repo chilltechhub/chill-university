@@ -343,8 +343,11 @@ const styles = StyleSheet.create({
   },
   navBtnOff: { opacity: 0.3 },
   navCount: { fontSize: 11, fontWeight: '700', color: 'rgba(234,242,255,0.75)' },
+  // No flex: 1 here. Every page gets an explicit height (pageHeight), and
+  // on web flex: 1 overrode it, so pages sized to their content: a tall game
+  // ran past the screen (its Start button unreachable) and the next game's
+  // card peeked in under a short one.
   page: {
-    flex: 1,
     width: Dimensions.get('window').width,
     backgroundColor: '#0e1a2e',
   },

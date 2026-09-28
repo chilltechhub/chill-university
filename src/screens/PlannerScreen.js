@@ -33,6 +33,7 @@ import { suggestionsForArea } from '../data/plannerSuggestions';
 import DailyCheckin from '../components/DailyCheckin';
 import TourSpot from '../components/TourSpot';
 import FillWithAIButton from '../components/FillWithAIButton';
+import MoreMenu from '../components/MoreMenu';
 import { CLASS_SUBJECTS, CLASS_SCREEN_MAP } from '../data/classCatalog';
 import { getEnabledGames, getGame } from '../services/gameRegistry';
 import { dateStr } from '../logic/dateUtils';
@@ -1337,18 +1338,6 @@ export default function PlannerScreen() {
           <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1, flex: 1 }}>{showEmojis ? '📓 ' : ''}Planner</Text>
           <View style={{ flexDirection: 'row', gap: s.sm }}>
             <FillWithAIButton target="planner" />
-            <TouchableOpacity accessibilityLabel="Stats" accessibilityRole="button"
-              onPress={() => navigation.navigate('WeeklyReviewScreen')}
-              style={{ padding: 6, borderRadius: r.md, backgroundColor: c.bg2, borderWidth: 0.5, borderColor: c.border }}>
-              <Ionicons name="stats-chart-outline" size={18} color={c.text3} />
-            </TouchableOpacity>
-            {view === 'Daily' && (
-              <TouchableOpacity accessibilityRole="button" accessibilityLabel={timeMode ? 'List view' : 'Time view'}
-                onPress={() => setTimeMode(m => !m)}
-                style={{ padding: 6, borderRadius: r.md, backgroundColor: timeMode ? c.teal : c.bg2, borderWidth: 0.5, borderColor: timeMode ? c.teal : c.border }}>
-                <Ionicons name={timeMode ? 'list' : 'time-outline'} size={18} color={timeMode ? c.onFill : c.text3} />
-              </TouchableOpacity>
-            )}
             <TourSpot id="planner-add">
             <TouchableOpacity
               onPress={openAdd}
@@ -1357,10 +1346,17 @@ export default function PlannerScreen() {
               <Text style={{ fontSize: t.xs, color: c.onFill, fontWeight: t.bold }}>Add</Text>
             </TouchableOpacity>
             </TourSpot>
-            <TouchableOpacity accessibilityLabel="Layout" accessibilityRole="button" onPress={() => setPanel(true)}
-              style={{ padding: 6, borderRadius: r.md, backgroundColor: c.bg2, borderWidth: 0.5, borderColor: c.border }}>
-              <Ionicons name="grid-outline" size={18} color={c.text3} />
-            </TouchableOpacity>
+            {/* Three unlabeled icons (a chart, a clock, a grid) used to sit
+                here; nobody could tell what they did. Named, in one menu. */}
+            <MoreMenu items={[
+              { label: 'Add from ideas', icon: 'grid-outline', onPress: () => setPanel(true) },
+              view === 'Daily' && {
+                label: timeMode ? 'Show as a list' : 'Show by time of day',
+                icon: timeMode ? 'list' : 'time-outline',
+                onPress: () => setTimeMode(m => !m),
+              },
+              { label: 'Weekly review', icon: 'stats-chart-outline', onPress: () => navigation.navigate('WeeklyReviewScreen') },
+            ]} />
           </View>
         </View>
 

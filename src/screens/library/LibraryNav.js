@@ -134,7 +134,7 @@ export default function LibraryNavigator() {
         })}
       />
 
-      <Stack.Screen name="PlannerScreen" component={PlannerScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="PlannerScreen" component={PlannerScreen} options={{ headerShown: false, title: 'Planner' }} />
       {/* Inbox */}
       <Stack.Screen name="CaptureInbox" component={CaptureInbox} options={{ title: 'Capture Inbox' }} />
       <Stack.Screen name="WorkModeScreen" component={GatedWorkMode} options={{ headerShown: false }} />

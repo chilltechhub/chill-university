@@ -46,6 +46,7 @@ import GoalStepsWidget from '../components/GoalStepsWidget';
 import StageStepsWidget from '../components/StageStepsWidget';
 import { getWayfinderIntent } from '../api/wayfinderService';
 import { useAccess } from '../../context/AccessContext';
+import { useFabPosition, topFabClearance } from '../../context/FabPositionContext';
 import { starterWidgetLayout } from '../logic/experienceStage';
 import useCharacterLoadout from '../logic/useCharacterLoadout';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
@@ -524,7 +525,7 @@ function IdeaPreviewCard({ idea, visible, onClose, c, t, s, r }) {
               <Text style={{ fontSize: 28 }}>{plantEmoji}</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: 4 }}>{idea.title}</Text>
+              <Text numberOfLines={2} style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: 4 }}>{idea.title}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm }}>
                 <View style={{ backgroundColor: ideaColor + '22', borderRadius: r.full, paddingHorizontal: 8, paddingVertical: 3 }}>
                   <Text style={{ fontSize: 11, color: ideaColor, fontWeight: t.bold }}>{plantLabel}</Text>
@@ -582,7 +583,7 @@ function IdeaPreviewCard({ idea, visible, onClose, c, t, s, r }) {
                   {showEmojis ? '💡 ' : ''}Ideas ({ideaPets.length})
                 </Text>
                 {ideaPets.slice(0, 3).map((ip, i) => (
-                  <Text key={ip.id || i} style={{ fontSize: t.xs, color: c.text2, paddingVertical: 3, borderBottomWidth: i < Math.min(ideaPets.length, 3) - 1 ? 0.5 : 0, borderBottomColor: c.border }}>
+                  <Text key={ip.id || i} numberOfLines={1} style={{ fontSize: t.xs, color: c.text2, paddingVertical: 3, borderBottomWidth: i < Math.min(ideaPets.length, 3) - 1 ? 0.5 : 0, borderBottomColor: c.border }}>
                     · {ip.title}
                   </Text>
                 ))}
@@ -1579,6 +1580,7 @@ export default function HomeScreen() {
 
   const dateStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   const sceneChip = { backgroundColor: c.bg1 + 'E6', borderRadius: 12, paddingHorizontal: s.sm, paddingVertical: 3 };
+  const { fabPosition } = useFabPosition();
 
   // Jumping straight into a nested screen on a tab that hasn't been
   // visited yet in this session (the app opens on Home) makes React
@@ -1854,10 +1856,10 @@ export default function HomeScreen() {
       <ScrollView automaticallyAdjustKeyboardInsets
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.teal} />}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: 96 /* clears the + button and the guide pill */ }}
       >
         {/* ── Date + streak + widget edit toggle ── */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: s.lg, paddingTop: s.md, paddingBottom: s.sm }}>
+        <View style={[{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: s.lg, paddingTop: s.md, paddingBottom: s.sm }, topFabClearance(fabPosition)]}>
           {/* Over a scenic background these sit on the landscape itself (grey on
               a pale sky); a chip like the streak badge keeps them readable. */}
           <View style={bgMode === 'player' ? sceneChip : null}>

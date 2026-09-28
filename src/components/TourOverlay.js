@@ -60,12 +60,15 @@ const BUBBLE_MIN = 132;      // smallest the bubble is allowed to get
 const TAIL_W = 18;
 const TAIL_H = 12;
 const TAB_BAR_H = Platform.OS === 'ios' ? 66 : 60; // keep in step with App.js tabBarStyle.height
+// Game screens (same set as useGuidedFirstGoal). The reminder pill is
+// hidden there: it sat on a game's Start button and answer rows.
+const PLAY_ROUTES = new Set(['Play', 'PlayGame']);
 
 export default function TourOverlay() {
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   const {
     active, currentStep, stepIndex, steps, isLastStep, targets,
-    nextStep, backStep, skipTour, quizAnswer, answerQuiz,
+    nextStep, backStep, skipTour, quizAnswer, answerQuiz, routeName,
   } = useTour();
   const { activeType } = useProfiles();
   const insets = useSafeAreaInsets();
@@ -89,6 +92,7 @@ export default function TourOverlay() {
   if (!active || !currentStep) return null;
 
   if (currentStep.compact && expandedKey !== stepKey) {
+    if (PLAY_ROUTES.has(routeName)) return null; // back when they leave the game
     return (
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
         <View

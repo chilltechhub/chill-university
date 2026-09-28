@@ -959,6 +959,7 @@ export default function IdeaGardenScreen() {
           >
             <Ionicons name="chevron-back" size={20} color={gc.text2} />
           </TouchableOpacity>
+          <Text style={styles.topbarTitle} numberOfLines={1} accessibilityRole="header">Idea Garden</Text>
         </View>
         <View style={styles.topbarRight}>
           <FillWithAIButton target="ideas" color={gc.green} />
@@ -1433,9 +1434,9 @@ const makeStyles = (gc) => StyleSheet.create({
   topbar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', rowGap: 8, padding: 14, paddingTop: 16, backgroundColor: gc.bg1, borderBottomWidth: 0.5, borderBottomColor: gc.border },
   backBtn: { padding: 2 },
   topbarSub: { fontSize: 11, color: gc.text3, letterSpacing: 1, textTransform: 'uppercase' },
-  topbarTitle: { fontSize: 17, fontWeight: '600', color: gc.text2 },
-  // Wraps and shrinks: with the title gone there's room, but a small
-  // phone plus a long label must never push the add button off-screen.
+  topbarTitle: { fontSize: 17, fontWeight: '600', color: gc.text1 },
+  // Wraps and shrinks: on a small phone the buttons drop below the title,
+  // and a long label must never push the add button off-screen.
   topbarRight: { flexDirection: 'row', alignItems: 'center', flexShrink: 1, flexWrap: 'wrap', justifyContent: 'flex-end', gap: 8, rowGap: 8 },
   connectBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: gc.border },
   connectBtnActive: { backgroundColor: gc.green, borderColor: gc.green },

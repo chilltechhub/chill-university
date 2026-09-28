@@ -42,7 +42,7 @@ import TourSpot from './TourSpot';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { useUserProgress } from '../../context/UserProgressContext';
-import { useFabPosition } from '../../context/FabPositionContext';
+import { useFabPosition, FAB_SIZE, FAB_EDGE, FAB_TOP_GAP } from '../../context/FabPositionContext';
 import { useAccess } from '../../context/AccessContext';
 // The profile-scoped client, like every other screen that writes content: the
 // raw one here saved + button projects with no profile_id, which no profile
@@ -77,9 +77,9 @@ const POSITION_OPTIONS = [
   { key: 'bottom-right', glyph: '↘', label: 'Bottom Right' },
 ];
 
-// 52 / 40 / 44: every tap target at or over the 44pt minimum. The FAB was
-// 30 — the app's main action, at two-thirds of the smallest recommended size.
-const FAB_SIZE     = 52;
+// 52 (FAB_SIZE, from FabPositionContext) / 40 / 44: every tap target at or
+// over the 44pt minimum. The FAB was 30 — the app's main action, at
+// two-thirds of the smallest recommended size.
 const MOVE_BTN_SIZE = 40;
 const TAB_BAR_H = Platform.OS === 'ios' ? 66 : 60; // keep in step with App.js tabBarStyle.height
 // Rough visible height of TopBar.js — it isn't a fixed constant there
@@ -272,9 +272,9 @@ export default function FloatingActionButton({ currentScreen }) {
 
   const hasTabBar = !NO_TABBAR_ROUTES.has(currentScreen);
   const fabBottom = (hasTabBar ? TAB_BAR_H : 0) + insets.bottom + 16;
-  const fabTop = TOPBAR_H + 16; // SafeAreaView already reserves insets.top
+  const fabTop = TOPBAR_H + FAB_TOP_GAP; // SafeAreaView already reserves insets.top
 
-  const sideStyle = hSide === 'left' ? { left: 20 } : { right: 20 };
+  const sideStyle = hSide === 'left' ? { left: FAB_EDGE } : { right: FAB_EDGE };
   const fabVStyle = vSide === 'top' ? { top: fabTop } : { bottom: fabBottom };
   const dialVStyle = vSide === 'top'
     ? { top: fabTop + FAB_SIZE + 14 }
