@@ -26,7 +26,9 @@ import { useUserProgress } from '../../context/UserProgressContext';
 import { useFeatureGate } from '../components/FeatureGate';
 import { TARGETS, TARGET_BY_KEY, REPEAT_COUNTS, buildPrompt } from '../logic/aiBridgeFormat';
 import { parseReply, resolveChanges, countChanges, FIELD_LABELS } from '../logic/aiBridgeParse';
-import { loadSnapshot, applyChanges, undoChanges } from '../api/aiBridgeData';
+import { loadSnapshot, applyChanges, undoChanges, attachSource } from '../api/aiBridgeData';
+import { sourceByKey, sourceNoun, PLAN_HINTS } from '../logic/linkSources';
+import { openTarget as openAppTarget } from '../logic/openTarget';
 import { ageBandFor } from '../logic/profileResolver';
 import { LIFE_AREAS } from './library/LifeAreaScreen';
 import { FONTS } from '../theme';
@@ -66,7 +68,7 @@ function fmtValue(v, field) {
   if (v === null || v === undefined || v === '' || (Array.isArray(v) && !v.length)) return '(empty)';
   if (field === 'time') return fmtTime(v);
   if (field === 'remind') return v === false ? 'off' : v === true ? 'on' : v === 0 ? 'at the time' : `${v} min before`;
-  if (field === 'date') return fmtDate(v);
+  if (field === 'date' || field === 'due') return fmtDate(v);
   if (typeof v === 'boolean') return v ? 'yes' : 'no';
   if (Array.isArray(v)) return clip(v.join(', '), 50);
   return clip(String(v).replace(/\s+/g, ' '), 50);
@@ -87,7 +89,8 @@ function describe(ch) {
   let sub = [];
   switch (ch.target) {
     case 'projects':
-      sub = [pick('stage'), pick('type'), kidCount('task', 'task'), kidCount('note', 'note'), kidCount('link', 'link')];
+      sub = [pick('stage'), pick('type'), pick('due') ? `due ${fmtDate(pick('due'))}` : null,
+        kidCount('task', 'task'), kidCount('note', 'note'), kidCount('link', 'link'), kids.some(k => k.kind === 'session') ? 'work time' : null];
       break;
     case 'ideas':
       sub = [pick('stage'), kidCount('petal', 'petal')];
@@ -131,6 +134,11 @@ export default function AIBridgeScreen() {
   const [everything, setEverything] = useState(!!route.params?.everything);
   const [share, setShare] = useState(true);
   const [idea, setIdea] = useState(route.params?.idea || '');
+  // Something saved from the web that this plan is being made from (a
+  // capture, via "Plan it into a project" in the Inbox): { captureId, title,
+  // url, site, author, description, text }. It goes into the prompt, and
+  // after saving its link and text are filed into the project.
+  const [source, setSource] = useState(route.params?.source || null);
 
   const [prompt, setPrompt] = useState('');
   const [building, setBuilding] = useState(false);
@@ -172,6 +180,7 @@ export default function AIBridgeScreen() {
     if (TARGET_BY_KEY[p.target]) setTargets([p.target]);
     setEverything(!!p.everything);
     if (p.idea) setIdea(p.idea);
+    setSource(p.source || null);
     setResult(null); setReview(null); setReply(''); setReplyError(null);
     stale();
   }, [route.params?.at, route.params?.idea]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -188,10 +197,24 @@ export default function AIBridgeScreen() {
 
   // ── Step 2: the prompt ────────────────────────────────────────────────────
 
+  // The source as the prompt and attachSource want it: what kind of thing
+  // it is, and how to read it, from the site it came from.
+  const sourceInfo = useMemo(() => {
+    if (!source) return null;
+    // A capture with no link is something the person wrote themselves.
+    if (!source.url) return { ...source, kind: 'note', siteLabel: null, noun: 'note I wrote', hint: null, textLabel: 'My note' };
+    const site = sourceByKey(source.site);
+    return {
+      ...source, kind: site.kind, siteLabel: site.label, noun: sourceNoun(site),
+      hint: PLAN_HINTS[site.kind], textLabel: site.textLabel,
+    };
+  }, [source]);
+
   const makePrompt = async () => {
     const snapshot = share && userId ? await loadSnapshot(userId, activeKeys, AREA_CATALOG) : null;
     return buildPrompt({
       targets: activeKeys, idea, today: new Date(), areaCatalog: AREA_CATALOG, snapshot, sortEverything: everything,
+      source: sourceInfo,
     });
   };
 
@@ -276,12 +299,18 @@ export default function AIBridgeScreen() {
     setApplying({ done: 0, total: picked.length });
     try {
       const res = await applyChanges(userId, review.changes, selected, (done, all) => setApplying({ done, total: all }));
+      // The project this plan made (or added to) gets the saved link and
+      // its text, and the capture leaves the Inbox.
+      const project = res.projects.find(p => p.created) || res.projects[0] || null;
+      if (sourceInfo && project) {
+        try { await attachSource(userId, sourceInfo, project.id, res.undo); } catch (e) { console.warn('AIBridge attachSource', e); }
+      }
       const failedKeys = new Set(res.failed.map(f => f.key));
       const touched = [...new Set(picked.filter(ch => !failedKeys.has(ch.key)).map(ch => ch.target))];
       const lifeArea = picked.find(ch => ch.target === 'life_areas')?.fields?.area
         || picked.find(ch => ch.target === 'life_areas')?.current?.area || null;
       setResult({
-        ...res, touched, lifeArea,
+        ...res, touched, lifeArea, projectId: project?.id || null, filedSource: !!(sourceInfo && project),
         failedTitles: res.failed.map(f => ({ ...f, title: describe(review.changes.find(ch => ch.key === f.key)).title })),
       });
       setReview(null);
@@ -301,7 +330,7 @@ export default function AIBridgeScreen() {
 
   const startOver = () => {
     setResult(null); setUndone(null); setReview(null); setReply(''); setReplyError(null);
-    setIdea(''); stale();
+    setIdea(''); setSource(null); stale();
   };
 
   const openTarget = (key) => {
@@ -349,13 +378,17 @@ export default function AIBridgeScreen() {
     delete: { label: 'DELETE', color: c.error },
   };
   const KID_ICON = { create: 'add', update: 'create-outline', delete: 'close' };
+  const KID_LABEL = { session: 'work time' };
 
   const renderChange = (ch) => {
     const d = describe(ch);
     const live = ch.status === 'ok';
     const on = live && selected.has(ch.key);
     const op = ch.merged ? { label: 'ADD TO', color: c.teal } : OP_STYLE[ch.op];
-    const kids = (ch.children || []).filter(k => k.status !== 'noop');
+    // Work time first: it's one line, and it's the part that fills a
+    // calendar, so it shouldn't hide under "and 5 more".
+    const kids = (ch.children || []).filter(k => k.status !== 'noop')
+      .sort((a, b) => (b.kind === 'session') - (a.kind === 'session'));
     const shownKids = kids.slice(0, 8);
     const reason = ch.status === 'locked' ? `${TARGET_BY_KEY[ch.target].label} is still locked, so this can’t be saved yet.`
       : ch.status === 'noop' ? 'Nothing here actually changes.' : null;
@@ -386,7 +419,8 @@ export default function AIBridgeScreen() {
               <View key={`${ch.key}-k${i}`} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 4, marginTop: 3 }}>
                 <Ionicons name={doneOnly ? (k.diff[0].to ? 'checkmark' : 'arrow-undo') : KID_ICON[k.op]} size={12} color={tone} style={{ marginTop: 1 }} />
                 <Text style={{ fontSize: 11, color: k.status === 'ok' ? c.text2 : c.text3, flex: 1, textDecorationLine: k.op === 'delete' ? 'line-through' : 'none' }}>
-                  {k.kind}: {kd.title}{doneOnly ? (k.diff[0].to ? ' (done)' : ' (not done)') : ''}
+                  {KID_LABEL[k.kind] || k.kind}: {kd.title}{doneOnly ? (k.diff[0].to ? ' (done)' : ' (not done)') : ''}
+                  {k.op === 'create' && k.fields?.due ? `  · due ${fmtDate(k.fields.due)}` : ''}
                   {k.op === 'update' && !doneOnly ? `  (${k.diff.map(df => FIELD_LABELS[df.field] || df.field).join(', ').toLowerCase()})` : ''}
                   {k.status === 'missing' ? `  (${k.warnings[k.warnings.length - 1] || 'skipped'})` : ''}
                 </Text>
@@ -453,9 +487,22 @@ export default function AIBridgeScreen() {
               {!undone && result.failedTitles.map(f => (
                 <Text key={f.key} style={{ fontSize: 12, color: c.error, marginBottom: 4 }}>✕ {f.title}: {f.message}</Text>
               ))}
+              {!undone && result.filedSource && (
+                <Text style={{ fontSize: 12, color: c.text2, marginBottom: s.sm }}>
+                  The link{sourceInfo?.text ? ' and the text you copied are' : ' is'} saved in the project, and it’s off your Inbox.
+                </Text>
+              )}
               {!undone && (
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm, marginTop: s.sm }}>
-                  {result.touched.map(k => (
+                  {!!result.projectId && (
+                    <TouchableOpacity onPress={() => openAppTarget(navigation, { kind: 'project', id: result.projectId })}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.teal, borderRadius: r.full, paddingHorizontal: s.md, paddingVertical: 6 }}>
+                      <Text style={{ fontSize: 12 }}>🏗️</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: c.onFill }}>Open the project</Text>
+                      <Ionicons name="chevron-forward" size={12} color={c.onFill} />
+                    </TouchableOpacity>
+                  )}
+                  {result.touched.filter(k => !(k === 'projects' && result.projectId)).map(k => (
                     <TouchableOpacity key={k} onPress={() => openTarget(k)}
                       style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.bg2, borderRadius: r.full, paddingHorizontal: s.md, paddingVertical: 6 }}>
                       <Text style={{ fontSize: 12 }}>{TARGET_BY_KEY[k].emoji}</Text>
@@ -488,6 +535,24 @@ export default function AIBridgeScreen() {
                     ? 'The AI sorts what you say into whichever places fit.'
                     : targets.map(k => TARGET_BY_KEY[k].blurb).join(' · ')}
                 </Text>
+
+                {!!sourceInfo && (
+                  <View style={{ flexDirection: 'row', gap: s.sm, alignItems: 'flex-start', backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border, padding: s.md, marginTop: s.lg }}>
+                    <Ionicons name="bookmark-outline" size={16} color={c.teal} style={{ marginTop: 2 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: c.teal, textTransform: 'uppercase', letterSpacing: 0.6 }}>Planning from your saved {sourceInfo.noun}</Text>
+                      <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1, marginTop: 2 }} numberOfLines={2}>{sourceInfo.title || sourceInfo.url}</Text>
+                      <Text style={{ fontSize: 11, color: c.text3, marginTop: 2 }}>
+                        {sourceInfo.text
+                          ? `${sourceInfo.textLabel} included (${sourceInfo.text.length.toLocaleString()} characters). It goes in the prompt and gets saved to the project.`
+                          : 'No text copied in, so the AI works from the title and what you write here.'}
+                      </Text>
+                    </View>
+                    <TouchableOpacity accessibilityRole="button" accessibilityLabel="Stop planning from this" onPress={() => { setSource(null); stale(); }} style={{ padding: 2 }}>
+                      <Ionicons name="close" size={16} color={c.text3} />
+                    </TouchableOpacity>
+                  </View>
+                )}
 
                 <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.text1, marginTop: s.lg, marginBottom: s.sm }}>What do you want?</Text>
                 <TextInput

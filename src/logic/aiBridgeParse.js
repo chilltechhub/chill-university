@@ -25,7 +25,7 @@
 import {
   TARGET_KEYS, PROJECT_TYPES, PROJECT_STAGES, PROJECT_NOTE_TYPES, PLANT_STAGES, PETAL_TYPES,
   VAULT_KINDS, AREA_IDS, ACTION_TYPES, PORTFOLIO_SECTIONS, REPEAT_COUNTS, LIMITS,
-  isoDate, addDaysIso,
+  WEEKDAY_KEYS, SESSION_LIMITS, isoDate, addDaysIso, sessionDates, daysLabel,
 } from './aiBridgeFormat';
 
 // ─── Lenient JSON ───────────────────────────────────────────────────────────
@@ -530,12 +530,12 @@ function base(o) {
   return { op: ref ? 'update' : 'create', ref, fields: {}, warnings: [] };
 }
 
-function readChildren(value, kind, reader, parent) {
+function readChildren(value, kind, reader, parent, ctx) {
   const out = [];
   for (const raw of items(value).slice(0, LIMITS.children)) {
     const o = keyed(raw);
     if (!o) continue;
-    const ch = reader(o);
+    const ch = reader(o, ctx);
     if (typeof ch === 'string') { parent.warnings.push(`Skipped ${ch}.`); continue; }
     out.push({ kind, ...ch });
   }
@@ -545,13 +545,80 @@ function readChildren(value, kind, reader, parent) {
 
 const needTitle = (ch, what) => (ch.op === 'create' && !ch.fields.title ? `a new ${what} with no title` : ch);
 
-function readTask(o) {
+// A due date: just the day ("2026-10-12", "next friday", "in 2 weeks").
+function dueDate(v, ctx) {
+  const when = parseDate(v, ctx.today);
+  if (when === undefined || when === INVALID) return when;
+  return when ? when.date : null;
+}
+
+function readTask(o, ctx) {
   const ch = base(o);
   if (typeof ch === 'string' || ch.op === 'delete') return typeof ch === 'string' ? `a task (${ch})` : ch;
-  put(ch.fields, ch.warnings, 'title', line(pick(o, 'title', 'name', 'task', 'text'), 200), 'a task title');
+  put(ch.fields, ch.warnings, 'title', line(pick(o, 'title', 'name', 'task', 'text', 'deliverable'), 200), 'a task title');
   put(ch.fields, ch.warnings, 'done', bool(pick(o, 'done', 'completed', 'complete', 'finished', 'checked')), 'a done value');
+  put(ch.fields, ch.warnings, 'due', dueDate(pick(o, 'due', 'due_date', 'deadline', 'by', 'date'), ctx), 'a due date');
+  put(ch.fields, ch.warnings, 'notes', text(pick(o, 'notes', 'note', 'details', 'description'), 1000), 'task notes');
   if (ch.fields.title === null) delete ch.fields.title;
   return needTitle(ch, 'task');
+}
+
+// Work time for a project: { days, time, minutes, weeks, start, remind,
+// title, area }. Only ever added, so a ref is ignored. The title the review
+// shows is a summary; `label` is what each planner row is called.
+const DAY_WORDS = {
+  weekends: [0, 6], weekend: [0, 6], weekdays: [1, 2, 3, 4, 5], weekday: [1, 2, 3, 4, 5],
+  daily: [0, 1, 2, 3, 4, 5, 6], everyday: [0, 1, 2, 3, 4, 5, 6], 'every day': [0, 1, 2, 3, 4, 5, 6],
+};
+
+function weekdays(v) {
+  if (v === undefined || v === null) return [];
+  const raw = Array.isArray(v) ? v : String(v).split(/[,;/&]|\band\b/);
+  const out = new Set();
+  for (const x of raw) {
+    if (typeof x === 'number' && x >= 0 && x <= 6) { out.add(x); continue; }
+    const w = String(x).trim().toLowerCase();
+    if (DAY_WORDS[w]) { DAY_WORDS[w].forEach(d => out.add(d)); continue; }
+    const i = WEEKDAY_KEYS.indexOf(w.slice(0, 3));
+    if (i >= 0) out.add(i);
+  }
+  return [...out];
+}
+
+const clock = (hhmm) => {
+  const [h, m] = hhmm.split(':').map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+};
+
+function readSession(o, ctx) {
+  const w = [];
+  const fields = {};
+  const days = weekdays(pick(o, 'days', 'day', 'weekdays', 'on', 'when'));
+  if (!days.length) return 'work time with no days of the week';
+  fields.days = days;
+  const time = parseTime(pick(o, 'time', 'start_time', 'at', 'start'));
+  if (time === INVALID) w.push('Ignored a work-time time the app couldn\'t read.');
+  else if (time) fields.time = time;
+  const hrs = pick(o, 'hours');
+  const mins = minutes(pick(o, 'minutes', 'duration', 'length', 'mins') ?? (typeof hrs === 'number' ? hrs * 60 : hrs));
+  fields.minutes = typeof mins === 'number' ? mins : SESSION_LIMITS.defaultMinutes;
+  const wk = pick(o, 'weeks', 'for_weeks', 'repeat_weeks', 'number_of_weeks');
+  const weeks = parseInt(String(wk ?? ''), 10);
+  fields.weeks = weeks > 0 ? Math.min(weeks, SESSION_LIMITS.weeks) : SESSION_LIMITS.defaultWeeks;
+  if (weeks > SESSION_LIMITS.weeks) w.push(`Work time is capped at ${SESSION_LIMITS.weeks} weeks.`);
+  const start = dueDate(pick(o, 'start', 'start_date', 'from', 'starting'), ctx);
+  const tomorrow = addDaysIso(isoDate(ctx.today), 1);
+  fields.start = typeof start === 'string' && start >= isoDate(ctx.today) ? start : tomorrow;
+  const remind = remindValue(pick(o, 'remind', 'reminder', 'remind_before', 'alert', 'notify'));
+  if (remind !== undefined && remind !== INVALID && fields.time) fields.remind = remind === true ? 15 : remind;
+  const label = line(pick(o, 'title', 'name', 'label'), 80);
+  if (typeof label === 'string') fields.label = label;
+  const area = oneOf(pick(o, 'area', 'life_area'), AREA_IDS, AREA_SYNONYMS);
+  if (typeof area === 'string') fields.area = area;
+  fields.count = sessionDates(fields).length;
+  fields.title = `${daysLabel(days)}${fields.time ? ` at ${clock(fields.time)}` : ''}, ${fields.minutes} min, `
+    + `${fields.weeks} week${fields.weeks === 1 ? '' : 's'} (${fields.count} session${fields.count === 1 ? '' : 's'})`;
+  return { op: 'create', ref: null, fields, warnings: w };
 }
 
 function readProjectNote(o) {
@@ -606,7 +673,7 @@ function readPetal(o) {
 }
 
 const READERS = {
-  projects(o) {
+  projects(o, ctx) {
     const ch = base(o);
     if (typeof ch === 'string' || ch.op === 'delete') return typeof ch === 'string' ? `a project (${ch})` : ch;
     const w = ch.warnings;
@@ -614,12 +681,18 @@ const READERS = {
     put(ch.fields, w, 'goal', text(pick(o, 'goal', 'objective', 'description', 'summary', 'outcome'), 600), 'a goal');
     put(ch.fields, w, 'type', oneOf(pick(o, 'type', 'category', 'kind'), PROJECT_TYPES, TYPE_SYNONYMS), 'a project type');
     put(ch.fields, w, 'stage', oneOf(pick(o, 'stage', 'status', 'phase'), Object.keys(PROJECT_STAGES), STAGE_SYNONYMS), 'a stage');
+    put(ch.fields, w, 'due', dueDate(pick(o, 'due', 'due_date', 'deadline', 'finish_by', 'target_date'), ctx), 'a due date');
     put(ch.fields, w, 'next_step', line(pick(o, 'next_step', 'next_action', 'next', 'nextstep'), 200), 'a next step');
     if (ch.fields.title === null) delete ch.fields.title;
     ch.children = [
-      ...readChildren(pick(o, 'tasks', 'steps', 'todo', 'todos', 'checklist', 'to_do'), 'task', readTask, ch),
-      ...readChildren(pick(o, 'notes', 'journal', 'note'), 'note', readProjectNote, ch),
-      ...readChildren(pick(o, 'links', 'resources', 'research', 'urls', 'sources'), 'link', readLink, ch),
+      // Deliverables are tasks with a due date; some replies list them apart.
+      ...readChildren([
+        ...items(pick(o, 'tasks', 'steps', 'todo', 'todos', 'checklist', 'to_do')),
+        ...items(pick(o, 'deliverables', 'milestones')),
+      ], 'task', readTask, ch, ctx),
+      ...readChildren(pick(o, 'notes', 'journal', 'note'), 'note', readProjectNote, ch, ctx),
+      ...readChildren(pick(o, 'links', 'resources', 'research', 'urls', 'sources'), 'link', readLink, ch, ctx),
+      ...readChildren(pick(o, 'sessions', 'work_sessions', 'schedule', 'work_time', 'worktime'), 'session', readSession, ch, ctx),
     ];
     return needTitle(ch, 'project');
   },
@@ -882,7 +955,7 @@ export function parseReply(textIn, { today = new Date(), areaCatalog = [], defau
 export const FIELD_LABELS = {
   title: 'Title', goal: 'Goal', type: 'Type', stage: 'Stage', next_step: 'Next step', description: 'Description',
   kind: 'Kind', body: 'Text', url: 'Link', tags: 'Tags', area: 'Area', date: 'Date', time: 'Time', minutes: 'Minutes',
-  notes: 'Notes', done: 'Done', why: 'Why', section: 'Section', link: 'Link', tag: 'Tag', repeat: 'Repeat', text: 'Note', remind: 'Reminder',
+  notes: 'Notes', done: 'Done', due: 'Due', why: 'Why', section: 'Section', link: 'Link', tag: 'Tag', repeat: 'Repeat', text: 'Note', remind: 'Reminder',
 };
 
 const CHILD_LIST = { task: 'tasks', note: 'notes', link: 'links', petal: 'petals' };
@@ -1009,7 +1082,7 @@ export function countChanges(resolved, selected = null) {
     } else {
       c[r.op] += r.op === 'create' && r.target === 'planner' ? (REPEAT_COUNTS[r.fields.repeat] || 1) : 1;
     }
-    for (const k of r.children) if (k.status === 'ok') c[k.op] += 1;
+    for (const k of r.children) if (k.status === 'ok') c[k.op] += k.kind === 'session' ? (k.fields.count || 0) : 1;
   }
   return c;
 }

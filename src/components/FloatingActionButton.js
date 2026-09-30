@@ -20,7 +20,7 @@
 //   - The FAB itself is icon-only (+/×). It's the single anchor control the
 //     whole screen already trains the eye on — a label would be redundant.
 //   - Every speed-dial action is icon + text and shares the same row
-//     treatment. There are 5 destinations and several share a similar
+//     treatment. There are 6 destinations and several share a similar
 //     silhouette (calendar vs reminder-bell vs note), so a label removes
 //     any guessing.
 //
@@ -55,6 +55,7 @@ import FloatingCard from './FloatingCard';
 import { QuickCaptureModal } from '../screens/CaptureInbox';
 import LoginScreen from '../screens/LoginScreen';
 import { todayStr } from '../logic/dateUtils';
+import { openTarget } from '../logic/openTarget';
 
 // Root-stack screens that replace MainTabs entirely (no bottom tab bar showing).
 const NO_TABBAR_ROUTES = new Set(['Profile', 'Settings', 'Play', 'PlayGame', 'Leaderboard']);
@@ -66,6 +67,7 @@ const ACTIONS = [
   { key: 'calendar', label: 'Calendar',       icon: 'calendar-outline',         colorKey: 'teal' },
   { key: 'reminder', label: 'New Reminder',   icon: 'notifications-outline',    color: '#c9a84c' },
   { key: 'note',     label: 'New Note',       icon: 'document-text-outline',    color: '#2bb5a0' },
+  { key: 'plan',     label: 'Plan from a link', icon: 'sparkles-outline',       color: '#b07be0' },
   { key: 'inbox',    label: 'Capture Inbox',  icon: 'file-tray-full-outline',   color: '#3a7bd5' },
 ];
 
@@ -249,7 +251,10 @@ function QuickProjectModal({ visible, userId, onCreated, onClose, c, t, s, r }) 
   );
 }
 
-export default function FloatingActionButton({ currentScreen }) {
+// navigationRef: the root container's ref (App.js). Only "Plan from a link"
+// navigates, and it goes through openTarget's nested MainTabs → Library form,
+// which lands whether or not the Library stack has been opened yet.
+export default function FloatingActionButton({ currentScreen, navigationRef }) {
   const { colors: c, typography: t, spacing: s, radius: r, shadows: sh } = useTheme();
   const { user } = useUserProgress();
   const insets = useSafeAreaInsets();
@@ -264,6 +269,7 @@ export default function FloatingActionButton({ currentScreen }) {
   const [noteOpen, setNoteOpen] = useState(false);
   const [projectOpen, setProjectOpen] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
 
   // Shared live context — also settable from Settings → Appearance, but
   // living here means the Move circle below can relocate the FAB instantly.
@@ -284,9 +290,13 @@ export default function FloatingActionButton({ currentScreen }) {
   // it's on the bottom — so the most-reached-for actions (end of ACTIONS)
   // should always land nearest the FAB, whichever way that is.
   // Early stages (src/data/experienceStages.js) offer the actions this
-  // profile type's path has opened; the 'dashboard' stage brings all five.
+  // profile type's path has opened; the 'dashboard' stage brings all of them.
   const { visibleFabActions } = useAccess();
-  const stageActions = visibleFabActions ? ACTIONS.filter(a => visibleFabActions.has(a.key)) : ACTIONS;
+  // "Plan from a link" is a capture that goes straight to planning, so it
+  // opens with the Inbox.
+  const stageActions = visibleFabActions
+    ? ACTIONS.filter(a => visibleFabActions.has(a.key === 'plan' ? 'inbox' : a.key))
+    : ACTIONS;
   const orderedActions = vSide === 'top' ? [...stageActions].reverse() : stageActions;
 
   // Move-button circle sits right beside the FAB, offset inward (away from
@@ -320,6 +330,9 @@ export default function FloatingActionButton({ currentScreen }) {
     switch (action.key) {
       case 'inbox':
         if (!needsSignIn()) setCaptureOpen(true);
+        break;
+      case 'plan':
+        if (!needsSignIn()) setPlanOpen(true);
         break;
       case 'note':
         if (!needsSignIn()) setNoteOpen(true);
@@ -485,6 +498,19 @@ export default function FloatingActionButton({ currentScreen }) {
         userId={user?.id}
         onSaved={() => { setCaptureOpen(false); Alert.alert('Captured', 'Added to your inbox — process it anytime from Capture Inbox.'); }}
         onClose={() => setCaptureOpen(false)}
+        c={c} t={t} s={s} r={r}
+      />
+
+      {/* Plan from a link — saved as a capture, then straight into the
+          Inbox's plan step (transcript, work time, then Fill with AI). */}
+      <QuickCaptureModal
+        visible={planOpen} mode="plan"
+        userId={user?.id}
+        onSaved={(row) => {
+          setPlanOpen(false);
+          if (row?.id) openTarget(navigationRef?.current, { kind: 'inbox', params: { openCapture: row.id, plan: true, at: Date.now() } });
+        }}
+        onClose={() => setPlanOpen(false)}
         c={c} t={t} s={s} r={r}
       />
 

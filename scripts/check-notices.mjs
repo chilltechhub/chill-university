@@ -115,6 +115,23 @@ const build = (data, env = {}) => N.buildNotices(data, { ...ENV, ...env });
   check('setup: blocked permission quiet when nothing wants it', !build({}, { notifyPermission: 'denied', wantsPhone: false }).some(n => n.id === 'setup-permission'));
 }
 
+// ── Old saves come back around ──────────────────────────────────────────────
+{
+  const oldSaves = [
+    { id: 'c1', title: 'Chicken coop build', url: 'https://youtu.be/x', url_meta: { site_label: 'YouTube' }, created_at: daysAgo(6) },
+    { id: 'c2', title: 'Benchy', created_at: daysAgo(20) },
+  ];
+  const out = build({ oldSaves });
+  const saved = out.filter(n => n.id.startsWith('saved:'));
+  check('saved: one at a time', saved.length === 1 && saved[0].id === 'saved:c1', show(saved));
+  check('saved: says when and where from', /6 days ago/.test(saved[0]?.title) && /From YouTube/.test(saved[0]?.body), show(saved[0]));
+  check('saved: Plan it opens the plan step', saved[0]?.primary.target.kind === 'inbox' && saved[0].primary.target.params.plan === true && saved[0].primary.target.params.openCapture === 'c1', show(saved[0]?.primary));
+  const next = build({ oldSaves }, { dismissedIds: ['saved:c1'] }).find(n => n.id.startsWith('saved:'));
+  check('saved: hiding one offers the next', next?.id === 'saved:c2' && /2 weeks ago/.test(next.title), show(next));
+  check('saved: quiet when all hidden', !build({ oldSaves }, { dismissedIds: ['saved:c1', 'saved:c2'] }).some(n => n.id.startsWith('saved:')));
+  check('saved: quiet with none', !build({}).some(n => n.id.startsWith('saved:')));
+}
+
 // ── Shared + ordering ───────────────────────────────────────────────────────
 {
   const out = build({ shared: [{ id: 's1', url: 'https://www.example.com/a', receivedAt: daysAgo(0) }], inboxCount: 9 });
