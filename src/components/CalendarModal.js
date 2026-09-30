@@ -19,6 +19,8 @@ import useViewScope, { SCOPE_ALL } from '../logic/useViewScope';
 import { cacheRead, cacheWrite, isOnline } from '../api/offlineCache';
 import { dateStr } from '../logic/dateUtils';
 import TimePickerField from './TimePickerField';
+import PlanDetailSheet from './PlanDetailSheet';
+import { byTime, timeRange } from '../logic/plannerLayout';
 
 // ─── Notifications ────────────────────────────────────────────────────────────
 let Notifications = null;
@@ -64,6 +66,7 @@ const REMINDER_OPTS = [
   { label:'1 day',   value:1440 },
 ];
 const TYPE_COLORS = Object.fromEntries(EVENT_TYPES.map(t => [t.key, t.color]));
+const DAY_PREVIEW = 5; // items a day card shows before "Show all"
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function getWeekDays(anchor) {
@@ -190,7 +193,10 @@ const fS = StyleSheet.create({
 });
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
-export default function CalendarModal({ visible, onClose, userId, initialDate, autoAdd, quickType }) {
+// `onEditPlan(row)` (optional) opens a planner item in the Planner's editor;
+// the floating button's copy of this popup lives outside the navigator, so
+// it has none and its planner items show no Edit button.
+export default function CalendarModal({ visible, onClose, userId, initialDate, autoAdd, quickType, onEditPlan }) {
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   const today  = new Date();
   const [anchor,  setAnchor]  = useState(initialDate || today);
@@ -198,6 +204,16 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
   const [loading, setLoading] = useState(false);
   const [addDate, setAddDate] = useState(null);
   const [selectedPlannerArea, setSelectedPlannerArea] = useState(null);
+  // Tapping an item opens it: a planner item gets the Planner's own detail
+  // sheet, anything else unfolds in place with its notes and actions.
+  const [openKey,  setOpenKey]  = useState(null);
+  const [openPlan, setOpenPlan] = useState(null);
+  // A day shows its first few items; the rest behind "Show all". A week of
+  // daily habits made every day card a wall of rows.
+  const [openDays, setOpenDays] = useState(() => new Set());
+  const scrollRef = useRef(null);
+  const scrolledTo = useRef(null);
+  useEffect(() => { if (!visible) scrolledTo.current = null; }, [visible]);
 
   // Draggable — the spine (the row of binding rings) is the handle, so
   // moving the popup uses the part that already reads as "grip this" rather
@@ -260,21 +276,24 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
 
       const [evtRes, taskRes, focusRes, noteRes, plannerRes] = await Promise.all([
         db.from('calendar_events').select('*').eq('user_id', userId).gte('date', weekStart).lte('date', weekEnd),
-        db.from('tasks').select('id,title,due_date,profile_id').eq('user_id', userId).eq('completed', false).gte('due_date', weekStart).lte('due_date', weekEnd),
+        db.from('tasks').select('id,title,notes,due_date,due_time,profile_id').eq('user_id', userId).eq('completed', false).gte('due_date', weekStart).lte('due_date', weekEnd),
         db.from('daily_focus').select('id,focus_text,focus_date,profile_id').eq('user_id', userId).gte('focus_date', weekStart).lte('focus_date', weekEnd),
         db.from('captures').select('id,title,created_at,profile_id').eq('user_id', userId).eq('status','inbox').gte('created_at', weekStart).lte('created_at', weekEnd+'T23:59:59'),
-        db.from('agenda_instances').select('id,title,area,date,start_time,profile_id').eq('user_id', userId).gte('date', weekStart).lte('date', weekEnd).eq('completed', false).eq('skipped', false),
+        db.from('agenda_instances').select('*').eq('user_id', userId).gte('date', weekStart).lte('date', weekEnd).eq('completed', false).eq('skipped', false),
       ]);
       const map = {};
       const push = (date, item) => { if (!map[date]) map[date]=[]; map[date].push(item); };
       (evtRes.data  ||[]).forEach(e  => push(e.date, {...e, _src:'calendar', _profile:e.profile_id}));
-      (taskRes.data ||[]).forEach(tk => { if(tk.due_date) push(tk.due_date,{id:'task_'+tk.id, title:tk.title, type:'task', color:TYPE_COLORS.task, _src:'task', _profile:tk.profile_id}); });
+      (taskRes.data ||[]).forEach(tk => { if(tk.due_date) push(tk.due_date,{id:'task_'+tk.id, title:tk.title, description:tk.notes, time:tk.due_time, type:'task', color:TYPE_COLORS.task, _src:'task', _profile:tk.profile_id, raw:tk}); });
       (focusRes.data||[]).forEach(f  => push(f.focus_date, {id:'focus_'+f.id, title:f.focus_text, type:'focus', color:TYPE_COLORS.focus, _src:'focus', _profile:f.profile_id}));
       (noteRes.data ||[]).forEach(n  => { const d=n.created_at?.split('T')[0]; if(d) push(d,{id:'note_'+n.id, title:n.title||'Note', type:'note', color:TYPE_COLORS.note, _src:'note', _profile:n.profile_id}); });
       (plannerRes.data ||[]).forEach(item => {
         const area = PLANNER_AREAS[item.area] || { emoji: '•', color: c.teal };
-        push(item.date, { ...item, type: 'planner', color: area.color, _src: 'planner', area: item.area, emoji: area.emoji, time: item.start_time, _profile: item.profile_id });
+        push(item.date, { id: 'plan_' + item.id, title: item.title, type: 'planner', color: area.color, _src: 'planner', area: item.area, emoji: area.emoji, time: item.start_time, duration: item.duration_minutes, _profile: item.profile_id, raw: item });
       });
+      // Each day in clock order, untimed last — rows used to come out in
+      // whatever order the five sources happened to return.
+      Object.values(map).forEach(list => list.sort(byTime));
       setEvents(map);
       await cacheWrite(cacheKey, map);
     } catch(e) { console.warn('CalendarModal', e); }
@@ -294,9 +313,22 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
   const nextWeek = () => { const d=new Date(anchor); d.setDate(d.getDate()+7); setAnchor(d); };
 
   const deleteEvt = async (evt) => {
-    if (evt._src !== 'calendar') return;
-    await supabase.from('calendar_events').delete().eq('id', evt.id);
+    try {
+      if (evt._src === 'calendar') await supabase.from('calendar_events').delete().eq('id', evt.id);
+      else if (evt._src === 'task') await supabase.from('tasks').delete().eq('id', evt.raw.id);
+    } catch (e) { Alert.alert("Couldn't delete that", 'Something went wrong — try again.'); }
+    setOpenKey(null);
     await loadWeek();
+  };
+  const completeTaskEvt = async (evt) => {
+    try { await supabase.from('tasks').update({ completed: true, completed_at: new Date().toISOString() }).eq('id', evt.raw.id); }
+    catch (e) { Alert.alert("Couldn't update that", 'Something went wrong — try again.'); }
+    setOpenKey(null);
+    await loadWeek();
+  };
+  const tapEvt = (evt) => {
+    if (evt._src === 'planner') { setOpenPlan(evt.raw); return; }
+    setOpenKey(k => (k === evt.id ? null : evt.id));
   };
 
   const SPINE   = 28;
@@ -405,7 +437,7 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
                 <ActivityIndicator color={c.teal} />
               </View>
             ) : (
-              <ScrollView automaticallyAdjustKeyboardInsets style={{ flex:1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical:8, paddingRight:12, gap:6 }}>
+              <ScrollView ref={scrollRef} automaticallyAdjustKeyboardInsets style={{ flex:1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical:8, paddingRight:12, gap:6 }}>
                 {weekDays.map((day, i) => {
                   const iso    = toISO(day);
                   const isToday = iso === toISO(today);
@@ -416,11 +448,22 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
                     return result;
                   }, {});
                   const activeArea = selectedPlannerArea?.date === iso ? selectedPlannerArea.area : null;
-                  const visibleEvs = activeArea ? dayEvs.filter(evt => evt._src !== 'planner' || evt.area === activeArea) : dayEvs;
+                  const filteredEvs = activeArea ? dayEvs.filter(evt => evt._src !== 'planner' || evt.area === activeArea) : dayEvs;
+                  const dayOpen = openDays.has(iso);
+                  const visibleEvs = dayOpen ? filteredEvs : filteredEvs.slice(0, DAY_PREVIEW);
                   const dayColor = isToday ? c.teal : c.text3;
 
                   return (
-                    <View key={i} style={{
+                    <View key={i}
+                      // Open on today, not on Sunday: the week starts there
+                      // and today could be five full day cards further down.
+                      onLayout={isToday ? (e) => {
+                        if (scrolledTo.current === iso) return;
+                        scrolledTo.current = iso;
+                        const y = e.nativeEvent.layout.y - 8;
+                        setTimeout(() => scrollRef.current?.scrollTo({ y: Math.max(0, y), animated: false }), 0);
+                      } : undefined}
+                      style={{
                       backgroundColor: isToday ? c.teal+'0d' : 'transparent',
                       borderRadius: 8,
                       borderWidth: isToday ? 1 : 0.5,
@@ -467,46 +510,84 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
                         </TouchableOpacity>
                       </View>
 
-                      {/* Event pills inside the day card */}
+                      {/* Items inside the day card: a time column, then the
+                          title. Tap to open. */}
                       {visibleEvs.length > 0 && (
-                        <View style={{ paddingHorizontal:10, paddingVertical:6, gap:4 }}>
-                          {visibleEvs.map((evt, j) => (
-                            <View key={evt.id||j} style={{ flexDirection:'row', alignItems:'center', gap:8, paddingVertical:3 }}>
-                              {/* In all-profiles mode the leading marker
-                                  becomes the PROFILE's colour, not the item
-                                  type's — "whose is this" is the question this
-                                  view exists to answer. The type still reads
-                                  in the label row below. */}
-                              {showingAll && evt._profile && profileLookup[evt._profile] ? (
-                                <View style={{ width:3, height:20, borderRadius:2, backgroundColor: profileLookup[evt._profile].color, flexShrink:0 }} />
-                              ) : (
-                                <View style={{ width:6, height:6, borderRadius:3, backgroundColor:evt.color||c.teal, flexShrink:0 }} />
-                              )}
-                              {/* Title + time */}
-                              <View style={{ flex:1 }}>
-                                <Text style={{ fontSize:11, fontWeight:'600', color:c.text1 }} numberOfLines={1}>
-                                  {evt.title}
-                                </Text>
-                                <View style={{ flexDirection:'row', gap:6, marginTop:1 }}>
-                                  {evt.time && <Text style={{ fontSize:11, color:c.teal }}>{fmt12(evt.time)}</Text>}
-                                  <Text style={{ fontSize:11, color:evt.color||c.teal, textTransform:'uppercase', letterSpacing:0.3 }}>{evt.type}</Text>
-                                  {evt._src !== 'calendar' && <Text style={{ fontSize:11, color:c.text3, fontStyle:'italic' }}>· {evt._src}</Text>}
-                                  {showingAll && evt._profile && profileLookup[evt._profile] && (
-                                    <Text style={{ fontSize:11, fontWeight:'700', color: profileLookup[evt._profile].color }} numberOfLines={1}>
-                                      · {profileLookup[evt._profile].name}
+                        <View style={{ paddingHorizontal:8, paddingVertical:4 }}>
+                          {visibleEvs.map((evt, j) => {
+                            const open = openKey === evt.id;
+                            const profile = showingAll && evt._profile ? profileLookup[evt._profile] : null;
+                            const label = evt._src === 'planner' ? (evt.emoji ? `${evt.emoji} ` : '') + 'plan' : evt.type;
+                            return (
+                              <View key={evt.id||j} style={{ borderTopWidth: j ? 0.5 : 0, borderTopColor: lineClr }}>
+                                <TouchableOpacity onPress={() => tapEvt(evt)} activeOpacity={0.7}
+                                  accessibilityRole="button" accessibilityLabel={`${evt.title}${evt.time ? `, ${fmt12(evt.time)}` : ''}. Show details`}
+                                  style={{ flexDirection:'row', alignItems:'center', gap:8, paddingVertical:7, paddingHorizontal:2 }}>
+                                  <Text style={{ width:54, fontSize:11, fontWeight: evt.time ? '700' : '400', color: evt.time ? c.text2 : c.text3 }}>
+                                    {evt.time ? fmt12(evt.time) : 'Any time'}
+                                  </Text>
+                                  {/* In all-profiles mode the marker becomes the
+                                      PROFILE's colour, not the item type's —
+                                      "whose is this" is the question this view
+                                      exists to answer. */}
+                                  <View style={{ width:3, alignSelf:'stretch', borderRadius:2, backgroundColor: profile ? profile.color : (evt.color||c.teal), flexShrink:0 }} />
+                                  <View style={{ flex:1 }}>
+                                    <Text style={{ fontSize:12, fontWeight:'600', color:c.text1 }} numberOfLines={open ? 0 : 2}>
+                                      {evt.title}
                                     </Text>
-                                  )}
-                                  {evt.reminder_min && <Text style={{ fontSize:11, color:c.gold }}>🔔</Text>}
-                                </View>
-                              </View>
-                              {/* Delete (calendar events only) */}
-                              {evt._src === 'calendar' && (
-                                <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={() => deleteEvt(evt)} style={{ padding:3 }}>
-                                  <Ionicons name="close-circle-outline" size={14} color={c.text4} />
+                                    <View style={{ flexDirection:'row', flexWrap:'wrap', gap:6, marginTop:1 }}>
+                                      <Text style={{ fontSize:11, color:c.text3, textTransform:'uppercase', letterSpacing:0.3 }}>{label}</Text>
+                                      {!!profile && (
+                                        <Text style={{ fontSize:11, fontWeight:'700', color: profile.color }} numberOfLines={1}>· {profile.name}</Text>
+                                      )}
+                                      {evt.reminder_min ? <Ionicons name="notifications-outline" size={11} color={c.text3} /> : null}
+                                    </View>
+                                  </View>
+                                  <Ionicons name={evt._src === 'planner' ? 'chevron-forward' : open ? 'chevron-up' : 'chevron-down'} size={13} color={c.text4} />
                                 </TouchableOpacity>
-                              )}
-                            </View>
-                          ))}
+
+                                {open && (
+                                  <View style={{ paddingLeft:64, paddingRight:4, paddingBottom:8, gap:6 }}>
+                                    {evt.time && (
+                                      <Text style={{ fontSize:11, color:c.text2 }}>
+                                        {evt.all_day ? 'All day' : timeRange(evt.time, evt.duration)}
+                                        {evt.reminder_min ? `  ·  reminder ${evt.reminder_min >= 60 ? `${evt.reminder_min / 60}h` : `${evt.reminder_min} min`} before` : ''}
+                                      </Text>
+                                    )}
+                                    {!!evt.description && <Text style={{ fontSize:12, color:c.text1, lineHeight:17 }}>{evt.description}</Text>}
+                                    <View style={{ flexDirection:'row', flexWrap:'wrap', gap:6 }}>
+                                      {evt._src === 'task' && (
+                                        <TouchableOpacity onPress={() => completeTaskEvt(evt)} accessibilityRole="button"
+                                          style={{ flexDirection:'row', alignItems:'center', gap:4, paddingHorizontal:10, paddingVertical:5, borderRadius:r.md, backgroundColor: TYPE_COLORS.task }}>
+                                          <Ionicons name="checkmark" size={12} color={c.onFill} />
+                                          <Text style={{ fontSize:11, fontWeight:'700', color:c.onFill }}>Done</Text>
+                                        </TouchableOpacity>
+                                      )}
+                                      {(evt._src === 'calendar' || evt._src === 'task') && (
+                                        <TouchableOpacity onPress={() => deleteEvt(evt)} accessibilityRole="button"
+                                          style={{ flexDirection:'row', alignItems:'center', gap:4, paddingHorizontal:10, paddingVertical:5, borderRadius:r.md, borderWidth:1, borderColor:(c.error||'#e05858')+'88' }}>
+                                          <Ionicons name="trash-outline" size={12} color={c.error||'#e05858'} />
+                                          <Text style={{ fontSize:11, fontWeight:'700', color:c.error||'#e05858' }}>Delete</Text>
+                                        </TouchableOpacity>
+                                      )}
+                                      {evt._src === 'note' && <Text style={{ fontSize:11, color:c.text3 }}>In your Capture Inbox.</Text>}
+                                      {evt._src === 'focus' && <Text style={{ fontSize:11, color:c.text3 }}>This day's focus. Change it on Home.</Text>}
+                                    </View>
+                                  </View>
+                                )}
+                              </View>
+                            );
+                          })}
+                          {filteredEvs.length > DAY_PREVIEW && (
+                            <TouchableOpacity accessibilityRole="button"
+                              onPress={() => setOpenDays(prev => { const n = new Set(prev); n.has(iso) ? n.delete(iso) : n.add(iso); return n; })}
+                              style={{ flexDirection:'row', alignItems:'center', justifyContent:'center', gap:4, paddingVertical:6, borderTopWidth:0.5, borderTopColor:lineClr }}>
+                              <Text style={{ fontSize:11, fontWeight:'700', color:c.teal }}>
+                                {dayOpen ? 'Show fewer' : `Show all ${filteredEvs.length}`}
+                              </Text>
+                              <Ionicons name={dayOpen ? 'chevron-up' : 'chevron-down'} size={12} color={c.teal} />
+                            </TouchableOpacity>
+                          )}
                         </View>
                       )}
                     </View>
@@ -518,6 +599,14 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
           </View>
         </Animated.View>
       </View>
+
+      {/* A planner item, tapped open */}
+      <PlanDetailSheet
+        instance={openPlan}
+        onClose={() => setOpenPlan(null)}
+        onChanged={loadWeek}
+        onEdit={onEditPlan ? (row) => { onClose(); onEditPlan(row); } : null}
+      />
 
       {/* Add sheet */}
       <Modal visible={!!addDate} transparent animationType="slide" onRequestClose={() => setAddDate(null)} statusBarTranslucent>

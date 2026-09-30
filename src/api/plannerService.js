@@ -229,6 +229,56 @@ export async function rescheduleInstance(instanceId, date = null) {
   return data;
 }
 
+export async function unskipInstance(instanceId) {
+  const { data, error } = await supabase
+    .from('agenda_instances')
+    .update({ skipped: false })
+    .eq('id', instanceId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+// Deletes rows by id, cancelling any phone reminder on each first. Hard
+// delete, same as the Planner's trash button always was.
+export async function deleteInstances(ids) {
+  if (!ids.length) return;
+  // Required here, not imported: planReminderActions imports this file.
+  const { cancelPlanReminder } = require('../logic/planReminderActions');
+  for (const id of ids) { try { await cancelPlanReminder(id); } catch { /* not scheduled */ } }
+  const { error } = await supabase.from('agenda_instances').delete().in('id', ids);
+  if (error) throw error;
+}
+
+// The later copies of a repeating item, this one included. A repeat is
+// stored as one row per day with nothing tying them together, so a series
+// is: same library component if it came from one, else same title, time and
+// repeat, from this day on and not yet done.
+export async function getSeriesFrom(instance) {
+  let q = supabase.from('agenda_instances')
+    .select('id, date, completed')
+    .eq('user_id', instance.user_id)
+    .gte('date', instance.date);
+  if (instance.component_id) q = q.eq('component_id', instance.component_id);
+  else {
+    q = q.is('component_id', null).eq('title', instance.title).eq('cadence', instance.cadence || 'daily');
+    q = instance.start_time ? q.eq('start_time', instance.start_time) : q.is('start_time', null);
+  }
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data || []).filter(r => r.id === instance.id || !r.completed);
+}
+
+// Rows around today, for the "Remove duplicates" clean-up.
+export async function getInstancesBetween(userId, from, to) {
+  const { data, error } = await supabase.from('agenda_instances')
+    .select('id, title, date, start_time, completed, skipped, created_at')
+    .eq('user_id', userId).gte('date', from).lte('date', to);
+  if (error) throw error;
+  return data || [];
+}
+
 export async function addNoteToInstance(instanceId, notes) {
   const { data, error } = await supabase
     .from('agenda_instances')

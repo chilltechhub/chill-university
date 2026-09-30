@@ -354,11 +354,13 @@ export default function AIBridgeScreen() {
     const d = describe(ch);
     const live = ch.status === 'ok';
     const on = live && selected.has(ch.key);
-    const op = ch.merged ? { label: 'ADD TO', color: c.teal } : OP_STYLE[ch.op];
+    const op = ch.merged ? { label: 'ADD TO', color: c.teal }
+      : ch.status === 'duplicate' ? { label: 'ALREADY THERE', color: c.text3 } : OP_STYLE[ch.op];
     const kids = (ch.children || []).filter(k => k.status !== 'noop');
     const shownKids = kids.slice(0, 8);
     const reason = ch.status === 'locked' ? `${TARGET_BY_KEY[ch.target].label} is still locked, so this can’t be saved yet.`
-      : ch.status === 'noop' ? 'Nothing here actually changes.' : null;
+      : ch.status === 'noop' ? 'Nothing here actually changes.'
+      : ch.status === 'duplicate' ? 'Skipped, so you don’t end up with two.' : null;
     return (
       <TouchableOpacity key={ch.key} disabled={!live} onPress={() => toggleChange(ch.key)} activeOpacity={0.7}
         style={{ flexDirection: 'row', gap: s.sm, paddingVertical: s.md, borderTopWidth: 0.5, borderTopColor: c.border, opacity: live ? 1 : 0.5 }}>

@@ -17,6 +17,7 @@
 import { supabase } from './profileScopedClient';
 import { isOnline } from './offlineCache';
 import { todayStr } from '../logic/dateUtils';
+import { isSamePlan } from '../logic/plannerLayout';
 import {
   AREA_IDS, PROJECT_STAGES, STAGE_FOR_STATUS, EXPORT_CAPS, LIMITS, repeatDates, addDaysIso,
 } from '../logic/aiBridgeFormat';
@@ -356,8 +357,16 @@ const APPLY = {
     const f = ch.fields;
     const lead = f.remind === true ? 15 : f.remind;
     if (ch.op === 'create') {
-      const rows = await insertRows('agenda_instances', repeatDates(f.date, f.repeat).map(date => ({
-        user_id: userId, title: f.title, area: f.area || 'physical', cadence: f.repeat || 'daily',
+      // The review already dropped days it's on, but only against the
+      // snapshot, which is capped (EXPORT_CAPS) and can be stale: check the
+      // days themselves once more right before writing.
+      const wanted = ch.dates || repeatDates(f.date, f.repeat);
+      const { data: onThoseDays } = await supabase.from('agenda_instances')
+        .select('title, date, start_time').eq('user_id', userId).in('date', wanted);
+      const dates = wanted.filter(date => !(onThoseDays || []).some(x => isSamePlan(x, { title: f.title, date, start_time: f.time })));
+      if (!dates.length) return;
+      const rows = await insertRows('agenda_instances', dates.map(date => ({
+        user_id: userId, title: f.title, area: f.area || 'physical', cadence: f.repeat || 'once',
         type: 'checklist', date, start_time: f.time || null, duration_minutes: f.minutes || null,
         notes: f.notes || null, skipped: false, ...doneCols(f.done),
       })), undo);
