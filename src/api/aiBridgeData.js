@@ -26,6 +26,7 @@ import { PLANT_TYPES } from '../screens/library/ideagarden';
 import { KINDS, rowKind } from '../screens/library/knowledge';
 import { schedulePlanReminder, cancelPlanReminder, hasScheduledReminder } from '../logic/planReminderActions';
 import { markManualReminder, setPlanReminder } from '../logic/hubNotifications';
+import { buildSessionRows, remindSessions } from './workSessions';
 
 // The Workshop's first build colour (blueprint.js light `accent`).
 const PROJECT_COLOR = '#0f7f96';
@@ -54,8 +55,9 @@ async function loadProjects(userId) {
     goal: p.objective,
     type: typeNameFor(p.category),
     stage: STAGE_FOR_STATUS[p.status] || 'building',
+    due: p.due_date || null,
     next_step: p.next_action,
-    tasks: under(tasks, p.id).map(t => ({ id: t.id, title: t.title, done: !!t.completed, _row: t })),
+    tasks: under(tasks, p.id).map(t => ({ id: t.id, title: t.title, due: t.due_date || null, done: !!t.completed, _row: t })),
     notes: under(journal, p.id).map(n => ({ id: n.id, title: n.title, body: n.body, type: n.type, _row: n })),
     links: under(research, p.id).map(l => ({ id: l.id, title: l.title, url: l.url, notes: l.notes, _row: l })),
     _row: p,
@@ -225,6 +227,7 @@ function projectCols(f) {
   if (has(f, 'type')) c.category = buildTypeFor(f.type) || 'general';
   if (has(f, 'stage')) c.status = PROJECT_STAGES[f.stage] || 'active';
   if (has(f, 'next_step')) c.next_action = f.next_step;
+  if (has(f, 'due')) c.due_date = f.due;
   return c;
 }
 
@@ -249,7 +252,7 @@ const APPLY = {
         user_id: userId, title: f.title, objective: f.goal || null,
         emoji, color: PROJECT_COLOR, cover_color: PROJECT_COLOR, banner_emoji: emoji,
         category: buildType || 'general', status: PROJECT_STAGES[f.stage] || 'active',
-        next_action: f.next_step || null, sort_order: 0,
+        next_action: f.next_step || null, due_date: f.due || null, sort_order: 0,
       }], undo, PROJECT_CASCADE);
       projectId = row.id;
       must(await supabase.from('project_milestones').insert({
@@ -259,10 +262,10 @@ const APPLY = {
       const cols = projectCols(ch.fields);
       if (Object.keys(cols).length) await updateRow('projects', ch.id, { ...cols, updated_at: new Date().toISOString() }, ch.current._row, undo);
     }
-    await applyChildren(ch.children, {
+    await applyChildren(ch.children.filter(k => k.kind !== 'session'), {
       tables: PROJECT_TABLES, parentKey: 'project_id', parentId: projectId, userId,
       toCreate: (k, i) => (k.kind === 'task'
-        ? { title: k.fields.title, priority: 3, sort_order: i, ...doneCols(k.fields.done) }
+        ? { title: k.fields.title, priority: 3, sort_order: i, due_date: k.fields.due || null, notes: k.fields.notes || null, ...doneCols(k.fields.done) }
         : k.kind === 'note'
           ? { title: k.fields.title || null, body: k.fields.body || k.fields.title, type: k.fields.type || 'note' }
           : { title: k.fields.title, type: 'link', url: k.fields.url, notes: k.fields.notes || null }),
@@ -271,11 +274,28 @@ const APPLY = {
         const c = {};
         if (has(f, 'title')) c.title = f.title;
         if (k.kind === 'task' && has(f, 'done')) Object.assign(c, doneCols(f.done));
+        if (k.kind === 'task' && has(f, 'due')) c.due_date = f.due;
+        if (k.kind === 'task' && has(f, 'notes')) c.notes = f.notes;
         if (k.kind === 'note') { if (has(f, 'body')) c.body = f.body; if (has(f, 'type')) c.type = f.type || 'note'; }
         if (k.kind === 'link') { if (has(f, 'url')) c.url = f.url; if (has(f, 'notes')) c.notes = f.notes; }
         return c;
       },
     }, undo);
+    // Work time is planner rows linked to the project, not a child table.
+    const sessions = ch.children.filter(k => k.kind === 'session' && k.status === 'ok');
+    if (sessions.length) {
+      const project = {
+        id: projectId,
+        title: ch.fields.title || ch.current?.title || 'this project',
+        category: ch.fields.type ? buildTypeFor(ch.fields.type) : ch.current?._row?.category,
+        next_action: has(ch.fields, 'next_step') ? ch.fields.next_step : ch.current?._row?.next_action,
+      };
+      for (const k of sessions) {
+        const rows = await insertRows('agenda_instances', buildSessionRows(userId, project, k.fields), undo);
+        await remindSessions(rows, k.fields.remind);
+      }
+    }
+    return projectId;
   },
 
   async ideas(userId, ch, undo) {
@@ -442,18 +462,53 @@ export async function applyChanges(userId, resolved, selected, onProgress) {
   const todo = resolved.filter(r => r.status === 'ok' && selected.has(r.key));
   const undo = [];
   const failed = [];
+  const projects = []; // { id, created } for each project written
   let applied = 0;
   for (let i = 0; i < todo.length; i++) {
     const ch = todo[i];
     try {
-      await APPLY[ch.target](userId, ch, undo);
+      const out = await APPLY[ch.target](userId, ch, undo);
+      if (ch.target === 'projects' && ch.op !== 'delete' && out) projects.push({ id: out, created: ch.op === 'create' });
       applied++;
     } catch (e) {
       failed.push({ key: ch.key, message: e?.message || 'Something went wrong.' });
     }
     onProgress?.(i + 1, todo.length);
   }
-  return { applied, failed, undo };
+  return { applied, failed, undo, projects };
+}
+
+// Files what a plan was made from into the project it made: the saved link
+// as research (unless the reply already added it), the copied transcript or
+// text as a note, and the capture itself marked done and pointed at the
+// project, so it leaves the Inbox. All of it goes on the same undo log.
+//
+// source: { captureId, title, url, kind, siteLabel, textLabel, text }
+export async function attachSource(userId, source, projectId, undo) {
+  if (!source || !projectId) return;
+  if (source.url) {
+    const { data: have } = await supabase.from('project_research').select('id')
+      .eq('project_id', projectId).eq('url', source.url).limit(1);
+    if (!have?.length) {
+      await insertRows('project_research', [{
+        user_id: userId, project_id: projectId, title: (source.title || source.url).slice(0, 200),
+        url: source.url, type: source.kind === 'video' ? 'video' : 'link',
+        notes: source.siteLabel ? `Where this project started (${source.siteLabel}).` : 'Where this project started.',
+      }], undo);
+    }
+  }
+  const text = String(source.text || '').trim();
+  if (text) {
+    await insertRows('project_journal', [{
+      user_id: userId, project_id: projectId,
+      title: `${source.textLabel || 'Source text'}: ${source.title || 'saved link'}`.slice(0, 120),
+      body: text.slice(0, LIMITS.sourceText), type: 'note',
+    }], undo);
+  }
+  if (source.captureId) {
+    const { data: row } = await supabase.from('captures').select('status, project_id').eq('id', source.captureId).maybeSingle();
+    if (row) await updateRow('captures', source.captureId, { status: 'done', project_id: projectId }, row, undo);
+  }
 }
 
 export async function undoChanges(undo) {

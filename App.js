@@ -499,7 +499,7 @@ function AppInner() {
         {/* Not over a game: it sat on top of Start and the answer rows, and
             nothing in it is something you'd reach for mid-round. */}
         {showTopBar && currentRouteName !== 'Play' && currentRouteName !== 'PlayGame' && (
-          <FloatingActionButton currentScreen={currentRouteName} />
+          <FloatingActionButton currentScreen={currentRouteName} navigationRef={navigationRef} />
         )}
         {/* Global search (Cmd/Ctrl+K, or the FAB's Search action). Sits
             beside the FAB for the same reason: it has to be reachable from

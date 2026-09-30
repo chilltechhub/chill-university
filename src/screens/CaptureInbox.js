@@ -9,11 +9,15 @@ import {
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../api/profileScopedClient';
 import { cacheRead, cacheWrite, isOnline } from '../api/offlineCache';
-import { addCapture } from '../api/captureService';
+import { addCapture, linkCaptureFields } from '../api/captureService';
+import { detectSource, fallbackTitle, CAPTURE_TYPE_FOR_KIND, sourceByKey } from '../logic/linkSources';
+import { WEEKDAY_KEYS, daysLabel } from '../logic/aiBridgeFormat';
+import { formatTime12 } from '../components/TimePickerField';
+import TimeChips from '../components/TimeChips';
 import { RETENTION_DAYS, getRecentlyDeleted, restoreItem, permanentlyDelete, purgeExpired } from '../api/trashService';
 import TourSpot from '../components/TourSpot';
 import FloatingCard from '../components/FloatingCard';
@@ -84,6 +88,13 @@ const URL_REGEX = /https?:\/\/[^\s]+/;
 
 // ─── Route destinations — where a capture can go ──────────────────────────────
 export const DESTINATIONS = [
+  {
+    key:   'plan_ai',
+    label: 'Plan it into a project',
+    icon:  'sparkles-outline',
+    color: '#b07be0',
+    desc:  'Paste the transcript or details. Your AI writes the steps, deadlines and work time',
+  },
   {
     key:   'project',
     label: 'Add to Project',
@@ -156,9 +167,35 @@ export const DESTINATIONS = [
   },
 ];
 
-// "Start New Project" only makes sense for one item at a time (which one
-// becomes the seed?) — left out of the bulk destination list.
-const BULK_DESTINATIONS = DESTINATIONS.filter(d => d.key !== 'new_project');
+// "Start New Project" and "Plan it" only make sense for one item at a time
+// (which one becomes the seed?) — left out of the bulk destination list.
+const BULK_DESTINATIONS = DESTINATIONS.filter(d => d.key !== 'new_project' && d.key !== 'plan_ai');
+
+// The site a capture came from, for its badge and the plan step. Older
+// captures have no url_meta.site, so it's worked out from the address.
+const siteOf = (item) => (item?.url ? (item.url_meta?.site ? sourceByKey(item.url_meta.site) : detectSource(item.url)) : null);
+
+// Work-time choices on the plan step: Monday first.
+const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
+const SESSION_MINUTES = [30, 60, 90, 120];
+const SESSION_WEEKS = [2, 4, 8];
+
+// What the chatbot is asked for, from the plan step's answers.
+function planRequest({ want, project, days, time, minutes, weeks }) {
+  const lines = [
+    project
+      ? `Add this to my existing project "${project.title}". Use its ref from the list below.`
+      : 'Turn what I saved into a project I can actually finish.',
+  ];
+  if (want.trim()) lines.push(want.trim());
+  lines.push('Give me the steps as tasks in the order to do them, the deliverables as tasks with realistic due dates, and the materials, tools and costs as notes.');
+  if (days.length) {
+    lines.push(`I can work on it ${daysLabel(days)}${time ? ` at ${formatTime12(time)}` : ''}, about ${minutes} minutes each time, for the next ${weeks} weeks. Add that as "sessions".`);
+  } else {
+    lines.push('Don\'t add work sessions. I\'ll schedule time myself.');
+  }
+  return lines.join('\n');
+}
 
 const LIFE_AREA_OPTIONS = [
   { key: 'physical',     label: 'Physical',     emoji: '💪' },
@@ -196,9 +233,22 @@ function noteBody(capture) {
 }
 
 // ─── Process Modal — where do you want to send this? ─────────────────────────
-function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated, onDeleted, c, t, s, r }) {
+function ProcessModal({ item, projects, userId, initialStep = 'choose', onClose, onProcessed, onUpdated, onDeleted, c, t, s, r }) {
   const navigation = useNavigation();
-  const [step,          setStep]          = useState('choose'); // choose | pick_project | pick_area | confirm
+  const [step,          setStep]          = useState(initialStep); // choose | plan_ai | pick_project | pick_area | confirm
+  // Plan it into a project: what the person wants from it, the text they
+  // copied out of it (kept on the capture so it isn't typed twice), when
+  // they can work on it, and which project it goes into (null = a new one).
+  const site = siteOf(item);
+  const [planWant,    setPlanWant]    = useState('');
+  const [planText,    setPlanText]    = useState(() => item.url_meta?.transcript
+    || (item.url ? (item.body && item.body !== item.url_meta?.description ? item.body : '') : (item.body || '')));
+  const [planDays,    setPlanDays]    = useState([]);
+  const [planTime,    setPlanTime]    = useState('');
+  const [planMinutes, setPlanMinutes] = useState(60);
+  const [planWeeks,   setPlanWeeks]   = useState(4);
+  const [planInto,    setPlanInto]    = useState(null);
+  const [planBusy,    setPlanBusy]    = useState(false);
   const [destination,   setDestination]   = useState(null);
   const [selectedProj,  setSelectedProj]  = useState(null);
   const [selectedArea,  setSelectedArea]  = useState(null);
@@ -272,8 +322,42 @@ function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated,
     ]);
   };
 
+  const pastePlanText = async () => {
+    try { const txt = await Clipboard.getStringAsync(); if (txt) setPlanText(prev => (prev ? `${prev}\n\n${txt}` : txt)); } catch { /* typed box still works */ }
+  };
+
+  // Hands off to Fill with AI with the capture as the source. The capture
+  // stays in the Inbox until the plan is saved there (attachSource files it
+  // into the project and marks it done), so backing out loses nothing.
+  const continueToAI = async () => {
+    setPlanBusy(true);
+    const text = planText.trim();
+    if (text !== (current.url_meta?.transcript || '').trim() && current.url) {
+      const url_meta = { ...(current.url_meta || {}), transcript: text || undefined };
+      const { error } = await supabase.from('captures').update({ url_meta }).eq('id', item.id);
+      if (!error) { setCurrent(prev => ({ ...prev, url_meta })); onUpdated?.(item.id, { url_meta }); }
+    }
+    setPlanBusy(false);
+    onClose();
+    navigation.navigate('AIBridgeScreen', {
+      target: 'projects',
+      idea: planRequest({ want: planWant, project: planInto, days: planDays, time: planTime, minutes: planMinutes, weeks: planWeeks }),
+      source: {
+        captureId: item.id,
+        title: current.title || null,
+        url: current.url || null,
+        site: site?.key || null,
+        author: current.url_meta?.author || null,
+        description: current.url_meta?.description || null,
+        text,
+      },
+      at: Date.now(),
+    });
+  };
+
   const handleDestination = (dest) => {
     setDestination(dest);
+    if (dest.key === 'plan_ai')    { setStep('plan_ai'); return; }
     if (dest.key === 'project')    { setStep('pick_project'); return; }
     if (dest.key === 'life_area')  { setStep('pick_area');    return; }
     if (dest.key === 'task')       { setStep('task_details'); return; }
@@ -466,7 +550,7 @@ function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated,
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: editing ? s.md : 4 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, flex: 1 }}>
                   <Ionicons name={TYPE_MAP[current.type]?.icon || 'document-text-outline'} size={14} color={itemColor} />
-                  <Text style={{ fontSize: 11, color: itemColor, fontWeight: '800', textTransform: 'uppercase' }}>{current.type}</Text>
+                  <Text style={{ fontSize: 11, color: itemColor, fontWeight: '800', textTransform: 'uppercase' }}>{current.type}{site && site.key !== 'web' ? ` · ${site.label}` : ''}</Text>
                 </View>
                 {!editing && step === 'choose' && (
                   <View style={{ flexDirection: 'row', gap: s.md }}>
@@ -661,6 +745,118 @@ function ProcessModal({ item, projects, userId, onClose, onProcessed, onUpdated,
                   {processing ? <ActivityIndicator color="#fff" size="small" />
                     : <Text style={{ color: '#fff', fontWeight: t.bold }}>Start Project</Text>}
                 </TouchableOpacity>
+              </>
+            )}
+
+            {step === 'plan_ai' && (
+              <>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: s.md }}>
+                  <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => setStep('choose')}>
+                    <Ionicons name="chevron-back" size={20} color={c.teal} />
+                  </TouchableOpacity>
+                  <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1, flex: 1 }}>Plan it into a project</Text>
+                </View>
+                <ScrollView automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={{ maxHeight: 440 }}>
+                  <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: 6 }}>What do you want out of it? (optional)</Text>
+                  <TextInput
+                    style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: c.border, marginBottom: s.md, minHeight: 56, textAlignVertical: 'top' }}
+                    value={planWant} onChangeText={setPlanWant} multiline
+                    placeholder={site?.kind === 'model' ? 'e.g. Print 4 of these in PETG for my garage wall' : site?.kind === 'listing' ? 'e.g. Make my own version of this for under $40' : 'e.g. Build this by spring for under $300, with my kids helping'}
+                    placeholderTextColor={c.text4} />
+
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                    <Text style={{ fontSize: t.xs, color: c.text3, flex: 1 }}>{site ? site.textLabel : 'Details'} (the more, the better the plan)</Text>
+                    <TouchableOpacity onPress={pastePlanText} accessibilityRole="button" accessibilityLabel="Paste from clipboard"
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: c.teal + '18', borderRadius: r.full, paddingHorizontal: s.sm, paddingVertical: 3 }}>
+                      <Ionicons name="clipboard-outline" size={12} color={c.teal} />
+                      <Text style={{ fontSize: 11, color: c.teal, fontWeight: '700' }}>Paste</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {!!site && (
+                    <View style={{ flexDirection: 'row', gap: 6, backgroundColor: c.bg0, borderRadius: r.md, padding: s.sm, marginBottom: 6 }}>
+                      <Ionicons name="information-circle-outline" size={14} color={c.text3} style={{ marginTop: 1 }} />
+                      <Text style={{ fontSize: 11, color: c.text3, flex: 1, lineHeight: 16 }}>{site.howTo}</Text>
+                      {!!current.url && (
+                        <TouchableOpacity onPress={() => Linking.openURL(current.url)} accessibilityRole="link">
+                          <Text style={{ fontSize: 11, color: c.teal, fontWeight: '700' }}>Open it</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
+                  <TextInput
+                    style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.xs, color: c.text1, borderWidth: 1, borderColor: c.border, marginBottom: 4, minHeight: 90, maxHeight: 180, textAlignVertical: 'top' }}
+                    value={planText} onChangeText={setPlanText} multiline
+                    placeholder={site?.kind === 'video' ? 'Paste the transcript, or type the steps you remember…' : 'Paste the text, or type what you remember…'}
+                    placeholderTextColor={c.text4} />
+                  <Text style={{ fontSize: 11, color: c.text3, marginBottom: s.md }}>
+                    {planText.trim() ? `${planText.trim().length.toLocaleString()} characters. Saved with this item and put in the project.` : 'Optional. Without it the AI only has the title to go on.'}
+                  </Text>
+
+                  <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: 6 }}>When can you work on it? (optional)</Text>
+                  <View style={{ flexDirection: 'row', gap: 4, marginBottom: s.sm }}>
+                    {WEEK_ORDER.map(d => {
+                      const on = planDays.includes(d);
+                      return (
+                        <TouchableOpacity key={d} onPress={() => setPlanDays(prev => (on ? prev.filter(x => x !== d) : [...prev, d]))}
+                          accessibilityRole="checkbox" accessibilityState={{ checked: on }} accessibilityLabel={WEEKDAY_KEYS[d]}
+                          style={{ flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: r.md, borderWidth: 1, borderColor: on ? '#b07be0' : c.border, backgroundColor: on ? '#b07be022' : c.bg0 }}>
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: on ? c.text1 : c.text3 }}>{WEEKDAY_KEYS[d].charAt(0).toUpperCase() + WEEKDAY_KEYS[d].slice(1, 2)}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  {planDays.length > 0 && (
+                    <>
+                      <Text style={{ fontSize: 11, color: c.text3, marginBottom: 4 }}>At</Text>
+                      <TimeChips value={planTime} onChange={setPlanTime} fontSize={t.xs}
+                        colors={{ on: '#b07be0', off: c.bg0, text: c.text3, textOn: c.text1, border: c.border }} style={{ marginBottom: s.sm }} />
+                      <Text style={{ fontSize: 11, color: c.text3, marginBottom: 4 }}>Each time</Text>
+                      <View style={{ flexDirection: 'row', gap: 6, marginBottom: s.sm, flexWrap: 'wrap' }}>
+                        {SESSION_MINUTES.map(m => (
+                          <TouchableOpacity key={m} onPress={() => setPlanMinutes(m)}
+                            style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: r.full, borderWidth: 1, borderColor: planMinutes === m ? '#b07be0' : c.border, backgroundColor: planMinutes === m ? '#b07be022' : c.bg0 }}>
+                            <Text style={{ fontSize: t.xs, color: planMinutes === m ? c.text1 : c.text3 }}>{m < 60 ? `${m} min` : `${m / 60} hr${m > 60 ? 's' : ''}`}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                      <Text style={{ fontSize: 11, color: c.text3, marginBottom: 4 }}>For the next</Text>
+                      <View style={{ flexDirection: 'row', gap: 6, marginBottom: s.sm, flexWrap: 'wrap' }}>
+                        {SESSION_WEEKS.map(w => (
+                          <TouchableOpacity key={`w${w}`} onPress={() => setPlanWeeks(w)}
+                            style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: r.full, borderWidth: 1, borderColor: planWeeks === w ? '#b07be0' : c.border, backgroundColor: planWeeks === w ? '#b07be022' : c.bg0 }}>
+                            <Text style={{ fontSize: t.xs, color: planWeeks === w ? c.text1 : c.text3 }}>{w} weeks</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </>
+                  )}
+
+                  {projects.length > 0 && (
+                    <>
+                      <Text style={{ fontSize: t.xs, color: c.text3, marginTop: s.sm, marginBottom: 6 }}>Into</Text>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: s.md }}>
+                        {[null, ...projects].map(p => {
+                          const on = (planInto?.id || null) === (p?.id || null);
+                          return (
+                            <TouchableOpacity key={p?.id || 'new'} onPress={() => setPlanInto(p)}
+                              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: r.full, borderWidth: 1, borderColor: on ? '#b07be0' : c.border, backgroundColor: on ? '#b07be022' : c.bg0 }}>
+                              <Text style={{ fontSize: 12 }}>{p ? (p.emoji || '🚀') : '✨'}</Text>
+                              <Text style={{ fontSize: t.xs, color: on ? c.text1 : c.text3 }} numberOfLines={1}>{p ? p.title : 'A new project'}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </>
+                  )}
+                </ScrollView>
+                <TouchableOpacity onPress={continueToAI} disabled={planBusy}
+                  style={{ backgroundColor: '#b07be0', borderRadius: r.md, padding: s.md, alignItems: 'center', marginTop: s.sm, flexDirection: 'row', justifyContent: 'center', gap: s.sm }}>
+                  {planBusy ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="sparkles" size={16} color="#fff" />}
+                  <Text style={{ color: '#fff', fontWeight: t.bold }}>Write the plan with AI</Text>
+                </TouchableOpacity>
+                <Text style={{ fontSize: 11, color: c.text3, textAlign: 'center', marginTop: 6 }}>
+                  Next: copy a prompt into ChatGPT, Claude or Gemini, paste its answer back, check it, save.
+                </Text>
               </>
             )}
 
@@ -1002,9 +1198,10 @@ function BulkProcessModal({ items, projects, userId, onClose, onProcessed, c, t,
 }
 
 // ─── Capture card ─────────────────────────────────────────────────────────────
-function CaptureCard({ item, onProcess, onDone, selectMode, selected, onToggleSelect, onEnterSelectMode, c, t, s, r }) {
+function CaptureCard({ item, onProcess, onPlan, onDone, selectMode, selected, onToggleSelect, onEnterSelectMode, c, t, s, r }) {
   const tp    = TYPE_MAP[item.type] || TYPE_MAP.note;
   const color = tp.color;
+  const site  = siteOf(item);
 
   return (
     <TouchableOpacity
@@ -1028,6 +1225,12 @@ function CaptureCard({ item, onProcess, onDone, selectMode, selected, onToggleSe
             <Ionicons name={tp.icon} size={10} color={color} />
             <Text style={{ fontSize: 11, color, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>{item.type}</Text>
           </View>
+          {site && site.key !== 'web' && (
+            <Text style={{ fontSize: 11, color: c.text3, fontWeight: '700' }}>{site.label}</Text>
+          )}
+          {!!item.url_meta?.transcript && (
+            <Ionicons name="document-text-outline" size={11} color={c.text3} accessibilityLabel="Has its text saved" />
+          )}
           {item.save_for_later && (
             <View style={{ backgroundColor: c.gold + '22', borderRadius: r.full, paddingHorizontal: 6, paddingVertical: 2 }}>
               <Text style={{ fontSize: 11, color: c.gold }}>{item.save_for_later === 'watch' ? '▶ Watch' : '📖 Read'} later</Text>
@@ -1061,7 +1264,15 @@ function CaptureCard({ item, onProcess, onDone, selectMode, selected, onToggleSe
         {!selectMode && (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: s.sm, paddingTop: s.sm, borderTopWidth: 0.5, borderTopColor: c.border }}>
             <Ionicons name="arrow-forward-circle-outline" size={13} color={color} />
-            <Text style={{ fontSize: 11, color, fontWeight: '600' }}>Tap to process → send it where it belongs</Text>
+            <Text style={{ fontSize: 11, color, fontWeight: '600', flex: 1 }}>Tap to send it where it belongs</Text>
+            {item.status === 'inbox' && (
+              <TouchableOpacity onPress={() => onPlan(item)} accessibilityRole="button" accessibilityLabel="Plan it into a project"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#b07be022', borderRadius: r.full, paddingHorizontal: 8, paddingVertical: 3 }}>
+                <Ionicons name="sparkles" size={11} color="#b07be0" />
+                <Text style={{ fontSize: 11, color: '#b07be0', fontWeight: '800' }}>Plan it</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
       </View>
@@ -1083,7 +1294,10 @@ function CaptureCard({ item, onProcess, onDone, selectMode, selected, onToggleSe
 // `prefill` comes from a tutorial step (see `prefill` in
 // context/TourContext.js) — a worked example to open with, editable, and
 // never saved unless the user saves it.
-export function QuickCaptureModal({ visible, userId, onSaved, onClose, prefill, c, t, s, r }) {
+// mode 'plan' is the + button's "Plan from a link": the same capture, worded
+// for pasting a link, and the caller opens the plan step once it's saved.
+export function QuickCaptureModal({ visible, userId, onSaved, onClose, prefill, mode = 'capture', c, t, s, r }) {
+  const planning = mode === 'plan';
   const [draft,  setDraft]  = useState('');
   const [type,   setType]   = useState('note');
   const [tags,   setTags]   = useState('');
@@ -1099,35 +1313,69 @@ export function QuickCaptureModal({ visible, userId, onSaved, onClose, prefill, 
     if (prefill.url) setUrl(prev => prev || prefill.url);
   }, [visible, prefill]);
 
+  // A pasted link is looked up while the person finishes typing: its title,
+  // and which site it's from (linkCaptureFields). Keyed by url so an old
+  // lookup can't land on a newer link.
+  const [linkInfo, setLinkInfo] = useState(null); // { url, fields } | { url, pending: true }
+  useEffect(() => {
+    if (!url) { setLinkInfo(null); return undefined; }
+    let live = true;
+    setLinkInfo({ url, pending: true });
+    const timer = setTimeout(() => {
+      linkCaptureFields(url).then(fields => { if (live) setLinkInfo({ url, fields }); }).catch(() => {});
+    }, 400);
+    return () => { live = false; clearTimeout(timer); };
+  }, [url]);
+  const site = url ? detectSource(url) : null;
+
+  // The type follows the link (a YouTube link is a video, an Etsy link a
+  // resource) unless the person picked one themselves.
+  const [typePicked, setTypePicked] = useState(false);
+  const pickType = (k) => { setType(k); setTypePicked(true); };
+
   const handleText = (text) => {
     setDraft(text);
     const match = text.match(URL_REGEX);
-    if (match) { setUrl(match[0]); if (type === 'note') setType('link'); }
-    else setUrl(null);
+    if (match) {
+      const u = match[0].replace(/[).,;]+$/, '');
+      setUrl(u);
+      if (!typePicked) setType(CAPTURE_TYPE_FOR_KIND[detectSource(u).kind] || 'link');
+    } else {
+      setUrl(null);
+      if (!typePicked) setType('note');
+    }
   };
 
   const paste = async () => {
     try { const text = await Clipboard.getStringAsync(); if (text) handleText(text); } catch {}
   };
 
+  const reset = () => { setDraft(''); setType('note'); setTags(''); setUrl(null); setTypePicked(false); setLinkInfo(null); };
+
   const save = async () => {
     if (!draft.trim()) return;
     setSaving(true);
     try {
       const tagList = tags.split(',').map(t => t.trim()).filter(Boolean);
+      let fields = { type, title: draft.length > 80 ? draft.slice(0, 77) + '...' : draft, body: draft, url };
+      if (url) {
+        // Wait a moment for the lookup if it's still going, never longer:
+        // the title from the address is good enough to save with.
+        let found = linkInfo?.url === url ? linkInfo.fields : null;
+        if (!found) found = await Promise.race([linkCaptureFields(url, draft), new Promise(res => setTimeout(() => res(null), 2500))]);
+        const note = draft.replace(url, '').trim();
+        fields = found
+          ? { ...found, body: note || found.body, type: typePicked ? type : found.type }
+          : { type, title: note.split('\n')[0].slice(0, 80) || fallbackTitle(url), body: note || null, url,
+            url_meta: { site: detectSource(url).key, site_label: detectSource(url).label, kind: detectSource(url).kind } };
+      }
       // Through addCapture's offlineWrite: offline (or a dropped request)
       // queues the capture for flushQueue() instead of losing what was
       // typed behind a "Could not save". Capture is the one write that must
       // never ask the user to try again later.
-      const data = await addCapture(userId, {
-        type,
-        title: draft.length > 80 ? draft.slice(0, 77) + '...' : draft,
-        body:  draft,
-        url,
-        tags:  tagList,
-      });
+      const data = await addCapture(userId, { ...fields, tags: tagList });
       onSaved(data);
-      setDraft(''); setType('note'); setTags(''); setUrl(null);
+      reset();
     } catch (e) {
       Alert.alert('Error', 'Could not save. Try again.');
     }
@@ -1138,8 +1386,8 @@ export function QuickCaptureModal({ visible, userId, onSaved, onClose, prefill, 
     <FloatingCard visible={visible} onClose={onClose} c={c}>
       <View style={{ padding: s.xl, paddingTop: s.sm }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: s.lg }}>
-            <Text style={{ fontSize: t.xl, fontWeight: t.bold, color: c.text1 }}>⚡ Quick Capture</Text>
-            <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={() => { setDraft(''); setType('note'); setTags(''); onClose(); }}>
+            <Text style={{ fontSize: t.xl, fontWeight: t.bold, color: c.text1 }}>{planning ? '✨ Plan from a link' : '⚡ Quick Capture'}</Text>
+            <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={() => { reset(); onClose(); }}>
               <Ionicons name="close" size={22} color={c.text3} />
             </TouchableOpacity>
           </View>
@@ -1148,7 +1396,7 @@ export function QuickCaptureModal({ visible, userId, onSaved, onClose, prefill, 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: s.md }}>
             <View style={{ flexDirection: 'row', gap: s.sm }}>
               {CAPTURE_TYPES.map(tp => (
-                <TouchableOpacity key={tp.key} onPress={() => setType(tp.key)}
+                <TouchableOpacity key={tp.key} onPress={() => pickType(tp.key)}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: s.md, paddingVertical: 7, borderRadius: r.full, borderWidth: 1.5, borderColor: type === tp.key ? tp.color : c.border, backgroundColor: type === tp.key ? tp.color + '18' : c.bg0 }}>
                   <Ionicons name={tp.icon} size={13} color={type === tp.key ? tp.color : c.text3} />
                   <Text style={{ fontSize: t.xs, color: type === tp.key ? tp.color : c.text3, fontWeight: type === tp.key ? t.bold : t.regular }}>{tp.label}</Text>
@@ -1161,11 +1409,17 @@ export function QuickCaptureModal({ visible, userId, onSaved, onClose, prefill, 
           <TextInput
             style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: (TYPE_MAP[type]?.color || c.teal) + '55', minHeight: 80, textAlignVertical: 'top', marginBottom: s.sm }}
             value={draft} onChangeText={handleText}
-            placeholder={type === 'idea' ? "What's the idea? Don't filter it." : type === 'task' ? 'What needs to get done?' : type === 'link' ? 'Paste URL or describe the link...' : 'Capture it...'}
+            placeholder={planning ? 'Paste the link: Instagram, YouTube, TikTok, Reddit, Etsy, a 3D model…' : type === 'idea' ? "What's the idea? Don't filter it." : type === 'task' ? 'What needs to get done?' : type === 'link' ? 'Paste URL or describe the link...' : 'Capture it...'}
             placeholderTextColor={c.text4} multiline autoFocus />
 
           {url && (
-            <Text style={{ fontSize: 11, color: c.teal, marginBottom: s.sm }} numberOfLines={1}>🔗 {url}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: s.sm }}>
+              {linkInfo?.pending ? <ActivityIndicator size="small" color={c.teal} /> : <Ionicons name="link-outline" size={13} color={c.teal} />}
+              <Text style={{ fontSize: 11, color: c.teal, flex: 1 }} numberOfLines={1}>
+                {site && site.key !== 'web' ? `${site.label} · ` : ''}
+                {linkInfo?.fields?.title || (linkInfo?.pending ? 'Looking it up…' : url)}
+              </Text>
+            </View>
           )}
 
           <TouchableOpacity onPress={paste}
@@ -1185,7 +1439,7 @@ export function QuickCaptureModal({ visible, userId, onSaved, onClose, prefill, 
             <TouchableOpacity onPress={save} disabled={!draft.trim() || saving}
               style={{ flex: 2, backgroundColor: c.teal, borderRadius: r.md, padding: s.md, alignItems: 'center', opacity: (!draft.trim() || saving) ? 0.5 : 1 }}>
               {saving ? <ActivityIndicator color={c.onFill} size="small" />
-                : <Text style={{ color: c.onFill, fontWeight: t.bold }}>Capture → Process later</Text>}
+                : <Text style={{ color: c.onFill, fontWeight: t.bold }}>{planning ? 'Save & plan it →' : 'Capture → Process later'}</Text>}
             </TouchableOpacity>
           </View>
       </View>
@@ -1215,6 +1469,18 @@ export default function CaptureInbox() {
   // prefill when the sheet renders gets null.
   const [pendingPrefill, setPendingPrefill] = useState(null);
   const [processing, setProcessing] = useState(null); // item being processed
+  const [processStep, setProcessStep] = useState('choose'); // where its sheet opens
+  const openProcess = (item, stepKey = 'choose') => { setProcessStep(stepKey); setProcessing(item); };
+  // Opened on one capture from elsewhere (a "you saved this" notice, or
+  // something shared into the app that the person wants planned):
+  // { openCapture: id, plan: true, at }.
+  const route = useRoute();
+  useEffect(() => {
+    const id = route.params?.openCapture;
+    if (!id) return;
+    supabase.from('captures').select('*').eq('id', id).is('deleted_at', null).maybeSingle()
+      .then(({ data }) => { if (data) openProcess(data, route.params?.plan ? 'plan_ai' : 'choose'); });
+  }, [route.params?.openCapture, route.params?.at]); // eslint-disable-line react-hooks/exhaustive-deps
   const [view,       setView]       = useState('inbox'); // inbox | later | done | trash
   const [deletedItems, setDeletedItems] = useState([]);
   const [selectMode,  setSelectMode]  = useState(false);
@@ -1501,7 +1767,8 @@ export default function CaptureInbox() {
             )}
             {filtered.map(item => (
               <CaptureCard key={item.id} item={item}
-                onProcess={(item) => setProcessing(item)}
+                onProcess={(item) => openProcess(item)}
+                onPlan={(item) => openProcess(item, 'plan_ai')}
                 onDone={markDone}
                 selectMode={selectMode}
                 selected={selectedIds.has(item.id)}
@@ -1552,6 +1819,7 @@ export default function CaptureInbox() {
 
       {processing && (
         <ProcessModal
+          key={`${processing.id}-${processStep}`} initialStep={processStep}
           item={processing} projects={projects} userId={userId}
           onClose={() => setProcessing(null)}
           onProcessed={onProcessed}

@@ -22,7 +22,7 @@ const rows = (res) => { if (res.error) throw res.error; return res.data || []; }
 
 export async function loadNoticeData(userId) {
   const today = todayStr();
-  const [planner, tasks, projects, ideas, inboxCount, areas, quests, news, shared] = await Promise.all([
+  const [planner, tasks, projects, ideas, inboxCount, areas, quests, news, shared, oldSaves] = await Promise.all([
     userId ? safe(async () => rows(await supabase.from('agenda_instances')
       .select('id,title,date,start_time,duration_minutes,area,notes,completed,skipped,link_type,link_id,link_screen')
       .eq('user_id', userId).gte('date', addDays(today, -7)).lte('date', addDays(today, 7))
@@ -78,7 +78,15 @@ export async function loadNoticeData(userId) {
       .map(r => ({ id: r.id, title: r.title, body: r.body, updated_at: r.updated_at })), []),
 
     safe(() => listShared(), []),
+
+    // Things saved a while ago and never touched: the oldest few still in
+    // the Inbox (not parked under For Later), for the "you saved this" notice.
+    userId ? safe(async () => rows(await supabase.from('captures')
+      .select('id,title,url,url_meta,created_at')
+      .eq('user_id', userId).eq('status', 'inbox').is('deleted_at', null).is('save_for_later', null)
+      .lte('created_at', new Date(Date.now() - 3 * 86400000).toISOString())
+      .order('created_at').limit(5)), []) : [],
   ]);
 
-  return { planner, tasks, projects, ideas, inboxCount, areas, quests, news, shared, loadedAt: Date.now(), platform: Platform.OS };
+  return { planner, tasks, projects, ideas, inboxCount, areas, quests, news, shared, oldSaves, loadedAt: Date.now(), platform: Platform.OS };
 }

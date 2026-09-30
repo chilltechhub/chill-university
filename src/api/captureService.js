@@ -5,6 +5,7 @@
 import { supabase } from './profileScopedClient';
 import { cacheWrite, cacheRead, isOnline, smartFetch, offlineWrite } from './offlineCache';
 import { todayStr, dateStr, addDays } from '../logic/dateUtils';
+import { detectSource, isGenericTitle, fallbackTitle, CAPTURE_TYPE_FOR_KIND } from '../logic/linkSources';
 
 // ─── CAPTURES ─────────────────────────────────────────────────────────────────
 
@@ -149,6 +150,26 @@ export async function getDomainContent(userId, domainId) {
   return merged;
 }
 
+// Notes saved from Classes' "Add my own knowledge" (AddKnowledgeSheet),
+// newest first. Found by tag, so an entry stays here however it's later
+// filed in the Vault, and leaves once someone removes the tag or deletes it.
+export async function getMyKnowledge(userId) {
+  const cacheKey = `my_knowledge_${userId}`;
+  const online = await isOnline();
+  if (!online) return (await cacheRead(cacheKey)) || [];
+  const { data, error } = await supabase
+    .from('captures')
+    .select('id, title, body, tags, created_at')
+    .eq('user_id', userId)
+    .contains('tags', ['my-knowledge'])
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(200);
+  if (error) throw error;
+  await cacheWrite(cacheKey, data || []);
+  return data || [];
+}
+
 export async function getSaveForLater(userId, type = null) {
   // type: 'read' | 'watch' | null (both)
   const cacheKey = `save_later_${userId}_${type || 'all'}`;
@@ -237,31 +258,77 @@ export async function deleteCapture(captureId) {
 }
 
 // ─── URL METADATA ─────────────────────────────────────────────────────────────
-// Fetch page title/description when user pastes a link
+// What a saved link is called and where it came from. Best effort, never
+// throws, gives up after a few seconds: a capture must not wait on it.
+//
+//   YouTube, TikTok   their own oEmbed endpoints (free, no key, allowed from
+//                     a browser too). TikTok's "title" is the caption.
+//   everything else   microlink's free tier (about 50 a day per device).
+//   blocked sites     Instagram, Reddit and Etsy refuse both, so the title
+//                     comes from the address itself (linkSources.js).
 
-export async function fetchUrlMeta(url) {
+const META_TIMEOUT_MS = 5000;
+
+async function getJson(url) {
+  const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = setTimeout(() => ctrl?.abort(), META_TIMEOUT_MS);
   try {
-    // Use a free metadata API
-    const apiUrl = `https://api.microlink.io/?url=${encodeURIComponent(url)}&meta=true`;
-    const res = await fetch(apiUrl);
-    const json = await res.json();
-    if (json.status === 'success') {
-      return {
-        title: json.data.title || url,
-        description: json.data.description || '',
-        image: json.data.image?.url || null,
-        site_name: json.data.publisher || '',
-        favicon: json.data.logo?.url || null,
-      };
-    }
-  } catch {}
-  // Fallback — just use the URL
-  try {
-    const { hostname } = new URL(url);
-    return { title: hostname, description: '', site_name: hostname };
+    const res = await fetch(url, ctrl ? { signal: ctrl.signal } : undefined);
+    if (!res.ok) return null;
+    return await res.json();
   } catch {
-    return { title: url, description: '' };
+    return null;
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+const OEMBED = {
+  youtube: (u) => `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(u)}`,
+  tiktok:  (u) => `https://www.tiktok.com/oembed?url=${encodeURIComponent(u)}`,
+};
+
+// Resolves { title, description, image, site, site_label, kind, author }.
+export async function fetchUrlMeta(url) {
+  const src = detectSource(url);
+  const base = { site: src.key, site_label: src.label, kind: src.kind };
+  let title = null, description = '', image = null, author = null;
+
+  if (OEMBED[src.key]) {
+    const j = await getJson(OEMBED[src.key](url));
+    if (j) { title = j.title || null; author = j.author_name || null; image = j.thumbnail_url || null; }
+  }
+  if (!title && !src.noLookup) {
+    const j = await getJson(`https://api.microlink.io/?url=${encodeURIComponent(url)}&meta=true`);
+    if (j?.status === 'success') {
+      title = j.data?.title || null;
+      description = j.data?.description || '';
+      image = image || j.data?.image?.url || null;
+      author = author || j.data?.author || null;
+    }
+  }
+  if (isGenericTitle(title, url)) { title = fallbackTitle(url); description = ''; }
+  return { ...base, title: String(title).trim().slice(0, 200), description: String(description || '').trim().slice(0, 600), image, author };
+}
+
+// The fields a capture of this link should have. `note` is anything the
+// person typed around the link. Used by Quick Capture and by things shared
+// into the app, so both save a link the same way.
+export async function linkCaptureFields(url, note = '') {
+  const meta = await fetchUrlMeta(url);
+  const text = String(note || '').replace(url, '').trim();
+  return {
+    type: CAPTURE_TYPE_FOR_KIND[meta.kind] || 'link',
+    title: meta.title,
+    body: text || meta.description || null,
+    url,
+    url_meta: {
+      site: meta.site, site_label: meta.site_label, kind: meta.kind,
+      ...(meta.author ? { author: meta.author } : {}),
+      ...(meta.image ? { image: meta.image } : {}),
+      ...(meta.description ? { description: meta.description } : {}),
+    },
+  };
 }
 
 // ─── PROJECTS ─────────────────────────────────────────────────────────────────
