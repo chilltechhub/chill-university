@@ -109,6 +109,26 @@ export async function getDomainContent(userId, domainId) {
   return merged;
 }
 
+// Notes saved from Classes' "Add my own knowledge" (AddKnowledgeSheet),
+// newest first. Found by tag, so an entry stays here however it's later
+// filed in the Vault, and leaves once someone removes the tag or deletes it.
+export async function getMyKnowledge(userId) {
+  const cacheKey = `my_knowledge_${userId}`;
+  const online = await isOnline();
+  if (!online) return (await cacheRead(cacheKey)) || [];
+  const { data, error } = await supabase
+    .from('captures')
+    .select('id, title, body, tags, created_at')
+    .eq('user_id', userId)
+    .contains('tags', ['my-knowledge'])
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(200);
+  if (error) throw error;
+  await cacheWrite(cacheKey, data || []);
+  return data || [];
+}
+
 export async function getSaveForLater(userId, type = null) {
   // type: 'read' | 'watch' | null (both)
   const cacheKey = `save_later_${userId}_${type || 'all'}`;
