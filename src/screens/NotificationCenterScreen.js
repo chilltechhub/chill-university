@@ -32,7 +32,7 @@ import { requestPhonePermission, scheduleNoticeReminder, setPlanReminder } from 
 import { openTarget, targetFromInstance, TARGET_LABEL } from '../logic/openTarget';
 import { listUpcoming, moveToToday, restoreDates } from '../api/reminderService';
 import { addShared, getShared, removeShared, splitShared } from '../logic/shareIntake';
-import { addCapture } from '../api/captureService';
+import { addCapture, linkCaptureFields } from '../api/captureService';
 import { shareText, reminderText, dayPlanText, fmtTime12, fmtDay } from '../logic/shareOut';
 import ReminderComposer from '../components/ReminderComposer';
 import { FONTS } from '../theme';
@@ -70,6 +70,7 @@ export default function NotificationCenterScreen() {
   const [composer, setComposer] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [shared, setShared] = useState(null);
+  const [filing, setFiling] = useState(null); // which choice on the shared sheet is saving
   const [later, setLater] = useState(null);
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState('');
@@ -205,17 +206,24 @@ export default function NotificationCenterScreen() {
 
   const fileShared = async (kind) => {
     const it = shared;
-    if (!it) return;
+    if (!it || filing) return;
+    setFiling(kind);
     try {
-      if (kind === 'save') {
+      if (kind === 'save' || kind === 'plan') {
         if (!userId) { say('Sign in to save things.'); return; }
-        await addCapture(userId, {
-          type: it.url ? 'link' : 'note',
-          title: it.url ? (it.text?.split('\n')[0].slice(0, 120) || sharedLabel(it)) : it.text.split('\n')[0].slice(0, 120),
-          body: it.url ? (it.text || null) : it.text,
-          url: it.url, source: 'share',
-        });
-        say('Saved to your Capture Inbox.');
+        // A link is saved the way Quick Capture saves one: named after the
+        // page (or the address, for sites that block that), with its site.
+        const fields = it.url
+          ? await linkCaptureFields(it.url, it.text || '')
+          : { type: 'note', title: it.text.split('\n')[0].slice(0, 120), body: it.text };
+        const row = await addCapture(userId, { ...fields, source: 'share' });
+        if (kind === 'plan' && row?.id) {
+          // Into the Inbox's plan step, where the transcript goes in. The
+          // capture is already saved, so nothing is lost if they stop there.
+          open({ kind: 'inbox', params: { openCapture: row.id, plan: true, at: Date.now() } });
+        } else {
+          say('Saved to your Capture Inbox.');
+        }
       } else if (kind === 'remind') {
         setComposer({ title: it.text?.split('\n')[0].slice(0, 100) || `Check out ${sharedLabel(it)}`, notes: it.url || null });
       } else if (kind === 'ai') {
@@ -230,6 +238,8 @@ export default function NotificationCenterScreen() {
       reload(true);
     } catch {
       say('Couldn’t do that. Check your connection.');
+    } finally {
+      setFiling(null);
     }
   };
 
@@ -461,12 +471,13 @@ export default function NotificationCenterScreen() {
           </View>
           {[
             ['save', 'file-tray-full-outline', 'Save it', 'Into your Capture Inbox to sort later'],
+            ['plan', 'construct-outline', 'Plan it into a project', 'Add the transcript or details, and your AI writes the plan'],
             ['remind', 'alarm-outline', 'Remind me', 'Pick a time, and it goes in your Planner'],
-            ['ai', 'sparkles-outline', 'Plan it with AI', 'Let your chatbot decide where it belongs'],
+            ['ai', 'sparkles-outline', 'Ask AI where it goes', 'Let your chatbot decide: a note, a task, a plan'],
             ...(shared?.url ? [['open', 'open-outline', 'Open the link', null]] : []),
           ].map(([k, icon, l, sub]) => (
-            <TouchableOpacity key={k} onPress={() => fileShared(k)} style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, paddingVertical: s.md, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
-              <Ionicons name={icon} size={20} color={k === 'ai' ? c.purple : c.teal} />
+            <TouchableOpacity key={k} onPress={() => fileShared(k)} disabled={!!filing} style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, paddingVertical: s.md, borderBottomWidth: 0.5, borderBottomColor: c.border, opacity: filing && filing !== k ? 0.5 : 1 }}>
+              {filing === k ? <ActivityIndicator size="small" color={c.teal} style={{ width: 20 }} /> : <Ionicons name={icon} size={20} color={k === 'ai' ? c.purple : c.teal} />}
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1 }}>{l}</Text>
                 {!!sub && <Text style={{ fontSize: 11, color: c.text3 }}>{sub}</Text>}

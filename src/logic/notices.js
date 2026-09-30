@@ -192,6 +192,22 @@ export function buildNotices(data, env) {
     }));
 
   // ── Capture Inbox ────────────────────────────────────────────────────────
+  // One thing saved 3+ days ago and never touched, oldest first. Dismissing
+  // it (a week) brings up the next one, so old saves come back around one
+  // at a time instead of piling up unseen.
+  const dismissedSaves = new Set(env.dismissedIds || []);
+  const save = (data.oldSaves || []).find(cap => !dismissedSaves.has(`saved:${cap.id}`));
+  if (save) {
+    const age = daysSince(save.created_at, now);
+    const site = save.url_meta?.site_label;
+    add({
+      id: `saved:${save.id}`, cat: 'inbox', priority: 58, icon: 'bookmark-outline', tone: 'purple',
+      title: `You saved ${quote(clip(save.title || 'something', 50))} ${age >= 14 ? `${Math.floor(age / 7)} weeks` : `${age} days`} ago`,
+      body: `${site ? `From ${site}. ` : ''}Still want to do it? Plan it into a project, or let it go.`,
+      primary: { label: 'Plan it', target: { kind: 'inbox', params: { openCapture: save.id, plan: true, at: now.getTime() } } },
+      secondary: { label: 'Look at it', target: { kind: 'inbox', params: { openCapture: save.id, at: now.getTime() } } },
+    });
+  }
   if ((data.inboxCount || 0) >= 3) {
     add({
       id: `inbox:${today}`, cat: 'inbox', priority: 55, icon: 'file-tray-full-outline', tone: 'teal',

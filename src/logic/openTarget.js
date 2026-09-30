@@ -9,7 +9,7 @@
 //   { kind: 'vault', id }            Knowledge Vault, that item open
 //   { kind: 'area', key }            a Life Area hub
 //   { kind: 'planner' }              the Planner
-//   { kind: 'inbox' }                the Capture Inbox
+//   { kind: 'inbox', params }        the Capture Inbox ({ openCapture, plan })
 //   { kind: 'home' }                 the Home tab
 //   { kind: 'ai', params }           Fill with AI ({ target, idea })
 //   { kind: 'screen', key, params }  any other Library screen by route name
@@ -39,7 +39,7 @@ export async function openTarget(navigation, target) {
     case 'vault': lib(navigation, 'KnowledgeScreen', { focusId: target.id }); return true;
     case 'area': lib(navigation, 'LifeAreaScreen', { areaId: target.key }); return true;
     case 'planner': lib(navigation, 'PlannerScreen'); return true;
-    case 'inbox': lib(navigation, 'CaptureInbox'); return true;
+    case 'inbox': lib(navigation, 'CaptureInbox', target.params); return true;
     case 'ai': lib(navigation, 'AIBridgeScreen', target.params); return true;
     case 'screen': lib(navigation, target.key, target.params); return true;
     case 'home': navigation.navigate('MainTabs', { screen: 'Home' }); return true;

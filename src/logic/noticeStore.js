@@ -96,6 +96,10 @@ function recompute() {
     notifyPermission: feed.permission,
     wantsPhone: prefs.autoRemind !== 'off' || prefs.dailyNudge,
     phoneCapable: PHONE_CAPABLE,
+    // So a rotating notice (old saves) can pass over the one being hidden
+    // and offer the next instead of going quiet.
+    dismissedIds: Object.keys(state.dismissed).filter(id => now - new Date(state.dismissed[id]) < 7 * 86400000)
+      .concat(Object.keys(state.snoozed).filter(id => new Date(state.snoozed[id]) > now)),
   }).filter(leadsSomewhereOpen);
   feed.visible = visibleNotices(feed.all, { dismissed: state.dismissed, snoozed: state.snoozed, cats: prefs.cats }, now);
 }
