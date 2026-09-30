@@ -25,7 +25,7 @@
 import {
   TARGET_KEYS, PROJECT_TYPES, PROJECT_STAGES, PROJECT_NOTE_TYPES, PLANT_STAGES, PETAL_TYPES,
   VAULT_KINDS, AREA_IDS, ACTION_TYPES, PORTFOLIO_SECTIONS, REPEAT_COUNTS, LIMITS,
-  WEEKDAY_KEYS, SESSION_LIMITS, isoDate, addDaysIso, sessionDates, daysLabel,
+  WEEKDAY_KEYS, SESSION_LIMITS, isoDate, addDaysIso, repeatDates, sessionDates, daysLabel,
 } from './aiBridgeFormat';
 
 // ─── Lenient JSON ───────────────────────────────────────────────────────────
@@ -996,8 +996,18 @@ const missingText = (ref, what, err) => (err === 'ambiguous'
 
 const SINGULAR = { projects: 'project', ideas: 'idea', vault: 'vault item', planner: 'planner item', life_areas: 'action', portfolio: 'portfolio entry' };
 
+// Same planner item = same title on the same day, at the same time or with
+// either one untimed. "Gym" at 7:00 and "Gym" at 18:00 are two sessions;
+// "Gym" at 7:00 and an untimed "Gym" are one thing written twice.
+const samePlan = (a, b) => titleKey(a.title) === titleKey(b.title) && a.date === b.date
+  && (!a.time || !b.time || String(a.time).slice(0, 5) === String(b.time).slice(0, 5));
+
 // status: 'ok' | 'missing' (ref matched nothing) | 'noop' (edit changes nothing)
+//         | 'duplicate' (a new planner item already on every day it would land)
 export function resolveChanges(changes, snapshot) {
+  // Planner items this reply already adds, so a chatbot that writes the same
+  // plan twice (or the person pasting two replies' worth) makes one, not two.
+  const planned = [];
   return changes.map((ch) => {
     const r = { ...ch, warnings: [...ch.warnings], status: 'ok', diff: [], current: null, id: null, children: [] };
     const list = (snapshot[ch.target] || []);
@@ -1026,6 +1036,30 @@ export function resolveChanges(changes, snapshot) {
         for (const [k, v] of Object.entries(ch.fields)) if (k !== 'title' && !twins[0][k]) fill[k] = v;
         r.fields = fill;
         r.warnings.push(`You already have a ${SINGULAR[ch.target]} called “${twins[0].title}”, so this adds to it instead of making a copy.`);
+      }
+    }
+
+    if (r.op === 'create' && ch.target === 'planner') {
+      // A planner row has no natural key, so without this every paste of the
+      // same plan stacked another copy on the day. Drop only the days it is
+      // already on; a weekly repeat that overlaps one existing day keeps the rest.
+      const all = repeatDates(r.fields.date, r.fields.repeat);
+      const taken = (date) => {
+        const probe = { title: r.fields.title, date, time: r.fields.time };
+        return list.some(x => samePlan(x, probe)) || planned.some(x => samePlan(x, probe));
+      };
+      r.dates = all.filter(date => !taken(date));
+      r.dates.forEach(date => planned.push({ title: r.fields.title, date, time: r.fields.time }));
+      if (!r.dates.length) {
+        r.status = 'duplicate';
+        r.warnings.push(all.length > 1
+          ? 'Already on your planner for every one of those days.'
+          : 'Already on your planner that day.');
+        return r;
+      }
+      if (r.dates.length < all.length) {
+        const n = all.length - r.dates.length;
+        r.warnings.push(`Already on ${n} of those ${n === 1 ? 'day' : 'days'}, so it's only added to the other ${r.dates.length}.`);
       }
     }
 
@@ -1080,7 +1114,7 @@ export function countChanges(resolved, selected = null) {
     if (r.op === 'update' && !r.diff.length) {
       // an edit that only touches children counts as those children
     } else {
-      c[r.op] += r.op === 'create' && r.target === 'planner' ? (REPEAT_COUNTS[r.fields.repeat] || 1) : 1;
+      c[r.op] += r.op === 'create' && r.target === 'planner' ? (r.dates?.length || REPEAT_COUNTS[r.fields.repeat] || 1) : 1;
     }
     for (const k of r.children) if (k.status === 'ok') c[k.op] += k.kind === 'session' ? (k.fields.count || 0) : 1;
   }

@@ -9,7 +9,7 @@ import {
   Platform, Alert, Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import SignInPrompt from '../components/SignInPrompt';
 import TimePickerField from '../components/TimePickerField';
@@ -21,16 +21,20 @@ import {
   AREAS, getInstances, getPresetComponents,
   getUserSubscriptions, generateInstances,
   completeInstance, skipInstance, rescheduleInstance, addNoteToInstance,
+  deleteInstances, getInstancesBetween,
 } from '../api/plannerService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { fmt12, timeRange, hourRange, layoutDay, byTime, duplicateIds, isSamePlan } from '../logic/plannerLayout';
+import { repeatDates, REPEAT_COUNTS } from '../logic/aiBridgeFormat';
 import { useProfiles } from '../../context/ProfileAccountsContext';
 import { buildProfileLookup } from '../data/personas';
 import useViewScope, { SCOPE_PROFILE } from '../logic/useViewScope';
 import { schedulePlanReminder, cancelPlanReminder, hasScheduledReminder } from '../logic/planReminderActions';
 import { markManualReminder, setPlanReminder } from '../logic/hubNotifications';
-import { openTarget, targetFromInstance } from '../logic/openTarget';
 import { getQuest } from '../data/quests';
 import { suggestionsForArea } from '../data/plannerSuggestions';
 import DailyCheckin from '../components/DailyCheckin';
+import PlanDetailSheet from '../components/PlanDetailSheet';
 import TourSpot from '../components/TourSpot';
 import FillWithAIButton from '../components/FillWithAIButton';
 import MoreMenu from '../components/MoreMenu';
@@ -42,9 +46,13 @@ import { textOn } from '../logic/contrast';
 const { width: SW } = Dimensions.get('window');
 const PANEL_W      = Math.min(SW * 0.82, 370);
 const VIEWS        = ['Daily', 'Weekly', 'Monthly'];
-const HOUR_H       = 64; // px per hour in time view
-const DAY_START    = 6;  // 6am
-const DAY_END      = 22; // 10pm
+const HOUR_H       = 80; // px per hour in time view
+const DAY_START    = 6;  // 6am, unless something is planned earlier
+const DAY_END      = 22; // 10pm, unless something runs later
+const MIN_BOX_MINUTES = 30; // shortest an item is drawn, so its title fits
+const UNTIMED_PREVIEW = 3;  // any-time items shown before "Show all"
+const TIME_MODE_KEY = '@cth_planner_time_mode';
+const REPEAT_UNITS = { daily: 'days', weekly: 'weeks', monthly: 'months' };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function toISO(d) { return dateStr(d); } // local calendar, not UTC
@@ -53,16 +61,6 @@ function getWeekDays(anchor) {
   const base = new Date(anchor);
   base.setDate(base.getDate() - base.getDay());
   return Array.from({ length: 7 }, (_, i) => addDays(base, i));
-}
-function fmt12(t24) {
-  if (!t24) return '';
-  const [h, m] = t24.split(':').map(Number);
-  return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${h >= 12 ? 'PM' : 'AM'}`;
-}
-function timeToY(timeStr) {
-  if (!timeStr) return null;
-  const [h, m] = timeStr.split(':').map(Number);
-  return (h - DAY_START + m / 60) * HOUR_H;
 }
 function isOverdue(instance) {
   if (instance.completed || instance.skipped) return false;
@@ -132,7 +130,7 @@ function MiniCalendar({ value, onChange, color, c, t, s, r }) {
 // who never picked Physical got as the default for a study block).
 // `goalIdea`: the running goal's Planner step can name one ({ title,
 // cadence, area } on the step in objectives.js), shown first in the ideas.
-function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onClose, defaultArea = 'physical', goalIdea = null, c, t, s, r }) {
+function InstanceModal({ visible, instance, userId, date, initialTime = null, onSave, onDelete, onClose, defaultArea = 'physical', goalIdea = null, c, t, s, r }) {
   const { showEmojis } = useUIPrefs();
   const [title,       setTitle]       = useState('');
   const [area,        setArea]        = useState('physical');
@@ -203,13 +201,16 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
         setLinkLabel('');
       }
     } else {
-      setTitle(''); setArea(goalIdea?.area || defaultArea || 'physical'); setCadence(goalIdea?.cadence || 'daily');
+      // A new item repeats only when asked to. It used to default to
+      // "daily" while saving just the one day, so the label said daily and
+      // the planner showed it once.
+      setTitle(''); setArea(goalIdea?.area || defaultArea || 'physical'); setCadence(goalIdea?.cadence || 'once');
       setSelectedDate(date ? new Date(date + 'T00:00:00') : new Date());
-      setTimeVal(''); setDuration(''); setNotes(''); setReminder(false);
+      setTimeVal(initialTime || ''); setDuration(''); setNotes(''); setReminder(false);
       setLinkType(null); setLinkScreen(null); setLinkId(null); setLinkLabel(''); setLinkSubject(null);
       setProjects(null);
     }
-  }, [instance, visible, date]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [instance, visible, date, initialTime]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Lazy-load the user's open projects the first time the Project link tab
   // is opened, instead of fetching on every modal open regardless of need.
@@ -293,12 +294,31 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
         link_id:     ['project', 'idea', 'vault'].includes(linkType) ? linkId : null,
       };
 
-      const writeRow = (payload) => isEdit
-        ? supabase.from('agenda_instances').update(payload).eq('id', instance.id).select().single()
-        : supabase.from('agenda_instances').insert(payload).select().single();
+      // A repeat is one row per day (the same spread the AI import and the
+      // reminder composer use: 7 days, 4 weeks or 3 months). Editing changes
+      // only the row being edited.
+      let rows = [basePayload];
+      if (!isEdit) {
+        const dates = cadence === 'once' ? [basePayload.date] : repeatDates(basePayload.date, cadence);
+        // Skip the days it's already on, so adding the same thing twice
+        // doesn't leave two of it (isSamePlan: same title and day, same time
+        // or either one untimed).
+        const { data: existing } = await supabase.from('agenda_instances')
+          .select('title, date, start_time').eq('user_id', userId).in('date', dates);
+        const free = dates.filter(d => !(existing || []).some(x => isSamePlan(x, { ...basePayload, date: d })));
+        if (!free.length) {
+          setSaving(false);
+          Alert.alert('Already planned', `“${basePayload.title}” is already on your planner ${dates.length > 1 ? 'on those days' : 'that day'}.`);
+          return;
+        }
+        rows = free.map(d => ({ ...basePayload, date: d }));
+      }
 
-      let saved;
-      let { data, error } = await writeRow({ ...basePayload, ...linkFields });
+      const writeRows = (list) => isEdit
+        ? supabase.from('agenda_instances').update(list[0]).eq('id', instance.id).select()
+        : supabase.from('agenda_instances').insert(list).select();
+
+      let { data, error } = await writeRows(rows.map(row => ({ ...row, ...linkFields })));
       if (error) {
         // supabase/migrations/20260905150000_planner_links.sql hasn't been
         // run yet on this database — the link_type/link_screen/link_id
@@ -309,20 +329,10 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
           || /link_type|link_screen|link_id/i.test(error.message || '');
         if (!missingLinkColumns) throw error;
         console.warn('planner link columns missing — retrying without them; run the migration to enable links', error);
-        ({ data, error } = await writeRow(basePayload));
+        ({ data, error } = await writeRows(rows));
         if (error) throw error;
       }
-      saved = data;
-
-      // Sync to other tables
-      if (area === 'professional' && !isEdit) {
-        const { error } = await supabase.from('tasks').insert({ user_id: userId, title: title.trim(), due_date: basePayload.date, category: 'professional', priority: 2 });
-        if (error) throw error;
-      }
-      if (area === 'mental' && title.toLowerCase().includes('focus')) {
-        const { error } = await supabase.from('daily_focus').upsert({ user_id: userId, focus_text: title.trim(), focus_date: basePayload.date });
-        if (error) throw error;
-      }
+      const savedRows = data || [];
 
       // Schedule (or cancel) the reminder. Its notification id lives in a
       // local id map, not this row — see planReminderActions.js — so this
@@ -331,14 +341,14 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
       // Hand-set reminders are the person's: the Notification Center's
       // automatic plan reminders leave them alone, and one switched off here
       // stays off even with those on (hubNotifications.js).
-      if (reminder && timeVal && saved) {
-        if (await schedulePlanReminder(saved, reminderMin)) await markManualReminder(saved.id);
-      } else if (saved) {
-        if (await hasScheduledReminder(saved.id)) await setPlanReminder(saved, false);
-        else await cancelPlanReminder(saved.id);
+      for (const row of savedRows) {
+        if (reminder && timeVal) {
+          if (await schedulePlanReminder(row, reminderMin)) await markManualReminder(row.id);
+        } else if (await hasScheduledReminder(row.id)) await setPlanReminder(row, false);
+        else await cancelPlanReminder(row.id);
       }
 
-      onSave(saved);
+      onSave(savedRows[0]);
     } catch (e) {
       console.warn('InstanceModal save', e);
       Alert.alert("Couldn't save", e?.message || 'Something went wrong — try again.');
@@ -468,6 +478,12 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
                   </TouchableOpacity>
                 ))}
               </View>
+              {cadence !== 'once' && (
+                <Text style={{ fontSize: 11, color: c.text3, marginTop: 6 }}>
+                  {isEdit ? 'Changes here apply to this day only.'
+                    : `Adds it to the next ${REPEAT_COUNTS[cadence]} ${REPEAT_UNITS[cadence]}.`}
+                </Text>
+              )}
             </View>
 
             {/* Link to Class / Project / Game */}
@@ -618,7 +634,10 @@ function InstanceModal({ visible, instance, userId, date, onSave, onDelete, onCl
 }
 
 // ─── Agenda item row ──────────────────────────────────────────────────────────
-function AgendaRow({ instance, onUpdate, onEdit, navigation, c, t, s, r }) {
+// Tapping the row opens the item's detail sheet (PlanDetailSheet below); the
+// circle ticks it off in place. It used to expand in place instead, which
+// hid the notes and actions behind a chevron nobody associated with them.
+function AgendaRow({ instance, onUpdate, onOpen, c, t, s, r }) {
   // Reads the profile list directly rather than having it drilled through
   // ListView/TimeView — the badge is only needed here, and threading a prop
   // through two intermediate components for one label isn't worth it.
@@ -626,7 +645,6 @@ function AgendaRow({ instance, onUpdate, onEdit, navigation, c, t, s, r }) {
   const rowProfile = instance.profile_id && instance.profile_id !== active?.id
     ? buildProfileLookup(profiles)[instance.profile_id]
     : null;
-  const [expanded, setExpanded] = useState(false);
   const [saving,   setSaving]   = useState(false);
   const area     = AREAS[instance.area] || AREAS.physical;
   const overdue  = isOverdue(instance);
@@ -643,53 +661,25 @@ function AgendaRow({ instance, onUpdate, onEdit, navigation, c, t, s, r }) {
     setSaving(false);
   };
 
-  // Jump to whatever this item is linked to (Class topic / Workshop project /
-  // Training game) — see supabase/migrations/20260905150000_planner_links.sql.
-  // Projects link by id, so this needs a fresh fetch (the project's own
-  // title/status can have changed since the item was linked); class and game
-  // links carry their destination directly, no lookup needed.
-  const openLink = async () => {
-    if (!instance.link_type || !navigation) return;
-    try {
-      if (instance.link_type === 'class' && instance.link_screen) {
-        navigation.navigate('ClassesStack', { screen: instance.link_screen });
-      } else if (instance.link_type === 'game' && instance.link_screen) {
-        navigation.navigate('Play', { gameId: instance.link_screen });
-      } else if (instance.link_type === 'project' && instance.link_id) {
-        const { data, error } = await supabase.from('projects').select('*').eq('id', instance.link_id).maybeSingle();
-        if (error || !data) { Alert.alert('Not found', "That project isn't there anymore."); return; }
-        navigation.navigate('ProjectDetail', { project: data });
-      } else if (['quest', 'idea', 'vault'].includes(instance.link_type)) {
-        const ok = await openTarget(navigation, targetFromInstance(instance));
-        if (!ok) Alert.alert('Not found', "That isn't there anymore.");
-      }
-    } catch (e) {
-      console.warn('openLink', e);
-      Alert.alert("Couldn't open that", 'Something went wrong — try again.');
-    }
-  };
-  const linkLabel = instance.link_type === 'class' ? 'Open Class'
-    : instance.link_type === 'project' ? 'Open Project'
-    : instance.link_type === 'game' ? 'Open Game'
-    : instance.link_type === 'quest' ? 'Open Quest'
-    : instance.link_type === 'idea' ? 'Open Idea'
-    : instance.link_type === 'vault' ? 'Open in Vault' : null;
-
   return (
     <View style={{
       borderRadius: r.md, marginBottom: s.sm,
       backgroundColor: c.bg1, borderWidth: 0.5,
       borderColor: overdue ? '#e05858' : done ? c.border : area.color + '55',
       borderLeftWidth: 3, borderLeftColor: overdue ? '#e05858' : area.color,
-      opacity: skipped ? 0.4 : 1,
+      opacity: skipped ? 0.5 : 1,
     }}>
       {/* Main row */}
       <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', padding: s.md, gap: s.sm }}
-        onPress={() => setExpanded(e => !e)} activeOpacity={0.7}>
+        onPress={() => onOpen(instance)} activeOpacity={0.7}
+        accessibilityRole="button" accessibilityLabel={`${instance.title}. Show details`}>
         {/* Check circle */}
         <TouchableOpacity
           onPress={() => handle(() => completeInstance(instance.id, !done))}
           disabled={saving || skipped}
+          accessibilityRole="checkbox" accessibilityState={{ checked: !!done }}
+          accessibilityLabel={done ? `Mark ${instance.title} not done` : `Mark ${instance.title} done`}
+          hitSlop={8}
           style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: done ? area.color : c.border, backgroundColor: done ? area.color : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
           {saving ? <ActivityIndicator size="small" color={area.color} />
             : done ? <Ionicons name="checkmark" size={12} color="#fff" /> : null}
@@ -697,7 +687,7 @@ function AgendaRow({ instance, onUpdate, onEdit, navigation, c, t, s, r }) {
 
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <Text style={{ fontSize: t.sm, fontWeight: t.medium, color: done ? c.text3 : c.text1, textDecorationLine: done ? 'line-through' : 'none', flex: 1 }} numberOfLines={expanded ? 0 : 1}>
+            <Text style={{ fontSize: t.sm, fontWeight: t.medium, color: done ? c.text3 : c.text1, textDecorationLine: done || skipped ? 'line-through' : 'none', flex: 1 }} numberOfLines={2}>
               {instance.title}
             </Text>
             {overdue && !done && (
@@ -715,61 +705,35 @@ function AgendaRow({ instance, onUpdate, onEdit, navigation, c, t, s, r }) {
               </View>
             )}
           </View>
-          <View style={{ flexDirection: 'row', gap: s.sm, marginTop: 2, alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', gap: s.sm, marginTop: 2, alignItems: 'center', flexWrap: 'wrap' }}>
             <Text style={{ fontSize: 11 }}>{area.emoji}</Text>
-            {instance.start_time && (
-              <Text style={{ fontSize: t.xs, color: area.color, fontWeight: t.semibold }}>{fmt12(instance.start_time)}</Text>
-            )}
-            {instance.duration_minutes && (
-              <Text style={{ fontSize: t.xs, color: c.text3 }}>· {instance.duration_minutes}m</Text>
-            )}
+            {instance.start_time ? (
+              <Text style={{ fontSize: t.xs, color: c.text2, fontWeight: t.semibold }}>{timeRange(instance.start_time, instance.duration_minutes)}</Text>
+            ) : instance.duration_minutes ? (
+              <Text style={{ fontSize: t.xs, color: c.text3 }}>{instance.duration_minutes} min</Text>
+            ) : null}
             {instance.cadence && instance.cadence !== 'once' && (
               <Text style={{ fontSize: t.xs, color: c.text3 }}>· {instance.cadence}</Text>
             )}
+            {!!instance.notes && !instance.notes.startsWith('notif:') && (
+              <Ionicons name="document-text-outline" size={12} color={c.text3} accessibilityLabel="Has notes" />
+            )}
           </View>
         </View>
-        <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={14} color={c.text4} />
+        <Ionicons name="chevron-forward" size={14} color={c.text4} />
       </TouchableOpacity>
 
-      {/* Missed-item quick actions — one tap, no need to expand first.
+      {/* Missed-item quick actions — one tap, no need to open it first.
           Do Now = completeInstance, Move = rescheduleInstance (defaults to
           today), Drop = skipInstance; see plannerService.js. */}
-      {overdue && !done && (
+      {overdue && !done && !skipped && (
         <View style={{ flexDirection: 'row', gap: s.sm, paddingHorizontal: s.md, paddingBottom: s.md, flexWrap: 'wrap' }}>
           <ActionBtn label="Do Now" icon="checkmark-circle-outline" color={area.color}
             onPress={() => handle(() => completeInstance(instance.id, true))} />
-          <ActionBtn label="Move" icon="calendar-outline" color={c.text3}
+          <ActionBtn label="Move to today" icon="calendar-outline" color={c.text3}
             onPress={() => handle(() => rescheduleInstance(instance.id))} />
           <ActionBtn label="Drop" icon="close-circle-outline" color="#e05858"
             onPress={() => handle(() => skipInstance(instance.id))} />
-        </View>
-      )}
-
-      {/* Expanded actions */}
-      {expanded && (
-        <View style={{ paddingHorizontal: s.md, paddingBottom: s.md, borderTopWidth: 0.5, borderTopColor: c.border, paddingTop: s.sm, gap: s.sm }}>
-          {instance.notes && !instance.notes.startsWith('notif:') && (
-            <Text style={{ fontSize: t.xs, color: c.text3, lineHeight: 16 }}>{instance.notes}</Text>
-          )}
-          <View style={{ flexDirection: 'row', gap: s.sm, flexWrap: 'wrap' }}>
-            {!done && !skipped && (
-              <ActionBtn label="Complete" icon="checkmark-circle-outline" color={area.color}
-                onPress={() => handle(() => completeInstance(instance.id, true))} />
-            )}
-            {done && (
-              <ActionBtn label="Undo" icon="refresh-outline" color={c.text4}
-                onPress={() => handle(() => completeInstance(instance.id, false))} />
-            )}
-            {!done && !skipped && (
-              <ActionBtn label="Skip" icon="play-skip-forward-outline" color={c.text4}
-                onPress={() => handle(() => skipInstance(instance.id))} />
-            )}
-            <ActionBtn label="Edit" icon="pencil-outline" color={c.text3}
-              onPress={() => onEdit(instance)} />
-            {linkLabel && (
-              <ActionBtn label={linkLabel} icon="open-outline" color={area.color} onPress={openLink} />
-            )}
-          </View>
         </View>
       )}
     </View>
@@ -778,78 +742,143 @@ function AgendaRow({ instance, onUpdate, onEdit, navigation, c, t, s, r }) {
 
 function ActionBtn({ label, icon, color, onPress }) {
   return (
-    <TouchableOpacity onPress={onPress}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: color + '88', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 }}>
+    <TouchableOpacity onPress={onPress} accessibilityRole="button"
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: color + '88', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}>
       <Ionicons name={icon} size={13} color={color} />
-      <Text style={{ fontSize: 11, color, fontWeight: '600' }}>{label}</Text>
+      <Text style={{ fontSize: 12, color, fontWeight: '600' }}>{label}</Text>
     </TouchableOpacity>
   );
 }
 
 // ─── Time-based daily view ────────────────────────────────────────────────────
-function TimeView({ instances, onUpdate, onEdit, navigation, c, t, s, r }) {
-  const hours = Array.from({ length: DAY_END - DAY_START }, (_, i) => DAY_START + i);
+// Items that overlap sit side by side (layoutDay in plannerLayout.js) rather
+// than stacked on one another, the hours stretch to fit anything early or
+// late, and an empty slot is a button that adds something at that time.
+function TimeView({ instances, date, onUpdate, onOpen, onAddAt, c, t, s, r }) {
+  const scrollRef = useRef(null);
+  const scrolled  = useRef(false);
+  const [gridW, setGridW] = useState(0);
+  const [allUntimed, setAllUntimed] = useState(false);
   const timed   = instances.filter(i => i.start_time);
-  const untimed = instances.filter(i => !i.start_time && !i.skipped);
+  // Open ones first. A long list of all-day habits used to push the whole
+  // hour grid off the screen, so only the first few show until asked.
+  const untimed = instances.filter(i => !i.start_time)
+    .sort((a, b) => Number(!!a.completed || !!a.skipped) - Number(!!b.completed || !!b.skipped));
+  const shownUntimed = allUntimed ? untimed : untimed.slice(0, UNTIMED_PREVIEW);
+  const { start: hStart, end: hEnd } = hourRange(timed, { start: DAY_START, end: DAY_END });
+  const hours = Array.from({ length: hEnd - hStart }, (_, i) => hStart + i);
+  const boxes = layoutDay(timed, { minMinutes: MIN_BOX_MINUTES });
+  const isToday = toISO(date) === toISO(new Date());
+  const yOf = (mins) => (mins / 60 - hStart) * HOUR_H;
+
+  // Open on now (today) or the first thing planned, not always 6am.
+  const scrollToStart = (gridTop) => {
+    if (scrolled.current) return;
+    scrolled.current = true;
+    const now = new Date();
+    const target = isToday ? now.getHours() * 60 + now.getMinutes() : boxes[0]?.top;
+    if (target == null) return;
+    const y = Math.max(0, gridTop + yOf(target) - HOUR_H);
+    setTimeout(() => scrollRef.current?.scrollTo({ y, animated: false }), 0);
+  };
+
+  const hh = (h, m) => `${String(h).padStart(2, '0')}:${m}`;
 
   return (
-    <ScrollView automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
+    <ScrollView ref={scrollRef} automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
       {/* Untimed items at top */}
       {untimed.length > 0 && (
-        <View style={{ padding: s.lg, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
-          <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>No time set</Text>
-          {untimed.map(inst => (
-            <AgendaRow key={inst.id} instance={inst} onUpdate={onUpdate} onEdit={onEdit} navigation={navigation} c={c} t={t} s={s} r={r} />
+        <View style={{ padding: s.lg, paddingBottom: s.sm, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
+          <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Any time today</Text>
+          {shownUntimed.map(inst => (
+            <AgendaRow key={inst.id} instance={inst} onUpdate={onUpdate} onOpen={onOpen} c={c} t={t} s={s} r={r} />
           ))}
+          {untimed.length > UNTIMED_PREVIEW && (
+            <TouchableOpacity onPress={() => setAllUntimed(v => !v)} accessibilityRole="button"
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: s.sm }}>
+              <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: c.teal }}>
+                {allUntimed ? 'Show fewer' : `Show all ${untimed.length}`}
+              </Text>
+              <Ionicons name={allUntimed ? 'chevron-up' : 'chevron-down'} size={13} color={c.teal} />
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
+      {timed.length === 0 && (
+        <Text style={{ fontSize: t.xs, color: c.text3, textAlign: 'center', paddingTop: s.md }}>
+          Tap a time below to plan something then.
+        </Text>
+      )}
+
       {/* Hour grid */}
-      <View style={{ position: 'relative', paddingLeft: 56 }}>
+      <View style={{ position: 'relative', paddingLeft: 56, paddingRight: s.lg, marginTop: s.md }}
+        onLayout={(e) => scrollToStart(e.nativeEvent.layout.y)}>
         {hours.map(h => (
           <View key={h} style={{ height: HOUR_H, borderTopWidth: 0.5, borderTopColor: c.border }}>
-            <Text style={{ position: 'absolute', left: -48, top: -8, fontSize: 11, color: c.text3, width: 44, textAlign: 'right' }}>
-              {h % 12 || 12}{h < 12 ? 'am' : 'pm'}
+            <Text style={{ position: 'absolute', left: -52, top: -8, fontSize: 11, color: c.text3, width: 44, textAlign: 'right' }}>
+              {h % 12 || 12}{h < 12 || h === 24 ? 'am' : 'pm'}
             </Text>
+            {/* Each half hour is its own "add here" button. */}
+            {['00', '30'].map(m => (
+              <TouchableOpacity key={m} onPress={() => onAddAt(hh(h, m))}
+                accessibilityRole="button" accessibilityLabel={`Add something at ${fmt12(hh(h, m))}`}
+                style={{ height: HOUR_H / 2, borderBottomWidth: m === '00' ? 0.5 : 0, borderBottomColor: c.border + '66', borderStyle: 'dashed' }} />
+            ))}
           </View>
         ))}
 
-        {/* Timed events overlaid */}
-        {timed.map(inst => {
-          const y = timeToY(inst.start_time);
-          if (y === null || y < 0) return null;
-          const h  = inst.duration_minutes ? (inst.duration_minutes / 60) * HOUR_H : HOUR_H * 0.75;
-          const area = AREAS[inst.area] || AREAS.physical;
-          return (
-            <TouchableOpacity key={inst.id}
-              onPress={() => onEdit(inst)}
-              style={{ position: 'absolute', left: 0, right: s.lg, top: y, height: Math.max(h, 28), backgroundColor: area.color + (inst.completed ? '44' : '22'), borderLeftWidth: 3, borderLeftColor: area.color, borderRadius: r.sm, padding: 4, justifyContent: 'center' }}>
-              <Text style={{ fontSize: 11, fontWeight: t.bold, color: area.color, textDecorationLine: inst.completed ? 'line-through' : 'none' }} numberOfLines={1}>
-                {inst.title}
-              </Text>
-              {inst.duration_minutes && (
-                <Text style={{ fontSize: 11, color: area.color, opacity: 0.8 }}>
-                  {fmt12(inst.start_time)} · {inst.duration_minutes}m
-                </Text>
-              )}
-            </TouchableOpacity>
-          );
-        })}
+        {/* Current time line, only on today's page. Drawn under the items so
+            it doesn't read as a line struck through a title; the dot in the
+            hour gutter still marks the time. */}
+        {isToday && <CurrentTimeLine startHour={hStart} endHour={hEnd} />}
 
-        {/* Current time line */}
-        <CurrentTimeLine c={c} />
+        {/* Timed items, laid out in columns where they overlap */}
+        <View pointerEvents="box-none" onLayout={(e) => setGridW(e.nativeEvent.layout.width)}
+          style={{ position: 'absolute', left: 56, right: s.lg, top: 0, bottom: 0 }}>
+          {gridW > 0 && boxes.map(({ item: inst, top, bottom, col, cols }) => {
+            const area = AREAS[inst.area] || AREAS.physical;
+            const colW = gridW / cols;
+            const height = Math.max(((bottom - top) / 60) * HOUR_H - 2, 24);
+            const done = inst.completed, skipped = inst.skipped;
+            return (
+              <TouchableOpacity key={inst.id} onPress={() => onOpen(inst)}
+                accessibilityRole="button" accessibilityLabel={`${inst.title}, ${timeRange(inst.start_time, inst.duration_minutes)}. Show details`}
+                style={{ position: 'absolute', top: yOf(top) + 1, height, left: col * colW, width: colW - 3,
+                         backgroundColor: c.bg1, borderRadius: r.sm, overflow: 'hidden',
+                         borderWidth: 0.5, borderColor: area.color + '88', borderLeftWidth: 3, borderLeftColor: area.color,
+                         opacity: skipped ? 0.45 : 1 }}>
+                <View style={{ flex: 1, backgroundColor: area.color + (done ? '14' : '2a'), paddingHorizontal: 6, paddingVertical: 3 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    {done && <Ionicons name="checkmark-circle" size={12} color={area.color} />}
+                    <Text numberOfLines={height >= 52 ? 2 : 1}
+                      style={{ flex: 1, fontSize: 12, fontWeight: t.bold, color: done ? c.text3 : c.text1, textDecorationLine: done || skipped ? 'line-through' : 'none' }}>
+                      {inst.title}
+                    </Text>
+                  </View>
+                  {height >= 34 && (
+                    <Text numberOfLines={1} style={{ fontSize: 11, color: c.text2 }}>
+                      {timeRange(inst.start_time, inst.duration_minutes)}
+                    </Text>
+                  )}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
       </View>
     </ScrollView>
   );
 }
 
-function CurrentTimeLine({ c }) {
+function CurrentTimeLine({ startHour, endHour }) {
   const now   = new Date();
   const hours = now.getHours() + now.getMinutes() / 60;
-  const y     = (hours - DAY_START) * HOUR_H;
-  if (y < 0 || y > (DAY_END - DAY_START) * HOUR_H) return null;
+  const y     = (hours - startHour) * HOUR_H;
+  if (y < 0 || y > (endHour - startHour) * HOUR_H) return null;
   return (
-    <View style={{ position: 'absolute', left: 0, right: 0, top: y, flexDirection: 'row', alignItems: 'center', zIndex: 10 }}>
+    <View pointerEvents="none" style={{ position: 'absolute', left: 50, right: 0, top: y - 5, flexDirection: 'row', alignItems: 'center' }}>
       <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#e05858' }} />
       <View style={{ flex: 1, height: 1.5, backgroundColor: '#e05858' }} />
     </View>
@@ -857,11 +886,12 @@ function CurrentTimeLine({ c }) {
 }
 
 // ─── List daily view ──────────────────────────────────────────────────────────
-function ListView({ instances, onUpdate, onEdit, onAdd, navigation, c, t, s, r }) {
+function ListView({ instances, onUpdate, onOpen, onAdd, c, t, s, r }) {
   const { showEmojis } = useUIPrefs();
-  const overdue  = instances.filter(i => isOverdue(i));
-  const today    = instances.filter(i => !isOverdue(i) && !i.skipped);
-  const skipped  = instances.filter(i => i.skipped);
+  const sorted   = [...instances].sort(byTime);
+  const overdue  = sorted.filter(i => isOverdue(i));
+  const today    = sorted.filter(i => !isOverdue(i) && !i.skipped);
+  const skipped  = sorted.filter(i => i.skipped);
 
   const Section = ({ label, items, color }) => items.length === 0 ? null : (
     <View style={{ marginBottom: s.lg }}>
@@ -869,7 +899,7 @@ function ListView({ instances, onUpdate, onEdit, onAdd, navigation, c, t, s, r }
         {label} · {items.filter(i => i.completed).length}/{items.length}
       </Text>
       {items.map(inst => (
-        <AgendaRow key={inst.id} instance={inst} onUpdate={onUpdate} onEdit={onEdit} navigation={navigation} c={c} t={t} s={s} r={r} />
+        <AgendaRow key={inst.id} instance={inst} onUpdate={onUpdate} onOpen={onOpen} c={c} t={t} s={s} r={r} />
       ))}
     </View>
   );
@@ -885,7 +915,7 @@ function ListView({ instances, onUpdate, onEdit, onAdd, navigation, c, t, s, r }
       </Text>
       {!!onAdd && (
         <TouchableOpacity
-          onPress={onAdd}
+          onPress={() => onAdd()}
           accessibilityRole="button"
           style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: s.lg, backgroundColor: c.teal, borderRadius: r.lg, paddingHorizontal: s.lg, paddingVertical: 10 }}
         >
@@ -906,10 +936,9 @@ function ListView({ instances, onUpdate, onEdit, onAdd, navigation, c, t, s, r }
 }
 
 // ─── Daily page ───────────────────────────────────────────────────────────────
-function DailyPage({ userId, date, activeAreas, timeMode, onUpdate, onEdit, onAdd, navigation, refreshKey, showingAll, c, t, s, r }) {
+function DailyPage({ userId, date, activeAreas, timeMode, onOpen, onAdd, refreshKey, showingAll, c, t, s, r }) {
   const [instances,  setInstances]  = useState([]);
   const [loading,    setLoading]    = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
 
   // activeAreas has to be a dependency here — load() reads it to filter the
   // fetched rows, so without it in the array, toggling a filter chip updates
@@ -918,8 +947,10 @@ function DailyPage({ userId, date, activeAreas, timeMode, onUpdate, onEdit, onAd
   // highlight while the list underneath stayed exactly as it was.
   useEffect(() => { load(); }, [date, refreshKey, activeAreas, showingAll]);
 
+  // The spinner is for the first load only (the page remounts per day). A
+  // reload after ticking or editing something swaps the rows in place, so
+  // the page doesn't blank and jump back to the top after every change.
   const load = async () => {
-    setLoading(true);
     try {
       let data = await getInstances(userId, { date: toISO(date), allProfiles: showingAll });
       if (activeAreas.size > 0) data = data.filter(i => activeAreas.has(i.area));
@@ -932,14 +963,13 @@ function DailyPage({ userId, date, activeAreas, timeMode, onUpdate, onEdit, onAd
     if (!updated) { load(); return; }
     setInstances(prev => prev.map(i => i.id === updated.id ? { ...i, ...updated } : i));
   };
-  const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
   const completed = instances.filter(i => i.completed).length;
   const total     = instances.filter(i => !i.skipped).length;
 
   if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color={c.teal} />;
 
-  const sharedProps = { instances, onUpdate: handleUpdate, onEdit, onAdd, navigation, c, t, s, r };
+  const sharedProps = { instances, date, onUpdate: handleUpdate, onOpen, onAdd, onAddAt: (time) => onAdd(time), c, t, s, r };
 
   return (
     <View style={{ flex: 1 }}>
@@ -980,6 +1010,7 @@ function WeeklyView({ userId, anchor, activeAreas, onDayPress, refreshKey, showi
       if (activeAreas.size > 0) data = data.filter(i => activeAreas.has(i.area));
       const map = {};
       data.forEach(inst => { if (!map[inst.date]) map[inst.date] = []; map[inst.date].push(inst); });
+      Object.values(map).forEach(list => list.sort(byTime));
       setByDate(map);
     } catch (e) { console.warn('WeeklyView', e); }
     setLoading(false);
@@ -1254,7 +1285,22 @@ export default function PlannerScreen() {
   const [panelOpen,   setPanel]   = useState(false);
   const [loading,     setLoading] = useState(true);
   const [refreshKey,  setRefresh] = useState(0);
-  const [timeMode,    setTimeMode]= useState(false);
+  // By time of day unless the person switched to the list; the choice is
+  // remembered on this device.
+  const [timeMode,    setTimeModeState] = useState(true);
+  const setTimeMode = (next) => setTimeModeState(prev => {
+    const value = typeof next === 'function' ? next(prev) : next;
+    AsyncStorage.setItem(TIME_MODE_KEY, value ? 'time' : 'list').catch(() => {});
+    return value;
+  });
+  useEffect(() => {
+    AsyncStorage.getItem(TIME_MODE_KEY)
+      .then(v => { if (v === 'list') setTimeModeState(false); })
+      .catch(() => {});
+  }, []);
+  // The item whose detail sheet is open.
+  const [detail,     setDetail]   = useState(null);
+  const [modalTime,  setModalTime]= useState(null);
   // Edit modal
   const [editInst,   setEditInst] = useState(null);
   const [showModal,  setShowModal]= useState(false);
@@ -1309,8 +1355,42 @@ export default function PlannerScreen() {
     if (view === 'Monthly') return anchor.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   };
 
-  const openAdd = () => { setEditInst(null); setModalDate(toISO(anchor)); setShowModal(true); };
-  const openEdit = (inst) => { setEditInst(inst); setModalDate(inst.date); setShowModal(true); };
+  // `time` comes from tapping an empty slot in the time-of-day view.
+  const openAdd = (time = null) => { setEditInst(null); setModalDate(toISO(anchor)); setModalTime(typeof time === 'string' ? time : null); setShowModal(true); };
+  const openEdit = (inst) => { setEditInst(inst); setModalDate(inst.date); setModalTime(null); setShowModal(true); };
+
+  // "Edit" on the detail sheet from Home or the Library lands here with the
+  // row, on that item's day.
+  const route = useRoute();
+  const editParam = route.params?.editInstance;
+  useEffect(() => {
+    if (!editParam) return;
+    setView('Daily');
+    setAnchor(new Date(editParam.date + 'T00:00:00'));
+    openEdit(editParam);
+    navigation.setParams({ editInstance: undefined });
+  }, [editParam]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Copies of the same item on the same day at the same time — what pasting
+  // an AI reply twice used to leave behind. Looks a month back and four ahead.
+  const removeDuplicates = async () => {
+    try {
+      const rows = await getInstancesBetween(userId, toISO(addDays(new Date(), -30)), toISO(addDays(new Date(), 120)));
+      const extra = duplicateIds(rows);
+      if (!extra.length) { Alert.alert('No duplicates', 'Nothing on your planner is in there twice.'); return; }
+      const n = extra.length;
+      Alert.alert('Remove duplicates', `Found ${n} extra ${n === 1 ? 'copy' : 'copies'} of items already planned for the same day and time. Keep one of each and remove the rest?`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: `Remove ${n}`, style: 'destructive', onPress: async () => {
+          try { await deleteInstances(extra); } catch (e) { Alert.alert("Couldn't remove them", 'Something went wrong — try again.'); }
+          setRefresh(k => k + 1);
+        } },
+      ]);
+    } catch (e) {
+      console.warn('removeDuplicates', e);
+      Alert.alert("Couldn't check", 'Something went wrong — try again.');
+    }
+  };
 
   // NOTE: no full-screen loading gate. The first visit is the one with no
   // cache behind it, so a spinner over the whole screen meant the header —
@@ -1355,6 +1435,7 @@ export default function PlannerScreen() {
                 icon: timeMode ? 'list' : 'time-outline',
                 onPress: () => setTimeMode(m => !m),
               },
+              { label: 'Remove duplicates', icon: 'copy-outline', onPress: removeDuplicates },
               { label: 'Weekly review', icon: 'stats-chart-outline', onPress: () => navigation.navigate('WeeklyReviewScreen') },
             ]} />
           </View>
@@ -1433,10 +1514,8 @@ export default function PlannerScreen() {
           key={`daily-${toISO(anchor)}-${showingAll ? 'all' : 'one'}`}
           userId={userId} date={anchor} onAdd={openAdd}
           activeAreas={activeAreas} timeMode={timeMode}
-          onUpdate={() => setRefresh(k => k + 1)}
-          onEdit={openEdit}
+          onOpen={setDetail}
           showingAll={showingAll}
-          navigation={navigation}
           refreshKey={refreshKey} c={c} t={t} s={s} r={r}
         />
       ) : view === 'Weekly' ? (
@@ -1454,12 +1533,22 @@ export default function PlannerScreen() {
         c={c} t={t} s={s} r={r}
       />
 
+      {/* ── Item details ── */}
+      <PlanDetailSheet
+        instance={detail}
+        onClose={() => setDetail(null)}
+        onChanged={() => setRefresh(k => k + 1)}
+        onEdit={openEdit}
+        navigation={navigation}
+      />
+
       {/* ── Add/Edit modal ── */}
       <InstanceModal
         visible={showModal}
         instance={editInst}
         userId={userId}
         date={modalDate}
+        initialTime={modalTime}
         defaultArea={activeAreas.size === 1 ? [...activeAreas][0] : (progressProfile?.active_life_areas?.[0] || 'physical')}
         goalIdea={activeObjective?.active && !activeObjective.complete ? (activeObjective.nextStep?.idea || null) : null}
         onSave={(saved) => {

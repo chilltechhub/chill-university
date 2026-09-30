@@ -48,7 +48,7 @@ export async function createReminder(userId, opts) {
     user_id: userId,
     title: opts.title.trim(),
     area: opts.area || 'physical',
-    cadence: opts.repeat || 'daily',
+    cadence: opts.repeat || 'once', // a one-off reminder isn't a daily one
     type: 'checklist',
     date,
     start_time: opts.time || null,

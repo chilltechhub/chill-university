@@ -36,6 +36,7 @@ import { featureForScreen } from '../../data/featureCatalog';
 import { unlockHint } from '../../logic/featureAccess';
 import { todayStr, daysBetween } from '../../logic/dateUtils';
 import { Button } from '../../components/ui';
+import PlanDetailSheet from '../../components/PlanDetailSheet';
 
 // Same icon/color-by-type map CaptureInbox and ImportScreen already share,
 // reused here for domain-filter result rows rather than a third copy.
@@ -210,7 +211,7 @@ function DomainContentRow({ item, onToggleTask, onPress, c, t, s }) {
     const meta = CAPTURE_TYPE_MAP[item.source] || CAPTURE_TYPE_MAP.note;
     icon = meta.icon; color = meta.color;
   } else if (item.kind === 'planner') {
-    icon = 'repeat-outline'; color = c.teal;
+    icon = item.label === 'plan' ? 'calendar-outline' : 'repeat-outline'; color = c.teal;
   }
   return (
     <TouchableOpacity
@@ -219,13 +220,16 @@ function DomainContentRow({ item, onToggleTask, onPress, c, t, s }) {
       style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, paddingVertical: 9, borderBottomWidth: 0.5, borderBottomColor: c.border }}
     >
       <Ionicons name={icon} size={17} color={color} />
-      <Text
-        style={{ flex: 1, fontSize: t.sm, color: item.done ? c.text3 : c.text1, textDecorationLine: item.done && item.kind === 'task' ? 'line-through' : 'none' }}
-        numberOfLines={1}
-      >
-        {item.title}
-      </Text>
-      <Text style={{ fontSize: 11, color: c.text3 }}>{item.kind}</Text>
+      <View style={{ flex: 1 }}>
+        <Text
+          style={{ fontSize: t.sm, color: item.done ? c.text3 : c.text1, textDecorationLine: item.done && item.kind === 'task' ? 'line-through' : 'none' }}
+          numberOfLines={1}
+        >
+          {item.title}
+        </Text>
+        {!!item.sub && <Text style={{ fontSize: 11, color: c.text3, marginTop: 1 }} numberOfLines={1}>{item.sub}</Text>}
+      </View>
+      <Text style={{ fontSize: 11, color: c.text3 }}>{item.label || item.kind}</Text>
     </TouchableOpacity>
   );
 }
@@ -341,6 +345,7 @@ export default function LibraryScreen() {
   const [showAddArea, setShowAddArea] = useState(false);
   // Per-tab previews — what fills each tab below its cards.
   const [todayAgenda, setTodayAgenda] = useState([]); // Domains
+  const [openPlan, setOpenPlan] = useState(null); // a Today row, tapped open
   const [recentCaptures, setRecentCaptures] = useState([]); // Knowledge
   const [gardenIdeas, setGardenIdeas] = useState([]); // Knowledge
 
@@ -503,9 +508,9 @@ export default function LibraryScreen() {
         // Archives count instead of a Trophy Hall carousel, so the real
         // total matters, not just a handful to render as cards.
         supabase.from('projects').select('id,title,emoji,color,updated_at').eq('user_id', uid).eq('status', 'completed').is('deleted_at', null).order('updated_at', { ascending: false }),
-        // Title/time as well as area now — this feeds both the per-domain
-        // bubble count dots and the Domains tab's "Today" preview list.
-        supabase.from('agenda_instances').select('id, title, area, start_time').eq('user_id', uid).eq('date', today).eq('completed', false).eq('skipped', false),
+        // Whole rows: this feeds the per-domain bubble count dots and the
+        // Domains tab's "Today" list, whose rows open the item's details.
+        supabase.from('agenda_instances').select('*').eq('user_id', uid).eq('date', today).eq('completed', false).eq('skipped', false),
         supabase.from('profiles').select('active_life_areas').eq('id', uid).maybeSingle(),
         getProjects(uid, 'active'),
         supabase.from('area_notes').select('content').eq('user_id', uid).eq('area_id', CAREER_AREA_ID).ilike('content', `[${CAREER_TAG}]%`).order('created_at', { ascending: false }).limit(1),
@@ -621,10 +626,10 @@ export default function LibraryScreen() {
     tapRef.current = { id: area.id, timer };
   };
 
-  const selectDomain = async (domainId) => {
-    if (activeDomain === domainId) { setActiveDomain(null); setDomainContent([]); return; }
+  const selectDomain = async (domainId, { reload = false } = {}) => {
+    if (activeDomain === domainId && !reload) { setActiveDomain(null); setDomainContent([]); return; }
     setActiveDomain(domainId);
-    setDomainLoading(true);
+    if (!reload) setDomainLoading(true);
     try {
       setDomainContent(userId ? await getDomainContent(userId, domainId) : []);
     } catch (e) {
@@ -644,7 +649,7 @@ export default function LibraryScreen() {
 
   const pressDomainItem = (item) => {
     if (item.kind === 'capture') navigation.navigate('KnowledgeScreen');
-    else if (item.kind === 'planner') navigation.navigate('PlannerScreen');
+    else if (item.kind === 'planner') setOpenPlan(item.raw);
   };
 
   if (loading) {
@@ -943,12 +948,24 @@ export default function LibraryScreen() {
                           emoji={LIFE_AREA_MAP[item.area]?.emoji || '•'}
                           title={item.title}
                           meta={fmtTime(item.start_time)}
-                          onPress={() => navigation.navigate('PlannerScreen')}
-                          isLast={i === Math.min(arr.length, 6) - 1}
+                          onPress={() => setOpenPlan(item)}
+                          isLast={i === Math.min(arr.length, 6) - 1 && arr.length <= 6}
                           styles={styles}
                           c={c}
                         />
                       ))}
+                      {todayAgenda.length > 6 && (
+                        <PreviewRow
+                          icon="calendar-outline"
+                          iconColor={c.text3}
+                          title={`${todayAgenda.length - 6} more today`}
+                          meta="Planner"
+                          onPress={() => navigation.navigate('PlannerScreen')}
+                          isLast
+                          styles={styles}
+                          c={c}
+                        />
+                      )}
                     </View>
                   )}
                 </PreviewSection>
@@ -1176,6 +1193,18 @@ export default function LibraryScreen() {
         onAdd={addArea}
         onClose={() => setShowAddArea(false)}
         c={c} t={t} s={s} r={r}
+      />
+
+      <PlanDetailSheet
+        instance={openPlan}
+        onClose={() => setOpenPlan(null)}
+        onChanged={() => {
+          if (!userId) return;
+          loadAll(userId);
+          if (activeDomain) selectDomain(activeDomain, { reload: true });
+        }}
+        onEdit={(row) => navigation.navigate('PlannerScreen', { editInstance: row })}
+        navigation={navigation}
       />
     </View>
   );

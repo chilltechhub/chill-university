@@ -29,6 +29,7 @@ import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../api/offlineCac
 import { syncReminders, computeReminderState } from '../logic/notificationScheduler';
 import TourSpot from '../components/TourSpot';
 import CalendarModal from '../components/CalendarModal';
+import PlanDetailSheet from '../components/PlanDetailSheet';
 import WidgetBoard from '../components/WidgetBoard';
 import LevelRing from '../components/LevelRing';
 import PlayerMatchBackground from '../components/PlayerMatchBackground';
@@ -926,6 +927,7 @@ export default function HomeScreen() {
   // regardless of date. See loadAll for the merge.
   const [todayActivities, setTodayActivities] = useState([]);
   const [selectedActivity, setSelectedActivity] = useState(null);
+  const [openPlan, setOpenPlan] = useState(null); // a planner row, tapped open
 
   // Ideas
   const [ideas,          setIdeas]          = useState([]);
@@ -1336,7 +1338,7 @@ export default function HomeScreen() {
         // above is a ranked pick rather than "what's actually due today".
         supabase.from('calendar_events').select('*').eq('user_id', uid).eq('date', todayStr),
         supabase.from('tasks').select('id, title, due_date').eq('user_id', uid).eq('completed', false).eq('due_date', todayStr),
-        supabase.from('agenda_instances').select('id, title, area, date, start_time').eq('user_id', uid).eq('date', todayStr).eq('completed', false).eq('skipped', false),
+        supabase.from('agenda_instances').select('*').eq('user_id', uid).eq('date', todayStr).eq('completed', false).eq('skipped', false),
         // Active Builds widget — a fuller list than the 3-item OnDesk
         // candidate above, same fields LibraryScreen's Build tab preview
         // already uses.
@@ -2003,7 +2005,7 @@ export default function HomeScreen() {
                   <View style={{ paddingHorizontal: s.lg }}>
                     <SectionHead title="Today's Activities" action="Calendar →" onAction={() => setShowCalendar(true)} c={c} t={t} />
                     {todayActivities.slice(0, 3).map(item => (
-                      <ActivityRow key={item.id} item={item} onPress={() => setSelectedActivity(item)} c={c} t={t} s={s} r={r} />
+                      <ActivityRow key={item.id} item={item} onPress={() => (item._src === 'planner' ? setOpenPlan(item.raw) : setSelectedActivity(item))} c={c} t={t} s={s} r={r} />
                     ))}
                     {todayActivities.length > 3 && (
                       <TouchableOpacity onPress={() => setShowCalendar(true)}>
@@ -2409,6 +2411,15 @@ export default function HomeScreen() {
         </View>
       </Modal>
 
+      {/* ── A planner item from Today's Activities: the Planner's own sheet ── */}
+      <PlanDetailSheet
+        instance={openPlan}
+        onClose={() => setOpenPlan(null)}
+        onChanged={() => { if (openPlan) dismissActivity('agenda_' + openPlan.id); onRefresh(); }}
+        onEdit={(row) => goToLibraryScreen('PlannerScreen', { editInstance: row })}
+        navigation={navigation}
+      />
+
       {/* ── Today's Activities row, tapped open — same detail-sheet pattern ── */}
       <Modal visible={!!selectedActivity} transparent animationType="slide" onRequestClose={closeActivitySheet}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
@@ -2468,6 +2479,7 @@ export default function HomeScreen() {
         onClose={() => setShowCalendar(false)}
         userId={userId}
         initialDate={today}
+        onEditPlan={(row) => goToLibraryScreen('PlannerScreen', { editInstance: row })}
       />
 
       {/* ── Hold STUDY: pick a destination ── */}

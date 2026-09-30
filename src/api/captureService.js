@@ -4,7 +4,7 @@
 
 import { supabase } from './profileScopedClient';
 import { cacheWrite, cacheRead, isOnline, smartFetch, offlineWrite } from './offlineCache';
-import { todayStr, dateStr } from '../logic/dateUtils';
+import { todayStr, dateStr, addDays } from '../logic/dateUtils';
 import { detectSource, isGenericTitle, fallbackTitle, CAPTURE_TYPE_FOR_KIND } from '../logic/linkSources';
 
 // ─── CAPTURES ─────────────────────────────────────────────────────────────────
@@ -65,6 +65,48 @@ export async function getCaptureCount(userId) {
 // A domain the user has never checked into has no life_areas row yet —
 // that's not an error, it just means the life_area_id-based matches below
 // come back empty and the tag/planner matches carry the result.
+// A repeating plan is one row per day, so a daily habit listed every copy of
+// itself. One entry per title instead, standing for its next open day (or
+// its latest, if none is left): "Daily · next today 6:00 AM".
+function groupPlannerRows(rows) {
+  const today = todayStr();
+  const tomorrow = addDays(today, 1);
+  const groups = new Map();
+  for (const row of rows) {
+    const key = String(row.title || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  }
+  const when = (row) => {
+    const day = row.date === today ? 'today' : row.date === tomorrow ? 'tomorrow'
+      : new Date(row.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    if (!row.start_time) return day;
+    const [h, m] = row.start_time.split(':').map(Number);
+    return `${day} ${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+  };
+  // Next due first (soonest on top), then missed, then done.
+  const order = (item) => (item._next ? `0${item._next}` : item.done ? `2${item.raw.date}` : `1${item.raw.date}`);
+  return [...groups.values()].map(list => {
+    const byDay = [...list].sort((a, b) => (a.date + (a.start_time || '')).localeCompare(b.date + (b.start_time || '')));
+    const next = byDay.find(r => !r.completed && r.date >= today);
+    const row = next || byDay[byDay.length - 1];
+    // Only something that actually shows up more than once is called a
+    // repeat: older one-off items were saved with cadence 'daily'.
+    const cadence = list.length < 2 ? null : row.cadence && row.cadence !== 'once' ? row.cadence : 'repeats';
+    const parts = [];
+    if (cadence) parts.push(cadence[0].toUpperCase() + cadence.slice(1));
+    if (next) parts.push(`next ${when(next)}`);
+    else if (row.completed) parts.push(`done ${when(row)}`);
+    else parts.push(`missed ${when(row)}`);
+    return {
+      id: 'inst_' + row.id, title: row.title, kind: 'planner', source: 'planner',
+      label: cadence ? cadence.toLowerCase() : 'plan', sub: parts.join(' · '),
+      done: !next && !!row.completed, raw: row,
+      _next: next ? next.date + (next.start_time || '99') : null,
+    };
+  }).sort((a, b) => order(a).localeCompare(order(b)));
+}
+
 export async function getDomainContent(userId, domainId) {
   const { data: areaRows } = await supabase
     .from('life_areas').select('id, label').eq('user_id', userId);
@@ -84,10 +126,12 @@ export async function getDomainContent(userId, domainId) {
       .eq('user_id', userId).is('deleted_at', null)
       .or(areaRowId ? `life_area_id.eq.${areaRowId},tags.cs.{${domainId}}` : `tags.cs.{${domainId}}`)
       .order('created_at', { ascending: false }).limit(30),
-    supabase.from('agenda_instances').select('id, title, area, date, start_time, completed')
+    // Whole rows (a tapped item opens the Planner's detail sheet) and no
+    // 30-row cap: a month of one daily habit filled all 30 on its own.
+    supabase.from('agenda_instances').select('*')
       .eq('user_id', userId).eq('area', domainId).eq('skipped', false)
       .gte('date', dateStr(past)).lte('date', dateStr(future))
-      .order('date').limit(30),
+      .order('date').limit(500),
   ]);
 
   const merged = [
@@ -99,10 +143,7 @@ export async function getDomainContent(userId, domainId) {
       id: 'cap_' + cp.id, title: cp.title || 'Untitled', kind: 'capture', source: cp.type || 'note',
       done: cp.status !== 'inbox', raw: cp,
     })),
-    ...(instancesRes.data || []).map(inst => ({
-      id: 'inst_' + inst.id, title: inst.title, kind: 'planner', source: 'planner',
-      done: !!inst.completed, raw: inst,
-    })),
+    ...groupPlannerRows(instancesRes.data || []),
   ];
   // Not-done items first, most useful-to-act-on order for a triage view.
   merged.sort((a, b) => (a.done === b.done) ? 0 : a.done ? 1 : -1);

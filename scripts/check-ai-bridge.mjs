@@ -220,6 +220,27 @@ const SNAP = {
   check('delete without ref is refused', !noRef.ok && noRef.warnings?.some(w => /no ref/.test(w)), show(noRef));
 }
 
+// ── 9a. Planner duplicates are not added twice ──────────────────────────────
+{
+  const r = parse(`{"chill":1,"planner":[
+    {"title":"gym","date":"2026-09-22","time":"7am"},
+    {"title":"Gym","date":"2026-09-22","time":"6pm"},
+    {"title":"Gym","date":"2026-09-22"},
+    {"title":"Gym","date":"2026-09-21","repeat":"daily"},
+    {"title":"Read","date":"2026-09-23","time":"21:00"},
+    {"title":"read ","date":"2026-09-23","time":"9pm"}
+  ]}`);
+  const res = P.resolveChanges(r.changes || [], SNAP);
+  const [same, evening, untimed, week, read1, read2] = res;
+  check('dup: same title/day/time as existing is skipped', same?.status === 'duplicate', show(same));
+  check('dup: same title at another time is kept', evening?.status === 'ok' && show(evening.dates) === show(['2026-09-22']), show(evening));
+  check('dup: untimed twin of a timed one is skipped', untimed?.status === 'duplicate', show(untimed));
+  check('dup: repeat drops only the taken day', week?.status === 'ok' && week.dates.length === 6 && !week.dates.includes('2026-09-22') && week.warnings.some(w => /only added/.test(w)), show(week));
+  check('dup: twice in one reply → once', read1?.status === 'ok' && read2?.status === 'duplicate', show([read1, read2]));
+  const counts = P.countChanges(res);
+  check('dup: counts only what is added', counts.create === 1 + 6 + 1, show(counts));
+}
+
 // ── 9b. Planner reminders in the change script ─────────────────────────────
 {
   const r = parse(`{"chill":1,"planner":[
