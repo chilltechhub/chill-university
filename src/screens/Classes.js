@@ -1,7 +1,7 @@
 // src/screens/Classes.js
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ScrollView, TouchableOpacity, Text, View, StyleSheet, Alert, Platform } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../../context/ThemeContext';
@@ -15,6 +15,8 @@ import { listLessonPlans } from '../api/lessonBuilderService';
 import { useAccess } from '../../context/AccessContext';
 import { pickRecommendedTopics, pickRecommendedGames } from '../logic/classRecommendations';
 import TourSpot from '../components/TourSpot';
+import AddKnowledgeSheet from '../components/AddKnowledgeSheet';
+import { getMyKnowledge } from '../api/captureService';
 import { CLASS_SUBJECTS, CLASS_SCREEN_MAP } from '../data/classCatalog';
 import { lessonsForGame } from '../data/skillLinks';
 import { getWeakGames } from '../logic/skillStats';
@@ -29,6 +31,7 @@ const BANDS = ['All', 'K-2', '3-5', '6-8', '9-12'];
 
 export default function Classes() {
   const [open, setOpen] = useState({});
+  const [addingKnowledge, setAddingKnowledge] = useState(false);
   const [band, setBand] = useState('All');
   // Adults get the same four bands named Starter … Advanced, not school
   // grades: an adult Student was browsing "Physics · K-2".
@@ -90,8 +93,26 @@ export default function Classes() {
   // With no saved choice, a student starts on their own grade band rather than
   // "All" — a 15-year-old's Reading list used to open on how to turn pages
   // (K-2). Adults keep "All"; they browse by Starter … Advanced.
-  const { profile } = useUserProgress();
+  const { profile, user } = useUserProgress();
   const dob = profile?.date_of_birth;
+
+  // The player's own notes from "Add my own knowledge", read back by their
+  // 'my-knowledge' tag. Reloaded on focus, so an edit or delete in the
+  // Vault shows here on the way back.
+  const [myKnowledge, setMyKnowledge] = useState([]);
+  const loadMyKnowledge = useCallback(() => {
+    if (!user?.id) { setMyKnowledge([]); return; }
+    getMyKnowledge(user.id).then(setMyKnowledge).catch((e) => console.warn('[Classes] my knowledge', e?.message));
+  }, [user?.id]);
+  useFocusEffect(loadMyKnowledge);
+  const mineBySubject = useMemo(() => {
+    const map = {};
+    myKnowledge.forEach((entry) => (entry.tags || []).forEach((tag) => {
+      (map[tag] = map[tag] || []).push(entry);
+    }));
+    return map;
+  }, [myKnowledge]);
+  const openEntry = (entry) => navigation.navigate('KnowledgeScreen', { focusId: entry.id });
   useEffect(() => {
     AsyncStorage.getItem(GRADE_BAND_KEY).then(saved => {
       if (saved && BANDS.includes(saved)) setBand(saved);
@@ -380,6 +401,11 @@ export default function Classes() {
                 <View style={styles.categoryTextContainer}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <Text style={styles.categoryText}>{item.title}</Text>
+                    {mineBySubject[item.title]?.length > 0 && (
+                      <View style={[styles.comingSoonBadge, { backgroundColor: c.gold + '22', borderColor: c.gold + '55' }]}>
+                        <Text style={[styles.comingSoonBadgeText, { color: c.gold }]}>{mineBySubject[item.title].length} YOURS</Text>
+                      </View>
+                    )}
                     {item.comingSoon && (
                       <View style={[styles.comingSoonBadge, { backgroundColor: item.color + '22', borderColor: item.color + '55' }]}>
                         <Text style={[styles.comingSoonBadgeText, { color: item.color }]}>SOON</Text>
@@ -435,13 +461,78 @@ export default function Classes() {
                     </TouchableOpacity>
                   ))
                 )}
+                {(mineBySubject[item.title] || []).map(entry => (
+                  <KnowledgeRow key={entry.id} entry={entry} onPress={() => openEntry(entry)} styles={styles} c={c} />
+                ))}
                 <ComingRow subject={item.title} color={item.color} navigation={navigation} styles={styles} c={c} />
+              </View>
+            )}
+            {/* Subjects with no topic list (one screen, or still coming)
+                have nothing to expand, so their notes sit under the card. */}
+            {!item.children && mineBySubject[item.title]?.length > 0 && (
+              <View style={styles.sublist}>
+                {mineBySubject[item.title].map(entry => (
+                  <KnowledgeRow key={entry.id} entry={entry} onPress={() => openEntry(entry)} styles={styles} c={c} />
+                ))}
               </View>
             )}
           </View>
           </React.Fragment>
         );
       })}
+
+      {/* The player's own knowledge, filed under a subject (and a life
+          area where one fits) as a Vault note — see AddKnowledgeSheet. */}
+      <View style={styles.cardWrapper}>
+        <TouchableOpacity
+          style={[styles.category, { borderTopColor: c.gold }]}
+          onPress={() => setAddingKnowledge(true)}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+        >
+          <View style={styles.categoryHeader}>
+            <View style={[styles.iconContainer, { backgroundColor: c.gold + '22' }]}>
+              <Ionicons name="create-outline" size={26} color={c.gold} />
+            </View>
+            <View style={styles.categoryTextContainer}>
+              <Text style={styles.categoryText}>Add my own knowledge</Text>
+              {showSubtext && (
+                <Text style={styles.categoryDescription}>
+                  Something you already know or learned elsewhere. Saves to your Vault and life areas.
+                </Text>
+              )}
+            </View>
+            <Ionicons name="add" size={22} color={c.text4} style={styles.chevron} />
+          </View>
+        </TouchableOpacity>
+        {myKnowledge.length > 0 && (
+          <View style={styles.sublist}>
+            {myKnowledge.slice(0, 3).map(entry => (
+              <KnowledgeRow key={entry.id} entry={entry} showSubject onPress={() => openEntry(entry)} styles={styles} c={c} />
+            ))}
+            <TouchableOpacity
+              style={[styles.subItemContainer, { borderBottomWidth: 0 }]}
+              onPress={() => navigation.navigate('KnowledgeScreen', { initialType: 'note' })}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="library-outline" size={14} color={c.gold} style={{ marginRight: 8 }} />
+              <Text style={[styles.subItem, { color: c.gold }]}>
+                {myKnowledge.length > 3 ? `All ${myKnowledge.length} in your Vault` : 'Open in your Vault'}
+              </Text>
+              <Ionicons name="chevron-forward" size={18} color={c.text4} />
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+      <AddKnowledgeSheet
+        visible={addingKnowledge}
+        onClose={() => setAddingKnowledge(false)}
+        subjects={mergedSubjects.map(subj => subj.title)}
+        userId={user?.id}
+        onSaved={loadMyKnowledge}
+        onOpenVault={(area) => navigation.navigate('KnowledgeScreen', { initialType: 'note', ...(area ? { initialArea: area } : {}) })}
+        c={c} t={t} r={r}
+      />
 
       {/* The whole roadmap: every planned topic, built or not
           (src/data/topicCatalog.js). */}
@@ -470,6 +561,21 @@ export default function Classes() {
 
       <View style={styles.footer} />
     </ScrollView>
+  );
+}
+
+// One of the player's own notes. Inside a subject it says "Your note";
+// in the "My knowledge" list it names the subject it was filed under.
+const SUBJECT_TITLES = new Set(CLASS_SUBJECTS.map(subj => subj.title));
+function KnowledgeRow({ entry, showSubject, onPress, styles, c }) {
+  const subject = showSubject && (entry.tags || []).find(tag => SUBJECT_TITLES.has(tag));
+  return (
+    <TouchableOpacity style={styles.subItemContainer} onPress={onPress} activeOpacity={0.7}>
+      <Ionicons name="document-text-outline" size={14} color={c.gold} style={{ marginRight: 8 }} />
+      <Text style={styles.subItem} numberOfLines={1}>{entry.title || 'Untitled'}</Text>
+      <Text style={styles.subItemGrade}>{showSubject ? (subject || 'Other') : 'Your note'}</Text>
+      <Ionicons name="chevron-forward" size={18} color={c.text4} />
+    </TouchableOpacity>
   );
 }
 
