@@ -29,6 +29,7 @@ import { LIFE_AREAS } from './library/LifeAreaScreen';
 import { LIBRARY_HUBS } from './library/LibraryScreen';
 import { CREST_COLORS, ROLE_BADGES } from '../data/crestOptions';
 import { useAccess } from '../../context/AccessContext';
+import { usePlus } from '../../context/PlusContext';
 import { useProfiles } from '../../context/ProfileAccountsContext';
 import { FEATURES } from '../data/featureCatalog';
 import { stageMeta } from '../logic/experienceStage';
@@ -356,7 +357,18 @@ const DELETION_REASONS = [
 // harder gate, so it's a real two-step Modal: an optional "why are you
 // leaving" step first, then a step requiring the user to type DELETE
 // before the button even enables.
+// Deleting the account doesn't touch a subscription bought through Apple or
+// Google: billing goes on until it's cancelled in that store, and Apple asks
+// apps to say so before deletion. Shown only while Plus is set to renew.
+function storeLabel(store) {
+  if (store === 'app_store' || store === 'mac_app_store') return 'the App Store';
+  if (store === 'play_store') return 'Google Play';
+  return 'the store you bought it in';
+}
+
 function DeleteAccountModal({ visible, onClose, onConfirm, deleting, c, t, s, r }) {
+  const plus = usePlus();
+  const renewingPlus = plus.hasPlus && plus.plan?.willRenew !== false && plus.plan?.store !== 'promotional';
   const [step,        setStep]        = useState('feedback'); // 'feedback' | 'confirm'
   const [reason,      setReason]      = useState(null);
   const [details,     setDetails]     = useState('');
@@ -434,6 +446,23 @@ function DeleteAccountModal({ visible, onClose, onConfirm, deleting, c, t, s, r 
                 This permanently deletes your account and everything in it — projects, planner, notes,
                 research, portfolio, garden, progress, all of it. There's no undo.
               </Text>
+              {renewingPlus && (
+                <View accessibilityRole="alert" style={{ backgroundColor: c.gold + '18', borderColor: c.gold, borderWidth: 1, borderRadius: r.md, padding: s.md, marginBottom: s.lg }}>
+                  <Text style={{ fontSize: t.sm, color: c.text1, lineHeight: 20, fontWeight: t.semibold }}>
+                    Your Plus subscription keeps billing
+                  </Text>
+                  <Text style={{ fontSize: t.sm, color: c.text2, lineHeight: 20, marginTop: 4 }}>
+                    Deleting your account doesn't cancel Plus. Cancel it in {storeLabel(plus.plan?.store)} first, or you'll keep being charged.
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => Linking.openURL(plus.manageUrl())}
+                    accessibilityRole="link"
+                    style={{ marginTop: s.sm, alignSelf: 'flex-start', paddingVertical: 4 }}
+                  >
+                    <Text style={{ fontSize: t.sm, color: c.teal, fontWeight: t.bold }}>Manage subscription</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
               <Eyebrow style={{ marginBottom: s.sm }}>
                 Type DELETE to confirm
               </Eyebrow>

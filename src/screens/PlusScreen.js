@@ -18,15 +18,14 @@
 // nobody sees is worse than none. Results are shown inline.
 
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Linking, Platform,
-} from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Linking, Platform, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { usePlus } from '../../context/PlusContext';
 import { PRIVACY_POLICY_URL, SUBSCRIPTION_TERMS_URL } from '../config/legal';
+import LoginScreen from './LoginScreen';
 import { getFeature } from '../data/featureCatalog';
 import { FONTS } from '../theme';
 
@@ -71,6 +70,9 @@ export default function PlusScreen() {
   const freeAlt = FREE_ALTERNATIVE[featureId];
   const [choice, setChoice] = useState(null);
   const [message, setMessage] = useState(null); // { tone: 'good'|'bad'|'info', text }
+  // Guests see the plans and prices; buying or restoring opens the same
+  // sign-in sheet as the top bar, and they land back here signed in.
+  const [signInOpen, setSignInOpen] = useState(false);
 
   const { ready, loadPackages, packages } = plus;
   useEffect(() => { if (ready && !plus.hasPlus) loadPackages(); }, [ready, plus.hasPlus, loadPackages]);
@@ -143,6 +145,7 @@ export default function PlusScreen() {
           <Purchase
             plus={plus} user={user} packages={packages} selected={selected}
             setChoice={setChoice} saving={saving} onBuy={onBuy}
+            onSignIn={() => setSignInOpen(true)}
             st={st} c={c}
           />
         )}
@@ -155,8 +158,10 @@ export default function PlusScreen() {
 
         {/* Restore is required even for people who have Plus: a new phone
             or a reinstall starts with the store not knowing who they are. */}
-        {plus.supported && !!user && (
-          <TouchableOpacity onPress={onRestore} disabled={plus.busy} style={st.textBtn}>
+        {/* A guest gets it too: a purchase belongs to an account, so for
+            them it starts with signing in. */}
+        {plus.supported && (
+          <TouchableOpacity onPress={user ? onRestore : () => setSignInOpen(true)} disabled={plus.busy} style={st.textBtn} accessibilityRole="button">
             <Text style={st.textBtnLabel}>Restore purchases</Text>
           </TouchableOpacity>
         )}
@@ -167,14 +172,14 @@ export default function PlusScreen() {
           <Text style={st.legalLink} onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>Privacy Policy</Text>
         </View>
       </ScrollView>
+      <Modal visible={signInOpen} animationType="slide" onRequestClose={() => setSignInOpen(false)}>
+        <LoginScreen onSuccess={() => setSignInOpen(false)} onClose={() => setSignInOpen(false)} />
+      </Modal>
     </View>
   );
 }
 
-function Purchase({ plus, user, packages, selected, setChoice, saving, onBuy, st, c }) {
-  if (!user) {
-    return <Text style={st.note}>Sign in to get Plus. It stays with your account, not the phone.</Text>;
-  }
+function Purchase({ plus, user, packages, selected, setChoice, saving, onBuy, onSignIn, st, c }) {
   if (!plus.supported) {
     return (
       <Text style={st.note}>
@@ -234,16 +239,25 @@ function Purchase({ plus, user, packages, selected, setChoice, saving, onBuy, st
         })}
       </View>
 
-      <TouchableOpacity
-        onPress={onBuy}
-        disabled={!selected || plus.busy}
-        activeOpacity={0.9}
-        style={[st.cta, (!selected || plus.busy) && { opacity: 0.6 }]}
-      >
-        {plus.busy
-          ? <ActivityIndicator color="#fff" />
-          : <Text style={st.ctaText}>{trial ? `Start ${trial}-day free trial` : 'Subscribe'}</Text>}
-      </TouchableOpacity>
+      {user ? (
+        <TouchableOpacity
+          onPress={onBuy}
+          disabled={!selected || plus.busy}
+          activeOpacity={0.9}
+          style={[st.cta, (!selected || plus.busy) && { opacity: 0.6 }]}
+        >
+          {plus.busy
+            ? <ActivityIndicator color="#fff" />
+            : <Text style={st.ctaText}>{trial ? `Start ${trial}-day free trial` : 'Subscribe'}</Text>}
+        </TouchableOpacity>
+      ) : (
+        <>
+          <TouchableOpacity onPress={onSignIn} activeOpacity={0.9} style={st.cta} accessibilityRole="button">
+            <Text style={st.ctaText}>Sign in to subscribe</Text>
+          </TouchableOpacity>
+          <Text style={st.note}>Plus stays with your account, not the phone, so it works on every device you sign in on.</Text>
+        </>
+      )}
 
       {/* The auto-renew disclosure, in plain words, right under the button. */}
       {selected && (
