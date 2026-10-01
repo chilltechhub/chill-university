@@ -8,6 +8,7 @@
 
 import { Share, Platform } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import { SITE_URL } from '../config/chilltech';
 
 export async function shareText({ title, message }) {
   try {
@@ -65,4 +66,17 @@ export function projectText(project, tasks = []) {
     open.length ? '' : null,
     ...(open.length ? ['To do:', ...open.map(t => `• ${t.title}`)] : []),
   ].filter(x => x !== null).join('\n');
+}
+
+// A milestone worth telling a friend about: a level, a new tier, a finished
+// quest. Plain text so it works in any app; no reward for sharing, it's just
+// there if someone wants it (audit 4.3).
+export const APP_PAGE = `${SITE_URL}/ct-app`;
+export function milestoneText(kind, detail) {
+  switch (kind) {
+    case 'level': return `I just reached Level ${detail} in Deskartes, where learning levels up real life. ${APP_PAGE}`;
+    case 'tier':  return `I just made ${detail} in Deskartes, where learning levels up real life. ${APP_PAGE}`;
+    case 'quest': return `I just finished the "${detail}" quest in Deskartes. ${APP_PAGE}`;
+    default:      return `Leveling up with Deskartes. ${APP_PAGE}`;
+  }
 }

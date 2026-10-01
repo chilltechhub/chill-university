@@ -3,6 +3,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { handleGameEvent, claimRoundPrize } from './gamificationService';
 import { correctHaptic } from './haptics';
+import { noteAnswered } from './questionRotation';
 
 export const DIFFICULTY = { easy: 1, medium: 2, hard: 3 };
 
@@ -68,6 +69,9 @@ export default function useGame({
     questionStart.current = Date.now();
     answeredRef.current = true;
     xpRef.current += isCorrect ? 10 * difficulty : 2;
+    // A miss comes back for review in a day; a due review answered right
+    // moves on (questionRotation.js).
+    noteAnswered(isCorrect);
 
     setAttempt(a => a + 1);
 

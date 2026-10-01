@@ -14,7 +14,7 @@
 // - Each coin that pays shows in the top bar straight away (collectPetCoin
 //   announces it) — before, the server added it but the header kept the old
 //   number until something else reloaded the profile. Off Training, where
-//   you can't see the pet eat it, src/components/CoinRewardToast.js shows
+//   you can't see the pet eat it, src/components/RewardToast.js shows
 //   that it happened.
 // - Coins pay while the app is open, on any screen: being in the app is the
 //   reward. (Until 2026-09-30 they paid only while Training was in front.)

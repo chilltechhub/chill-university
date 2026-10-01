@@ -26,6 +26,7 @@ import {
   addQuestTask, finishQuest, saveQuestResources,
 } from '../logic/questProgress';
 import ReminderComposer from '../components/ReminderComposer';
+import { shareText, milestoneText } from '../logic/shareOut';
 import { optionOrder } from '../logic/optionOrder';
 
 // Pass mark for the check: four in five. Missed questions can be retried
@@ -593,6 +594,7 @@ function DoneStep({ quest, progress, userId, navigation, ui }) {
   const { c, t, s } = ui;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [shareNote, setShareNote] = useState(null);
   const when = useMemo(() => {
     const d = progress.completedAt ? new Date(progress.completedAt) : null;
     return d ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : null;
@@ -638,6 +640,15 @@ function DoneStep({ quest, progress, userId, navigation, ui }) {
       {userId && (progress.explanation || progress.source?.title) ? (
         <SecondaryButton label="Open my Vault" icon="library-outline" onPress={() => navigation.navigate('KnowledgeScreen')} ui={ui} />
       ) : null}
+      <SecondaryButton
+        label={shareNote || 'Share that you finished it'}
+        icon="share-outline"
+        onPress={async () => {
+          const res = await shareText({ title: 'Deskartes', message: milestoneText('quest', quest.title) });
+          setShareNote(res === 'copied' ? 'Copied, paste it anywhere' : null);
+        }}
+        ui={ui}
+      />
       <SecondaryButton label="Do this quest again" icon="refresh" onPress={() => restartQuest(quest.id)} ui={ui} />
     </>
   );

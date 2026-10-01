@@ -35,7 +35,7 @@ import TourOverlay from './src/components/TourOverlay';
 import TourSpot from './src/components/TourSpot';
 import { rootStackRouter } from './src/logic/navRules';
 import DrillToast from './src/components/DrillToast';
-import CoinRewardToast from './src/components/CoinRewardToast';
+import RewardToast from './src/components/RewardToast';
 
 import HomeScreen    from './src/screens/HomeScreen';
 import GamesScreen   from './src/screens/GamesScreen';
@@ -500,8 +500,9 @@ function AppInner() {
       </SafeAreaView>
       <TourOverlay />
       <DrillToast />
-      {/* The pet's coins, off Training (on Training you watch it eat them). */}
-      <CoinRewardToast hidden={currentRouteName === 'Training'} />
+      {/* Pet coins (not on Training, where you watch it eat them) and the
+          XP real work earns. */}
+      <RewardToast hideCoins={currentRouteName === 'Training'} />
       <ShareIntentListener navigationRef={navigationRef} />
     </NavigationContainer>
   );

@@ -20,6 +20,7 @@ import { formatTime12 } from '../../components/TimePickerField';
 import TimeChips from '../../components/TimeChips';
 import { WEEKDAY_KEYS, daysLabel, sessionDates } from '../../logic/aiBridgeFormat';
 import { listProjectSessions, scheduleWorkSessions } from '../../api/workSessions';
+import { recordAction } from '../../logic/gamificationService';
 
 const GOLD = '#e8b34a'; // matches the gold trim used in the Idea Garden for linked builds
 
@@ -163,7 +164,7 @@ export default function ProjectDetailScreen() {
     if (uid) { try { setGardenCore(await getCoreForProject(uid, project.id)); } catch (e) { console.warn('garden link lookup error', e); } }
   }, [project?.id]);
   useEffect(() => { load(); }, [load]); useFocusEffect(useCallback(() => { load(); }, [load]));
-  if (!project) return null; const color = project.color || bp.accent; const filtered = filter === 'all' ? objects : objects.filter(x => x.kind === filter); const openTasks = rawData.tasks.filter(x => !x.completed).sort(planOrder).map(x => ({ ...x, kind: 'tasks' })); const next = openTasks.slice(0, 3); const deadlines = openTasks.filter(x => x.due_date).sort((a, b) => a.due_date.localeCompare(b.due_date)).slice(0, 4); const upcoming = sessions.filter(x => !x.completed).slice(0, 4); const dueLate = !!project.due_date && project.status !== 'completed' && project.due_date < todayStr(); const questions = objects.filter(x => x.kind === 'questions').slice(0, 3); const recent = objects.filter(x => x.kind !== 'tasks').slice(0, 4); const toggle = async x => { await supabase.from('project_tasks').update({ completed: !x.completed, completed_at: !x.completed ? new Date().toISOString() : null }).eq('id', x.id); load(); };
+  if (!project) return null; const color = project.color || bp.accent; const filtered = filter === 'all' ? objects : objects.filter(x => x.kind === filter); const openTasks = rawData.tasks.filter(x => !x.completed).sort(planOrder).map(x => ({ ...x, kind: 'tasks' })); const next = openTasks.slice(0, 3); const deadlines = openTasks.filter(x => x.due_date).sort((a, b) => a.due_date.localeCompare(b.due_date)).slice(0, 4); const upcoming = sessions.filter(x => !x.completed).slice(0, 4); const dueLate = !!project.due_date && project.status !== 'completed' && project.due_date < todayStr(); const questions = objects.filter(x => x.kind === 'questions').slice(0, 3); const recent = objects.filter(x => x.kind !== 'tasks').slice(0, 4); const toggle = async x => { await supabase.from('project_tasks').update({ completed: !x.completed, completed_at: !x.completed ? new Date().toISOString() : null }).eq('id', x.id); if (!x.completed) recordAction('project_step', x.id); load(); };
   const totalTasks = rawData.tasks.length; const doneTasks = rawData.tasks.filter(t => t.completed).length; const pct = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : null;
   // Share sends readable text through the phone's share sheet; a long press
   // still copies the full Markdown export.

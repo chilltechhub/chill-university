@@ -13,12 +13,13 @@
 // ranked up from one big game) shows them back to back instead of
 // merging into one confusing popup.
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, Modal, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { successHaptic } from '../logic/haptics';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { useTour } from '../../context/TourContext';
+import { shareText, milestoneText } from '../logic/shareOut';
 
 export default function LevelUpNotification() {
   const { colors: c } = useTheme();
@@ -35,6 +36,7 @@ export default function LevelUpNotification() {
   if (!event || tourActive) return null;
 
   const isLevel = event.type === 'level';
+  const shareable = isLevel || !!event.newTier;
 
   return (
     <Modal transparent animationType="fade" visible onRequestClose={dismissProgressEvent}>
@@ -63,12 +65,35 @@ export default function LevelUpNotification() {
             </View>
           )}
 
-          <TouchableOpacity style={s.btn} onPress={dismissProgressEvent} activeOpacity={0.85}>
+          <TouchableOpacity style={s.btn} onPress={dismissProgressEvent} activeOpacity={0.85} accessibilityRole="button">
             <Text style={s.btnText}>Nice!</Text>
           </TouchableOpacity>
+          {shareable && (
+            <ShareMilestone
+              text={milestoneText(isLevel ? 'level' : 'tier', isLevel ? event.to : (event.rankLabel?.label || `Rank ${event.to}`))}
+              s={s}
+            />
+          )}
         </View>
       </View>
     </Modal>
+  );
+}
+
+// Says "Copied" when the share sheet wasn't there and it went to the clipboard.
+function ShareMilestone({ text, s }) {
+  const [note, setNote] = useState(null);
+  return (
+    <TouchableOpacity
+      style={s.shareBtn}
+      accessibilityRole="button"
+      onPress={async () => {
+        const res = await shareText({ title: 'Deskartes', message: text });
+        setNote(res === 'copied' ? 'Copied, paste it anywhere' : null);
+      }}
+    >
+      <Text style={s.shareText}>{note || 'Share it'}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -86,4 +111,6 @@ const makeStyles = (c) => StyleSheet.create({
   unlockName: { fontSize: 13, color: c.text1, fontWeight: '600' },
   btn:        { width: '100%', backgroundColor: c.gold, borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
   btnText:    { fontSize: 15, fontWeight: '800', color: c.bg1 },
+  shareBtn:   { marginTop: 10, paddingVertical: 10, paddingHorizontal: 16 },
+  shareText:  { fontSize: 14, fontWeight: '700', color: c.gold, textAlign: 'center' },
 });

@@ -5,6 +5,7 @@ import { getActiveProfileId } from '../logic/activeProfile';
 import { cacheRead, cacheWrite, isOnline } from './offlineCache';
 import { todayStr, dateStr } from '../logic/dateUtils';
 import { AREA_COLORS } from '../data/areaColors';
+import { recordAction } from '../logic/gamificationService';
 
 export const AREAS = {
   physical:     { label: 'Physical',     emoji: '💪', color: AREA_COLORS.physical, preset: 'physical_starter' },
@@ -38,6 +39,7 @@ export async function upsertCheckin(userId, date, fields) {
     .select()
     .single();
   if (error) throw error;
+  recordAction('checkin', date);
   return data;
 }
 
@@ -187,6 +189,8 @@ export async function completeInstance(instanceId, completed = true) {
     .select()
     .single();
   if (error) throw error;
+  // Real work counts: a little XP and the day's streak (record_action).
+  if (completed) recordAction('planner_done', instanceId);
   return data;
 }
 
