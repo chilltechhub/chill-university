@@ -41,6 +41,7 @@ import { View, Text, TouchableOpacity, Animated, StyleSheet, Easing } from 'reac
 import { Ionicons } from '@expo/vector-icons';
 import PlayerCharacter from './PlayerCharacter';
 import PetCompanion from './PetCompanion';
+import useOnScreen from '../logic/useOnScreen';
 
 const STEP = 4;           // px moved per tick while holding an arrow
 const TICK_MS = 24;       // ms per movement tick (~40 ticks/sec)
@@ -88,6 +89,11 @@ const CharacterWalker = forwardRef(function CharacterWalker({
   const coinPopScale = useRef(new Animated.Value(1)).current;
   const coinPopupAnim = useRef(new Animated.Value(0)).current;
   const isStatic = !outfit.rig; // no walk-cycle art — use the hop instead
+  // Everything that runs on its own (bobbing rewards, spinning coins, the
+  // pet's wandering, new coins) stops while Training is behind another tab
+  // or the app is in the background. The tab stays mounted, so this all
+  // used to keep ticking for the whole session.
+  const onScreen = useOnScreen();
 
   const hasUnclaimed = !!rewards?.some(r => !r.claimed);
   const maxX = Math.max(0, stageWidth - characterSize);
@@ -110,7 +116,7 @@ const CharacterWalker = forwardRef(function CharacterWalker({
   // Every unclaimed collectible bobs gently in place together — a little
   // life so they read as "reach for these" rather than static icons.
   useEffect(() => {
-    if (!hasUnclaimed) return;
+    if (!hasUnclaimed || !onScreen) return;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(rewardBob, { toValue: -6, duration: 700, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
@@ -119,12 +125,12 @@ const CharacterWalker = forwardRef(function CharacterWalker({
     );
     loop.start();
     return () => loop.stop();
-  }, [hasUnclaimed, rewardBob]);
+  }, [hasUnclaimed, rewardBob, onScreen]);
 
   // Coins spin in place (a flattening scaleX) so they read as coins, not
   // static dots.
   useEffect(() => {
-    if (!coins.length) return;
+    if (!coins.length || !onScreen) return;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(coinSpin, { toValue: 1, duration: 900, easing: Easing.linear, useNativeDriver: true }),
@@ -133,12 +139,12 @@ const CharacterWalker = forwardRef(function CharacterWalker({
     );
     loop.start();
     return () => loop.stop();
-  }, [coins.length, coinSpin]);
+  }, [coins.length, coinSpin, onScreen]);
 
   // The pet wanders on its own — pick a new random spot every few
   // seconds and amble toward it, no controls involved.
   useEffect(() => {
-    if (stageWidth <= 0) return;
+    if (stageWidth <= 0 || !onScreen) return;
     let cancelled = false;
     let timeoutId;
     const pickNext = () => {
@@ -152,12 +158,12 @@ const CharacterWalker = forwardRef(function CharacterWalker({
     setPetTargetX(Math.random() * petMaxX);
     pickNext();
     return () => { cancelled = true; clearTimeout(timeoutId); };
-  }, [stageWidth, petMaxX]);
+  }, [stageWidth, petMaxX, onScreen]);
 
   // Step the pet toward wherever it's currently wandering to, and check
   // whether it's close enough to a coin to eat it along the way.
   useEffect(() => {
-    if (petTargetX == null) return;
+    if (petTargetX == null || !onScreen) return;
     const id = setInterval(() => {
       setPetX(prev => {
         if (prev == null) return prev;
@@ -169,11 +175,11 @@ const CharacterWalker = forwardRef(function CharacterWalker({
       });
     }, PET_TICK_MS);
     return () => clearInterval(id);
-  }, [petTargetX, petMaxX]);
+  }, [petTargetX, petMaxX, onScreen]);
 
   // A coin appears on the ground every so often, up to a small cap.
   useEffect(() => {
-    if (stageWidth <= 0) return;
+    if (stageWidth <= 0 || !onScreen) return;
     let cancelled = false;
     let timeoutId;
     const scheduleNext = () => {
@@ -186,7 +192,7 @@ const CharacterWalker = forwardRef(function CharacterWalker({
     };
     scheduleNext();
     return () => { cancelled = true; clearTimeout(timeoutId); };
-  }, [stageWidth]);
+  }, [stageWidth, onScreen]);
 
   // When the pet's wandering brings it close enough to a coin, eat it —
   // and, if there's still allowance left this cycle, credit it for real.

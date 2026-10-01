@@ -15,9 +15,9 @@ Every claim is listed with what the code actually does.
 
 | Phase | What | State |
 | --- | --- | --- |
-| 0 | Make future audits read the real code | done — `archive/` deleted (staged), three measured packs |
-| 1 | Crash safety (error screen, crash reports, request timeouts) | built on `fix/audit-phase1`, checked on web 2026-09-30: 1.1, 1.3, 1.4, 1.6 done; 1.5 code done, **SQL is yours to run**; 1.2 waits on a Sentry DSN (the hook, `src/logic/errorReporting.js`, is in) |
-| 2 | Daily loop fixes (reminder taps, re-renders, dead code) | not started |
+| 0 | Make future audits read the real code | done — `archive/` deleted, three measured packs (PR #33, merged) |
+| 1 | Crash safety (error screen, crash reports, request timeouts) | merged (PR #33, 2026-09-30): 1.1, 1.3, 1.4, 1.6 done, signed-in Home checked; 1.5 code done, **SQL is yours to run**; 1.2 later (your call; the hook, `src/logic/errorReporting.js`, is in) |
+| 2 | Daily loop fixes (reminder taps, re-renders, dead code) | built on `fix/audit-phase2`, checked on web signed in 2026-09-30: 2.1–2.5 and 2.7 done; 2.6 (optional DB trigger) left out |
 | 3 | Store readiness | not started (3.2 is yours) |
 | 4 | Retention features | needs your decisions first |
 
@@ -290,6 +290,18 @@ you to run it).
 | 1.6 | Export My Data writes a `.json` file and shares the file (S5), and reads its tables a few at a time instead of ~28 in a row (P12). Adds `expo-file-system` + `expo-sharing`, so it needs a new build to test on a phone; web keeps its download | `src/api/dataExport.js` | web: same file, faster; phone check in device QA |
 
 ## Phase 2: daily loop fixes
+
+**What was checked on web, signed in (2026-09-30, `fix/audit-phase2`):** the
+new targets open the right places (`drills` → Training with today's drills,
+`area` → that Life Area). `refreshProfile` keeps one identity through a server
+reload and a points award, and the Plus context value no longer changes on an
+award. Training's pet timer runs only while Training is in front (gone on
+Home and Library, back on return). `dateUtils.todayStr()`, which the Student
+widget now uses, gave 2026-09-30 while UTC was already 2026-10-01. The link
+rule passes 15 cases. **Not checked:** a real notification tap (needs a
+phone). **Left out:** 2.6, a database trigger that fills a missing
+`profile_id`. The known causes were fixed in fix-plan phase 2, and choosing
+which profile counts as "main" inside SQL deserves its own look.
 
 | # | Fix | Where | Verified by |
 | --- | --- | --- | --- |

@@ -33,9 +33,13 @@ const CHANNEL_ID = 'reminders';
 // longer applies, so an optimistic reminder is only ever delivered on a day
 // the app went unopened — which is exactly when it should be.
 const WINDOW_DAYS = 7;
+// `target` is where a tap lands (src/logic/openTarget.js, opened by
+// hubNotifications' tap handler). Without one a tap just opened the app on
+// whatever screen it was last on, so "Daily Drills open" didn't lead to
+// the drills.
 const KINDS = {
-  dailyTasks: { prefix: 'daily-tasks-reminder', hour: 19, minute: 0 },
-  streak:     { prefix: 'streak-reminder',      hour: 21, minute: 30 },
+  dailyTasks: { prefix: 'daily-tasks-reminder', hour: 19, minute: 0,  target: { kind: 'drills' } },
+  streak:     { prefix: 'streak-reminder',      hour: 21, minute: 30, target: { kind: 'home' } },
 };
 const idFor = (kind, dayOffset) => `${KINDS[kind].prefix}-d${dayOffset}`;
 
@@ -82,7 +86,7 @@ async function cancelKind(kind) {
 // which is how "opened the app at 11pm" stops producing a same-evening ping.
 async function scheduleOn(kind, dayOffset, title, body) {
   if (!Notifications) return;
-  const { hour, minute } = KINDS[kind];
+  const { hour, minute, target } = KINDS[kind];
   const trigger = new Date();
   trigger.setDate(trigger.getDate() + dayOffset);
   trigger.setHours(hour, minute, 0, 0);
@@ -90,7 +94,7 @@ async function scheduleOn(kind, dayOffset, title, body) {
   try {
     await Notifications.scheduleNotificationAsync({
       identifier: idFor(kind, dayOffset),
-      content: { title, body, sound: true },
+      content: { title, body, sound: true, data: { target } },
       trigger,
     });
   } catch {}
@@ -168,7 +172,8 @@ export async function cancelAllReminders() {
 // Resolves to the Date it will fire, or null where a notification can't be
 // scheduled (web, or permission refused), so the caller can fall back to
 // something that does work there.
-export async function scheduleActionReminder({ key, title, body, time }) {
+// `target` (optional) is where a tap opens, e.g. the life area it came from.
+export async function scheduleActionReminder({ key, title, body, time, target }) {
   if (!Notifications || Platform.OS === 'web') return null;
   const [h, m] = String(time || '').split(':').map(Number);
   if (!(h >= 0 && h < 24 && m >= 0 && m < 60)) return null;
@@ -182,7 +187,7 @@ export async function scheduleActionReminder({ key, title, body, time }) {
   try {
     await Notifications.scheduleNotificationAsync({
       identifier,
-      content: { title, body: body || undefined, sound: true },
+      content: { title, body: body || undefined, sound: true, data: target ? { target } : {} },
       trigger: Notifications.SchedulableTriggerInputTypes
         ? { type: Notifications.SchedulableTriggerInputTypes.DATE, date: at }
         : at,

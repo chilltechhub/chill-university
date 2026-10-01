@@ -50,7 +50,6 @@ import PlayScreen      from './src/screens/PlayScreen';
 import LeaderboardScreen from './src/screens/LeaderboardScreen';
 import AllProfilesScreen from './src/screens/AllProfilesScreen';
 import TopBar           from './src/components/TopBar';
-import MissionPopup      from './src/components/MissionPopup';
 import FloatingActionButton from './src/components/FloatingActionButton';
 import CommandPalette from './src/components/CommandPalette';
 import HelpScreen       from './src/screens/HelpScreen';
@@ -192,18 +191,6 @@ function MainTabs() {
       <Tab.Screen name="Home"     component={HomeScreen} />
       <Tab.Screen name="Training" component={GamesScreen} />
     </Tab.Navigator>
-  );
-}
-
-function MissionsOverlay() {
-  const { dailyMissions } = useUserProgress();
-  const [visible, setVisible] = React.useState(false);
-  return (
-    <MissionPopup
-      visible={visible}
-      onClose={() => setVisible(false)}
-      missions={dailyMissions || []}
-    />
   );
 }
 
@@ -494,7 +481,6 @@ function AppInner() {
             options={{ ...TransitionPresets.ModalSlideFromBottomIOS }}
           />
         </Stack.Navigator>
-        <MissionsOverlay />
         <LevelUpNotification />
         <UnlockNotification />
         {/* Not over a game: it sat on top of Start and the answer rows, and

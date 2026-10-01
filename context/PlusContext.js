@@ -106,6 +106,13 @@ export function PlusProvider({ children }) {
 
   const hasPlus = isPlus || storeEntitled;
 
+  // Only the plan fields, not the whole profile: the profile object changes
+  // on every points award, which made every Plus screen re-render mid-game.
+  const planExpiresAt = profile?.plan_expires_at || null;
+  const planPeriod = profile?.plan_period || null;
+  const planStore = profile?.plan_store || null;
+  const planWillRenew = profile?.plan_will_renew ?? null;
+
   const value = useMemo(() => ({
     supported,
     ready,
@@ -116,10 +123,10 @@ export function PlusProvider({ children }) {
     // a lock with no key is just a broken screen.
     contentLocked: plusOnSale === true && !hasPlus,
     plan: {
-      expiresAt: profile?.plan_expires_at || null,
-      period: profile?.plan_period || null,
-      store: profile?.plan_store || null,
-      willRenew: profile?.plan_will_renew ?? null,
+      expiresAt: planExpiresAt,
+      period: planPeriod,
+      store: planStore,
+      willRenew: planWillRenew,
     },
     packages,
     packagesError,
@@ -127,8 +134,9 @@ export function PlusProvider({ children }) {
     busy,
     buy,
     restore,
-    manageUrl: () => purchases.manageUrl(customerInfo, profile?.plan_store),
-  }), [supported, ready, plusOnSale, hasPlus, profile, packages, packagesError, loadPackages, busy, buy, restore, customerInfo]);
+    manageUrl: () => purchases.manageUrl(customerInfo, planStore),
+  }), [supported, ready, plusOnSale, hasPlus, planExpiresAt, planPeriod, planStore, planWillRenew,
+       packages, packagesError, loadPackages, busy, buy, restore, customerInfo]);
 
   return <PlusContext.Provider value={value}>{children}</PlusContext.Provider>;
 }

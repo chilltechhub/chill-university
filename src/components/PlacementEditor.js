@@ -9,8 +9,6 @@ export default function PlacementEditor({ visible, userId, components, areaKey, 
   const { colors: c } = useTheme();
   const [placed, setPlaced] = useState(new Set());
 
-  console.log('PlacementEditor render', { visible, areaKey, componentCount: components?.length });
-
   return (
     <Modal visible={!!visible} animationType="slide" >
       <View style={{ flex: 1, backgroundColor: c.bg0, padding: 40 }}>
