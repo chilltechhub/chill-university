@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { SCOPED_TABLES } from './profileScopedClient';
 import { getActiveProfileId } from '../logic/activeProfile';
+import { sessionNeedsSecondStep } from '../logic/mfaSession';
 
 const PREFIX = '@cth_cache_';
 
@@ -145,8 +146,13 @@ async function doFlush(supabase) {
   if (queue.length === 0) return { synced: 0, remaining: 0, dropped: 0 };
 
   let uid = null;
-  try { uid = (await supabase.auth.getSession())?.data?.session?.user?.id || null; } catch {}
-  if (!uid) return { synced: 0, remaining: queue.length, dropped: 0 };
+  let session = null;
+  try { session = (await supabase.auth.getSession())?.data?.session || null; } catch {}
+  uid = session?.user?.id || null;
+  // Password-only on a two-step account: the database refuses every write
+  // with a permission error, which the loop below would treat as permanent
+  // and drop. Wait for the code step instead.
+  if (!uid || sessionNeedsSecondStep(session)) return { synced: 0, remaining: queue.length, dropped: 0 };
 
   const remaining = [];
   let synced = 0;

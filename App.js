@@ -62,6 +62,7 @@ import AnnouncementBanner from './src/components/AnnouncementBanner';
 import LevelUpNotification from './src/components/LevelUpNotification';
 import UnlockNotification from './src/components/UnlockNotification';
 import MaintenanceScreen from './src/components/MaintenanceScreen';
+import ErrorBoundary from './src/components/ErrorBoundary';
 import FamilyScreen from './src/screens/family/FamilyScreen';
 import ChildProgressScreen from './src/screens/family/ChildProgressScreen';
 import OrganizationScreen from './src/screens/organization/OrganizationScreen';
@@ -523,6 +524,9 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
+      {/* Outside every provider, so a crash in one of them still shows
+          the "Something went wrong" screen rather than a blank app. */}
+      <ErrorBoundary>
       <ThemeProvider>
         <UIPrefsProvider>
           <RemoteConfigProvider>
@@ -555,6 +559,7 @@ export default function App() {
           </RemoteConfigProvider>
         </UIPrefsProvider>
       </ThemeProvider>
+      </ErrorBoundary>
     </SafeAreaProvider>
     </GestureHandlerRootView>
   );

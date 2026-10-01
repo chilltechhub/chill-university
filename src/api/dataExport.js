@@ -12,6 +12,16 @@
 import { Platform, Share } from 'react-native';
 import { supabase } from './supabaseClient';
 
+// Native-only modules, loaded lazily so web never pulls them in.
+function nativeFileModules() {
+  if (Platform.OS === 'web') return null;
+  try {
+    return { fs: require('expo-file-system'), sharing: require('expo-sharing') };
+  } catch {
+    return null; // a build from before these were added
+  }
+}
+
 // Tables keyed directly on the account.
 const USER_TABLES = [
   'persona_profiles', 'user_settings', 'captures', 'area_notes', 'projects',
@@ -37,6 +47,18 @@ async function readTable(query) {
   return error ? { error: error.message } : (data || []);
 }
 
+// Tables are read a few at a time. One after another was ~34 round trips in a
+// row, several seconds on a phone; all at once would be 34 requests fighting
+// over one connection.
+const BATCH = 6;
+async function inBatches(items, fn) {
+  const out = [];
+  for (let i = 0; i < items.length; i += BATCH) {
+    out.push(...await Promise.all(items.slice(i, i + BATCH).map(fn)));
+  }
+  return out;
+}
+
 export async function buildMyDataExport() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Sign in to export your data.');
@@ -44,16 +66,16 @@ export async function buildMyDataExport() {
   const tables = {};
   tables.profiles = await readTable(supabase.from('profiles').select('*').eq('id', user.id));
 
-  for (const t of USER_TABLES) {
-    tables[t] = await readTable(supabase.from(t).select('*').eq('user_id', user.id));
-  }
+  const userRows = await inBatches(USER_TABLES, t =>
+    readTable(supabase.from(t).select('*').eq('user_id', user.id)));
+  USER_TABLES.forEach((t, i) => { tables[t] = userRows[i]; });
 
-  for (const { table, key, parent } of CHILD_TABLES) {
+  // Child tables need their parent's ids, so they go after.
+  const childRows = await inBatches(CHILD_TABLES, ({ table, key, parent }) => {
     const ids = Array.isArray(tables[parent]) ? tables[parent].map(row => row.id).filter(Boolean) : [];
-    tables[table] = ids.length
-      ? await readTable(supabase.from(table).select('*').in(key, ids))
-      : [];
-  }
+    return ids.length ? readTable(supabase.from(table).select('*').in(key, ids)) : [];
+  });
+  CHILD_TABLES.forEach(({ table }, i) => { tables[table] = childRows[i]; });
 
   return {
     exported_at: new Date().toISOString(),
@@ -62,8 +84,11 @@ export async function buildMyDataExport() {
   };
 }
 
-// Web downloads a .json file; native opens the share sheet with the JSON as
-// text (Save to Files / Mail / Notes all accept it). No new native packages.
+// Web downloads a .json file. Phones write the file to the cache folder and
+// share the FILE (Save to Files, Drive, Mail…). It used to hand the whole
+// JSON to the share sheet as one text message, which for a heavy account is
+// megabytes across the bridge: a frozen or crashed share sheet, and "Save to
+// Files" made a text snippet, not a file.
 export async function shareMyDataExport() {
   const data = await buildMyDataExport();
   const json = JSON.stringify(data, null, 2);
@@ -82,5 +107,20 @@ export async function shareMyDataExport() {
     return;
   }
 
+  const mods = nativeFileModules();
+  if (mods && await mods.sharing.isAvailableAsync()) {
+    const file = new mods.fs.File(mods.fs.Paths.cache, filename);
+    file.create({ overwrite: true });
+    file.write(json);
+    await mods.sharing.shareAsync(file.uri, {
+      mimeType: 'application/json',
+      UTI: 'public.json',
+      dialogTitle: 'Export My Data',
+    });
+    return;
+  }
+
+  // Older build without the file modules: the text share still works for a
+  // small account.
   await Share.share({ title: filename, message: json });
 }

@@ -81,6 +81,7 @@ export default function CommunityFeedScreen() {
   const [loading, setLoading]   = useState(true);
   const [refreshing, setRefresh]= useState(false);
   const [notConfigured, setNC]  = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [showCompose, setShow]  = useState(false);
   const [draft, setDraft]       = useState({ kind: 'breakthrough', title: '', body: '', link: '', tags: '' });
   const [saving, setSaving]     = useState(false);
@@ -96,9 +97,17 @@ export default function CommunityFeedScreen() {
       const rows = cfg.ranked ? await getTopTalent(30) : await getFeed(cfg.kind, 50);
       setPosts(rows);
       setNC(false);
+      setLoadError(false);
     } catch (e) {
       if (e.message === COMMUNITY_NOT_CONFIGURED) setNC(true);
-      else console.warn('CommunityFeed load', e.message);
+      else {
+        // Offline or timed out. This used to fall through to the empty
+        // feed, which read as "nobody has posted" when really nothing
+        // loaded. Posts already on screen stay; a banner says the refresh
+        // failed.
+        console.warn('CommunityFeed load', e.message);
+        setLoadError(true);
+      }
     }
     setLoading(false);
   }, []);
@@ -306,7 +315,30 @@ export default function CommunityFeedScreen() {
             </View>
           )}
 
-          {posts.length === 0 ? (
+          {loadError && posts.length > 0 && (
+            <TouchableOpacity onPress={onRefresh} accessibilityRole="button" accessibilityLabel="Couldn't refresh. Try again."
+              style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.md, marginBottom: s.md,
+                       borderWidth: 1, borderColor: c.border, flexDirection: 'row', gap: s.sm, alignItems: 'center' }}>
+              <Ionicons name="cloud-offline-outline" size={16} color={c.text3} />
+              <Text style={{ flex: 1, fontSize: t.xs, color: c.text2 }}>Couldn&apos;t refresh. Tap to try again.</Text>
+            </TouchableOpacity>
+          )}
+
+          {loadError && posts.length === 0 ? (
+            <View style={{ alignItems: 'center', paddingVertical: 56 }}>
+              <Ionicons name="cloud-offline-outline" size={44} color={c.text3} style={{ marginBottom: s.lg }} />
+              <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.sm, textAlign: 'center' }}>
+                Couldn&apos;t load the feed
+              </Text>
+              <Text style={{ fontSize: t.sm, color: c.text3, textAlign: 'center', lineHeight: 20, marginBottom: s.xl }}>
+                Check your connection and try again.
+              </Text>
+              <TouchableOpacity onPress={() => { setLoading(true); load(tab); }} accessibilityRole="button"
+                style={{ backgroundColor: c.teal, borderRadius: r.full, paddingHorizontal: s.xl, paddingVertical: 11 }}>
+                <Text style={{ color: c.onFill, fontWeight: '700', fontSize: t.sm }}>Try again</Text>
+              </TouchableOpacity>
+            </View>
+          ) : posts.length === 0 ? (
             <View style={{ alignItems: 'center', paddingVertical: 56 }}>
               {showEmojis
                 ? <Text style={{ fontSize: 48, marginBottom: s.lg }}>🌱</Text>

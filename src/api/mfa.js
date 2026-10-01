@@ -7,9 +7,12 @@
 // aal2 before the app opens (App.js sends an aal1 session back to Login on
 // launch too).
 //
-// This is enforced by the app, not the database: RLS doesn't check aal2.
-// It stops someone who has only the password from getting into the app.
+// The database enforces it too (20260930120000_require_mfa_in_database.sql):
+// a password-only session on an account with a verified factor is refused
+// by every table and RPC. Before that it was app-only, so someone with just
+// the password could skip the code by calling the API directly.
 import { supabase } from './supabaseClient';
+export { sessionNeedsSecondStep } from '../logic/mfaSession';
 
 // True when this account has 2FA on and the current session hasn't done
 // the code step yet.
