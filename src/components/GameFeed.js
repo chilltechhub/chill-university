@@ -57,6 +57,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import TourSpot from './TourSpot';
+import { useGameTheme } from './GameShell';
 
 import FactorCraftGame from './FactorCraftGame';
 import CoinGame from './CoinGame';
@@ -158,6 +159,9 @@ const GAMES_MASTER = shuffle(getEnabledGames()).map(g => ({
 // passes through whichever route param it got (`index` or `gameId`).
 const GameFeed = forwardRef(({ initialGame }, ref) => {
   const scrollRef = useRef(null);
+  // Pages and the arrow gutter take the game's own background, so in light
+  // mode the gutter isn't a navy stripe down the side of a light game.
+  const G = useGameTheme();
 
   // Two questions from docs/access-system.md, in order. Allowed? — the
   // admin kill switch (app_config's 'disabled_games' row); a game switched
@@ -275,7 +279,7 @@ const GameFeed = forwardRef(({ initialGame }, ref) => {
           {GAMES.map((item, index) => {
             const isActive = index === activeIndex;
             return (
-              <View key={item.id} style={[styles.page, { height: pageHeight }]}>
+              <View key={item.id} style={[styles.page, { height: pageHeight, backgroundColor: G.bg }]}>
                 <View style={styles.pageContent}>
                   {isActive ? (
                     <item.component />
@@ -283,7 +287,7 @@ const GameFeed = forwardRef(({ initialGame }, ref) => {
                     // Static placeholder — no game logic, no timers, nothing mounted.
                     <View style={styles.placeholder}>
                       <Text style={styles.placeholderIcon}>{item.icon}</Text>
-                      <Text style={[styles.placeholderTitle, item.color && { color: item.color }]}>{item.title}</Text>
+                      <Text style={[styles.placeholderTitle, { color: G.muted }, item.color && { color: item.color }]}>{item.title}</Text>
                     </View>
                   )}
                 </View>
@@ -308,7 +312,7 @@ const GameFeed = forwardRef(({ initialGame }, ref) => {
           >
             <Ionicons name="chevron-up" size={20} color="#eaf2ff" />
           </TouchableOpacity>
-          <Text style={styles.navCount}>{activeIndex + 1}/{GAMES.length}</Text>
+          <Text style={[styles.navCount, { color: G.muted }]}>{activeIndex + 1}/{GAMES.length}</Text>
           <TouchableOpacity
             style={[styles.navBtn, activeIndex >= GAMES.length - 1 && styles.navBtnOff]}
             disabled={activeIndex >= GAMES.length - 1}

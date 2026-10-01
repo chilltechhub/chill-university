@@ -12,7 +12,7 @@
 -- a planner item, a project step, a life-area action or a whole goal moved
 -- nothing, and the streak counted merely opening the app. record_action() is
 -- the one door for "the person did something":
---   * planner_done, project_step, area_action, goal_done, checkin
+--   * planner_done, task_done, project_step, area_action, goal_done, checkin
 --       5 XP each (XP only: points are the prize cards), at most 50 XP in any
 --       24 hours, and the same item (p_ref) pays once per 24 hours, so ticking
 --       a box on and off can't farm it.
@@ -141,11 +141,11 @@ begin
   if v_uid is null then
     raise exception 'Not signed in.';
   end if;
-  if p_kind not in ('planner_done', 'project_step', 'area_action', 'goal_done', 'checkin', 'game', 'lesson', 'quest') then
+  if p_kind not in ('planner_done', 'task_done', 'project_step', 'area_action', 'goal_done', 'checkin', 'game', 'lesson', 'quest') then
     raise exception 'Unknown action.';
   end if;
 
-  if p_kind in ('planner_done', 'project_step', 'area_action', 'goal_done', 'checkin') then
+  if p_kind in ('planner_done', 'task_done', 'project_step', 'area_action', 'goal_done', 'checkin') then
     perform pg_advisory_xact_lock(hashtext('real_action:' || v_uid::text));
     select coalesce(sum(xp), 0) into v_earned
       from public.action_claims

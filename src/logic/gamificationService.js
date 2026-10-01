@@ -512,13 +512,14 @@ export async function advanceTopicMission(userId, subjectKey) {
  * The one call for "the person did something" (record_action(),
  * 20260930140000): it keeps the streak going, and real-life kinds earn a
  * little XP (5 each, 50 a day, the same item once a day).
- *   planner_done, project_step, area_action, goal_done, checkin  → XP + streak
+ *   planner_done, task_done, project_step, area_action, goal_done, checkin  → XP + streak
  *   game, lesson, quest                                         → streak only
  * Opening the app no longer counts as a day: something has to be done.
  * Fire and forget: callers never wait on it, and it never throws.
  */
 export const REAL_ACTION_LABELS = {
   planner_done: 'Planner item done',
+  task_done:    'Task done',
   project_step: 'Project step done',
   area_action:  'Life area action',
   goal_done:    'Goal finished',

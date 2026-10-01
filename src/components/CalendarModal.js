@@ -21,6 +21,7 @@ import { dateStr } from '../logic/dateUtils';
 import TimePickerField from './TimePickerField';
 import PlanDetailSheet from './PlanDetailSheet';
 import { byTime, timeRange } from '../logic/plannerLayout';
+import { recordAction } from '../logic/gamificationService';
 
 // ─── Notifications ────────────────────────────────────────────────────────────
 let Notifications = null;
@@ -321,7 +322,7 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
     await loadWeek();
   };
   const completeTaskEvt = async (evt) => {
-    try { await supabase.from('tasks').update({ completed: true, completed_at: new Date().toISOString() }).eq('id', evt.raw.id); }
+    try { await supabase.from('tasks').update({ completed: true, completed_at: new Date().toISOString() }).eq('id', evt.raw.id); recordAction('task_done', evt.raw.id); }
     catch (e) { Alert.alert("Couldn't update that", 'Something went wrong — try again.'); }
     setOpenKey(null);
     await loadWeek();

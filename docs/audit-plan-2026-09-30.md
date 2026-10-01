@@ -19,7 +19,8 @@ Every claim is listed with what the code actually does.
 | 1 | Crash safety (error screen, crash reports, request timeouts) | merged (PR #33, 2026-09-30): 1.1, 1.3, 1.4, 1.6 done, signed-in Home checked; 1.5 code done, **SQL is yours to run**; 1.2 later (your call; the hook, `src/logic/errorReporting.js`, is in) |
 | 2 | Daily loop fixes (reminder taps, re-renders, dead code) | merged (PR #34); built on `fix/audit-phase2`, checked on web signed in 2026-09-30: 2.1–2.5, 2.7 (revised) and 2.8 done; 2.6 (optional DB trigger) left out; **pet-coin SQL is yours to run** |
 | 3 | Store readiness | merged (PR #35); built on `fix/audit-phase3`, checked on web 2026-09-30: 3.1, 3.3, 3.4, 3.5 done; **3.2 is yours** (commands in `docs/store-submission.md` §2) |
-| 4 | Retention features | built on `fix/audit-phase4`, checked on web 2026-09-30: 4.1, 4.2, 4.3, 4.6 (calendar export), 4.7, 4.8 done; 4.4 and 4.5 covered by what exists; drag-to-reschedule left out; **SQL `20260930140000` is yours to run** |
+| 4 | Retention features | merged (PR #36); built on `fix/audit-phase4`, checked on web 2026-09-30: 4.1, 4.2, 4.3, 4.6 (calendar export), 4.7, 4.8 done; 4.4 and 4.5 covered by what exists; drag-to-reschedule left out; **SQL `20260930140000` is yours to run** |
+| Polish | Walkthrough of every screen before shipping | `fix/polish-walkthrough`, 2026-09-30: ~130 routes crawled with no crash or console error, full game round played. Fixed: in-game "Score 0" read as "you earned nothing" (now "Points · at round end", since points come from the prize card), short runs end on "Good start" + the XP earned, finishing a Home/Inbox/calendar task now counts (`task_done` in `record_action`, added to `20260930140000`), Training buttons fit at 375 px, the game feed's arrow gutter follows light mode, web tab titles read "Planner · Deskartes" instead of route names. No new features |
 
 ## Why most of the audit missed
 
