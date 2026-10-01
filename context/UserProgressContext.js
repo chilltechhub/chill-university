@@ -7,6 +7,7 @@ import { getLevelUnlocks, getRankUnlocks, getPointUnlocks } from '../src/logic/u
 import { cacheRead, cacheWrite, isOnline } from '../src/api/offlineCache';
 import { todayStr, daysBetween } from '../src/logic/dateUtils';
 import { drillCriteria, drillCounts } from '../src/logic/drills';
+import { sessionNeedsSecondStep } from '../src/logic/mfaSession';
 
 /* ─── Subject config ───────────────────────────────────────────────────────── */
 export const SUBJECT_CONFIG = {
@@ -158,11 +159,17 @@ export function UserProgressProvider({ children }) {
   // It also only reloads when the signed-in user actually changes: an hourly
   // TOKEN_REFRESHED (or the SIGNED_IN some versions re-emit on tab focus)
   // used to re-run the whole load and flash the loading state.
+  //
+  // A password-only session on an account with two-step sign-in counts as
+  // signed out. LoginScreen is still asking for the code, and the database
+  // refuses that session everything (20260930120000), so loading here would
+  // only fill the app with failed reads. Entering the code fires
+  // MFA_CHALLENGE_VERIFIED with a full session, and the user loads then.
   const loadedForUserRef = useRef(null);
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        const u = session?.user || null;
+        const u = session?.user && !sessionNeedsSecondStep(session) ? session.user : null;
         setUser(u);
         if (u) {
           if (loadedForUserRef.current === u.id && event !== 'USER_UPDATED') return;
