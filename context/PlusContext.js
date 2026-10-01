@@ -43,10 +43,16 @@ export function PlusProvider({ children }) {
     setPackages(null);
     (async () => {
       const ok = await purchases.identify(userId);
-      if (cancelled || !ok || !userId) return;
-      const info = await purchases.getCustomerInfo();
-      if (cancelled) return;
-      setCustomerInfo(info);
+      if (cancelled || !ok) return;
+      // A guest is ready too, so the paywall can show plans and prices
+      // before asking them to sign in. Buying still needs an account (Plus
+      // follows the account, not the phone); there's just no customer
+      // info to read without one.
+      if (userId) {
+        const info = await purchases.getCustomerInfo();
+        if (cancelled) return;
+        setCustomerInfo(info);
+      }
       setReady(true);
     })();
     return () => { cancelled = true; };

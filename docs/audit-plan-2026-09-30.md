@@ -17,8 +17,8 @@ Every claim is listed with what the code actually does.
 | --- | --- | --- |
 | 0 | Make future audits read the real code | done — `archive/` deleted, three measured packs (PR #33, merged) |
 | 1 | Crash safety (error screen, crash reports, request timeouts) | merged (PR #33, 2026-09-30): 1.1, 1.3, 1.4, 1.6 done, signed-in Home checked; 1.5 code done, **SQL is yours to run**; 1.2 later (your call; the hook, `src/logic/errorReporting.js`, is in) |
-| 2 | Daily loop fixes (reminder taps, re-renders, dead code) | built on `fix/audit-phase2`, checked on web signed in 2026-09-30: 2.1–2.5, 2.7 (revised) and 2.8 done; 2.6 (optional DB trigger) left out; **pet-coin SQL is yours to run** |
-| 3 | Store readiness | not started (3.2 is yours) |
+| 2 | Daily loop fixes (reminder taps, re-renders, dead code) | merged (PR #34); built on `fix/audit-phase2`, checked on web signed in 2026-09-30: 2.1–2.5, 2.7 (revised) and 2.8 done; 2.6 (optional DB trigger) left out; **pet-coin SQL is yours to run** |
+| 3 | Store readiness | built on `fix/audit-phase3`, checked on web 2026-09-30: 3.1, 3.3, 3.4, 3.5 done; **3.2 is yours** (commands in `docs/store-submission.md` §2) |
 | 4 | Retention features | needs your decisions first |
 
 ## Why most of the audit missed
@@ -315,6 +315,17 @@ which profile counts as "main" inside SQL deserves its own look.
 | 2.8 | **Pet coins: one every 3 minutes (20 an hour), at most 50 in any 24 hours** (was 12 per six hours). The server enforces it and says when the next coin can pay; the walker puts one coin down at that moment, so every coin the pet eats is real. Off Training, a toast shows it happened: your pet, a spinning coin, "+1 · Your pet found a coin" under the top bar (coins close together add up to "+2"); fades only with Reduce Motion; announced to screen readers. **You:** run `20260930130000_pet_coins_every_3_minutes.sql` | `useCoinRewards.js`, `CharacterWalker.js`, `GamesScreen.js`, new `CoinRewardToast.js`, `gamificationService.js` (awards carry a source), migration | stubbed server: coin found on Home, toast shown, "+2" for two, hidden on Training, next coin saved 3 min out |
 
 ## Phase 3: store readiness
+
+**What was checked on web (2026-09-30, `fix/audit-phase3`):** a guest on
+the paywall sees the plans, the renewal terms and "Sign in to subscribe",
+which opens the sign-in sheet over the paywall. On web without a store they
+still get "bought in the app". The plans were fed by a temporary test hook,
+removed before commit. With Plus faked as renewing, the delete dialog's
+confirm step shows "Your Plus subscription keeps billing" and Manage
+subscription; nothing was deleted. `docs/store-submission.md` is the
+checklist for 3.2–3.4. Also fixed: `package.json` had no `name`, so npm
+stamped whatever folder ran the install into the lockfile (Phase 1 merged
+"audit-phase1"). It's now fixed as "chill-app".
 
 | # | Fix | Where | Who |
 | --- | --- | --- | --- |
