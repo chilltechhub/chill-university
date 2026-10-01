@@ -17,7 +17,7 @@ Every claim is listed with what the code actually does.
 | --- | --- | --- |
 | 0 | Make future audits read the real code | done — `archive/` deleted, three measured packs (PR #33, merged) |
 | 1 | Crash safety (error screen, crash reports, request timeouts) | merged (PR #33, 2026-09-30): 1.1, 1.3, 1.4, 1.6 done, signed-in Home checked; 1.5 code done, **SQL is yours to run**; 1.2 later (your call; the hook, `src/logic/errorReporting.js`, is in) |
-| 2 | Daily loop fixes (reminder taps, re-renders, dead code) | built on `fix/audit-phase2`, checked on web signed in 2026-09-30: 2.1–2.5 and 2.7 done; 2.6 (optional DB trigger) left out |
+| 2 | Daily loop fixes (reminder taps, re-renders, dead code) | built on `fix/audit-phase2`, checked on web signed in 2026-09-30: 2.1–2.5, 2.7 (revised) and 2.8 done; 2.6 (optional DB trigger) left out; **pet-coin SQL is yours to run** |
 | 3 | Store readiness | not started (3.2 is yours) |
 | 4 | Retention features | needs your decisions first |
 
@@ -295,8 +295,8 @@ you to run it).
 new targets open the right places (`drills` → Training with today's drills,
 `area` → that Life Area). `refreshProfile` keeps one identity through a server
 reload and a points award, and the Plus context value no longer changes on an
-award. Training's pet timer runs only while Training is in front (gone on
-Home and Library, back on return). `dateUtils.todayStr()`, which the Student
+award. (Training's pet timer was first made to stop off-tab; reversed the same day
+at your request, see 2.7.) `dateUtils.todayStr()`, which the Student
 widget now uses, gave 2026-09-30 while UTC was already 2026-10-01. The link
 rule passes 15 cases. **Not checked:** a real notification tap (needs a
 phone). **Left out:** 2.6, a database trigger that fills a missing
@@ -311,7 +311,8 @@ which profile counts as "main" inside SQL deserves its own look.
 | 2.4 | Student "Today" widget uses the local date, not UTC (R6) | `StudentWidgets.js:17` → `dateUtils.todayStr` | preview with the clock set to 9 pm US time |
 | 2.5 | Life-area link actions open only `http(s)`, `mailto:` and `tel:` (S4) | `areaActionsService.js:205` | unit check |
 | 2.6 | Belt and braces for S2: a database trigger fills a missing `profile_id` on scoped tables with the account's main profile, so an early write can't vanish (optional; the known causes are already fixed) | new migration | insert without `profile_id` → row lands in the main profile |
-| 2.7 | Sprites and the Training walker pause when their screen isn't in front or the app is in the background (P6); `FolderRow` styles memoized (P7) | `AnimatedSprite.js`, `CharacterWalker.js`, `FolderRow.js` | switch tabs in the preview, confirm the timers stop |
+| 2.7 | ~~Pause sprites when their tab isn't in front~~ **Changed 2026-09-30 (your call): the pet and sprites keep going on every screen while the app is open (being in the app is the reward) and pause only when the app is in the background** (`src/logic/useAppActive.js`). Training now loads at launch so the pet is out from the start. `FolderRow` styles memoized (P7) | `AnimatedSprite.js`, `CharacterWalker.js`, `App.js` (Training `lazy: false`), `FolderRow.js` | Training's walker measured and moving while Home is in front |
+| 2.8 | **Pet coins: one every 3 minutes (20 an hour), at most 50 in any 24 hours** (was 12 per six hours). The server enforces it and says when the next coin can pay; the walker puts one coin down at that moment, so every coin the pet eats is real. Off Training, a toast shows it happened: your pet, a spinning coin, "+1 · Your pet found a coin" under the top bar (coins close together add up to "+2"); fades only with Reduce Motion; announced to screen readers. **You:** run `20260930130000_pet_coins_every_3_minutes.sql` | `useCoinRewards.js`, `CharacterWalker.js`, `GamesScreen.js`, new `CoinRewardToast.js`, `gamificationService.js` (awards carry a source), migration | stubbed server: coin found on Home, toast shown, "+2" for two, hidden on Training, next coin saved 3 min out |
 
 ## Phase 3: store readiness
 

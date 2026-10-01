@@ -41,7 +41,7 @@ import { View, Text, TouchableOpacity, Animated, StyleSheet, Easing } from 'reac
 import { Ionicons } from '@expo/vector-icons';
 import PlayerCharacter from './PlayerCharacter';
 import PetCompanion from './PetCompanion';
-import useOnScreen from '../logic/useOnScreen';
+import useAppActive from '../logic/useAppActive';
 
 const STEP = 4;           // px moved per tick while holding an arrow
 const TICK_MS = 24;       // ms per movement tick (~40 ticks/sec)
@@ -56,14 +56,20 @@ const PET_WANDER_MIN_MS = 2500;  // how often the pet picks a new place to wande
 const PET_WANDER_MAX_MS = 5500;
 const PET_EAT_RANGE = 22;        // how close the pet's center must be to a coin's center, in px
 const COIN_SIZE = 18;
-const COIN_SPAWN_MIN_MS = 4000;  // how often a new coin appears on the ground
+const COIN_SPAWN_MIN_MS = 4000;  // how often a new coin appears on the ground (no reward rules wired)
 const COIN_SPAWN_MAX_MS = 8000;
 const MAX_COINS = 3;             // keep the ground from getting cluttered
+const FIRST_COIN_MS = 8000;      // with nextCoinAt: the soonest a coin appears after the stage does
 
 const CharacterWalker = forwardRef(function CharacterWalker({
   outfit, accessory, pet, characterSize = 100, petSize = 42,
   rewards, onClaimReward, rewardPoints = 15,
   onCoinCollected, coinRewardsRemaining, coinRewardPoints = 1,
+  // From useCoinRewards: when the next coin can pay. With it, one coin is
+  // put down at that moment (every 3 minutes, none past the day's 50), so
+  // every coin the pet eats is a real one. Without it, coins keep popping up
+  // every few seconds as decoration, like before.
+  nextCoinAt,
 }, ref) {
   const [stageWidth, setStageWidth] = useState(0);
   const [x, setX] = useState(null); // null until the first layout centers it
@@ -90,10 +96,10 @@ const CharacterWalker = forwardRef(function CharacterWalker({
   const coinPopupAnim = useRef(new Animated.Value(0)).current;
   const isStatic = !outfit.rig; // no walk-cycle art — use the hop instead
   // Everything that runs on its own (bobbing rewards, spinning coins, the
-  // pet's wandering, new coins) stops while Training is behind another tab
-  // or the app is in the background. The tab stays mounted, so this all
-  // used to keep ticking for the whole session.
-  const onScreen = useOnScreen();
+  // pet's wandering and coin finding) keeps going on every screen: being in
+  // the app is what the coins reward. It pauses only while the app is in
+  // the background (src/logic/useAppActive.js).
+  const appOpen = useAppActive();
 
   const hasUnclaimed = !!rewards?.some(r => !r.claimed);
   const maxX = Math.max(0, stageWidth - characterSize);
@@ -116,7 +122,7 @@ const CharacterWalker = forwardRef(function CharacterWalker({
   // Every unclaimed collectible bobs gently in place together — a little
   // life so they read as "reach for these" rather than static icons.
   useEffect(() => {
-    if (!hasUnclaimed || !onScreen) return;
+    if (!hasUnclaimed || !appOpen) return;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(rewardBob, { toValue: -6, duration: 700, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
@@ -125,12 +131,12 @@ const CharacterWalker = forwardRef(function CharacterWalker({
     );
     loop.start();
     return () => loop.stop();
-  }, [hasUnclaimed, rewardBob, onScreen]);
+  }, [hasUnclaimed, rewardBob, appOpen]);
 
   // Coins spin in place (a flattening scaleX) so they read as coins, not
   // static dots.
   useEffect(() => {
-    if (!coins.length || !onScreen) return;
+    if (!coins.length || !appOpen) return;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(coinSpin, { toValue: 1, duration: 900, easing: Easing.linear, useNativeDriver: true }),
@@ -139,12 +145,12 @@ const CharacterWalker = forwardRef(function CharacterWalker({
     );
     loop.start();
     return () => loop.stop();
-  }, [coins.length, coinSpin, onScreen]);
+  }, [coins.length, coinSpin, appOpen]);
 
   // The pet wanders on its own — pick a new random spot every few
   // seconds and amble toward it, no controls involved.
   useEffect(() => {
-    if (stageWidth <= 0 || !onScreen) return;
+    if (stageWidth <= 0 || !appOpen) return;
     let cancelled = false;
     let timeoutId;
     const pickNext = () => {
@@ -158,12 +164,12 @@ const CharacterWalker = forwardRef(function CharacterWalker({
     setPetTargetX(Math.random() * petMaxX);
     pickNext();
     return () => { cancelled = true; clearTimeout(timeoutId); };
-  }, [stageWidth, petMaxX, onScreen]);
+  }, [stageWidth, petMaxX, appOpen]);
 
   // Step the pet toward wherever it's currently wandering to, and check
   // whether it's close enough to a coin to eat it along the way.
   useEffect(() => {
-    if (petTargetX == null || !onScreen) return;
+    if (petTargetX == null || !appOpen) return;
     const id = setInterval(() => {
       setPetX(prev => {
         if (prev == null) return prev;
@@ -175,11 +181,25 @@ const CharacterWalker = forwardRef(function CharacterWalker({
       });
     }, PET_TICK_MS);
     return () => clearInterval(id);
-  }, [petTargetX, petMaxX, onScreen]);
+  }, [petTargetX, petMaxX, appOpen]);
 
   // A coin appears on the ground every so often, up to a small cap.
+  // Paced by the reward rules: one coin, put down when it can pay.
   useEffect(() => {
-    if (stageWidth <= 0 || !onScreen) return;
+    // Infinity = the saved timing hasn't loaded yet. (setTimeout treats an
+    // endless delay as zero, so it has to be skipped here, not scheduled.)
+    if (nextCoinAt === undefined || !Number.isFinite(nextCoinAt) || stageWidth <= 0 || !appOpen || coins.length) return undefined;
+    // Past the day's 50, nextCoinAt is when the 24-hour window frees one up,
+    // so this simply waits until then.
+    const delay = Math.max(FIRST_COIN_MS, nextCoinAt - Date.now());
+    const timeoutId = setTimeout(() => {
+      setCoins(prev => (prev.length ? prev : [{ id: coinIdRef.current++, xFraction: 0.1 + Math.random() * 0.8 }]));
+    }, delay);
+    return () => clearTimeout(timeoutId);
+  }, [nextCoinAt, stageWidth, appOpen, coins.length]);
+
+  useEffect(() => {
+    if (nextCoinAt !== undefined || stageWidth <= 0 || !appOpen) return;
     let cancelled = false;
     let timeoutId;
     const scheduleNext = () => {
@@ -192,7 +212,7 @@ const CharacterWalker = forwardRef(function CharacterWalker({
     };
     scheduleNext();
     return () => { cancelled = true; clearTimeout(timeoutId); };
-  }, [stageWidth, onScreen]);
+  }, [stageWidth, appOpen, nextCoinAt]);
 
   // When the pet's wandering brings it close enough to a coin, eat it —
   // and, if there's still allowance left this cycle, credit it for real.

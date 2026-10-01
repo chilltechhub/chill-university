@@ -8,25 +8,25 @@
 
 import React, { useState, useEffect } from 'react';
 import { View, Image } from 'react-native';
-import useOnScreen from '../logic/useOnScreen';
+import useAppActive from '../logic/useAppActive';
 
 const FPS = 8;
 
 export default function AnimatedSprite({ sheet, size = 64, style }) {
   const [frame, setFrame] = useState(0);
-  // Holds its current frame while the screen is behind another tab or the
-  // app is in the background, and picks up from there.
-  const onScreen = useOnScreen();
+  // Keeps playing on every screen; only holds its frame while the app is in
+  // the background, and picks up from there.
+  const appOpen = useAppActive();
 
   useEffect(() => { setFrame(0); }, [sheet.source]);
 
   useEffect(() => {
-    if (!onScreen) return undefined;
+    if (!appOpen) return undefined;
     const id = setInterval(() => {
       setFrame(f => (f + 1) % sheet.frames);
     }, 1000 / FPS);
     return () => clearInterval(id);
-  }, [sheet.source, sheet.frames, onScreen]);
+  }, [sheet.source, sheet.frames, appOpen]);
 
   const scale = size / sheet.frameHeight;
   const frameW = sheet.frameWidth * scale;

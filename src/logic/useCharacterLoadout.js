@@ -30,6 +30,14 @@ function findUnlocked(list, id, stats) {
   return found && found.unlock(stats) ? found : list.find(o => o.unlock(stats)) || list[0];
 }
 
+// The equipped pet, read fresh from storage, for things that live outside a
+// screen and so can't use the hook below (its refresh runs on screen focus):
+// CoinRewardToast shows the pet that found the coin.
+export async function readEquippedPet(stats) {
+  const saved = await cacheRead(KEY);
+  return findUnlocked(PET_TIERS, saved?.petId || DEFAULT_PET_ID, stats);
+}
+
 export default function useCharacterLoadout(stats) {
   const [loadout, setLoadoutState] = useState(DEFAULT_LOADOUT);
   const [ready, setReady] = useState(false);

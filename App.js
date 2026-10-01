@@ -35,6 +35,7 @@ import TourOverlay from './src/components/TourOverlay';
 import TourSpot from './src/components/TourSpot';
 import { rootStackRouter } from './src/logic/navRules';
 import DrillToast from './src/components/DrillToast';
+import CoinRewardToast from './src/components/CoinRewardToast';
 
 import HomeScreen    from './src/screens/HomeScreen';
 import GamesScreen   from './src/screens/GamesScreen';
@@ -189,7 +190,10 @@ function MainTabs() {
         })}
       />
       <Tab.Screen name="Home"     component={HomeScreen} />
-      <Tab.Screen name="Training" component={GamesScreen} />
+      {/* Mounted at launch, not on first visit: the pet on this tab finds
+          coins while the app is open on any screen (src/logic/useCoinRewards.js),
+          so it has to be out from the start. */}
+      <Tab.Screen name="Training" component={GamesScreen} options={{ lazy: false }} />
     </Tab.Navigator>
   );
 }
@@ -496,6 +500,8 @@ function AppInner() {
       </SafeAreaView>
       <TourOverlay />
       <DrillToast />
+      {/* The pet's coins, off Training (on Training you watch it eat them). */}
+      <CoinRewardToast hidden={currentRouteName === 'Training'} />
       <ShareIntentListener navigationRef={navigationRef} />
     </NavigationContainer>
   );
