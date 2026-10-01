@@ -11,6 +11,7 @@
 //   { kind: 'planner' }              the Planner
 //   { kind: 'inbox', params }        the Capture Inbox ({ openCapture, plan })
 //   { kind: 'home' }                 the Home tab
+//   { kind: 'drills' }               Training, with today's Daily Drills open
 //   { kind: 'ai', params }           Fill with AI ({ target, idea })
 //   { kind: 'screen', key, params }  any other Library screen by route name
 //   { kind: 'root', key, params }    any root screen by route name
@@ -43,6 +44,8 @@ export async function openTarget(navigation, target) {
     case 'ai': lib(navigation, 'AIBridgeScreen', target.params); return true;
     case 'screen': lib(navigation, target.key, target.params); return true;
     case 'home': navigation.navigate('MainTabs', { screen: 'Home' }); return true;
+    // Same param Home's Daily Drills widget uses (GamesScreen reads openDrills).
+    case 'drills': navigation.navigate('MainTabs', { screen: 'Training', params: { openDrills: true } }); return true;
     case 'root': navigation.navigate(target.key, target.params); return true;
     case 'class': navigation.navigate('MainTabs', { screen: 'Library', params: { screen: 'ClassesStack', params: { screen: target.key } } }); return true;
     case 'game': navigation.navigate('Play', { gameId: target.key }); return true;

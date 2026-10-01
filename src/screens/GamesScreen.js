@@ -201,6 +201,7 @@ export default function GamesScreen() {
                   rewardPoints={bonusRewards.points}
                   onCoinCollected={coinRewards.collect}
                   coinRewardsRemaining={coinRewards.remaining}
+                  nextCoinAt={coinRewards.ready ? coinRewards.nextAt : Infinity}
                   coinRewardPoints={coinRewards.points}
                 />
               </LandscapeBackground>

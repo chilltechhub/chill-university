@@ -1,5 +1,5 @@
 // context/UserProgressContext.js
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { supabase } from '../src/api/supabaseClient';
 import * as gamificationService from '../src/logic/gamificationService';
 import { getRank, getTierProgress, getRankLabel, tierIndexForRank } from '../src/logic/rankUtils';
@@ -401,10 +401,21 @@ export function UserProgressProvider({ children }) {
   const dismissDrillEvent = useCallback(() => setDrillEvents(q => q.slice(1)), []);
 
   // ── Guest game event (local only) ────────────────────────────────────────
-  function recordGuestEvent({ correct = false, difficulty = 1 } = {}) {
+  const recordGuestEvent = useCallback(({ correct = false, difficulty = 1 } = {}) => {
     setGuestPoints(p => p + (correct ? 5 : 1));
     setGuestXp(x    => x + (correct ? 10 : 2));
-  }
+  }, []);
+
+  // The refresh helpers below keep one identity for the provider's whole
+  // life. They used to be new functions every render, and AccessContext,
+  // PlusContext and useGame list refreshProfile as a dependency, so every
+  // progress update (each award mid-game) also rebuilt those two contexts
+  // and re-rendered everything reading them. They read the current user and
+  // loader through refs instead of closing over one render's copy.
+  const userRef = useRef(user);
+  userRef.current = user;
+  const loadRef = useRef(null);
+  loadRef.current = loadUserData;
 
   // ── Refresh helpers ──────────────────────────────────────────────────────
   // Re-pulls profiles from Supabase into this context's `profile`. Anything
@@ -413,10 +424,11 @@ export function UserProgressProvider({ children }) {
   // etc.) needs this — otherwise the row in the DB is correct but every
   // screen reading `profile` from here keeps showing what was loaded at
   // login until something forces a remount.
-  async function refreshProfile() {
-    if (!user) return;
-    await loadUserData(user.id);
-  }
+  const refreshProfile = useCallback(async () => {
+    const u = userRef.current;
+    if (!u) return;
+    await loadRef.current(u.id);
+  }, []);
 
   // Points the server just confirmed (a prize card, a pet coin) show in the
   // top bar at once, without a full reload mid-game. Level/tier notices are
@@ -441,17 +453,13 @@ export function UserProgressProvider({ children }) {
     }));
   }, []);
 
-  async function refreshDailyMissions() {
-    if (!user) return;
-    await gamificationService.expireOldMissions(user.id);
-    await loadUserData(user.id);
-  }
-
-  async function refreshWeeklyMissions() {
-    if (!user) return;
-    await gamificationService.expireOldMissions(user.id);
-    await loadUserData(user.id);
-  }
+  // Daily and weekly did the same thing; both names stay for their callers.
+  const refreshMissions = useCallback(async () => {
+    const u = userRef.current;
+    if (!u) return;
+    await gamificationService.expireOldMissions(u.id);
+    await loadRef.current(u.id);
+  }, []);
 
   // ── Derived values ───────────────────────────────────────────────────────
   const points  = user ? (profile?.points  || 0) : guestPoints;
@@ -483,52 +491,62 @@ export function UserProgressProvider({ children }) {
   // progress % toward the next tier (TopBar bar, Games, Stats)
   const progress = rankProgress;
 
+  // One object per real change, not per render. Every function in it is
+  // stable, so the value only changes when the data does.
+  const value = useMemo(() => ({
+    user,
+    profile,
+    loading,
+    // points / xp
+    points,
+    xp,
+    level,
+    // rank
+    rank,
+    rankProgress,
+    progress,         // alias for TopBar
+    // streak
+    streakDays,
+    // missions
+    subjectProgress,
+    dailyMissions,
+    weeklyMissions,
+    longtermMissions,
+    // gameplay
+    gameplayStats,
+    noteRoundPlayed,
+    // daily drills
+    noteDrillProgress,
+    setPlayableGames,
+    drillEvents,
+    dismissDrillEvent,
+    // level-up / rank-up notification queue
+    progressEvents,
+    dismissProgressEvent,
+    // refresh
+    refreshProfile,
+    notePointsEarned,
+    refreshDailyMissions: refreshMissions,
+    refreshWeeklyMissions: refreshMissions,
+    // guest
+    recordGuestEvent,
+    pendingRewards: NO_PENDING_REWARDS,   // placeholder — wire to real data when ready
+  }), [
+    user, profile, loading, points, xp, level, rank, rankProgress, progress, streakDays,
+    subjectProgress, dailyMissions, weeklyMissions, longtermMissions, gameplayStats,
+    noteRoundPlayed, noteDrillProgress, setPlayableGames, drillEvents, dismissDrillEvent,
+    progressEvents, dismissProgressEvent, refreshProfile, notePointsEarned, refreshMissions,
+    recordGuestEvent,
+  ]);
+
   return (
-    <UserProgressContext.Provider
-      value={{
-        user,
-        profile,
-        loading,
-        // points / xp
-        points,
-        xp,
-        level,
-        // rank
-        rank,
-        rankProgress,
-        progress,         // alias for TopBar
-        // streak
-        streakDays,
-        // missions
-        subjectProgress,
-        dailyMissions,
-        weeklyMissions,
-        longtermMissions,
-        // gameplay
-        gameplayStats,
-        noteRoundPlayed,
-        // daily drills
-        noteDrillProgress,
-        setPlayableGames,
-        drillEvents,
-        dismissDrillEvent,
-        // level-up / rank-up notification queue
-        progressEvents,
-        dismissProgressEvent,
-        // refresh
-        refreshProfile,
-        notePointsEarned,
-        refreshDailyMissions,
-        refreshWeeklyMissions,
-        // guest
-        recordGuestEvent,
-        pendingRewards: [],   // placeholder — wire to real data when ready
-      }}
-    >
+    <UserProgressContext.Provider value={value}>
       {children}
     </UserProgressContext.Provider>
   );
 }
+
+const NO_PENDING_REWARDS = [];
 
 export function useUserProgress() {
   const ctx = useContext(UserProgressContext);

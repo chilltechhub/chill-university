@@ -5,7 +5,7 @@
 // themselves are managed by src/logic/useFolders.js; this component only
 // renders and edits them — filtering the actual list is the screen's job.
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
@@ -13,7 +13,7 @@ import { FOLDER_COLORS } from '../logic/useFolders';
 
 export default function FolderRow({ folders, activeFolderId, onSelect, onCreate, onRename, onDelete }) {
   const { colors: c } = useTheme();
-  const styles = makeStyles(c);
+  const styles = useMemo(() => makeStyles(c), [c]);
   const [editing, setEditing] = useState(null); // null | 'new' | the folder being renamed
   const [name, setName] = useState('');
   const [color, setColor] = useState(FOLDER_COLORS[0]);

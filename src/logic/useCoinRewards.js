@@ -1,44 +1,43 @@
 // src/logic/useCoinRewards.js
-// Real points for the pennies the pet eats while wandering the stage
-// (CharacterWalker.js): 1 XP + 1 point a coin, at most 12 per six-hour
-// window.
+// Real points for the coins the pet finds while wandering the stage
+// (CharacterWalker.js): 1 XP + 1 point a coin, one every 3 minutes (20 an
+// hour), at most 50 in any 24 hours.
 //
 // The pet is fully autonomous — it wanders and eats on its own, no player
-// input at all — so an uncapped reward here would be a pure idle-farm
-// loophole. The server counts the 12 (collect_pet_coin, 20260928120000):
-// the count used to live only in this device's storage, so signing out and
-// in, or a second device, started it over. The device still keeps a copy,
-// just to skip calls it knows will pay nothing and to hide the "+1" popup.
+// input at all — so the limits are what keep this from being a pure idle
+// farm. The server enforces both (collect_pet_coin, 20260930130000) and says
+// when the next coin can pay; this hook remembers that, so the walker only
+// puts a coin down when it will actually pay and a relaunch doesn't start the
+// clock over. Before 2026-09-30 the rule was 12 per six hours.
 //
 // Two more rules:
 // - Each coin that pays shows in the top bar straight away (collectPetCoin
 //   announces it) — before, the server added it but the header kept the old
-//   number until something else reloaded the profile.
-// - Coins only pay while the screen is in front. The Training tab stays
-//   mounted behind others, and its pet kept eating (and earning) where
-//   nobody could see it.
+//   number until something else reloaded the profile. Off Training, where
+//   you can't see the pet eat it, src/components/CoinRewardToast.js shows
+//   that it happened.
+// - Coins pay while the app is open, on any screen: being in the app is the
+//   reward. (Until 2026-09-30 they paid only while Training was in front.)
+//   They stop while the app is in the background.
 //
-// A coin eaten past the cap still plays its eat/pop animation (see
-// CharacterWalker.js) — it just doesn't award anything until the next window.
+// Guests get the same coin every 3 minutes to watch, with nothing credited.
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useIsFocused } from '@react-navigation/native';
+import useAppActive from './useAppActive';
 import { cacheRead, cacheWrite } from '../api/offlineCache';
 import { collectPetCoin } from './gamificationService';
 
 export const COIN_REWARD_POINTS = 1;
-const CYCLE_MS = 6 * 60 * 60 * 1000; // six hours, the server's window too
-const MAX_PER_CYCLE = 12;
-
-function currentCycleId() {
-  return Math.floor(Date.now() / CYCLE_MS);
-}
+export const COIN_GAP_MS = 3 * 60 * 1000;
+export const COIN_DAILY_MAX = 50;
 
 export default function useCoinRewards(userId) {
-  const key = `coinRewards:${userId || 'anon'}`;
-  const focused = useIsFocused();
-  const [cycleId, setCycleId] = useState(currentCycleId());
-  const [creditedCount, setCreditedCount] = useState(0);
+  const key = `petCoins:v2:${userId || 'anon'}`;
+  const appOpen = useAppActive();
+  // Left in the current 24 hours, as the server last said (null = not asked yet).
+  const [left, setLeft] = useState(null);
+  // When the next coin can pay (ms). 0 = now.
+  const [nextAt, setNextAt] = useState(0);
   const [ready, setReady] = useState(false);
   const busy = useRef(false); // one coin in flight at a time
 
@@ -47,55 +46,43 @@ export default function useCoinRewards(userId) {
     setReady(false);
     cacheRead(key).then(saved => {
       if (!alive) return;
-      const nowCycle = currentCycleId();
-      setCreditedCount(saved && saved.cycleId === nowCycle ? (saved.count || 0) : 0);
-      setCycleId(nowCycle);
+      setLeft(typeof saved?.left === 'number' ? saved.left : null);
+      setNextAt(typeof saved?.nextAt === 'number' ? saved.nextAt : 0);
       setReady(true);
     });
     return () => { alive = false; };
   }, [key]);
 
-  // A session left open across the six-hour mark should still get a fresh
-  // allowance without needing a screen focus/reload to notice.
-  useEffect(() => {
-    const id = setInterval(() => {
-      const nowCycle = currentCycleId();
-      setCycleId(prev => {
-        if (prev === nowCycle) return prev;
-        setCreditedCount(0);
-        return nowCycle;
-      });
-    }, 60000);
-    return () => clearInterval(id);
-  }, []);
-
-  const remaining = focused ? Math.max(0, MAX_PER_CYCLE - creditedCount) : 0;
+  // A 0 only holds until the server's "next" time: past it, the oldest coin
+  // has left the 24-hour window and there's room again.
+  const capped = left === 0 && Date.now() < nextAt;
+  const remaining = !appOpen || capped ? 0 : (left ?? COIN_DAILY_MAX);
 
   // Call once per coin the pet actually eats. Resolves to the points
-  // actually awarded (0 off-screen, once this window's 12 are used, or with
-  // no signed-in user) — the caller shows a "+N" popup only for those.
+  // actually awarded (0 in the background, too soon, past the day's 50, or
+  // with no signed-in user) — the caller shows a "+N" popup only for those.
   const collect = useCallback(async () => {
-    if (!userId || !focused || busy.current) return 0;
-    const nowCycle = currentCycleId();
-    const base = nowCycle === cycleId ? creditedCount : 0;
-    if (base >= MAX_PER_CYCLE) return 0;
+    if (!appOpen || busy.current) return 0;
+    if (!userId) { setNextAt(Date.now() + COIN_GAP_MS); return 0; }
     busy.current = true;
     try {
-      const { points, remaining: left } = await collectPetCoin(userId);
-      // The server's count wins; the old path (no function yet) returns null
-      // and the device counts for itself as before.
-      const count = left == null ? base + 1 : MAX_PER_CYCLE - left;
-      setCycleId(nowCycle);
-      setCreditedCount(count);
-      cacheWrite(key, { cycleId: nowCycle, count });
+      const { points, remaining: serverLeft, nextIn } = await collectPetCoin(userId);
+      // The server's numbers win. An older database without next_in still
+      // gets the 3-minute rhythm from here.
+      const next = Date.now() + (nextIn != null ? nextIn * 1000 : COIN_GAP_MS);
+      const nextLeft = serverLeft ?? null;
+      setNextAt(next);
+      setLeft(nextLeft);
+      cacheWrite(key, { left: nextLeft, nextAt: next });
       return points;
     } catch (e) {
       console.warn('[useCoinRewards] collect failed', e);
+      setNextAt(Date.now() + COIN_GAP_MS);
       return 0;
     } finally {
       busy.current = false;
     }
-  }, [userId, focused, cycleId, creditedCount, key]);
+  }, [userId, appOpen, key]);
 
-  return { ready, remaining, collect, points: COIN_REWARD_POINTS };
+  return { ready, remaining, nextAt, collect, points: COIN_REWARD_POINTS };
 }

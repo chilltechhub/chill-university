@@ -189,14 +189,17 @@ export async function tailorDailyDrills(userId, games, type = 'daily') {
 // drill reward — so the header can show them at once (UserProgressContext
 // listens). Before, a drill's "+15 pts" toast showed while the header kept
 // the old number until the next full profile reload.
+// Listeners get (points, xp, source); `source` says where it came from
+// ('pet-coin' for the pet's coins, which CoinRewardToast shows off
+// Training), undefined for everything else.
 const awardListeners = new Set();
 export function onServerAward(fn) {
   awardListeners.add(fn);
   return () => awardListeners.delete(fn);
 }
-function announceAward(points, xp = 0) {
+function announceAward(points, xp = 0, source) {
   if (!points && !xp) return;
-  awardListeners.forEach(fn => { try { fn(points || 0, xp || 0); } catch {} });
+  awardListeners.forEach(fn => { try { fn(points || 0, xp || 0, source); } catch {} });
 }
 
 /* ─── Core game event handler ────────────────────────────────────────────── */
@@ -448,22 +451,25 @@ export async function claimRoundPrize({ userId, points, correct = 0, total = 0 }
 }
 
 /**
- * One coin the pet ate. Resolves to { points, remaining } — points is 0 once
- * this window's 12 are used; remaining is null on the old path (the device
- * keeps its own count there).
+ * One coin the pet ate. Resolves to { points, remaining, nextIn } — points is
+ * 0 when it's too soon (one every 3 minutes) or the day's 50 are used;
+ * remaining is what's left in the last 24 hours; nextIn is seconds until the
+ * next coin can pay. remaining and nextIn are null on older databases.
  */
 export async function collectPetCoin(userId) {
-  if (!userId) return { points: 0, remaining: null };
+  if (!userId) return { points: 0, remaining: null, nextIn: null };
   const { data, error } = await supabase.rpc('collect_pet_coin');
   if (!error) {
     const points = data?.points ?? 0;
-    announceAward(points, points);
-    return { points, remaining: data?.remaining ?? null };
+    announceAward(points, points, 'pet-coin');
+    // next_in: seconds until the next coin can pay (20260930130000). Older
+    // databases don't send it.
+    return { points, remaining: data?.remaining ?? null, nextIn: data?.next_in ?? null };
   }
-  if (error.code !== 'PGRST202') { console.warn('[collectPetCoin]', error.message); return { points: 0, remaining: null }; }
+  if (error.code !== 'PGRST202') { console.warn('[collectPetCoin]', error.message); return { points: 0, remaining: null, nextIn: null }; }
   await handleGameEvent({ type: 'COIN_COLLECTED', userId, subject: 'general' });
-  announceAward(1, 1);
-  return { points: 1, remaining: null };
+  announceAward(1, 1, 'pet-coin');
+  return { points: 1, remaining: null, nextIn: null };
 }
 
 /* ─── Lesson completion — advances any 'topic_completed' mission ────────── */

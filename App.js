@@ -35,6 +35,7 @@ import TourOverlay from './src/components/TourOverlay';
 import TourSpot from './src/components/TourSpot';
 import { rootStackRouter } from './src/logic/navRules';
 import DrillToast from './src/components/DrillToast';
+import CoinRewardToast from './src/components/CoinRewardToast';
 
 import HomeScreen    from './src/screens/HomeScreen';
 import GamesScreen   from './src/screens/GamesScreen';
@@ -50,7 +51,6 @@ import PlayScreen      from './src/screens/PlayScreen';
 import LeaderboardScreen from './src/screens/LeaderboardScreen';
 import AllProfilesScreen from './src/screens/AllProfilesScreen';
 import TopBar           from './src/components/TopBar';
-import MissionPopup      from './src/components/MissionPopup';
 import FloatingActionButton from './src/components/FloatingActionButton';
 import CommandPalette from './src/components/CommandPalette';
 import HelpScreen       from './src/screens/HelpScreen';
@@ -190,20 +190,11 @@ function MainTabs() {
         })}
       />
       <Tab.Screen name="Home"     component={HomeScreen} />
-      <Tab.Screen name="Training" component={GamesScreen} />
+      {/* Mounted at launch, not on first visit: the pet on this tab finds
+          coins while the app is open on any screen (src/logic/useCoinRewards.js),
+          so it has to be out from the start. */}
+      <Tab.Screen name="Training" component={GamesScreen} options={{ lazy: false }} />
     </Tab.Navigator>
-  );
-}
-
-function MissionsOverlay() {
-  const { dailyMissions } = useUserProgress();
-  const [visible, setVisible] = React.useState(false);
-  return (
-    <MissionPopup
-      visible={visible}
-      onClose={() => setVisible(false)}
-      missions={dailyMissions || []}
-    />
   );
 }
 
@@ -494,7 +485,6 @@ function AppInner() {
             options={{ ...TransitionPresets.ModalSlideFromBottomIOS }}
           />
         </Stack.Navigator>
-        <MissionsOverlay />
         <LevelUpNotification />
         <UnlockNotification />
         {/* Not over a game: it sat on top of Start and the answer rows, and
@@ -510,6 +500,8 @@ function AppInner() {
       </SafeAreaView>
       <TourOverlay />
       <DrillToast />
+      {/* The pet's coins, off Training (on Training you watch it eat them). */}
+      <CoinRewardToast hidden={currentRouteName === 'Training'} />
       <ShareIntentListener navigationRef={navigationRef} />
     </NavigationContainer>
   );

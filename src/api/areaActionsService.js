@@ -193,6 +193,8 @@ async function subscribeByTitle(userId, title) {
 
 const SIGN_IN = 'Sign in to save this — guest progress isn’t kept.';
 
+export const isOpenableLink = (url) => /^(https?:\/\/|mailto:|tel:)/i.test(String(url || '').trim());
+
 // ctx: { userId, areaId, areaLabel, screenTag, navigation }
 // Resolves { ok, message, row } — row is the logged area_notes entry.
 export async function runAction(action, ctx) {
@@ -202,7 +204,12 @@ export async function runAction(action, ctx) {
   try {
     switch (action.handler) {
       case 'link':
-        await Linking.openURL(p.url);
+        // Web, mail and phone links only. Action links come from the
+        // built-in pool or the person's own edits (AI-pasted changes
+        // included), so anything else (javascript:, file:, an app's
+        // custom scheme) is refused, same rule as community links.
+        if (!isOpenableLink(p.url)) return { ok: false, message: 'That link can’t be opened.' };
+        await Linking.openURL(String(p.url).trim());
         break;
       case 'screen':
         navigation?.navigate(p.screen, p.params);
@@ -221,7 +228,10 @@ export async function runAction(action, ctx) {
         break;
       }
       case 'reminder': {
-        const at = await scheduleActionReminder({ key: action.key, title: action.title, body: action.why, time: p.time });
+        const at = await scheduleActionReminder({
+          key: action.key, title: action.title, body: action.why, time: p.time,
+          target: areaId ? { kind: 'area', key: areaId } : undefined,
+        });
         if (at) {
           message = `Reminder set for ${formatTime(p.time)}.`;
         } else if (userId) {

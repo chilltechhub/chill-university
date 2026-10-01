@@ -13,8 +13,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
 import { getInstances, AREAS } from '../../api/plannerService';
 import WidgetCard, { StatRow, Bar } from './WidgetCard';
-
-const todayStr = () => new Date().toISOString().slice(0, 10);
+// Local date. This file had its own toISOString() version, which is UTC: in
+// the US after about 8 pm it asked the planner for tomorrow's study blocks.
+import { todayStr } from '../../logic/dateUtils';
 
 // The areas a study block plausibly falls under. Deliberately not every
 // area — "today's study blocks" that included a gym session would be a
