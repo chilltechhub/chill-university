@@ -9,18 +9,9 @@
 // is readable more widely (org rosters, community feeds) still only exports
 // this person's own rows.
 
-import { Platform, Share } from 'react-native';
 import { supabase } from './supabaseClient';
+import { shareFile } from '../logic/shareFile';
 
-// Native-only modules, loaded lazily so web never pulls them in.
-function nativeFileModules() {
-  if (Platform.OS === 'web') return null;
-  try {
-    return { fs: require('expo-file-system'), sharing: require('expo-sharing') };
-  } catch {
-    return null; // a build from before these were added
-  }
-}
 
 // Tables keyed directly on the account.
 const USER_TABLES = [
@@ -93,34 +84,5 @@ export async function shareMyDataExport() {
   const data = await buildMyDataExport();
   const json = JSON.stringify(data, null, 2);
   const filename = `chill-data-${data.exported_at.slice(0, 10)}.json`;
-
-  if (Platform.OS === 'web') {
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-    return;
-  }
-
-  const mods = nativeFileModules();
-  if (mods && await mods.sharing.isAvailableAsync()) {
-    const file = new mods.fs.File(mods.fs.Paths.cache, filename);
-    file.create({ overwrite: true });
-    file.write(json);
-    await mods.sharing.shareAsync(file.uri, {
-      mimeType: 'application/json',
-      UTI: 'public.json',
-      dialogTitle: 'Export My Data',
-    });
-    return;
-  }
-
-  // Older build without the file modules: the text share still works for a
-  // small account.
-  await Share.share({ title: filename, message: json });
+  await shareFile({ filename, content: json, mimeType: 'application/json', uti: 'public.json', dialogTitle: 'Export My Data' });
 }

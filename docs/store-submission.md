@@ -18,6 +18,8 @@ doesn't match the live database, so `supabase db push` isn't safe):
    sign-in enforced by the database.
 2. `supabase/migrations/20260930130000_pet_coins_every_3_minutes.sql`: pet
    coins one every 3 minutes, 50 per 24 hours.
+3. `supabase/migrations/20260930140000_rest_day_and_real_actions.sql`: the
+   streak rest day, and XP for real-life actions.
 
 ## 2. Deploy the two missing Edge Functions [you]
 
@@ -114,6 +116,12 @@ Things the web preview can't show:
 ## 7. App Store Connect forms [you]
 
 **Privacy policy URL:** `https://chilltechhub.com/privacy-policy` (live).
+**[you] Fix the policy for v1 first:** it says Deskartes is "designed for
+use by students in grades K-12 and above, including children under 13" and
+describes parental consent for under-13s. v1 closes under-13 signup, and
+Google compares the policy with your Play target audience (13+). Reword
+that section to "Deskartes is for people 13 and older", keeping the
+parent/guardian deletion line.
 **Terms:** `https://chilltechhub.com/terms` (live, linked on the paywall).
 
 **App Privacy ("nutrition label").** Answer for what the app really collects.
@@ -179,10 +187,10 @@ There is no `ios/` folder to edit.
 - **Data safety:** the same data types as the Apple table above. Data is
   encrypted in transit; people can ask for deletion.
 - **Account deletion:** Google wants a **web page** where people can request
-  deletion without the app, as well as the in-app path. **[me/you]** Add
-  a short page to chilltechhub.com (e.g. `/delete-account`) that explains
-  Settings → Danger Zone → Delete Account and gives `help@chilltechhub.com`
-  for anyone who can't get into the app. Put that URL in the form.
+  deletion without the app, as well as the in-app path. **Built:**
+  `delete-account.html` is in `Downloads\chilltechhubsite` (the folder that
+  matches the live site). **[you]** Upload it the way you deploy the rest,
+  then put `https://chilltechhub.com/delete-account` in the form.
 - **App access:** the same demo account as Apple.
 - **Content rating (IARC):** the same answers as Apple (user content, no paid
   random items).

@@ -438,15 +438,22 @@ export default function LoginScreen({ onSuccess, onClose }) {
               and points/xp tracking TopBar and useCharacterLoadout already
               handle for a null `user` (see UserProgressContext's
               guestPoints/guestXp/recordGuestEvent). */}
+          {/* A real second button, not faint small print: trying the app
+              before handing over an email is how most people decide to
+              stay (audit 4.1). */}
           <TouchableOpacity
             style={s.guestBtn}
+            accessibilityRole="button"
             onPress={() => {
               if (onClose) { onClose(); return; }
               navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
             }}
           >
-            <Text style={s.guestText}>Continue as guest — progress won't be saved</Text>
+            <Text style={s.guestText}>{onClose ? 'Keep looking around' : 'Try it first, no account needed'}</Text>
           </TouchableOpacity>
+          {!onClose && (
+            <Text style={s.guestSub}>Play, plan and explore as a guest. Create an account any time to start saving your progress.</Text>
+          )}
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -484,6 +491,7 @@ const s = StyleSheet.create({
   switchRow:   { marginTop: 18, alignItems: 'center' },
   switchText:  { fontSize: 13, color: 'rgba(255,255,255,0.4)' },
   switchLink:  { color: '#2bb5a0', fontWeight: '600' },
-  guestBtn:    { marginTop: 14, alignItems: 'center' },
-  guestText:   { fontSize: 12, color: 'rgba(255,255,255,0.25)', textAlign: 'center' },
+  guestBtn:    { marginTop: 14, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)', borderRadius: 14, paddingVertical: 14 },
+  guestText:   { fontSize: 15, fontWeight: '700', color: 'rgba(255,255,255,0.92)', textAlign: 'center' },
+  guestSub:    { fontSize: 12, color: 'rgba(255,255,255,0.62)', textAlign: 'center', marginTop: 8, lineHeight: 17 },
 });

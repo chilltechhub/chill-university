@@ -25,7 +25,7 @@ import { supabase } from '../api/supabaseClient';
 import { addCapture, upsertTask } from '../api/captureService';
 import { AREAS } from '../api/plannerService';
 import { getActiveProfileId, onActiveProfileChange } from './activeProfile';
-import { handleGameEvent, advanceTopicMission } from './gamificationService';
+import { handleGameEvent, advanceTopicMission, recordAction } from './gamificationService';
 import { todayStr, addDays } from './dateUtils';
 import { SOURCE_CHECKS } from '../data/quests';
 
@@ -225,6 +225,7 @@ function noteBody(quest, progress) {
  * `xp` is 0 for a repeat or a guest.
  */
 export async function finishQuest(userId, quest, { xp }) {
+  recordAction('quest', quest?.id);
   const progress = state.byId[quest.id] || {};
   const firstTime = !state.finished.has(quest.id);
   let noteSaved = false;

@@ -1,7 +1,7 @@
 // src/logic/gamificationService.js
 import { supabase } from '../api/supabaseClient';
 import { getRank } from './rankUtils';
-import { todayStr, daysBetween, addDays } from './dateUtils';
+import { todayStr, addDays } from './dateUtils';
 import { QUEST_XP } from '../data/quests';
 import { drillCriteria, drillIsCounted, drillIsPlayable, drillCounts, pickDrills } from './drills';
 
@@ -189,17 +189,28 @@ export async function tailorDailyDrills(userId, games, type = 'daily') {
 // drill reward — so the header can show them at once (UserProgressContext
 // listens). Before, a drill's "+15 pts" toast showed while the header kept
 // the old number until the next full profile reload.
-// Listeners get (points, xp, source); `source` says where it came from
-// ('pet-coin' for the pet's coins, which CoinRewardToast shows off
+// Listeners get (points, xp, source, meta); `source` says where it came from
+// ('pet-coin' for the pet's coins, 'real-action' for record_action XP; RewardToast shows both, coins off
 // Training), undefined for everything else.
 const awardListeners = new Set();
 export function onServerAward(fn) {
   awardListeners.add(fn);
   return () => awardListeners.delete(fn);
 }
-function announceAward(points, xp = 0, source) {
+function announceAward(points, xp = 0, source, meta) {
   if (!points && !xp) return;
-  awardListeners.forEach(fn => { try { fn(points || 0, xp || 0, source); } catch {} });
+  awardListeners.forEach(fn => { try { fn(points || 0, xp || 0, source, meta); } catch {} });
+}
+
+// Streak changes made away from UserProgressContext (an action anywhere in
+// the app keeps the streak going) reach it here, so the badge updates at once.
+const streakListeners = new Set();
+export function onStreakChange(fn) {
+  streakListeners.add(fn);
+  return () => streakListeners.delete(fn);
+}
+function announceStreak(patch) {
+  streakListeners.forEach(fn => { try { fn(patch); } catch {} });
 }
 
 /* ─── Core game event handler ────────────────────────────────────────────── */
@@ -214,6 +225,16 @@ export function handleGameEvent(event) {
   return run;
 }
 
+// Playing counts as the day's action (the streak) once per day per device:
+// the first answer of the day sends it, not every answer.
+let gameActionDay = null;
+function noteGamePlayed() {
+  const today = todayStr();
+  if (gameActionDay === today) return;
+  gameActionDay = today;
+  recordAction('game').then(r => { if (!r) gameActionDay = null; });
+}
+
 async function handleGameEventNow(event) {
   const {
     type, userId, gameId,
@@ -224,6 +245,7 @@ async function handleGameEventNow(event) {
   } = event;
 
   if (!userId) return;
+  if (type === 'QUESTION_ANSWERED' || type === 'GAME_COMPLETED' || type === 'LEVEL_COMPLETED') noteGamePlayed();
 
   const rewards = calculateRewards({ type, correct, difficulty, metadata });
 
@@ -474,60 +496,64 @@ export async function collectPetCoin(userId) {
 
 /* ─── Lesson completion — advances any 'topic_completed' mission ────────── */
 export async function advanceTopicMission(userId, subjectKey) {
+  recordAction('lesson', subjectKey);
   await advanceMissions(userId, { type: 'TOPIC_COMPLETED', subject: subjectKey });
 }
 
 /* ─── Streak ─────────────────────────────────────────────────────────────── */
 //
-// The streak lives on `profiles` — that's the row getUserProfile() returns and
-// the only one UserProgressContext's `streakDays` ever reads. The previous
-// version of this function wrote to `user_settings` instead (as did a second,
-// near-identical copy in api/commandCenterService.js), and nothing in the app
-// ever called either one. Net effect: `profiles.last_active_date` was never
-// written after signup, so `streakDays` evaluated to 0 for every user forever —
-// the streak badge never appeared on Home, Family showed "0d streak" for every
-// child, and computeReminderState() always believed the user hadn't checked in,
-// so the nightly "Streak at risk" notification fired even on days they'd used
-// the app. This is now the single writer, and UserProgressContext calls it on
-// every load.
+// The streak lives on `profiles` (streak_count, last_active_date,
+// streak_rest_on) and only the server writes it: touch_streak() and
+// record_action() (20260927120000, 20260930140000). A day counts when
+// something is done in it, through recordAction() below; opening the app
+// alone doesn't. One missed day in seven is forgiven (the rest day).
 
-/**
- * Records today's visit and advances/resets the streak. Idempotent per day —
- * returns null without writing if today is already recorded, so it's safe to
- * call on every profile load.
- *
- * @param {string} userId
- * @param {object} profile - the freshly-loaded profiles row
- * @returns {Promise<{streak_count:number,last_active_date:string}|null>} the
- *   changed fields, so the caller can merge them into the profile it already
- *   holds instead of re-fetching.
+/* ─── Real actions ──────────────────────────────────────────────────────────
+ * The one call for "the person did something" (record_action(),
+ * 20260930140000): it keeps the streak going, and real-life kinds earn a
+ * little XP (5 each, 50 a day, the same item once a day).
+ *   planner_done, project_step, area_action, goal_done, checkin  → XP + streak
+ *   game, lesson, quest                                         → streak only
+ * Opening the app no longer counts as a day: something has to be done.
+ * Fire and forget: callers never wait on it, and it never throws.
  */
-export async function touchStreak(userId, profile) {
-  const today = todayStr();
-  const last  = profile?.last_active_date ? String(profile.last_active_date).slice(0, 10) : null;
-  if (last === today) return null; // already counted today
+export const REAL_ACTION_LABELS = {
+  planner_done: 'Planner item done',
+  project_step: 'Project step done',
+  area_action:  'Life area action',
+  goal_done:    'Goal finished',
+  checkin:      'Checked in',
+};
 
-  // A gap of exactly one calendar day continues the run; anything longer (or a
-  // first-ever visit) starts a new one at 1. Note this counts *days*, not
-  // hours — someone active at 11pm and again at 8am has an unbroken streak.
-  //
-  // The server does the counting now (touch_streak(), 20260927120000): the
-  // streak columns are no longer client-writable. Today's local date goes
-  // along so "a day" stays the person's day, not UTC's.
-  const { data, error } = await supabase.rpc('touch_streak', { p_today: today });
-  if (!error) {
-    if (!data?.changed) return null;
-    return { streak_count: data.streak_count, last_active_date: data.last_active_date };
+export async function recordAction(kind, ref = null) {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    if (!userId) return null;
+    const { data, error } = await supabase.rpc('record_action', {
+      p_kind: kind, p_ref: ref == null ? null : String(ref), p_today: todayStr(),
+    });
+    if (!error) {
+      if (data?.xp) announceAward(0, data.xp, 'real-action', { kind, label: REAL_ACTION_LABELS[kind] });
+      if (data?.changed) {
+        announceStreak({
+          streak_count: data.streak_count,
+          last_active_date: data.last_active_date,
+          streak_rest_on: data.streak_rest_on ?? null,
+        });
+      }
+      return data;
+    }
+    // Database without record_action() yet: the streak still counts through
+    // the older touch_streak(), with no XP.
+    if (error.code !== 'PGRST202') { console.warn('[recordAction]', error.message); return null; }
+    const { data: t, error: tErr } = await supabase.rpc('touch_streak', { p_today: todayStr() });
+    if (!tErr && t?.changed) {
+      announceStreak({ streak_count: t.streak_count, last_active_date: t.last_active_date, streak_rest_on: t.streak_rest_on ?? null });
+    }
+    return t || null;
+  } catch (e) {
+    console.warn('[recordAction]', e?.message || e);
+    return null;
   }
-  // Database not migrated yet (no such function): the old direct write, which
-  // still works there.
-  if (error.code !== 'PGRST202') { console.warn('[touchStreak]', error.message); return null; }
-
-  const gap = last ? daysBetween(last, today) : null;
-  const streak = gap === 1 ? (profile?.streak_count || 0) + 1 : 1;
-
-  const patch = { streak_count: streak, last_active_date: today };
-  const { error: writeError } = await supabase.from('profiles').update(patch).eq('id', userId);
-  if (writeError) { console.warn('[touchStreak]', writeError.message); return null; }
-  return patch;
 }

@@ -32,7 +32,7 @@ function findUnlocked(list, id, stats) {
 
 // The equipped pet, read fresh from storage, for things that live outside a
 // screen and so can't use the hook below (its refresh runs on screen focus):
-// CoinRewardToast shows the pet that found the coin.
+// RewardToast shows the pet that found the coin.
 export async function readEquippedPet(stats) {
   const saved = await cacheRead(KEY);
   return findUnlocked(PET_TIERS, saved?.petId || DEFAULT_PET_ID, stats);

@@ -25,6 +25,7 @@ import { subscribeToPreset, subscribeToComponent } from './plannerService';
 import { AREA_ACTIONS, AREA_RESOURCES } from '../data/lifeAreaActions';
 import { scheduleActionReminder } from '../logic/notificationScheduler';
 import { todayStr } from '../logic/dateUtils';
+import { recordAction } from '../logic/gamificationService';
 
 const POOL_KEY = '@cth_area_actions_v1';
 const RESOURCES_KEY = '@cth_area_resources_v1';
@@ -154,6 +155,7 @@ export async function logCompletion({ userId, areaId, screenTag, action, metrics
   };
   sessionKeys().add(action.key);
   if (!userId) return { row: { ...entry, id: `local-${Date.now()}` } };
+  recordAction('area_action', action.key);
   return offlineWrite(supabase, 'area_notes', entry);
 }
 

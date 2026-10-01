@@ -41,6 +41,8 @@ import MoreMenu from '../components/MoreMenu';
 import { CLASS_SUBJECTS, CLASS_SCREEN_MAP } from '../data/classCatalog';
 import { getEnabledGames, getGame } from '../services/gameRegistry';
 import { dateStr } from '../logic/dateUtils';
+import { buildIcs } from '../logic/calendarExport';
+import { shareFile } from '../logic/shareFile';
 import { textOn } from '../logic/contrast';
 
 const { width: SW } = Dimensions.get('window');
@@ -1373,6 +1375,22 @@ export default function PlannerScreen() {
 
   // Copies of the same item on the same day at the same time — what pasting
   // an AI reply twice used to leave behind. Looks a month back and four ahead.
+  // The next 30 days as a calendar file (audit 4.6). One-way: the phone's
+  // calendar gets a copy; the Planner stays the one you edit.
+  const exportCalendar = async () => {
+    try {
+      const from = new Date();
+      const rows = await getInstances(userId, { weekStart: toISO(from), weekEnd: toISO(addDays(from, 30)), allProfiles: showingAll });
+      const { ics, count } = buildIcs(rows || []);
+      if (!count) { Alert.alert('Nothing to add yet', 'Nothing is planned for the next 30 days.'); return; }
+      const how = await shareFile({ filename: 'deskartes-plan.ics', content: ics, mimeType: 'text/calendar', uti: 'com.apple.ical.ics', dialogTitle: 'Add to my calendar' });
+      if (how === 'downloaded') Alert.alert('Calendar file ready', `${count} item${count === 1 ? '' : 's'} from the next 30 days. Open deskartes-plan.ics to add ${count === 1 ? 'it' : 'them'} to your calendar.`);
+    } catch (e) {
+      console.warn('exportCalendar', e);
+      Alert.alert("Couldn't make the calendar file", 'Something went wrong — try again.');
+    }
+  };
+
   const removeDuplicates = async () => {
     try {
       const rows = await getInstancesBetween(userId, toISO(addDays(new Date(), -30)), toISO(addDays(new Date(), 120)));
@@ -1435,6 +1453,7 @@ export default function PlannerScreen() {
                 icon: timeMode ? 'list' : 'time-outline',
                 onPress: () => setTimeMode(m => !m),
               },
+              { label: 'Add to my calendar', icon: 'calendar-outline', onPress: exportCalendar },
               { label: 'Remove duplicates', icon: 'copy-outline', onPress: removeDuplicates },
               { label: 'Weekly review', icon: 'stats-chart-outline', onPress: () => navigation.navigate('WeeklyReviewScreen') },
             ]} />

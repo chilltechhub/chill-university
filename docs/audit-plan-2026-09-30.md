@@ -18,8 +18,8 @@ Every claim is listed with what the code actually does.
 | 0 | Make future audits read the real code | done — `archive/` deleted, three measured packs (PR #33, merged) |
 | 1 | Crash safety (error screen, crash reports, request timeouts) | merged (PR #33, 2026-09-30): 1.1, 1.3, 1.4, 1.6 done, signed-in Home checked; 1.5 code done, **SQL is yours to run**; 1.2 later (your call; the hook, `src/logic/errorReporting.js`, is in) |
 | 2 | Daily loop fixes (reminder taps, re-renders, dead code) | merged (PR #34); built on `fix/audit-phase2`, checked on web signed in 2026-09-30: 2.1–2.5, 2.7 (revised) and 2.8 done; 2.6 (optional DB trigger) left out; **pet-coin SQL is yours to run** |
-| 3 | Store readiness | built on `fix/audit-phase3`, checked on web 2026-09-30: 3.1, 3.3, 3.4, 3.5 done; **3.2 is yours** (commands in `docs/store-submission.md` §2) |
-| 4 | Retention features | needs your decisions first |
+| 3 | Store readiness | merged (PR #35); built on `fix/audit-phase3`, checked on web 2026-09-30: 3.1, 3.3, 3.4, 3.5 done; **3.2 is yours** (commands in `docs/store-submission.md` §2) |
+| 4 | Retention features | built on `fix/audit-phase4`, checked on web 2026-09-30: 4.1, 4.2, 4.3, 4.6 (calendar export), 4.7, 4.8 done; 4.4 and 4.5 covered by what exists; drag-to-reschedule left out; **SQL `20260930140000` is yours to run** |
 
 ## Why most of the audit missed
 
@@ -335,7 +335,51 @@ stamped whatever folder ran the install into the lockfile (Phase 1 merged
 | 3.4 | Marketing copy rules in that doc: never "local-first", "data stays on your device" or "no cloud" (it all syncs); never "COPPA-compliant" or "parent-approved" in v1 (under-13 is closed) | same doc | me |
 | 3.5 | Paywall for guests (S6): show the plans and prices, with a "Sign in to subscribe" button instead of plain text. Review notes say Plus is account-based (it follows you to web and unlocks server features), because Apple sometimes rejects "sign in to buy" for purchases that aren't | `PlusContext.js` (ready for guests), `PlusScreen.js:175`, review notes | me |
 
-## Phase 4: retention features (decide first)
+## Phase 4: retention features
+
+**Built (2026-09-30, `fix/audit-phase4`, defaults D3–D6 taken):**
+- **4.8 Rest day:** miss exactly one day in any seven and the streak survives
+  (`touch_streak` + `profiles.streak_rest_on`, server-written only). Home's
+  badge reads "N day streak · rest day" the morning after.
+- **4.7 Real work counts:** `record_action()` gives 5 XP for a planner item,
+  project step, life-area action, goal or check-in. That's at most 50 XP in
+  24 hours, and the same item pays once a day. Games, lessons and quests
+  count for the streak only. Opening the app no longer counts as a streak
+  day. The "+5 XP · Planner item done" toast is in `RewardToast` (the coin
+  toast, generalized).
+- **4.1 Guest-first:** "Try it first, no account needed" is a real button.
+  Guest points survive a reload but don't carry into an account.
+- **4.3 Share:** "Share it" on level-ups and new tiers, and "Share that you
+  finished it" on quests (plain text plus the app page, no reward for
+  sharing).
+- **4.2 Review:** a missed question comes back after 1 day, then 3, then 7
+  (`questionRotation.js`, every game that picks through `rotatePick`).
+  Training shows how many are due.
+- **4.6 Calendar export:** Planner → More → "Add to my calendar" makes a
+  `.ics` of the next 30 days (download on web, file share on a phone, via
+  the new `src/logic/shareFile.js`, which Export My Data now uses too).
+
+**Not built:**
+- 4.4: Home's Daily Drills widget already leads with the next drill and a
+  button straight into it.
+- 4.5: spending points would lower your rank, since rank is points; points
+  already unlock characters, pets and backgrounds.
+- Drag-to-reschedule: big and risky right before shipping.
+
+**Checked on web, signed in:**
+- The live database (no `record_action` yet) falls back to `touch_streak`
+  with no error.
+- With the new reply stubbed, "+5 XP · Checked in" shows and the badge reads
+  "6 day streak · rest day".
+- Rewards that land during a toast's fade-out keep it up and add together.
+  This fixed a race in the coin toast too: a fade cut short used to wipe the
+  new reward, and a fade that never finished left it stuck.
+- Review: a missed question is due the next day, gets picked, moves on when
+  answered right, and the Training note shows.
+- The calendar export produced 47 events from the real Planner.
+- Guest button styling, and guest points surviving a reload.
+
+The original proposals, kept for reference:
 
 | # | Idea | Why it's worth it | Size |
 | --- | --- | --- | --- |

@@ -25,6 +25,7 @@ import { useFeatureFlag } from '../../context/RemoteConfigContext';
 import TourSpot from '../components/TourSpot';
 import LandscapeBackground from '../components/LandscapeBackground';
 import CharacterWalker from '../components/CharacterWalker';
+import { reviewDueCount, onReviewsChange } from '../logic/questionRotation';
 import { useAccess } from '../../context/AccessContext';
 
 // Single source of truth: src/services/gameRegistry.js. GamesScreen and
@@ -114,6 +115,11 @@ export default function GamesScreen() {
   }, [tabs, activeTab]);
   const [showMissions, setShowMissions] = useState(false);
   const [showTasks, setShowTasks] = useState(false);
+  // Missed questions due for another go (questionRotation.js). Recounted on
+  // focus too, since "due" changes with the clock.
+  const [reviewsDue, setReviewsDue] = useState(0);
+  useEffect(() => onReviewsChange(() => setReviewsDue(reviewDueCount())), []);
+  useFocusEffect(useCallback(() => { setReviewsDue(reviewDueCount()); }, []));
   const drillPlan = useDrillPlan();
   // `openDrills` (from the Compass step "Finish a daily drill" and Home's
   // drills widget) opens straight onto today's drills, rather than landing
@@ -258,6 +264,16 @@ export default function GamesScreen() {
               </TouchableOpacity>
             </View>
             </TourSpot>
+            {reviewsDue > 0 && (
+              <View style={styles.reviewNote} accessible>
+                <Ionicons name="refresh-circle-outline" size={18} color={c.teal} />
+                <Text style={styles.reviewText}>
+                  {reviewsDue === 1
+                    ? "1 question you missed is back for review. It'll come up in your games."
+                    : `${reviewsDue} questions you missed are back for review. They'll come up in your games.`}
+                </Text>
+              </View>
+            )}
           </>
         )}
 
@@ -565,6 +581,8 @@ const makeStyles = (c, t, s, r, sh) => StyleSheet.create({
   },
   playText: { fontSize: t.lg, fontFamily: FONTS.display, fontWeight: t.bold, color: c.onFill, letterSpacing: 2 },
   actionRow: { flexDirection: 'row', gap: s.md, width: '80%' },
+  reviewNote: { flexDirection: 'row', alignItems: 'center', gap: s.sm, width: '80%', marginTop: s.md, paddingVertical: s.sm, paddingHorizontal: s.md, borderRadius: r.md, backgroundColor: c.teal + '14', borderWidth: 0.5, borderColor: c.teal + '55' },
+  reviewText: { flex: 1, fontSize: t.sm, color: c.text2, lineHeight: 19 },
   actionBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: s.sm, backgroundColor: c.goldLight,

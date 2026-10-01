@@ -183,5 +183,5 @@ export async function deleteTask(taskId) {
 // Removed. This was a second implementation of the streak that wrote
 // streak_count/last_active_date to `user_settings`, while the whole app reads
 // them off `profiles` — and it had no callers, so it never ran either way.
-// The single source of truth is now gamificationService.touchStreak(), called
-// once per profile load from UserProgressContext.
+// The single source of truth is the server's touch_streak(), reached through
+// gamificationService.recordAction() whenever the person does something.

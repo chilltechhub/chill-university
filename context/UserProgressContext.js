@@ -59,9 +59,26 @@ export function UserProgressProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Guest local state (not persisted)
+  // Guest progress lives on this device: it survives a reload or a closed
+  // app (it used to reset every time), but it doesn't move into an account
+  // at signup. Points are counted on the server, and carrying guest points
+  // over would let anyone farm them signed out and cash them in.
   const [guestPoints, setGuestPoints] = useState(0);
   const [guestXp,     setGuestXp]     = useState(0);
+  const guestLoaded = useRef(false);
+  useEffect(() => {
+    cacheRead('guest_progress').then(saved => {
+      if (saved && typeof saved === 'object') {
+        setGuestPoints(prev => prev + (saved.points || 0));
+        setGuestXp(prev => prev + (saved.xp || 0));
+      }
+      guestLoaded.current = true;
+    }).catch(() => { guestLoaded.current = true; });
+  }, []);
+  useEffect(() => {
+    if (!guestLoaded.current) return;
+    cacheWrite('guest_progress', { points: guestPoints, xp: guestXp });
+  }, [guestPoints, guestXp]);
 
   const [subjectProgress,   setSubjectProgress]   = useState({});
   const [dailyMissions,     setDailyMissions]     = useState([]);
@@ -247,17 +264,11 @@ export function UserProgressProvider({ children }) {
       const { data } = await gamificationService.getUserProfile(userId);
       if (!data) { setLoading(false); return; }
 
-      // Log today's visit *before* the profile reaches state, so the streak
-      // that renders is already today's rather than one launch behind.
-      // Idempotent per day — a no-op (and no write) if today is already
-      // recorded, so this costs nothing on a refresh or a second launch.
-      // Nothing called this before, which is why every user's streak sat at 0
-      // permanently; see gamificationService.touchStreak.
-      let profileData = data;
-      try {
-        const streakPatch = await gamificationService.touchStreak(userId, data);
-        if (streakPatch) profileData = { ...data, ...streakPatch };
-      } catch (e) { console.warn('[touchStreak]', e?.message); }
+      // Opening the app no longer counts as a streak day (2026-09-30): doing
+      // something does: a game, a lesson, a planner item, a check-in...
+      // (gamificationService.recordAction). Those land here through
+      // onStreakChange below.
+      const profileData = data;
 
       await cacheWrite(profileCacheKey, profileData);
       applyProfile(profileData);
@@ -434,6 +445,11 @@ export function UserProgressProvider({ children }) {
   // top bar at once, without a full reload mid-game. Level/tier notices are
   // left to the next real refresh — prevPointsRef isn't touched, so it still
   // sees the jump then — rather than popping up over a round.
+  // An action anywhere in the app kept the streak going: show it now.
+  useEffect(() => gamificationService.onStreakChange((patch) => {
+    setProfile(p => (p ? { ...p, ...patch } : p));
+  }), []);
+
   const notePointsEarned = useCallback((points, xp = 0) => {
     if (!points && !xp) return;
     setProfile(p => (p ? { ...p, points: (p.points || 0) + (points || 0), xp: (p.xp || 0) + (xp || 0) } : p));
@@ -479,14 +495,30 @@ export function UserProgressProvider({ children }) {
   // vanish every single morning. A run isn't broken until a full day has been
   // missed, and the badge should keep showing through that grace day; that's
   // also the day the "streak at risk" reminder is for.
+  //
+  // Rest day (20260930140000): one missed day in any seven doesn't break it.
+  // The morning after a missed day the run is still alive, and the next thing
+  // done today spends the rest day on the server.
+  const streakGap = profile?.last_active_date
+    ? daysBetween(String(profile.last_active_date).slice(0, 10), todayStr())
+    : null;
+  const restOn = profile?.streak_rest_on ? String(profile.streak_rest_on).slice(0, 10) : null;
+  const restAvailable = !restOn || (daysBetween(restOn, todayStr()) ?? 0) >= 7;
   const streakDays = (() => {
     if (!profile?.last_active_date) return 0;
-    const gap = daysBetween(String(profile.last_active_date).slice(0, 10), todayStr());
+    const gap = streakGap;
     if (gap === null || gap < 0) return profile?.streak_count || 0;
     if (gap === 0) return profile?.streak_count || 1;  // active today
     if (gap === 1) return profile?.streak_count || 0;  // yesterday — alive, at risk
-    return 0;                                          // missed a full day
+    if (gap === 2 && restAvailable) return profile?.streak_count || 0; // missed one: rest day
+    return 0;                                          // missed more than that
   })();
+  // 'done' (today counted), 'at-risk' (nothing yet today), 'rest-day' (missed
+  // yesterday; doing something today keeps it), or null (no run going).
+  const streakState = !streakDays ? null
+    : streakGap === 0 ? 'done'
+    : streakGap === 2 ? 'rest-day'
+    : 'at-risk';
 
   // progress % toward the next tier (TopBar bar, Games, Stats)
   const progress = rankProgress;
@@ -507,6 +539,7 @@ export function UserProgressProvider({ children }) {
     progress,         // alias for TopBar
     // streak
     streakDays,
+    streakState,
     // missions
     subjectProgress,
     dailyMissions,
@@ -532,7 +565,7 @@ export function UserProgressProvider({ children }) {
     recordGuestEvent,
     pendingRewards: NO_PENDING_REWARDS,   // placeholder — wire to real data when ready
   }), [
-    user, profile, loading, points, xp, level, rank, rankProgress, progress, streakDays,
+    user, profile, loading, points, xp, level, rank, rankProgress, progress, streakDays, streakState,
     subjectProgress, dailyMissions, weeklyMissions, longtermMissions, gameplayStats,
     noteRoundPlayed, noteDrillProgress, setPlayableGames, drillEvents, dismissDrillEvent,
     progressEvents, dismissProgressEvent, refreshProfile, notePointsEarned, refreshMissions,

@@ -59,6 +59,7 @@ import { forgetSeenScreens } from '../src/logic/useFirstVisitTutorial';
 import { getEnabledGames } from '../src/services/gameRegistry';
 import { tapHaptic } from '../src/logic/haptics';
 import { setNoticeScreenGate } from '../src/logic/noticeStore';
+import { recordAction } from '../src/logic/gamificationService';
 
 const AccessContext = createContext(null);
 
@@ -641,6 +642,7 @@ export function AccessProvider({ children }) {
 
     if (!userId) return { unlocked: unlockIds };
     const res = await completeObjectiveApi(activeObjectiveId, unlockIds);
+    recordAction('goal_done', activeObjectiveId);
     return { ...res, unlocked: unlockIds };
   }, [activeObjectiveId, userId, applyLocal, noteUnlocks]);
 

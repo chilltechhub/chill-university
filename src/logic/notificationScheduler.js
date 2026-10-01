@@ -143,7 +143,9 @@ export async function syncReminders({ enabled, tasksAllComplete, checkedInToday 
   // "tasks"/"check in" language, so a notification reads like it belongs
   // to the same app instead of a stock reminder plugin.
   const DRILLS = ['📋 Daily Drills open', "Today's Daily Drills are still waiting — a few minutes keeps things moving."];
-  const STREAK = ['🔥 Streak at risk', "No check-in at Base yet today — open the app before midnight to keep your streak."];
+  // A day counts when something is done in it (recordAction), not when the
+  // app is opened, so the nudge asks for one small thing.
+  const STREAK = ['🔥 Streak at risk', 'Nothing done yet today. One drill, a planner item or a quick check-in keeps your streak going.'];
 
   for (let d = 0; d < WINDOW_DAYS; d++) {
     // Today is the only day whose state we actually know, so it's the only day

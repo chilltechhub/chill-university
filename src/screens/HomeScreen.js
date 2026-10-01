@@ -867,7 +867,7 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s, radius: r, shadows: sh, style: ui, accent } = useTheme();
   const { showEmojis, showSubtext } = useUIPrefs();
-  const { profile, streakDays, rank, progress, level, points, dailyMissions, subjectProgress, progressEvents } = useUserProgress();
+  const { profile, streakDays, streakState, rank, progress, level, points, dailyMissions, subjectProgress, progressEvents } = useUserProgress();
   // The active profile's type is what decides this dashboard's default
   // layout, and `active` is what the entrepreneur widgets scope their vault
   // documents and baseline to.
@@ -1869,8 +1869,16 @@ export default function HomeScreen() {
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm }}>
             {(streakDays || 0) > 0 && !editingWidgets && (
-              <View style={{ backgroundColor: c.bg1, borderRadius: 12, paddingHorizontal: s.sm, paddingVertical: 3, borderWidth: 0.5, borderColor: c.gold }}>
-                <Text style={{ fontSize: t.xs, color: c.gold, fontWeight: t.semibold }}>{showEmojis ? '🔥 ' : ''}{streakDays} day streak</Text>
+              <View
+                accessible
+                accessibilityLabel={
+                  streakState === 'rest-day' ? `${streakDays} day streak. Yesterday was a rest day; do one thing today to keep it.`
+                  : streakState === 'at-risk' ? `${streakDays} day streak. Do one thing today to keep it.`
+                  : `${streakDays} day streak`}
+                style={{ backgroundColor: c.bg1, borderRadius: 12, paddingHorizontal: s.sm, paddingVertical: 3, borderWidth: 0.5, borderColor: c.gold }}>
+                <Text style={{ fontSize: t.xs, color: c.gold, fontWeight: t.semibold }}>
+                  {showEmojis ? '🔥 ' : ''}{streakDays} day streak{streakState === 'rest-day' ? ' · rest day' : ''}
+                </Text>
               </View>
             )}
             {canEditWidgets && (
