@@ -54,6 +54,7 @@ import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import { RANK_LABELS } from '../theme';
 import { GAMES_MASTER } from './GamesScreen';
 import { LIFE_AREAS } from './library/LifeAreaScreen';
+import { recordAction } from '../logic/gamificationService';
 
 function daysSince(iso) {
   if (!iso) return null;
@@ -1621,7 +1622,7 @@ export default function HomeScreen() {
     const rawId = item.id.replace(/^task_/, '');
     dismissDeskItem(item.id);
     if (!userId) return;
-    try { await supabase.from('tasks').update({ completed: true, completed_at: new Date().toISOString() }).eq('id', rawId); }
+    try { await supabase.from('tasks').update({ completed: true, completed_at: new Date().toISOString() }).eq('id', rawId); recordAction('task_done', rawId); }
     catch (e) { console.warn('HomeScreen: complete task', e.message); }
   };
 
@@ -1755,7 +1756,7 @@ export default function HomeScreen() {
     closeActivitySheet();
     const rawId = item.raw.id;
     dismissActivity(item.id);
-    try { await supabase.from('tasks').update({ completed: true, completed_at: new Date().toISOString() }).eq('id', rawId); }
+    try { await supabase.from('tasks').update({ completed: true, completed_at: new Date().toISOString() }).eq('id', rawId); recordAction('task_done', rawId); }
     catch (e) { console.warn('HomeScreen: complete activity task', e.message); }
   };
 

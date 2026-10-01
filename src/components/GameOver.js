@@ -14,6 +14,7 @@ import { useAccess } from '../../context/AccessContext';
 import { lastRoundSignalAt } from './RoundCompleteScreen';
 import { lessonsForGame, openLessonScreen } from '../data/skillLinks';
 import { recordRun, accuracyFor, SKILL_THRESHOLDS } from '../logic/skillStats';
+import { lastRunXp } from '../logic/useGame';
 
 const RANKS = [
   { min: 95, label: 'Legendary', emoji: '🏆', icon: 'trophy', color: '#FFD700' },
@@ -45,6 +46,14 @@ export default function GameOver({
   const { showEmojis } = useUIPrefs();
   const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
   const rank = getRank(accuracy);
+  // A rank from one or two answers is noise ("Legendary" for 1 of 1), so the
+  // badge and the game's big title wait for a run of at least five.
+  const shortRun = total < 5;
+  const heading = !shortRun ? title : correct > 0 ? 'Good start' : 'Round over';
+  // Games don't pass XP in; useGame keeps the last run's.
+  const xp = xpEarned || lastRunXp();
+  // No prize card picked yet: the XP is what this run earned, so it leads.
+  const xpLeads = score === 0 && xp > 0;
 
   // Pick one fact for this results screen once the pool is in — a static
   // pick (not re-rolled on every render) since this screen doesn't loop.
@@ -97,29 +106,34 @@ export default function GameOver({
       {showEmojis && <Text style={s.ornament}>✦ · ✦</Text>}
 
       {/* Rank badge */}
-      <View style={[s.rankBadge, { borderColor: rank.color }]}>
-        {showEmojis ? (
-          <Text style={s.rankEmoji}>{rank.emoji}</Text>
-        ) : (
-          <Ionicons name={rank.icon} size={20} color={rank.color} />
-        )}
-        <Text style={[s.rankLabel, { color: rank.color }]}>{rank.label}</Text>
-      </View>
+      {!shortRun && (
+        <View style={[s.rankBadge, { borderColor: rank.color }]}>
+          {showEmojis ? (
+            <Text style={s.rankEmoji}>{rank.emoji}</Text>
+          ) : (
+            <Ionicons name={rank.icon} size={20} color={rank.color} />
+          )}
+          <Text style={[s.rankLabel, { color: rank.color }]}>{rank.label}</Text>
+        </View>
+      )}
 
-      <Text style={s.title}>{title}</Text>
+      <Text style={s.title}>{heading}</Text>
 
-      {/* Score hero */}
+      {/* Score hero: the points (the prize cards picked), or, before any
+          card, the XP this run earned. */}
       <View style={s.scoreHero}>
-        <Text style={s.scoreNum}>{score}</Text>
-        <Text style={s.scoreLabel}>points earned</Text>
+        <Text style={s.scoreNum}>{xpLeads ? `+${xp}` : score}</Text>
+        <Text style={s.scoreLabel}>{xpLeads ? 'XP earned' : 'points earned'}</Text>
+        {xpLeads && (
+          <Text style={s.scoreHint}>Points come from the prize card at the end of each round.</Text>
+        )}
       </View>
 
-      {/* Rewards. The points are the score above (the prize cards, now
-          what the account gets), so only the XP needs its own pill. */}
-      {xpEarned > 0 && (
+      {/* With points in the hero, the XP gets its own pill. */}
+      {!xpLeads && xp > 0 && (
         <View style={s.rewardsRow}>
           <View style={s.rewardPill}>
-            <Text style={s.rewardText}>+{xpEarned} XP</Text>
+            <Text style={s.rewardText}>+{xp} XP</Text>
           </View>
         </View>
       )}
@@ -209,6 +223,7 @@ const makeStyles = (G) => StyleSheet.create({
   scoreHero:   { alignItems: 'center', marginBottom: 16 },
   scoreNum:    { fontSize: 56, fontWeight: '800', color: G.gold, letterSpacing: -2 },
   scoreLabel:  { fontSize: 13, color: G.muted, marginTop: -4 },
+  scoreHint:   { fontSize: 12, color: G.muted, marginTop: 6, textAlign: 'center', maxWidth: 280 },
   rewardsRow:  { flexDirection: 'row', gap: 8, marginBottom: 24 },
   rewardPill:  { borderWidth: 1, borderColor: G.teal, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, backgroundColor: G.tealL },
   rewardText:  { fontSize: 14, fontWeight: '700', color: G.teal },

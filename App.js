@@ -204,6 +204,16 @@ function MainTabs() {
 // be buttons that lead away mid-decision.
 const NO_TOPBAR_ROUTES = new Set(['Login', 'MultiStepOnboarding', 'ResetPassword', 'Plus']);
 
+// Browser tab title on web. Screens without a title option used to show the
+// raw route name ("WorkModeScreen", "ClassesMain"); spell it out instead.
+function webTitle(options, route) {
+  const name = options?.title || String(route?.name || '')
+    .replace(/(Screen|Main)$/, '')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2');
+  return name ? `${name} · Deskartes` : 'Deskartes';
+}
+
 function AppInner() {
   const { colors: c } = useTheme();
   const navigationRef = useRef(null);
@@ -411,6 +421,7 @@ function AppInner() {
   return (
     <NavigationContainer
       ref={navigationRef}
+      documentTitle={{ formatter: webTitle }}
       onReady={() => {
         // onStateChange doesn't fire for the initial route — without this,
         // currentRouteName stays stuck on the coarse 'MainTabs'/etc value

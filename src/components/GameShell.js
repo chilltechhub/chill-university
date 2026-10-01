@@ -105,6 +105,13 @@ export default function GameShell({
   const navigation = useNavigation();
   const G = useGameTheme();
   const s = makeStyles(G);
+  // Most games pay their points through the prize card at the end of each
+  // round, so "Score 0" sat there after right answers and read as broken.
+  // A right answer (streak > 0) with no points yet can only mean that kind
+  // of game, so from then until the first card the HUD says so.
+  const answeredRight = useRef(false);
+  if (streak > 0) answeredRight.current = true;
+  const pointsLater = score === 0 && answeredRight.current;
   const { showEmojis } = useUIPrefs();
   // Most games put the raw band key on the end of their subject line
   // ("Health & Fitness · 9-12"). For an adult that reads as a school grade,
@@ -196,10 +203,12 @@ export default function GameShell({
 
       {/* Stats bar */}
       <View style={s.statsBar}>
-        {/* Score */}
-        <View style={s.statItem}>
-          <Text style={s.statLabel}>Score</Text>
-          <Text style={s.statValue}>{score}</Text>
+        {/* Points */}
+        <View style={s.statItem} accessible accessibilityLabel={pointsLater ? 'Points: won at the end of the round' : `Points: ${score}`}>
+          <Text style={s.statLabel}>Points</Text>
+          {pointsLater
+            ? <Text style={s.statHint}>at round end</Text>
+            : <Text style={s.statValue}>{score}</Text>}
         </View>
 
         {/* Lives */}
@@ -266,6 +275,7 @@ const makeStyles = (G) => StyleSheet.create({
   statItem:   { alignItems: 'center', gap: 3 },
   statLabel:  { fontSize: 11, color: G.faint, textTransform: 'uppercase', letterSpacing: 1 },
   statValue:  { fontSize: 16, fontWeight: '700', color: G.gold },
+  statHint:   { fontSize: 12, fontWeight: '700', color: G.gold, paddingTop: 2 },
   streakRow:  { flexDirection: 'row', alignItems: 'center' },
   progressBg: { height: 3, backgroundColor: G.border },
   progressFill:{ height: 3, backgroundColor: G.teal },

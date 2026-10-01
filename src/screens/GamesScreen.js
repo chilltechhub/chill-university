@@ -580,18 +580,20 @@ const makeStyles = (c, t, s, r, sh) => StyleSheet.create({
     ...sh.md,
   },
   playText: { fontSize: t.lg, fontFamily: FONTS.display, fontWeight: t.bold, color: c.onFill, letterSpacing: 2 },
-  actionRow: { flexDirection: 'row', gap: s.md, width: '80%' },
-  reviewNote: { flexDirection: 'row', alignItems: 'center', gap: s.sm, width: '80%', marginTop: s.md, paddingVertical: s.sm, paddingHorizontal: s.md, borderRadius: r.md, backgroundColor: c.teal + '14', borderWidth: 0.5, borderColor: c.teal + '55' },
+  // 90%, not 80%: at phone width the two buttons got ~142 px each and
+  // "Daily Drills 2/3" ran into its border.
+  actionRow: { flexDirection: 'row', gap: s.sm, width: '90%', maxWidth: 440 },
+  reviewNote: { flexDirection: 'row', alignItems: 'center', gap: s.sm, width: '90%', maxWidth: 440, marginTop: s.md, paddingVertical: s.sm, paddingHorizontal: s.md, borderRadius: r.md, backgroundColor: c.teal + '14', borderWidth: 0.5, borderColor: c.teal + '55' },
   reviewText: { flex: 1, fontSize: t.sm, color: c.text2, lineHeight: 19 },
   actionBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: s.sm, backgroundColor: c.goldLight,
     borderWidth: 1, borderColor: c.gold,
-    borderRadius: r.lg, paddingVertical: s.md,
+    borderRadius: r.lg, paddingVertical: s.md, paddingHorizontal: s.sm,
   },
   actionBtnTeal: { backgroundColor: c.tealLight, borderColor: c.teal },
   actionEmoji: { fontSize: t.lg },
-  actionText: { fontSize: t.md, fontWeight: t.semibold, color: c.gold },
+  actionText: { fontSize: t.md, fontWeight: t.semibold, color: c.gold, flexShrink: 1 },
   sectionIntro: { width: '100%', fontSize: t.sm, color: c.text3, marginBottom: s.md, paddingHorizontal: s.sm, lineHeight: 18 },
   rankPanel: {
     flexDirection: 'row', alignItems: 'center', width: '100%',

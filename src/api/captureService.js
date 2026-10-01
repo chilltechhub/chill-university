@@ -6,6 +6,7 @@ import { supabase } from './profileScopedClient';
 import { cacheWrite, cacheRead, isOnline, smartFetch, offlineWrite } from './offlineCache';
 import { todayStr, dateStr, addDays } from '../logic/dateUtils';
 import { detectSource, isGenericTitle, fallbackTitle, CAPTURE_TYPE_FOR_KIND } from '../logic/linkSources';
+import { recordAction } from '../logic/gamificationService';
 
 // ─── CAPTURES ─────────────────────────────────────────────────────────────────
 
@@ -448,6 +449,7 @@ export async function completeTask(taskId, completed = true) {
     .select()
     .single();
   if (error) throw error;
+  if (completed) recordAction('task_done', taskId);
   return data;
 }
 

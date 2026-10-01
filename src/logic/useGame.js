@@ -7,6 +7,14 @@ import { noteAnswered } from './questionRotation';
 
 export const DIFFICULTY = { easy: 1, medium: 2, hard: 3 };
 
+// The XP the last finished run earned, for GameOver: no game passed it in,
+// so the results screen never showed XP at all, and a run cut short before
+// its first prize card read as "0 points earned" for real work.
+let lastRun = { xpEarned: 0, at: 0 };
+export function lastRunXp() {
+  return Date.now() - lastRun.at < 2 * 60 * 1000 ? lastRun.xpEarned : 0;
+}
+
 export default function useGame({
   subject = 'general', difficulty = 1, skillLevel = null, onGameEnd,
   // Opt-in: when true, `answer()` still tracks correct/attempted/streak/
@@ -154,6 +162,7 @@ export default function useGame({
     const share        = attempted > 0 ? Math.min(1, correct / attempted) : 1;
     const xpEarned     = xpRef.current + (correct > 0 ? Math.max(1, Math.round(30 * difficulty * share)) : 0);
     const pointsEarned = score;
+    lastRun = { xpEarned, at: Date.now() };
 
     // Fire GAME_COMPLETED event with full metadata, then pull the fresh
     // profile — this is what lets a level-up/rank-up notification fire
