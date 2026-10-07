@@ -273,6 +273,14 @@ export const MAX_STAGE = PATHS.PERSONAL.length;
 // Same fields as a stage. Each aim's first goal (its purpose's `firstGoal`)
 // must be doable with what this plus any type's stage 1 shows;
 // scripts/check-wiring.mjs checks every type against every aim.
+// The core loop, open from day one whatever the account type or aim:
+// planning the day and staying on a task. Holding these back meant the
+// "Build a project" aim had no Planner and every account met a lock screen
+// behind the Work button on its first project (ship test, 2026-10-07).
+export const CORE_OPENS = {
+  features: ['planner', 'work-mode'],
+};
+
 export const AIM_OPENS = {
   build: {
     features: ['idea-garden', 'workshop'],

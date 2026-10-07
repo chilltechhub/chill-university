@@ -148,6 +148,9 @@ export function UserProgressProvider({ children }) {
   const dismissProgressEvent = useCallback(() => {
     setProgressEvents(q => q.slice(1));
   }, []);
+  // The celebration cards show everything queued at once, so they clear it
+  // at once (LevelUpNotification, UnlockNotification).
+  const dismissAllProgressEvents = useCallback(() => setProgressEvents([]), []);
 
   // ── Auth listener ────────────────────────────────────────────────────────
   // supabase-js fires onAuthStateChange with an 'INITIAL_SESSION' event right
@@ -556,6 +559,7 @@ export function UserProgressProvider({ children }) {
     // level-up / rank-up notification queue
     progressEvents,
     dismissProgressEvent,
+    dismissAllProgressEvents,
     // refresh
     refreshProfile,
     notePointsEarned,
@@ -568,7 +572,7 @@ export function UserProgressProvider({ children }) {
     user, profile, loading, points, xp, level, rank, rankProgress, progress, streakDays, streakState,
     subjectProgress, dailyMissions, weeklyMissions, longtermMissions, gameplayStats,
     noteRoundPlayed, noteDrillProgress, setPlayableGames, drillEvents, dismissDrillEvent,
-    progressEvents, dismissProgressEvent, refreshProfile, notePointsEarned, refreshMissions,
+    progressEvents, dismissProgressEvent, dismissAllProgressEvents, refreshProfile, notePointsEarned, refreshMissions,
     recordGuestEvent,
   ]);
 

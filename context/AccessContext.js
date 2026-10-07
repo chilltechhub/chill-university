@@ -63,6 +63,21 @@ import { recordAction } from '../src/logic/gamificationService';
 
 const AccessContext = createContext(null);
 
+const union = (a = [], b = []) => [...new Set([...a, ...b])];
+function mergeStageEvents(a, b) {
+  return {
+    from: Math.min(a.from, b.from),
+    to: Math.max(a.to, b.to),
+    stages: [...(a.stages || []), ...(b.stages || []).filter(st => !(a.stages || []).includes(st))],
+    fresh: a.fresh && b.fresh ? {
+      features: union(a.fresh.features, b.fresh.features),
+      games: union(a.fresh.games, b.fresh.games),
+      widgets: union(a.fresh.widgets, b.fresh.widgets),
+      caps: union(a.fresh.caps, b.fresh.caps),
+    } : (a.fresh || b.fresh),
+  };
+}
+
 // See startFirstGoal: the first goal for someone with no account.
 const GUEST_FIRST_GOAL = { objective: 'first-look', purpose: 'habits' };
 
@@ -332,9 +347,11 @@ export function AccessProvider({ children }) {
           widgets: after.homeWidgets.filter(k => !before.homeWidgets.includes(k)),
           caps: [...after.caps].filter(id => !before.caps.has(id)),
         };
-        setStageEvents(q => [...q, {
-          from: seen, to: derivedStage, stages: stagesBetween(persona, seen, derivedStage), fresh,
-        }]);
+        const event = { from: seen, to: derivedStage, stages: stagesBetween(persona, seen, derivedStage), fresh };
+        // Still unseen? Then it's the same moment: one card for both. Claiming
+        // a goal opens a stage, and the level it gives can open the next one
+        // a second later, which used to be two cards.
+        setStageEvents(q => (q.length ? [...q.slice(0, -1), mergeStageEvents(q[q.length - 1], event)] : [event]));
         // Screens with noticeably more on them teach themselves again.
         const again = reteachBetween(persona, seen, derivedStage);
         if (again.length) forgetSeenScreens(again);

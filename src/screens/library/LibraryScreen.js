@@ -920,7 +920,7 @@ export default function LibraryScreen() {
                 )}
               </View>
               {showSubtext && (
-                <Text style={styles.domainHint}>Tap a domain to filter — double-tap or hold to open its check-in</Text>
+                <Text style={styles.domainHint}>Double-tap or hold an area to open it · one tap filters the list</Text>
               )}
             </View>
             </TourSpot>
@@ -1344,7 +1344,7 @@ const makeStyles = (c, t, s, r, ui, accent) =>
     bubbleDotText: { fontSize: 8 /* a11y-ok: count badge */, fontFamily: ui.numberFont, fontWeight: '800', color: '#ffffff' }, // style-ok: white count on a coloured dot
     areaEmoji: { fontSize: 16 },
     areaLabel: { fontSize: 11, fontWeight: '700', color: c.text1, textAlign: 'center', marginTop: 5 },
-    domainHint: { fontSize: 11, color: c.text3, textAlign: 'center', marginTop: 14, paddingHorizontal: 20 },
+    domainHint: { fontSize: 12, color: c.text2, fontWeight: '600', textAlign: 'center', marginTop: 14, paddingHorizontal: 20 },
     domainEmptyText: { fontSize: t.sm, color: c.text3, paddingHorizontal: 20, lineHeight: 19 },
     domainResultsCard: {
       marginHorizontal: 20,

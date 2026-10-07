@@ -8,10 +8,9 @@
 // a level-up notification able to appear right after finishing a game,
 // not just on next app launch.
 //
-// Shows one event at a time — `dismissProgressEvent` pops the queue, so
-// a session that crossed two thresholds at once (e.g. leveled up AND
-// ranked up from one big game) shows them back to back instead of
-// merging into one confusing popup.
+// Shows everything queued on one card (summarizeProgress), and only when
+// nothing else from the same moment is waiting: a new stage or feature goes
+// on UnlockNotification's card, with this level-up folded into it.
 
 import React, { useEffect, useState } from 'react';
 import { View, Text, Modal, StyleSheet, TouchableOpacity } from 'react-native';
@@ -19,44 +18,72 @@ import { useTheme } from '../../context/ThemeContext';
 import { successHaptic } from '../logic/haptics';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { useTour } from '../../context/TourContext';
+import { useAccess } from '../../context/AccessContext';
+import useCalmMoment from '../logic/useCalmMoment';
 import { shareText, milestoneText } from '../logic/shareOut';
+
+// Everything queued, as one thing to say. A session that crossed two
+// thresholds at once (a level AND a rank that opened a background) used to
+// show "Level Up!" and then "Unlocked!" back to back.
+export function summarizeProgress(events) {
+  const list = events || [];
+  if (!list.length) return null;
+  const levels = list.filter(e => e.type === 'level');
+  const tiers = list.filter(e => e.type === 'rank' && e.newTier);
+  const seen = new Set();
+  const unlocks = list.flatMap(e => e.unlocks || []).filter(u => {
+    const key = `${u.emoji}|${u.name}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  const level = levels.length ? Math.max(...levels.map(e => e.to)) : null;
+  const tier = tiers.length ? tiers[tiers.length - 1] : null;
+  return { level, tier, unlocks };
+}
 
 export default function LevelUpNotification() {
   const { colors: c } = useTheme();
-  const { progressEvents, dismissProgressEvent } = useUserProgress();
+  const { progressEvents, dismissAllProgressEvents } = useUserProgress();
+  const { stageEvents, unlockEvents } = useAccess();
   const s = makeStyles(c);
 
   // Waits while the guide or a tour is talking: a Modal paints over the
   // overlay, and "Level Up!" landed on top of the guide's "claim your goal"
   // bubble. It shows the moment that walkthrough ends.
   const { active: tourActive } = useTour();
-  const event = progressEvents?.[0];
-  const shownKey = event && !tourActive ? JSON.stringify(event) : null;
+  // A stage or feature card waiting too means the same moment opened
+  // something: UnlockNotification puts this level-up on that card instead
+  // of showing a second popup.
+  const accessWaiting = !!(stageEvents?.length || unlockEvents?.some(e => e.feature));
+  const summary = summarizeProgress(progressEvents);
+  const ready = useCalmMoment(!!summary && !tourActive && !accessWaiting);
+  const shownKey = ready ? JSON.stringify(progressEvents) : null;
   useEffect(() => { if (shownKey) successHaptic(); }, [shownKey]);
-  if (!event || tourActive) return null;
+  if (!ready || !summary) return null;
 
-  const isLevel = event.type === 'level';
-  const shareable = isLevel || !!event.newTier;
+  const { level, tier, unlocks } = summary;
+  const shareable = level != null || !!tier;
 
   return (
-    <Modal transparent animationType="fade" visible onRequestClose={dismissProgressEvent}>
+    <Modal transparent animationType="fade" visible onRequestClose={dismissAllProgressEvents}>
       <View style={s.overlay}>
         <View style={s.card}>
           <Text style={s.ornament}>✦ · ✦</Text>
-          <Text style={s.bigEmoji}>{isLevel ? '⭐' : event.newTier ? (event.rankLabel?.emoji || '🏆') : '🎁'}</Text>
-          <Text style={s.title}>{isLevel ? 'Level Up!' : event.newTier ? 'New Tier!' : 'Unlocked!'}</Text>
+          <Text style={s.bigEmoji}>{level != null ? '⭐' : tier ? (tier.rankLabel?.emoji || '🏆') : '🎁'}</Text>
+          <Text style={s.title}>{level != null ? 'Level Up!' : tier ? 'New Tier!' : 'Unlocked!'}</Text>
           <Text style={s.subtitle}>
-            {isLevel
-              ? `You reached Level ${event.to}`
-              : event.newTier
-                ? `You're now ${event.rankLabel?.label || `Rank ${event.to}`}`
+            {level != null
+              ? `You reached Level ${level}${tier ? ` and ${tier.rankLabel?.label || 'a new tier'}` : ''}`
+              : tier
+                ? `You're now ${tier.rankLabel?.label || `Rank ${tier.to}`}`
                 : 'Your points opened something new'}
           </Text>
 
-          {event.unlocks.length > 0 && (
+          {unlocks.length > 0 && (
             <View style={s.unlockBox}>
               <Text style={s.unlockLabel}>🎁 You unlocked</Text>
-              {event.unlocks.map((u, i) => (
+              {unlocks.map((u, i) => (
                 <View key={i} style={s.unlockRow}>
                   <Text style={s.unlockEmoji}>{u.emoji}</Text>
                   <Text style={s.unlockName}>{u.name}</Text>
@@ -65,12 +92,12 @@ export default function LevelUpNotification() {
             </View>
           )}
 
-          <TouchableOpacity style={s.btn} onPress={dismissProgressEvent} activeOpacity={0.85} accessibilityRole="button">
+          <TouchableOpacity style={s.btn} onPress={dismissAllProgressEvents} activeOpacity={0.85} accessibilityRole="button">
             <Text style={s.btnText}>Nice!</Text>
           </TouchableOpacity>
           {shareable && (
             <ShareMilestone
-              text={milestoneText(isLevel ? 'level' : 'tier', isLevel ? event.to : (event.rankLabel?.label || `Rank ${event.to}`))}
+              text={milestoneText(level != null ? 'level' : 'tier', level != null ? level : (tier.rankLabel?.label || `Rank ${tier.to}`))}
               s={s}
             />
           )}

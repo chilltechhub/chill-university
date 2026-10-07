@@ -34,6 +34,7 @@ import { markManualReminder, setPlanReminder } from '../logic/hubNotifications';
 import { getQuest } from '../data/quests';
 import { suggestionsForArea } from '../data/plannerSuggestions';
 import DailyCheckin from '../components/DailyCheckin';
+import MiniCalendar from '../components/MiniCalendar';
 import PlanDetailSheet from '../components/PlanDetailSheet';
 import TourSpot from '../components/TourSpot';
 import FillWithAIButton from '../components/FillWithAIButton';
@@ -44,6 +45,8 @@ import { dateStr } from '../logic/dateUtils';
 import { buildIcs } from '../logic/calendarExport';
 import { shareFile } from '../logic/shareFile';
 import { textOn } from '../logic/contrast';
+import { getDueItems, setDueItemDone } from '../api/deadlinesService';
+import { openTarget } from '../logic/openTarget';
 
 const { width: SW } = Dimensions.get('window');
 const PANEL_W      = Math.min(SW * 0.82, 370);
@@ -68,62 +71,6 @@ function isOverdue(instance) {
   if (instance.completed || instance.skipped) return false;
   const today = toISO(new Date());
   return instance.date < today;
-}
-
-// ─── Compact calendar — used by InstanceModal to pick a date ─────────────────
-function MiniCalendar({ value, onChange, color, c, t, s, r }) {
-  const [viewMonth, setViewMonth] = useState(() => new Date(value.getFullYear(), value.getMonth(), 1));
-  const year  = viewMonth.getFullYear();
-  const month = viewMonth.getMonth();
-  const firstDay    = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const cells = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
-  const todayIso = toISO(new Date());
-  const selIso   = toISO(value);
-
-  return (
-    <View style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, borderWidth: 1, borderColor: color + '44' }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: s.sm }}>
-        <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={() => setViewMonth(new Date(year, month - 1, 1))} style={{ padding: 4 }}>
-          <Ionicons name="chevron-back" size={16} color={color} />
-        </TouchableOpacity>
-        <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.text1 }}>
-          {viewMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-        </Text>
-        <TouchableOpacity accessibilityLabel="Next" accessibilityRole="button" onPress={() => setViewMonth(new Date(year, month + 1, 1))} style={{ padding: 4 }}>
-          <Ionicons name="chevron-forward" size={16} color={color} />
-        </TouchableOpacity>
-      </View>
-      <View style={{ flexDirection: 'row', marginBottom: 4 }}>
-        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-          <Text key={i} style={{ flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '700', color: c.text3 }}>{d}</Text>
-        ))}
-      </View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-        {cells.map((day, i) => {
-          if (!day) return <View key={`e${i}`} style={{ width: '14.28%', aspectRatio: 1 }} />;
-          const iso     = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-          const isSel   = iso === selIso;
-          const isToday = iso === todayIso;
-          return (
-            <TouchableOpacity key={day} onPress={() => onChange(new Date(year, month, day))}
-              style={{ width: '14.28%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center' }}>
-              <View style={{
-                width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
-                backgroundColor: isSel ? color : 'transparent',
-                borderWidth: isToday && !isSel ? 1 : 0, borderColor: color,
-              }}>
-                <Text style={{ fontSize: 12, fontWeight: isSel ? '800' : '500', color: isSel ? textOn(color) : isToday ? color : c.text1 }}>{day}</Text>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-      <TouchableOpacity onPress={() => { setViewMonth(new Date()); onChange(new Date()); }} style={{ marginTop: s.sm, alignSelf: 'center', padding: 4 }}>
-        <Text style={{ fontSize: 11, color, fontWeight: '700' }}>Today</Text>
-      </TouchableOpacity>
-    </View>
-  );
 }
 
 // The running goal's next Planner step, as the new-item sheet should open.
@@ -463,7 +410,7 @@ function InstanceModal({ visible, instance, userId, date, initialTime = null, on
               {showCal && (
                 <View style={{ marginTop: s.sm }}>
                   <MiniCalendar value={selectedDate} onChange={(d) => { setSelectedDate(d); setShowCal(false); }}
-                    color={areaColor} c={c} t={t} s={s} r={r} />
+                    color={areaColor} colors={{ bg: c.bg0, text: c.text1, muted: c.text3 }} />
                 </View>
               )}
             </View>
@@ -965,9 +912,60 @@ function ListView({ instances, onUpdate, onOpen, onAdd, c, t, s, r }) {
   );
 }
 
+// ─── Due ──────────────────────────────────────────────────────────────────────
+// Deadlines that live outside the Planner's own rows: project tasks, plain
+// tasks and whole projects' finish dates (deadlinesService.js). Before this,
+// a project task due Wednesday was nowhere on Wednesday.
+const DUE_KIND = { project_task: 'Project task', task: 'Task', project: 'Project finish date' };
+
+function DueList({ items, onChange, label = 'Due', c, t, s, r }) {
+  const navigation = useNavigation();
+  const [busy, setBusy] = useState(null);
+  if (!items.length) return null;
+  const toggle = async (item) => {
+    if (item.kind === 'project' || busy) return;
+    setBusy(item.key);
+    try { await setDueItemDone(item, !item.completed); onChange?.(); }
+    catch (e) { Alert.alert('Could not update that', e.message || 'Try again.'); }
+    setBusy(null);
+  };
+  return (
+    <View style={{ paddingHorizontal: s.lg, paddingTop: s.sm, paddingBottom: s.xs }}>
+      <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>
+        {label} · {items.filter(i => i.completed).length}/{items.length}
+      </Text>
+      {items.map(item => (
+        <View key={item.key} style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: c.gold, paddingHorizontal: s.md, paddingVertical: s.sm, marginBottom: s.xs }}>
+          {item.kind === 'project' ? (
+            <Ionicons name="flag-outline" size={18} color={c.gold} />
+          ) : (
+            <TouchableOpacity onPress={() => toggle(item)} accessibilityRole="checkbox" accessibilityState={{ checked: item.completed }}
+              accessibilityLabel={`${item.title}, ${item.completed ? 'done' : 'not done'}`} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              {busy === item.key ? <ActivityIndicator size="small" color={c.gold} />
+                : <Ionicons name={item.completed ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={item.completed ? c.gold : c.text3} />}
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={{ flex: 1 }} disabled={!item.projectId} accessibilityRole="button"
+            accessibilityLabel={item.projectId ? `${item.title}. Open the project` : item.title}
+            onPress={() => openTarget(navigation, { kind: 'project', id: item.projectId })}>
+            <Text numberOfLines={2} style={{ fontSize: t.sm, fontWeight: t.medium, color: item.completed ? c.text3 : c.text1, textDecorationLine: item.completed ? 'line-through' : 'none' }}>
+              {item.kind === 'project' ? `Finish: ${item.title}` : item.title}
+            </Text>
+            <Text numberOfLines={1} style={{ fontSize: t.xs, color: c.text3, marginTop: 1 }}>
+              {DUE_KIND[item.kind]}{item.projectTitle && item.kind !== 'project' ? ` · ${item.projectTitle}` : ''}
+            </Text>
+          </TouchableOpacity>
+          {!!item.projectId && <Ionicons name="chevron-forward" size={14} color={c.text4} />}
+        </View>
+      ))}
+    </View>
+  );
+}
+
 // ─── Daily page ───────────────────────────────────────────────────────────────
 function DailyPage({ userId, date, activeAreas, timeMode, onOpen, onAdd, refreshKey, showingAll, c, t, s, r }) {
   const [instances,  setInstances]  = useState([]);
+  const [due,        setDue]        = useState([]);
   const [loading,    setLoading]    = useState(true);
 
   // activeAreas has to be a dependency here — load() reads it to filter the
@@ -982,9 +980,16 @@ function DailyPage({ userId, date, activeAreas, timeMode, onOpen, onAdd, refresh
   // the page doesn't blank and jump back to the top after every change.
   const load = async () => {
     try {
-      let data = await getInstances(userId, { date: toISO(date), allProfiles: showingAll });
+      const iso = toISO(date);
+      const [rows, dueRows] = await Promise.all([
+        getInstances(userId, { date: iso, allProfiles: showingAll }),
+        // Deadlines carry no life area, so an area filter leaves them out.
+        activeAreas.size > 0 ? [] : getDueItems(userId, iso, iso),
+      ]);
+      let data = rows;
       if (activeAreas.size > 0) data = data.filter(i => activeAreas.has(i.area));
       setInstances(data);
+      setDue(dueRows);
     } catch (e) { console.warn('DailyPage', e); }
     setLoading(false);
   };
@@ -1015,6 +1020,7 @@ function DailyPage({ userId, date, activeAreas, timeMode, onOpen, onAdd, refresh
           </View>
         )}
       </View>
+      <DueList items={due} onChange={load} label={toISO(date) === toISO(new Date()) ? 'Due today' : 'Due'} c={c} t={t} s={s} r={r} />
       {timeMode
         ? <TimeView {...sharedProps} />
         : <ListView {...sharedProps} />
@@ -1026,6 +1032,7 @@ function DailyPage({ userId, date, activeAreas, timeMode, onOpen, onAdd, refresh
 // ─── Weekly view ──────────────────────────────────────────────────────────────
 function WeeklyView({ userId, anchor, activeAreas, onDayPress, refreshKey, showingAll, c, t, s }) {
   const [byDate,  setByDate]  = useState({});
+  const [dueByDate, setDueByDate] = useState({});
   const [loading, setLoading] = useState(true);
   const weekDays = getWeekDays(anchor);
   const today    = toISO(new Date());
@@ -1036,8 +1043,15 @@ function WeeklyView({ userId, anchor, activeAreas, onDayPress, refreshKey, showi
   const load = async () => {
     setLoading(true);
     try {
-      let data = await getInstances(userId, { weekStart: toISO(weekDays[0]), weekEnd: toISO(weekDays[6]), allProfiles: showingAll });
+      const [rows, dueRows] = await Promise.all([
+        getInstances(userId, { weekStart: toISO(weekDays[0]), weekEnd: toISO(weekDays[6]), allProfiles: showingAll }),
+        activeAreas.size > 0 ? [] : getDueItems(userId, toISO(weekDays[0]), toISO(weekDays[6])),
+      ]);
+      let data = rows;
       if (activeAreas.size > 0) data = data.filter(i => activeAreas.has(i.area));
+      const dueMap = {};
+      dueRows.forEach(d => { (dueMap[d.date] = dueMap[d.date] || []).push(d); });
+      setDueByDate(dueMap);
       const map = {};
       data.forEach(inst => { if (!map[inst.date]) map[inst.date] = []; map[inst.date].push(inst); });
       Object.values(map).forEach(list => list.sort(byTime));
@@ -1056,6 +1070,7 @@ function WeeklyView({ userId, anchor, activeAreas, onDayPress, refreshKey, showi
         const isToday = iso === today;
         const done    = items.filter(i => i.completed).length;
         const missed  = items.filter(i => isOverdue(i)).length;
+        const dueHere = dueByDate[iso] || [];
         return (
           <TouchableOpacity key={i} onPress={() => onDayPress(day)}
             style={{ backgroundColor: c.bg1, borderRadius: 12, marginBottom: s.sm, borderWidth: isToday ? 1.5 : 0.5, borderColor: isToday ? c.teal : missed > 0 ? '#e05858' : c.border, overflow: 'hidden' }}>
@@ -1068,11 +1083,19 @@ function WeeklyView({ userId, anchor, activeAreas, onDayPress, refreshKey, showi
                   {day.toLocaleDateString('en-US', { weekday: 'long' })}
                 </Text>
                 <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 1 }}>
-                  {items.length} items · {done} done{missed > 0 ? ` · ${missed} missed` : ''}
+                  {items.length} {items.length === 1 ? 'item' : 'items'} · {done} done{missed > 0 ? ` · ${missed} missed` : ''}{dueHere.length ? ` · ${dueHere.length} due` : ''}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={14} color={c.text4} />
             </View>
+            {dueHere.map(d => (
+              <View key={d.key} style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, paddingHorizontal: s.md, paddingVertical: 4, borderTopWidth: 0.5, borderTopColor: c.border }}>
+                <Ionicons name={d.kind === 'project' ? 'flag-outline' : d.completed ? 'checkmark-circle' : 'ellipse-outline'} size={11} color={c.gold} />
+                <Text style={{ flex: 1, fontSize: t.xs, color: d.completed ? c.text3 : c.text1, textDecorationLine: d.completed ? 'line-through' : 'none' }} numberOfLines={1}>
+                  {d.kind === 'project' ? `Finish: ${d.title}` : `Due: ${d.title}`}
+                </Text>
+              </View>
+            ))}
             {items.slice(0, 3).map((inst, j) => (
               <View key={j} style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, paddingHorizontal: s.md, paddingVertical: 4, borderTopWidth: 0.5, borderTopColor: c.border }}>
                 <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: AREAS[inst.area]?.color || c.teal }} />
