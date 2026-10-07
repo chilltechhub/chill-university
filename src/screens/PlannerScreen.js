@@ -126,12 +126,27 @@ function MiniCalendar({ value, onChange, color, c, t, s, r }) {
   );
 }
 
+// The running goal's next Planner step, as the new-item sheet should open.
+// "Put one small habit in the Planner" comes right after onboarding asked
+// for "a habit you want to hold", so that answer is the habit: asking for
+// it a second time, in a blank box, was the first thing a new account hit.
+function goalIdeaFor(objective, baseline) {
+  if (!objective?.active || objective.complete) return null;
+  const idea = objective.nextStep?.idea;
+  if (!idea) return null;
+  const own = typeof baseline?.habit_target === 'string' ? baseline.habit_target.trim() : '';
+  if (idea.title || !own || objective.nextStep.id !== 'habit') return idea;
+  return { ...idea, title: own, mine: true };
+}
+
 // ─── Add / Edit instance modal ────────────────────────────────────────────────
 // `defaultArea`: where a new item starts (the area being filtered to, else
 // the person's own first life area; it was always Physical, which a Student
 // who never picked Physical got as the default for a study block).
 // `goalIdea`: the running goal's Planner step can name one ({ title,
 // cadence, area } on the step in objectives.js), shown first in the ideas.
+// `mine` means the title is the person's own words from onboarding, so it
+// goes straight into the box instead of waiting as a suggestion.
 function InstanceModal({ visible, instance, userId, date, initialTime = null, onSave, onDelete, onClose, defaultArea = 'physical', goalIdea = null, c, t, s, r }) {
   const { showEmojis } = useUIPrefs();
   const [title,       setTitle]       = useState('');
@@ -206,7 +221,7 @@ function InstanceModal({ visible, instance, userId, date, initialTime = null, on
       // A new item repeats only when asked to. It used to default to
       // "daily" while saving just the one day, so the label said daily and
       // the planner showed it once.
-      setTitle(''); setArea(goalIdea?.area || defaultArea || 'physical'); setCadence(goalIdea?.cadence || 'once');
+      setTitle(goalIdea?.mine ? goalIdea.title : ''); setArea(goalIdea?.area || defaultArea || 'physical'); setCadence(goalIdea?.cadence || 'once');
       setSelectedDate(date ? new Date(date + 'T00:00:00') : new Date());
       setTimeVal(initialTime || ''); setDuration(''); setNotes(''); setReminder(false);
       setLinkType(null); setLinkScreen(null); setLinkId(null); setLinkLabel(''); setLinkSubject(null);
@@ -264,7 +279,7 @@ function InstanceModal({ visible, instance, userId, date, initialTime = null, on
   const suggestions = useMemo(() => {
     if (isEdit) return [];
     const base = suggestionsForArea(area, scheduledTitles);
-    if (!goalIdea || scheduledTitles.includes(goalIdea.title)) return base;
+    if (!goalIdea?.title || goalIdea.mine || scheduledTitles.includes(goalIdea.title)) return base;
     return [{ ...goalIdea, forGoal: true }, ...base.filter(sg => sg.title !== goalIdea.title)].slice(0, 4);
   }, [isEdit, area, scheduledTitles, goalIdea]);
 
@@ -773,16 +788,29 @@ function TimeView({ instances, date, onUpdate, onOpen, onAddAt, c, t, s, r }) {
   const isToday = toISO(date) === toISO(new Date());
   const yOf = (mins) => (mins / 60 - hStart) * HOUR_H;
 
-  // Open on now (today) or the first thing planned, not always 6am.
+  // Open on now (today) or the first thing planned, not always 6am. Not
+  // while there are all-day items still to do: those are the top of the
+  // list, and opening past them hid a new account's first habit.
+  const openUntimed = untimed.filter(i => !i.completed && !i.skipped).length;
   const scrollToStart = (gridTop) => {
     if (scrolled.current) return;
     scrolled.current = true;
+    if (openUntimed > 0) return;
     const now = new Date();
     const target = isToday ? now.getHours() * 60 + now.getMinutes() : boxes[0]?.top;
     if (target == null) return;
     const y = Math.max(0, gridTop + yOf(target) - HOUR_H);
     setTimeout(() => scrollRef.current?.scrollTo({ y, animated: false }), 0);
   };
+
+  // Something added "any time" goes in up top, above wherever the view
+  // already scrolled to. Saving a habit and seeing nothing change read as
+  // the save not working (found 2026-10-01), so go back up to show it.
+  const prevUntimed = useRef(untimed.length);
+  useEffect(() => {
+    if (untimed.length > prevUntimed.current) scrollRef.current?.scrollTo({ y: 0, animated: true });
+    prevUntimed.current = untimed.length;
+  }, [untimed.length]);
 
   const hh = (h, m) => `${String(h).padStart(2, '0')}:${m}`;
 
@@ -1313,7 +1341,7 @@ export default function PlannerScreen() {
   // calendar defaults to 'all' because you only have one actual day and need
   // to see clashes. See useViewScope.js.
   const { showingAll, toggle: toggleScope } = useViewScope('planner', SCOPE_PROFILE);
-  const { profiles } = useProfiles();
+  const { profiles, active: activeProfile } = useProfiles();
 
   // Re-read when the account changes, so signing in from the guest prompt
   // opens the planner without leaving the screen.
@@ -1569,7 +1597,7 @@ export default function PlannerScreen() {
         date={modalDate}
         initialTime={modalTime}
         defaultArea={activeAreas.size === 1 ? [...activeAreas][0] : (progressProfile?.active_life_areas?.[0] || 'physical')}
-        goalIdea={activeObjective?.active && !activeObjective.complete ? (activeObjective.nextStep?.idea || null) : null}
+        goalIdea={goalIdeaFor(activeObjective, activeProfile?.baseline)}
         onSave={(saved) => {
           setShowModal(false);
           setRefresh(k => k + 1);

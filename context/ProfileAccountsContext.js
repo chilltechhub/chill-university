@@ -24,7 +24,7 @@ import { useUserProgress } from './UserProgressContext';
 import { setActiveProfileId } from '../src/logic/activeProfile';
 import { getPersona, isPersonaAllowed, personasFor, defaultPersonaFor, DEFAULT_PERSONA } from '../src/data/personas';
 import { communityAccess } from '../src/logic/allowed';
-import { ageBandFor } from '../src/logic/profileResolver';
+import { ageBandFor, ageCategoryFromDob, isMinorBand } from '../src/logic/profileResolver';
 import {
   listProfiles, createProfile, renameProfile, archiveProfile, updateProfile,
   setActiveProfile as persistActiveProfile, reorderProfiles,
@@ -243,9 +243,17 @@ export function ProfileAccountsProvider({ children }) {
 
   // Creates the signup profile. Called once from onboarding — it's the master,
   // and it's what every fallback in this file resolves to.
-  const createMasterProfile = useCallback(async ({ type, name, emoji, baseline }) => {
+  //
+  // `dateOfBirth`: the one onboarding just saved. This context's `profile` is
+  // the copy loaded at signup, before the birthday step, so on its own it
+  // reads as age unknown, which is treated as a minor. That quietly turned
+  // every adult who picked Business or Entrepreneur into a Student (found
+  // 2026-10-07). The age check still runs, on the real birth date.
+  const createMasterProfile = useCallback(async ({ type, name, emoji, baseline, dateOfBirth }) => {
     if (!user) throw new Error('Not signed in');
-    const safeType = isPersonaAllowed(type, personaCtx) ? type : defaultPersonaFor(personaCtx);
+    const knownBand = ageCategoryFromDob(dateOfBirth);
+    const ctx = knownBand ? { isMinor: isMinorBand(knownBand), ageBand: knownBand } : personaCtx;
+    const safeType = isPersonaAllowed(type, ctx) ? type : defaultPersonaFor(ctx);
     const row = await createProfile(user.id, { type: safeType, name, emoji, baseline, isMaster: true });
     const rows = await refresh();
     if (row?.id) {

@@ -174,8 +174,11 @@ export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
       : (g.params && typeof g.params === 'object' ? g.params : undefined);
     // Not in a game: games are left with the X, which the step says itself.
     const pushed = g.go && !HUBS.has(g.go) && !PLAY_ROUTES.has(g.go);
+    // The bar at the bottom, not "the arrow at the top left": the Planner
+    // and the Capture Inbox, where most first goals start, have no arrow
+    // (found 2026-10-01). The tab bar is on every one of these screens.
     const backTip = pushed && !backTaughtRef.current
-      ? ' When you are done, tap the arrow at the top left, or swipe right from the left edge, to go back.'
+      ? ' When you are done, tap Home in the bar at the bottom to come back.'
       : '';
     if (backTip) backTaughtRef.current = true;
     const pointAt = {

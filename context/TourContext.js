@@ -67,9 +67,13 @@ function buildSteps({ welcome = false, purpose = null, firstGoal = null } = {}) 
       return step;
     });
   }
+  // Both ends: the opening line ("Two things before your first goal") was
+  // also only true right after onboarding.
   return TOUR_STEPS.map((step, i) => (i === TOUR_STEPS.length - 1
-    ? { ...step, body: "That's everything. You can replay this any time from Settings, and Screen Tutorial in your menu explains whichever screen you're on." }
-    : step));
+    ? { ...step, body: "That's everything. You can replay this any time from Settings. For the page you're on, tap your picture at the top left, then Screen Tutorial." }
+    : i === 0
+      ? { ...step, body: "The two things every screen shares. Tap Next › to move on, or Skip to leave." }
+      : step));
 }
 
 export function TourProvider({ children }) {

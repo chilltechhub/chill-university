@@ -41,6 +41,19 @@ export const FIRST_GOAL_GUIDE = {
     },
     drill: DRILL('Tap here and play one round: a few quick questions. The step ticks itself when the round ends.'),
   },
+  'first-look': {
+    area: {
+      go: 'LifeAreaScreen', params: 'firstArea', spot: 'lifearea-rating', mode: 'tap',
+      path: 'the Library tab, then double-tap a life area',
+      say: 'Tap the number that fits this part of your life right now. Honest beats flattering, and nobody else sees it.',
+    },
+    log: {
+      go: 'LifeAreaScreen', params: 'ratedArea', spot: 'lifearea-quicklog', mode: 'tap',
+      path: 'the Library tab, then double-tap a life area',
+      say: 'Tap one of these to log something you did for this area today. Small counts: a glass of water, a walk.',
+    },
+    drill: DRILL('Tap here and play one round: a few quick questions. The step ticks itself when the round ends.'),
+  },
   'first-study-session': {
     class: {
       go: 'ClassesMain', mode: 'point',

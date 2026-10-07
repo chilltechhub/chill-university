@@ -50,10 +50,10 @@ import {
   View,
   Text,
   StyleSheet,
-  Dimensions,
   Platform,
   StatusBar,
   TouchableOpacity,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import TourSpot from './TourSpot';
@@ -190,6 +190,10 @@ const GameFeed = forwardRef(({ initialGame }, ref) => {
   // Set exactly once, from the first real onLayout measurement — see the
   // file header for why a second measurement later would undo the fix.
   const [pageHeight, setPageHeight] = useState(null);
+  // Live width, not the one read when this file first loaded: a window that
+  // was narrow at that moment (a phone turned sideways, iPad split view, a
+  // resized browser) left every game squeezed into a sliver, dark on black.
+  const { width: pageWidth } = useWindowDimensions();
   const [activeIndex, setActiveIndexState] = useState(startIndex);
   const activeIndexRef = useRef(startIndex);
 
@@ -279,7 +283,7 @@ const GameFeed = forwardRef(({ initialGame }, ref) => {
           {GAMES.map((item, index) => {
             const isActive = index === activeIndex;
             return (
-              <View key={item.id} style={[styles.page, { height: pageHeight, backgroundColor: G.bg }]}>
+              <View key={item.id} style={[styles.page, { width: pageWidth, height: pageHeight, backgroundColor: G.bg }]}>
                 <View style={styles.pageContent}>
                   {isActive ? (
                     <item.component />
@@ -352,7 +356,6 @@ const styles = StyleSheet.create({
   // ran past the screen (its Start button unreachable) and the next game's
   // card peeked in under a short one.
   page: {
-    width: Dimensions.get('window').width,
     backgroundColor: '#0e1a2e',
   },
   pageContent: {

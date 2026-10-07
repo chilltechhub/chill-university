@@ -90,7 +90,7 @@ const SCREEN_FEATURES = {
   ],
   PlannerScreen: [
     { title: 'Three views', body: "Daily for today, Weekly to see the shape of the week, Monthly for the long view. Filter by life area to check one part of your life at a time.", id: 'planner-views' },
-    { title: 'Habits vs. events', body: "A one-off event happens once. A recurring habit regenerates on a cadence — daily, weekly, monthly — and it's the recurring ones that feed the Habits widget on Home.", id: 'planner-add' },
+    { title: 'Habits vs. one-offs', body: "A one-off happens once. A habit repeats every day, week or month, and the habits are what the Habits card on Home keeps score of.", id: 'planner-add' },
     { title: 'Add', body: 'Tap Add to schedule something — a one-off event, or a recurring habit. ⋯ → Add from ideas has ready-made ones. Reminders can send a notification before the scheduled time.', id: 'planner-add' },
   ],
   // Capture -> label -> process, in that order, because that's the actual
@@ -375,7 +375,7 @@ const FIRST_VISIT = {
   PlayGame: [PLAY_STEPS[0], PLAY_STEPS[2]],
 };
 const FIRST_VISIT_STEPS = 2;
-const MORE_NOTE = ' There is more in Screen Tutorial, in the menu at the top left.';
+const MORE_NOTE = ' For the full tour of this page, tap your picture at the top left, then Screen Tutorial.';
 
 // `can` is AccessContext's stage check; omitted means the full walkthroughs.
 // `firstVisit` is the automatic first-visit version: the basics only.

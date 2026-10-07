@@ -63,6 +63,9 @@ import { recordAction } from '../src/logic/gamificationService';
 
 const AccessContext = createContext(null);
 
+// See startFirstGoal: the first goal for someone with no account.
+const GUEST_FIRST_GOAL = { objective: 'first-look', purpose: 'habits' };
+
 // Device-local, per account. The stage itself is derived from progress that
 // lives on the server, so the only thing a reinstall loses is an explicit
 // "show me everything" — which is one switch in Settings to get back.
@@ -452,8 +455,8 @@ export function AccessProvider({ children }) {
   }, [isContentAllowed, persona, can]);
 
   const nextStage = useMemo(
-    () => (experienceMode === 'full' ? null : nextStageNeeds({ stage: derivedStage, persona })),
-    [derivedStage, persona, experienceMode]
+    () => (experienceMode === 'full' ? null : nextStageNeeds({ stage: derivedStage, persona, aim: purposeKey, exploring })),
+    [derivedStage, persona, experienceMode, purposeKey, exploring]
   );
 
   const activeObjectiveId = activeGoalId;
@@ -526,13 +529,19 @@ export function AccessProvider({ children }) {
   // Onboarding passes the type and aim it just picked: it calls this before
   // the master profile exists and before the purpose it just wrote has come
   // back on the profile, and the plan has to be the chosen one.
-  const firstGoal = useMemo(() => firstGoalFor(persona, purposeKey), [persona, purposeKey]);
+  //
+  // A guest gets the one first goal that needs no account (GUEST_FIRST_GOAL):
+  // the others all send someone to the Planner, which a guest can't open.
+  const firstGoal = useMemo(
+    () => (userId ? firstGoalFor(persona, purposeKey) : GUEST_FIRST_GOAL),
+    [userId, persona, purposeKey],
+  );
   const startFirstGoal = useCallback(async (forPersona, forPurpose) => {
     const aim = forPurpose || purposeKey;
-    const goal = forPersona || forPurpose ? firstGoalFor(forPersona || persona, aim) : firstGoal;
+    const goal = userId && (forPersona || forPurpose) ? firstGoalFor(forPersona || persona, aim) : firstGoal;
     if (!aim && goal.purpose) await choosePurpose(goal.purpose);
     return startObjective(goal.objective);
-  }, [persona, purposeKey, firstGoal, choosePurpose, startObjective]);
+  }, [userId, persona, purposeKey, firstGoal, choosePurpose, startObjective]);
 
   const abandonActiveObjective = useCallback(async () => {
     if (!activeObjectiveId) return {};

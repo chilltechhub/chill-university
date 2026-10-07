@@ -9,6 +9,7 @@
 
 import { PATHS, MAX_STAGE, EXPLORING_WIDGET, STAGED_SCREENS, FIRST_GOALS, AIM_OPENS } from '../data/experienceStages';
 import { getPurpose, getObjective } from '../data/objectives';
+import { getFeature } from '../data/featureCatalog';
 
 // 'auto' grows with progress. 'full' is "show me everything", picked in
 // onboarding or Settings. Anything else reads as auto.
@@ -49,15 +50,36 @@ export function stageMeta(n, persona) {
 
 // What the next stage is and what it takes, phrased for a person. Null at
 // the top.
-export function nextStageNeeds({ stage, persona }) {
+//
+// Named by what it actually brings. What someone came for opens tools early
+// (AIM_OPENS), so the stage's own name can be a tool they've had since day
+// one: "Get my days in order" opens the Capture Inbox, and Home then said
+// "Next unlock: The Capture Inbox" right above a goal step that used it.
+// Same rule as the unlock card when the stage arrives (UnlockNotification).
+export function nextStageNeeds({ stage, persona, aim = null, exploring = false }) {
   if (stage >= MAX_STAGE) return null;
   const next = pathFor(persona)[stage];
-  return {
-    next: stage + 1,
-    label: next.label,
-    blurb: next.blurb,
-    text: 'Finish a goal or gain a level',
-  };
+  const base = { next: stage + 1, label: next.label, blurb: next.blurb, text: 'Finish a goal or gain a level' };
+  if (!AIM_OPENS[aim]) return base;
+  const before = openedAt(persona, stage, { exploring, aim });
+  const after = openedAt(persona, stage + 1, { exploring, aim });
+  const features = [...after.features].filter(id => !before.features.has(id));
+  const games = [...after.games].filter(id => !before.games.has(id));
+  const caps = [...after.caps].filter(id => !before.caps.has(id));
+  const widgets = after.homeWidgets.filter(k => !before.homeWidgets.includes(k));
+  const isNews = (next.features || []).some(id => features.includes(id))
+    || (next.games || []).some(id => games.includes(id))
+    || (next.caps || []).some(id => caps.includes(id))
+    // A stage that opens only cards is named for its lead one ("The
+    // Wayfinder on Home").
+    || (!next.features?.length && !next.games?.length && !next.caps?.length
+      && (next.widgets || []).slice(0, 1).some(k => widgets.includes(k)));
+  if (isNews) return base;
+  const feature = features.map(getFeature).find(Boolean);
+  if (feature) return { ...base, label: feature.label, blurb: feature.blurb };
+  if (games.length) return { ...base, label: `${games.length} new game${games.length === 1 ? '' : 's'} in Training`, blurb: null };
+  if (widgets.length) return { ...base, label: `${widgets.length} new card${widgets.length === 1 ? '' : 's'} on Home`, blurb: null };
+  return base;
 }
 
 // Everything the path has opened up to `stage`, flattened. Memoise it per

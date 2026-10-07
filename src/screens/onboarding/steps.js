@@ -305,6 +305,15 @@ export function WelcomeStep({ theme }) {
 //
 // The picked tile shows the first goal's steps underneath, so the answer
 // comes back as "here's exactly what we'll do", not a confirmation tick.
+// The life area an aim is plainly about, added to the account type's
+// defaults. "Sort out my money" on a Personal account pre-picked Physical,
+// Mental and Social, and the first goal's first step is to rate Financial.
+const AIM_AREA = { money: 'financial' };
+export function areasForAim(aim, defaults) {
+  const area = AIM_AREA[aim];
+  return area && !defaults.includes(area) ? [...defaults, area] : defaults;
+}
+
 export function AimStep({ data, set, theme, isMinor, ageBand }) {
   const { c } = theme;
   const st = stepStyles(theme);
@@ -322,7 +331,7 @@ export function AimStep({ data, set, theme, isMinor, ageBand }) {
     const hint = AIM_PERSONA[key];
     const persona = hint && allowed.includes(hint) ? hint : defaultPersonaFor(personaCtx);
     set('active_persona', persona);
-    if (!data.areas_touched) set('active_life_areas', PERSONA_AREA_DEFAULTS[persona] || []);
+    if (!data.areas_touched) set('active_life_areas', areasForAim(key, PERSONA_AREA_DEFAULTS[persona] || []));
   };
 
   return (
@@ -373,7 +382,7 @@ export function AimStep({ data, set, theme, isMinor, ageBand }) {
             </Text>
           ))}
           <Text style={{ fontSize: 12, color: c.text3, lineHeight: 17, marginTop: 8 }}>
-            Your guide walks you through each step. You can change this later on the Compass.
+            Your guide walks you through each step. You can pick something else any time from Home.
           </Text>
         </View>
       ) : (
@@ -408,7 +417,7 @@ export function PersonaStep({ data, set, theme, isMinor, ageBand }) {
     // themselves — re-picking a mission shouldn't silently wipe a hand-made
     // selection.
     if (!data.areas_touched) {
-      set('active_life_areas', PERSONA_AREA_DEFAULTS[key] || []);
+      set('active_life_areas', areasForAim(data.aim, PERSONA_AREA_DEFAULTS[key] || []));
     }
   };
 

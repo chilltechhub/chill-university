@@ -30,7 +30,8 @@ import WidgetCard, { StatRow, Bar } from './WidgetCard';
 // state's "Open Planner" was sending to the Planner). getCompletionRate returns null for an
 // area with no scheduled instances in the window, which is the difference
 // between "0% done" and "nothing was scheduled" — those are not the same
-// thing and the widget must not conflate them.
+// thing and the widget must not conflate them. Today only counts once it's
+// ticked, so a brand-new habit reads "starts today", not "0%".
 
 export function HabitRingsWidget({ userId, onOpenPlanner }) {
   const { colors: c, typography: t, spacing: s } = useTheme();
@@ -52,7 +53,10 @@ export function HabitRingsWidget({ userId, onOpenPlanner }) {
         const rates = await Promise.all(
           dailyAreas.map(async area => ({ area, pct: await getCompletionRate(userId, area, 'daily', 7) })),
         );
-        if (alive) setRows(rates.filter(r => r.pct !== null));
+        // A null rate is a habit with nothing to count yet (added today,
+        // not ticked yet). It's still a habit, so it stays, as "starts
+        // today", rather than the card claiming nothing is scheduled.
+        if (alive) setRows(rates);
       } catch (e) {
         console.warn('habitRings', e?.message);
         if (alive) setRows([]);
@@ -77,9 +81,11 @@ export function HabitRingsWidget({ userId, onOpenPlanner }) {
           <View key={area} style={{ marginBottom: s.sm }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={{ fontSize: t.sm, color: c.text2 }}>{def.emoji} {def.label}</Text>
-              <Text style={{ fontSize: t.sm, color: def.color, fontWeight: t.bold }}>{pct}%</Text>
+              {pct === null
+                ? <Text style={{ fontSize: t.xs, color: c.text3 }}>starts today</Text>
+                : <Text style={{ fontSize: t.sm, color: def.color, fontWeight: t.bold }}>{pct}%</Text>}
             </View>
-            <Bar pct={pct} color={def.color} />
+            <Bar pct={pct || 0} color={def.color} />
           </View>
         );
       })}

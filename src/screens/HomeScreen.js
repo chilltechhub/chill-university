@@ -878,7 +878,7 @@ export default function HomeScreen() {
   // far, a couple at a time, with no editor. 'dashboard' brings this type's
   // own layout and an editor offering this type's widgets; 'doors' offers
   // all twenty.
-  const { can, opened, isScreenVisible, isGameVisible, signalAction, stageEvents } = useAccess();
+  const { can, opened, isScreenVisible, isGameVisible, signalAction, stageEvents, activeObjective } = useAccess();
   const { active: tourActive, startLesson } = useTour();
   const homeFocused = useIsFocused();
   const { background: playerBackground } = useCharacterLoadout({ level, points, rank, streakDays });
@@ -1091,6 +1091,17 @@ export default function HomeScreen() {
   // someone had been using (Active Builds, say) vanished the moment they
   // picked a different aim. Found 2026-09-25 walking every aim in a row.
   const [keptWidgets, setKeptWidgets] = useState([]);
+  // The Home card a running goal's steps are done on (`widget` on the step
+  // in objectives.js). "Set a focus for today" is step 3 of the habits aim's
+  // first goal, but stage 1's Home has no Focus card, so the guide said
+  // "tap here" over nothing and the goal couldn't be finished (found
+  // 2026-10-01 on a fresh account). The guide teaches it, so it joins the
+  // kept set quietly below rather than getting a "New on Home" bubble too.
+  const goalWidgets = useMemo(() => (
+    activeObjective?.active
+      ? (activeObjective.objective?.steps || []).map(st => st.widget).filter(Boolean)
+      : []
+  ), [activeObjective]);
   const boardLayout = useMemo(() => {
     // Before the 'dashboard' stage the board is the widgets this stage has
     // opened, and only those: that's the "limited choices" version of the
@@ -1099,7 +1110,7 @@ export default function HomeScreen() {
     if (!can('dashboard')) {
       // homeWidgets, not widgets: Home takes on what the stages open a
       // couple at a time (homeWidgetsAt in src/logic/experienceStage.js).
-      const home = [...new Set([...(opened?.homeWidgets || opened?.widgets || []), ...keptWidgets])];
+      const home = [...new Set([...(opened?.homeWidgets || opened?.widgets || []), ...keptWidgets, ...goalWidgets])];
       const allowed = new Set(home);
       const starter = starterWidgetLayout({ ...opened, homeWidgets: home }, WIDGET_KEYS).filter(l => allowed.has(l.key));
       if (!savedLayout) return starter;
@@ -1128,7 +1139,7 @@ export default function HomeScreen() {
       return withKept.filter(l => !l.hidden || offer.has(l.key));
     }
     return withKept;
-  }, [can, opened, activeType, widgetLayout, savedLayout, keptWidgets]);
+  }, [can, opened, activeType, widgetLayout, savedLayout, keptWidgets, goalWidgets]);
   // "Your steps" repeats the list the Compass card now carries itself, so
   // while the Compass is on the board it steps aside. Only outside editing:
   // the editor still shows it, so it can be moved or hidden like any other,
@@ -1247,6 +1258,8 @@ export default function HomeScreen() {
     };
     if (introducedRef.current === 'baseline') { persist(new Set(shown)); return undefined; }
     const known = introducedRef.current;
+    const taught = goalWidgets.filter(k => shown.includes(k) && !known.has(k));
+    if (taught.length) { persist(new Set([...known, ...taught])); return undefined; }
     const fresh = shown.filter(k => !known.has(k) && WIDGET_INTROS[k]);
     if (!fresh.length) return undefined;
     // A crowd arriving at once ("Show everything" brings ~10) is a choice to
@@ -1268,7 +1281,7 @@ export default function HomeScreen() {
       });
     }, 1400);
     return () => clearTimeout(timer);
-  }, [introReady, homeFocused, tourActive, editingWidgets, stageEvents, progressEvents, widgetOffer.length, shownBoardLayout, introKey, startLesson]);
+  }, [introReady, homeFocused, tourActive, editingWidgets, stageEvents, progressEvents, widgetOffer.length, shownBoardLayout, introKey, startLesson, goalWidgets]);
 
   const closeWidgetOffer = (add) => {
     const keys = widgetOffer.map(w => w.key);
