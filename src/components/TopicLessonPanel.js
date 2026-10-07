@@ -13,6 +13,9 @@ import { useProfiles } from '../../context/ProfileAccountsContext';
 import { saveVaultDocument, listVaultDocuments } from '../api/personaService';
 import { optionOrder } from '../logic/optionOrder';
 import { textOn } from '../logic/contrast';
+import { useUserProgress } from '../../context/UserProgressContext';
+import { handleGameEvent, advanceTopicMission } from '../logic/gamificationService';
+import { getLessonState, markLessonDone, setLastLesson } from '../logic/lessonProgress';
 
 function LearnCards({ learn, color, c, t, s, r }) {
   return (
@@ -29,12 +32,19 @@ function LearnCards({ learn, color, c, t, s, r }) {
   );
 }
 
-function PracticeQuiz({ practice, color, c, t, s, r }) {
+// onAnswer(correct) after each pick, onFinish(score) once every question
+// has one. Both used to be nothing: practice was a quiz that forgot itself.
+function PracticeQuiz({ practice, color, onAnswer, onFinish, done, c, t, s, r }) {
   const [answers, setAnswers] = useState({}); // index -> chosen option index
 
   const choose = (qIndex, optIndex) => {
     if (answers[qIndex] !== undefined) return; // lock after first pick
-    setAnswers(prev => ({ ...prev, [qIndex]: optIndex }));
+    const next = { ...answers, [qIndex]: optIndex };
+    setAnswers(next);
+    onAnswer?.(optIndex === practice[qIndex].answerIndex);
+    if (Object.keys(next).length === practice.length) {
+      onFinish?.(practice.reduce((n, q, i) => (next[i] === q.answerIndex ? n + 1 : n), 0));
+    }
   };
 
   const correctCount = practice.reduce((n, q, i) => (answers[i] === q.answerIndex ? n + 1 : n), 0);
@@ -86,8 +96,10 @@ function PracticeQuiz({ practice, color, c, t, s, r }) {
       {practice.length > 0 && (
         <Text style={{ fontSize: 12, fontWeight: '700', color: c.text3 }}>
           {answeredCount === practice.length
-            ? `Score: ${correctCount}/${practice.length}`
-            : `${answeredCount}/${practice.length} answered`}
+            ? `Score: ${correctCount}/${practice.length} · counted toward this subject`
+            : done
+              ? `Done before: ${done.score}/${done.total}. Answer again to practise.`
+              : `${answeredCount}/${practice.length} answered`}
         </Text>
       )}
     </View>
@@ -222,7 +234,7 @@ const TABS = [
   { key: 'apply', label: 'Apply', icon: 'construct-outline' },
 ];
 
-export default function TopicLessonPanel({ topic, color, c, t, s, r }) {
+export default function TopicLessonPanel({ topic, color, classKey = null, subjectKey = 'general', initiallyOpen = false, c, t, s, r }) {
   const hasLearn = topic.learn?.length > 0;
   const hasPractice = topic.practice?.length > 0;
   const hasApply = !!topic.apply?.prompt;
@@ -232,8 +244,39 @@ export default function TopicLessonPanel({ topic, color, c, t, s, r }) {
     (tab.key === 'apply' && hasApply)
   );
 
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initiallyOpen);
   const [tab, setTab] = useState(available[0]?.key);
+  const { user, refreshProfile } = useUserProgress();
+  const userId = user?.id || null;
+  const [done, setDone] = useState(null); // { score, total, at } once finished
+
+  useEffect(() => {
+    let alive = true;
+    getLessonState(userId).then(st => { if (alive) setDone(st.done[topic.key] || null); });
+    return () => { alive = false; };
+  }, [userId, topic.key]);
+
+  // Remembered as where you were, for Classes' "Pick up where you left off".
+  useEffect(() => {
+    if (open && topic.key) setLastLesson(userId, { topicKey: topic.key, classKey, title: topic.title });
+  }, [open, userId, topic.key, topic.title, classKey]);
+
+  // Each answer counts like a game answer (subject XP and progress) the
+  // first time through; a lesson already done can be practised again
+  // without paying out twice.
+  const onAnswer = (correct) => {
+    if (!userId || done) return;
+    handleGameEvent({ type: 'QUESTION_ANSWERED', userId, gameId: `lesson:${topic.key}`, subject: subjectKey, correct });
+  };
+  const onFinish = async (score) => {
+    const total = topic.practice.length;
+    if (userId && !done) {
+      advanceTopicMission(userId, subjectKey).catch(() => {});
+      setTimeout(() => refreshProfile?.(), 1500);
+    }
+    const st = await markLessonDone(userId, { topicKey: topic.key, classKey, title: topic.title, score, total });
+    setDone(st.done[topic.key]);
+  };
 
   if (available.length === 0) return null;
 
@@ -244,6 +287,12 @@ export default function TopicLessonPanel({ topic, color, c, t, s, r }) {
         <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color }}>
           Full lesson: Learn · Practice · Apply {open ? '▲' : '▼'}
         </Text>
+        {done ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginLeft: 4 }}>
+            <Ionicons name="checkmark-circle" size={14} color={color} />
+            <Text style={{ fontSize: 12, fontWeight: '700', color }}>Done {done.score}/{done.total}</Text>
+          </View>
+        ) : null}
       </TouchableOpacity>
 
       {open && (
@@ -268,7 +317,7 @@ export default function TopicLessonPanel({ topic, color, c, t, s, r }) {
           </View>
 
           {tab === 'learn' && hasLearn && <LearnCards learn={topic.learn} color={color} c={c} t={t} s={s} r={r} />}
-          {tab === 'practice' && hasPractice && <PracticeQuiz practice={topic.practice} color={color} c={c} t={t} s={s} r={r} />}
+          {tab === 'practice' && hasPractice && <PracticeQuiz practice={topic.practice} color={color} onAnswer={onAnswer} onFinish={onFinish} done={done} c={c} t={t} s={s} r={r} />}
           {tab === 'apply' && hasApply && <ApplyChallenge apply={topic.apply} topicKey={topic.key} color={color} c={c} t={t} s={s} r={r} />}
         </View>
       )}

@@ -1150,6 +1150,22 @@ export default function HomeScreen() {
   // while the Compass is on the board it steps aside. Only outside editing:
   // the editor still shows it, so it can be moved or hidden like any other,
   // and nothing here is ever written back.
+  // ── One place per thing ──────────────────────────────────────────────────
+  // The same task sat on the Desk and in Today's Activities, and a project's
+  // next step on the Desk and again under Active Projects. Each now shows
+  // once, where it is most useful: the Desk owns "do this next", Active
+  // Projects owns the list of projects, Today owns what is dated today.
+  const boardShows = (key) => (shownBoardLayout || []).some(l => l.key === key && !l.hidden);
+  const deskTaskIds = new Set(todos.filter(x => x.kind === 'task').map(x => String(x.id).replace(/^task_/, '')));
+  const deskProjectIds = new Set(todos.filter(x => x.kind === 'project' && x.hasNextAction).map(x => String(x.id).replace(/^proj_/, '')));
+  const todayList = () => (boardShows('desk')
+    ? todayActivities.filter(a => !(a._src === 'task' && deskTaskIds.has(String(a.raw?.id))))
+    : todayActivities);
+  // A project with no next step is Active Projects' to prompt for ("No next
+  // step set"); the Desk keeps the ones with something to do.
+  const deskList = () => (boardShows('builds')
+    ? todos.filter(x => !(x.kind === 'project' && !x.hasNextAction))
+    : todos);
   const shownBoardLayout = useMemo(() => {
     if (editingWidgets) return boardLayout;
     const compassShown = boardLayout.some(l => l.key === 'compass' && !l.hidden);
@@ -1345,7 +1361,7 @@ export default function HomeScreen() {
         supabase.from('tasks').select('id, title').eq('user_id', uid).eq('completed', false).order('priority').limit(3),
         supabase.from('projects').select('id, title, emoji, color, next_action').eq('user_id', uid).eq('status', 'active').is('deleted_at', null).limit(3),
         supabase.from('captures').select('id, title, type').eq('user_id', uid).eq('status', 'inbox').is('deleted_at', null).limit(2),
-        supabase.from('garden_cores').select('id, title, plant_type, color, color_light, is_project, project_progress, garden_petals(id, title, petal_type, completed)').eq('user_id', uid).is('deleted_at', null).order('created_at', { ascending: false }).limit(5),
+        supabase.from('garden_cores').select('id, title, plant_type, color, color_light, is_project, project_id, project_progress, garden_petals(id, title, petal_type, completed)').eq('user_id', uid).is('deleted_at', null).order('created_at', { ascending: false }).limit(8),
         supabase.from('user_settings').select('affirmation, focus_presets, home_widget_layout').eq('user_id', uid).maybeSingle(),
         // Fails soft — the institutional-layer migration may not be applied
         // yet (ORG_NOT_CONFIGURED), and that should degrade this one rail
@@ -1362,7 +1378,7 @@ export default function HomeScreen() {
         // Active Builds widget — a fuller list than the 3-item OnDesk
         // candidate above, same fields LibraryScreen's Build tab preview
         // already uses.
-        supabase.from('projects').select('id, title, emoji, color, next_action').eq('user_id', uid).eq('status', 'active').is('deleted_at', null).order('sort_order').limit(6),
+        supabase.from('projects').select('id, title, emoji, color, next_action, due_date').eq('user_id', uid).eq('status', 'active').is('deleted_at', null).order('sort_order').limit(6),
         // Check-ins Due widget — same per-user life_areas rows
         // LibraryScreen's Domains tab reads, matched by label the same way.
         supabase.from('life_areas').select('label, progress, last_check_date').eq('user_id', uid),
@@ -1467,7 +1483,11 @@ export default function HomeScreen() {
       setCheckInDue(dueAreas);
 
       // Ideas
-      if (ideasRes.data) setIdeas(ideasRes.data);
+      // An idea that became a project already shows as that project (desk,
+      // Active Projects); listing it again as an idea was the same thing
+      // three times on one screen.
+      const ideasOnly = (ideasRes.data || []).filter(i => !i.project_id).slice(0, 5);
+      if (ideasRes.data) setIdeas(ideasOnly);
 
       // Affirmations — stored as JSON array in user_settings
       let nextAffirmations, nextFocusPresets;
@@ -1504,7 +1524,7 @@ export default function HomeScreen() {
         todayFocus: focusRes.data?.focus_text ?? null,
         todos: merged,
         activities,
-        ideas: ideasRes.data || [],
+        ideas: ideasOnly,
         affirmations: nextAffirmations ?? affirmations,
         focusPresets: nextFocusPresets ?? focusPresets,
         activeBuilds: buildsRes.data || [],
@@ -2038,7 +2058,7 @@ export default function HomeScreen() {
             {
               key: 'activities', title: "Today's Activities",
               render: () => (
-                todayActivities.length === 0 ? (
+                todayList().length === 0 ? (todayActivities.length > 0 ? <View /> : (
                   // Always on Home now (HOME_BASICS), so an empty day says so
                   // and offers the one thing to do about it.
                   <View style={{ paddingHorizontal: s.lg }}>
@@ -2052,19 +2072,19 @@ export default function HomeScreen() {
                       <Text style={{ fontSize: t.xs, color: accent.primary, fontWeight: t.bold }}>Plan →</Text>
                     </TouchableOpacity>
                   </View>
-                ) : (
+                )) : (
                   <TourSpot id="home-today-activities">
                   <View style={{ paddingHorizontal: s.lg }}>
                     <SectionHead title="Today's Activities" action="Calendar →" onAction={() => setShowCalendar(true)} c={c} t={t} />
-                    {todayActivities.slice(0, 3).map(item => (
+                    {todayList().slice(0, 3).map(item => (
                       <ActivityRow key={item.id} item={item} onPress={() => (item._src === 'planner' ? setOpenPlan(item.raw)
                         : item._src === 'due' && item.raw?.projectId ? openTarget(navigation, { kind: 'project', id: item.raw.projectId })
                         : setSelectedActivity(item))} c={c} t={t} s={s} r={r} />
                     ))}
-                    {todayActivities.length > 3 && (
+                    {todayList().length > 3 && (
                       <TouchableOpacity onPress={() => setShowCalendar(true)}>
                         <Text style={{ fontSize: t.xs, color: c.text3, textAlign: 'center', marginTop: 2 }}>
-                          +{todayActivities.length - 3} more today
+                          +{todayList().length - 3} more today
                         </Text>
                       </TouchableOpacity>
                     )}
@@ -2096,14 +2116,14 @@ export default function HomeScreen() {
                       the rest of the ranked list drifting past underneath.
                       Everything used to be an equal chip in the ticker, so
                       "what do I do now" took a tap to answer. */}
-                  {todos.length > 0 ? (
+                  {deskList().length > 0 ? (
                     <>
-                      <NextUpCard item={todos[0]} actions={actionsForDeskItem(todos[0])} c={c} t={t} s={s} r={r} />
-                      {todos.length > 1 && (
+                      <NextUpCard item={deskList()[0]} actions={actionsForDeskItem(deskList()[0])} c={c} t={t} s={s} r={r} />
+                      {deskList().length > 1 && (
                         <View style={{ marginTop: s.sm }}>
                           <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: 6 }}>Also on the desk</Text>
                           <DeskTicker
-                            items={todos.slice(1)}
+                            items={deskList().slice(1)}
                             onItemPress={setSelectedDeskItem}
                             onAdd={() => setShowTodoInput(true)}
                             c={c} t={t} s={s} r={r}
@@ -2113,7 +2133,7 @@ export default function HomeScreen() {
                     </>
                   ) : (
                     <DeskTicker
-                      items={todos}
+                      items={deskList()}
                       onItemPress={setSelectedDeskItem}
                       onAdd={() => setShowTodoInput(true)}
                       c={c} t={t} s={s} r={r}
@@ -2204,7 +2224,11 @@ export default function HomeScreen() {
                           <Text style={{ fontSize: 15 }}>{p.emoji || '🏗️'}</Text>
                           <View style={{ flex: 1 }}>
                             <Text style={{ fontSize: t.sm, fontWeight: '600', color: c.text1 }} numberOfLines={1}>{p.title}</Text>
-                            <Text style={{ fontSize: 11, color: c.text3 }} numberOfLines={1}>{p.next_action ? `Next: ${p.next_action}` : 'No next step set'}</Text>
+                            <Text style={{ fontSize: 11, color: c.text3 }} numberOfLines={1}>
+                              {deskProjectIds.has(String(p.id)) && boardShows('desk')
+                                ? (p.due_date ? `Finish by ${new Date(p.due_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · next step is on your desk` : 'Next step is on your desk')
+                                : p.next_action ? `Next: ${p.next_action}` : 'No next step set'}
+                            </Text>
                           </View>
                           <Ionicons name="chevron-forward" size={14} color={c.text4} />
                         </TouchableOpacity>

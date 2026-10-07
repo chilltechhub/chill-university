@@ -25,6 +25,7 @@ import { questsInOrder } from '../data/quests';
 import { catalogCounts } from '../data/topicCatalog';
 import { useQuestProgress } from '../logic/questProgress';
 import { useBandFraming, bandLabel } from '../logic/useGradeLevel';
+import { getLessonState } from '../logic/lessonProgress';
 
 const GRADE_BAND_KEY = '@cth_academy_grade_band';
 const BANDS = ['All', 'K-2', '3-5', '6-8', '9-12'];
@@ -113,6 +114,15 @@ export default function Classes() {
     return map;
   }, [myKnowledge]);
   const openEntry = (entry) => navigation.navigate('KnowledgeScreen', { focusId: entry.id });
+
+  // The last lesson opened (lessonProgress.js), so coming back to Classes
+  // is one tap back into it instead of finding the subject and topic again.
+  const [lastLesson, setLastLesson] = useState(null);
+  useFocusEffect(useCallback(() => {
+    let alive = true;
+    getLessonState(user?.id).then(st => { if (alive) setLastLesson(st.last?.classKey ? { ...st.last, done: st.done[st.last.topicKey] || null } : null); });
+    return () => { alive = false; };
+  }, [user?.id]));
   useEffect(() => {
     AsyncStorage.getItem(GRADE_BAND_KEY).then(saved => {
       if (saved && BANDS.includes(saved)) setBand(saved);
@@ -253,6 +263,22 @@ export default function Classes() {
         </View>
         )}
       </View>
+
+      {lastLesson && (
+        <TouchableOpacity
+          onPress={() => navigation.navigate(lastLesson.classKey, { openTopic: lastLesson.topicKey })}
+          accessibilityRole="button"
+          accessibilityLabel={`Pick up where you left off: ${lastLesson.title}`}
+          style={{ marginHorizontal: 16, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 12, backgroundColor: c.bg1, borderWidth: 1, borderColor: c.teal }}>
+          <Ionicons name={lastLesson.done ? 'checkmark-circle' : 'play-circle-outline'} size={22} color={c.teal} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 11, fontWeight: '800', color: c.teal, letterSpacing: 0.8, textTransform: 'uppercase' }}>Pick up where you left off</Text>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: c.text1, marginTop: 2 }} numberOfLines={1}>{lastLesson.title}</Text>
+            {lastLesson.done && <Text style={{ fontSize: 12, color: c.text3, marginTop: 1 }}>Done {lastLesson.done.score}/{lastLesson.done.total} · open the next topic below it</Text>}
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={c.text3} />
+        </TouchableOpacity>
+      )}
 
       {/* Quests: learn an idea, research it, check it, do something with
           it. Not tied to a grade band, so they sit above the band picker. */}
