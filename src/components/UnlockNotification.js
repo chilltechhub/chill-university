@@ -111,6 +111,10 @@ export default function UnlockNotification() {
       (latest.features || []).some(id => fresh.features.includes(id))
       || (latest.games || []).some(id => fresh.games.includes(id))
       || (latest.caps || []).some(id => fresh.caps.includes(id))
+      // A stage that opens only cards is named for its lead one ("The
+      // Wayfinder on Home").
+      || (!latest.features?.length && !latest.games?.length && !latest.caps?.length
+        && (latest.widgets || []).slice(0, 1).some(k => fresh.widgets.includes(k)))
     );
     // Somewhere to go, always: the first new tool; else the new games, in
     // Training; else Home, where anything new is a widget and gets

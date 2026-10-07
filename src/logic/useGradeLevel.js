@@ -120,10 +120,16 @@ const KEY = gameId => `gradeLevel:${gameId}`;
  * Pass { byAge: false } for games whose bands are job experience rather than
  * difficulty-by-age (Register Ready's "Day One … Shift Lead"): an adult new
  * hire still starts at the start.
+ *
+ * Pass { adultLevel } for a game whose lower bands are written about a
+ * child's life rather than just being easier: Budget Balance's 3–5 is a
+ * class trip and a birthday party, and its 9–12 is a first apartment, a
+ * paycheck and car trouble. An adult who came to sort out their money was
+ * handed the class trip.
  */
-export default function useGradeLevel(gameId, { byAge = true } = {}) {
-  const { defaultLevel: ageDefault } = useBandFraming();
-  const defaultLevel = byAge ? ageDefault : '3-5';
+export default function useGradeLevel(gameId, { byAge = true, adultLevel = null } = {}) {
+  const { adult, defaultLevel: ageDefault } = useBandFraming();
+  const defaultLevel = !byAge ? '3-5' : (adult && adultLevel) ? adultLevel : ageDefault;
   const [picked, setPicked] = useState(null);
   const [ready, setReady] = useState(false);
 

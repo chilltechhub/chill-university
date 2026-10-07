@@ -37,7 +37,7 @@ export default function BudgetBalanceGame({ onGameEnd }) {
   const navigation = useNavigation();
   const G = useGameTheme();
   const s = makeStyles(G);
-  const { level, setLevel, tier: savedTier } = useGradeLevel('budget');
+  const { level, setLevel, tier: savedTier } = useGradeLevel('budget', { adultLevel: '9-12' });
   const [started, setStarted] = useState(false);
 
   const [adaptive, setAdaptive] = useState(() => createAdaptiveTier(savedTier));

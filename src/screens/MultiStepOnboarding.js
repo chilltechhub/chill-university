@@ -64,7 +64,7 @@ import { useAccess } from '../../context/AccessContext';
 import { useFeatureFlag, useRemoteConfig } from '../../context/RemoteConfigContext';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import {
-  WelcomeStep, AimStep, PersonaStep, StartModeStep, NameStep, SectorsStep, LookStep, PERSONA_AREA_DEFAULTS, pickFocusHub, buildRecommendations,
+  WelcomeStep, AimStep, PersonaStep, StartModeStep, NameStep, SectorsStep, LookStep, PERSONA_AREA_DEFAULTS, areasForAim, pickFocusHub, buildRecommendations,
 } from './onboarding/steps';
 
 const { width: SW } = Dimensions.get('window');
@@ -451,7 +451,7 @@ export default function MultiStepOnboarding() {
     setData(prev => ({
       ...prev,
       active_persona: want,
-      active_life_areas: prev.areas_touched ? prev.active_life_areas : (PERSONA_AREA_DEFAULTS[want] || prev.active_life_areas),
+      active_life_areas: prev.areas_touched ? prev.active_life_areas : areasForAim(prev.aim, PERSONA_AREA_DEFAULTS[want] || prev.active_life_areas),
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ageBand, data.active_persona]);
@@ -605,6 +605,7 @@ export default function MultiStepOnboarding() {
         // No name: createProfile() falls back to the persona's short label
         // ("Personal", "Student"...), and it's renameable in the switcher.
         baseline: data.persona_baseline || {},
+        dateOfBirth: dobRef.current,
       });
     } catch (e) {
       // Still non-fatal — the user is already on Home and the rest of their

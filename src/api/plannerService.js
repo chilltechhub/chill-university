@@ -369,9 +369,10 @@ export async function getCompletionRate(userId, area, cadence, days = 7) {
   const from = new Date();
   from.setDate(from.getDate() - days);
 
+  const today = todayStr();
   const { data } = await supabase
     .from('agenda_instances')
-    .select('completed, skipped')
+    .select('date, completed, skipped')
     .eq('user_id', userId)
     .eq('area', area)
     .eq('cadence', cadence)
@@ -379,9 +380,12 @@ export async function getCompletionRate(userId, area, cadence, days = 7) {
     // generateInstances writes a daily habit 30 days ahead, so without an
     // upper bound every future (necessarily unticked) row counted against
     // the "last N days" rate.
-    .lte('date', todayStr());
+    .lte('date', today);
 
-  if (!data?.length) return null;
-  const done = data.filter(d => d.completed).length;
-  return Math.round((done / data.length) * 100);
+  // Today isn't over: an unticked row for today isn't a miss yet. Counting
+  // it made a habit added this morning read "0%" in red on day one.
+  const counted = (data || []).filter(d => d.date !== today || d.completed);
+  if (!counted.length) return null;
+  const done = counted.filter(d => d.completed).length;
+  return Math.round((done / counted.length) * 100);
 }

@@ -41,6 +41,13 @@
 //
 // Two steps of the SAME objective must not share a signal: one action would
 // tick both.
+//
+// `idea` (a Planner step) fills the Planner's new-item sheet: { title,
+// cadence, area }, all optional. A habit step without a title gets the
+// habit the person named in onboarding (PlannerScreen's goalIdeaFor).
+// `widget` (a Home step) is the Home card the step is done on. Home shows
+// it while the goal runs, even at a stage that hasn't opened it yet, or
+// the guide would be pointing at something that isn't there.
 
 /* ─── Purposes ────────────────────────────────────────────────────────────── */
 //
@@ -284,7 +291,7 @@ export const OBJECTIVES = [
     why: 'Nothing else in here works until turning up is boring. This is the smallest version of that.',
     estimate: '3 days',
     steps: [
-      { id: 'focus',   label: 'Set a focus for today',        hint: 'One line on Home. What today is actually for.', screen: 'Home', signal: 'focus-set' },
+      { id: 'focus',   label: 'Set a focus for today',        hint: 'One line on Home. What today is actually for.', screen: 'Home', signal: 'focus-set', widget: 'focus' },
       { id: 'mission', label: 'Finish a daily drill',          hint: "Open shows today's three and a game for each. Ticks itself when one is done.", screen: 'Training', params: { openDrills: true }, auto: { stat: 'missions', value: 1 } },
       { id: 'plan',    label: 'Put one thing in the Planner',  hint: 'Something real and dated, not a wish.', screen: 'PlannerScreen', signal: 'planner-item-added' },
       { id: 'streak',  label: 'Reach a 3-day streak',          hint: 'Ticks itself the day your streak hits three.', auto: { stat: 'streak', value: 3 } },
@@ -401,8 +408,30 @@ export const OBJECTIVES = [
     // step here has to be doable with what stage 1 shows.
     steps: [
       { id: 'area',  label: 'Rate one life area',          hint: 'Honestly. Nobody else sees it. Ticks itself when you rate one.', screen: 'LibraryScreen', signal: 'area-rated' },
-      { id: 'habit', label: 'Put one small habit in the Planner', hint: 'Something you could do most days. A glass of water counts.', screen: 'PlannerScreen', signal: 'planner-item-added' },
+      { id: 'habit', label: 'Put one small habit in the Planner', hint: 'Something you could do most days. A glass of water counts.', screen: 'PlannerScreen', signal: 'planner-item-added',
+        idea: { cadence: 'daily' } },
       { id: 'drill', label: 'Play one training game',      hint: 'Ticks itself when you finish a round.', screen: 'Training', auto: { stat: 'played', value: 1 } },
+    ],
+    unlocks: [],
+    next: 'hold-the-line',
+  },
+
+  // A guest's First Steps. Same idea, but every step works without an
+  // account: the Planner lives in the account, so a guest sent there to add
+  // a habit hit a sign-in wall on step 2 and could never finish the goal.
+  // Logging one thing on the rated area is the guest-sized version.
+  {
+    id: 'first-look',
+    purpose: 'habits',
+    intro: true,
+    label: 'First Steps',
+    promise: 'Three small things, right now, to see how the app works for you.',
+    why: 'Every habit starts with a day where you showed up once. This is that day.',
+    estimate: 'About 5 minutes',
+    steps: [
+      { id: 'area',  label: 'Rate one life area',            hint: 'Honestly. Nobody else sees it. Ticks itself when you rate one.', screen: 'LibraryScreen', signal: 'area-rated' },
+      { id: 'log',   label: 'Log one thing you did for it',  hint: 'Tap "I did this" or a quick-log chip on that area’s page.', screen: 'LibraryScreen', signal: 'area-logged' },
+      { id: 'drill', label: 'Play one training game',        hint: 'Ticks itself when you finish a round.', screen: 'Training', auto: { stat: 'played', value: 1 } },
     ],
     unlocks: [],
     next: 'hold-the-line',
@@ -580,9 +609,10 @@ export const OBJECTIVES = [
     why: 'A day with a plan and an empty head is a day you run, not one that runs you.',
     estimate: 'About 10 minutes',
     steps: [
-      { id: 'habit',   label: 'Put one small habit in the Planner', hint: 'Something you could do most days. Set it to repeat.', screen: 'PlannerScreen', signal: 'planner-item-added' },
+      { id: 'habit',   label: 'Put one small habit in the Planner', hint: 'Something you could do most days. Set it to repeat.', screen: 'PlannerScreen', signal: 'planner-item-added',
+        idea: { cadence: 'daily' } },
       { id: 'capture', label: 'Empty your head into the inbox',     hint: 'The thing you keep trying to remember. Sort it later.', screen: 'CaptureInbox', signal: 'inbox-captured' },
-      { id: 'focus',   label: 'Set a focus for today',              hint: 'One line on Home. What today is actually for.', screen: 'Home', signal: 'focus-set' },
+      { id: 'focus',   label: 'Set a focus for today',              hint: 'One line on Home. What today is actually for.', screen: 'Home', signal: 'focus-set', widget: 'focus' },
     ],
     unlocks: [],
     next: 'hold-the-line',

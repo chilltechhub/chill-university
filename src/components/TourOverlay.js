@@ -204,9 +204,14 @@ export default function TourOverlay() {
     // Cap the whole block (bubble + character) so the controls can't be
     // pushed off-screen by long copy; the bubble body scrolls instead.
     maxHeight: Math.max(BUBBLE_MIN + guideSize + TAIL_H, available),
+    // Right next to the target, not at the far edge of the screen. Pinned
+    // to the edges, "The bar at the bottom" was explained from the top of
+    // the screen with the guide standing over the Play button, pointing at
+    // nothing (seen 2026-10-01 on a fresh account). A step pinned to the
+    // top, or with no target, keeps the edge.
     ...(atTop
-      ? { top: insets.top + MARGIN_V }
-      : { bottom: bottomInset }),
+      ? (hole && currentStep.placement !== 'top' ? { bottom: SH - hole.y + 16 } : { top: insets.top + MARGIN_V })
+      : (hole ? { top: hole.y + hole.h + 16 } : { bottom: bottomInset })),
   };
 
   // Touch absorbers: everything except the hole. A passthrough step leaves

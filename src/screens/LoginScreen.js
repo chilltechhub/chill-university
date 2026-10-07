@@ -18,6 +18,26 @@ import { PRIVACY_POLICY_URL, TERMS_URL } from '../config/legal';
 // session shows up (see maybeRedeemPendingOrgCode, called from
 // goAfterAuth on every successful login, not just signup).
 const PENDING_ORG_CODE_KEY = '@cth_pending_org_code';
+// Set on any successful sign-in; decides which form a fresh launch opens on.
+const SIGNED_IN_BEFORE_KEY = '@cth_signed_in_before';
+
+// Enough to catch a typo before the server does; the server has the last word.
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+// Supabase's auth messages, in words a person can act on. Anything not
+// matched is shown as Supabase wrote it rather than hidden.
+function friendlyAuthError(error) {
+  const msg = error?.message || '';
+  if (/invalid login credentials/i.test(msg)) return "That email and password don't match. Check both, or reset your password.";
+  if (/email not confirmed/i.test(msg)) return 'Confirm your email first: open the link we sent you, then sign in.';
+  if (/rate limit|too many|security purposes/i.test(msg)) return 'Too many tries in a row. Wait a minute, then try again.';
+  if (/invalid.*email|email.*invalid|validate email/i.test(msg)) return "That email address doesn't look right. Check for a typo.";
+  if (/password.*(at least|short|characters)/i.test(msg)) return 'Password is too short. It needs at least 6 characters.';
+  if (/weak|pwned|compromised|leaked/i.test(msg)) return 'That password is too easy to guess or has shown up in a data leak. Pick a different one.';
+  if (/signups? not allowed|signup is disabled/i.test(msg)) return 'New accounts are switched off right now. Try again later.';
+  if (/network|fetch|timed? ?out/i.test(msg)) return "Couldn't reach the server. Check your connection and try again.";
+  return msg || 'Something went wrong. Please try again.';
+}
 
 async function maybeRedeemPendingOrgCode() {
   try {
@@ -39,8 +59,8 @@ export default function LoginScreen({ onSuccess, onClose }) {
   const navigation = useNavigation();
   const [email,       setEmail]       = useState('');
   const [password,    setPassword]    = useState('');
-  const [displayName, setDisplayName] = useState('');
   const [orgCode,     setOrgCode]     = useState('');
+  const [showOrg,     setShowOrg]     = useState(false); // signup: the code field, once asked for
   const [loading,     setLoading]     = useState(false);
   const [mode,        setMode]        = useState('login'); // login | signup | reset
   const [showPass,    setShowPass]    = useState(false);
@@ -51,6 +71,25 @@ export default function LoginScreen({ onSuccess, onClose }) {
   const [mfaUser,     setMfaUser]     = useState(null);
   const [mfaCode,     setMfaCode]     = useState('');
   const [mfaError,    setMfaError]    = useState(null);
+  // What went wrong (or what to do next), shown in the form itself. These
+  // were all Alert.alert pop-ups, and on web a pop-up is a browser dialog
+  // that can be blocked or never seen, so a failed signup looked like a
+  // button that did nothing. { kind: 'error' | 'info', text, action? }
+  const [notice,      setNotice]      = useState(null);
+  const fail = (text, action) => setNotice({ kind: 'error', text, action });
+  const switchMode = (m) => { setMode(m); setNotice(null); };
+
+  // A device nobody has signed in on opens on Create account. It opened on
+  // "Welcome back, Traveler" for everyone, so the first thing a brand-new
+  // person read was a greeting for someone else, with signing up a small
+  // link under it.
+  useEffect(() => {
+    let alive = true;
+    AsyncStorage.getItem(SIGNED_IN_BEFORE_KEY)
+      .then(seen => { if (alive && !seen) setMode(m => (m === 'login' ? 'signup' : m)); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -80,6 +119,7 @@ export default function LoginScreen({ onSuccess, onClose }) {
 
   const goAfterAuth = async (user) => {
   try {
+    AsyncStorage.setItem(SIGNED_IN_BEFORE_KEY, '1').catch(() => {});
     await maybeRedeemPendingOrgCode();
 
     const { data: profile } = await supabase
@@ -118,10 +158,8 @@ export default function LoginScreen({ onSuccess, onClose }) {
 
   const handleReset = async () => {
     const trimEmail = email.trim().toLowerCase();
-    if (!trimEmail) {
-      Alert.alert('Missing email', 'Enter the email address on your account.');
-      return;
-    }
+    if (!trimEmail) { fail('Enter the email address on your account.'); return; }
+    setNotice(null);
     setLoading(true);
     try {
       // Without this, Supabase falls back to whatever Site URL is set in
@@ -137,14 +175,11 @@ export default function LoginScreen({ onSuccess, onClose }) {
       // Supabase returns success here even for an email with no account —
       // that's deliberate on its side (don't let this screen reveal which
       // emails are registered), so the same confirmation covers both cases.
-      if (error) { Alert.alert("Couldn't send that", error.message); return; }
-      Alert.alert(
-        'Check your email 📬',
-        `If there's an account for ${trimEmail}, a reset link is on its way.`,
-        [{ text: 'OK', onPress: () => setMode('login') }]
-      );
+      if (error) { fail(friendlyAuthError(error)); return; }
+      setMode('login');
+      setNotice({ kind: 'info', text: `If there's an account for ${trimEmail}, a reset link is on its way. Check your email.` });
     } catch (e) {
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      fail("Couldn't reach the server. Check your connection and try again.");
       console.warn('reset error', e);
     } finally {
       setLoading(false);
@@ -155,24 +190,30 @@ export default function LoginScreen({ onSuccess, onClose }) {
     if (mode === 'reset') { await handleReset(); return; }
 
     const trimEmail = email.trim().toLowerCase();
-    if (!trimEmail || !password) {
-      Alert.alert('Missing fields', 'Please enter your email and password.');
-      return;
-    }
-    if (mode === 'signup' && !agreed) {
-      Alert.alert('One more step', 'Tick the box to agree to the Terms and Privacy Policy.');
-      return;
-    }
+    if (!trimEmail) { fail('Enter your email address.'); return; }
+    if (!EMAIL_SHAPE.test(trimEmail)) { fail("That email address doesn't look right. Check for a typo."); return; }
+    if (!password) { fail('Enter a password.'); return; }
     if (mode === 'signup' && password.length < 6) {
-      Alert.alert('Password too short', 'Password must be at least 6 characters.');
+      fail(`Password is too short: ${password.length} character${password.length === 1 ? '' : 's'}. It needs at least 6.`);
       return;
     }
+    if (mode === 'signup' && !agreed) { fail('Tick the box to agree to the Terms and Privacy Policy.'); return; }
 
+    const alreadyHave = () => fail(
+      `${trimEmail} already has an account.`,
+      { label: 'Sign in instead', onPress: () => switchMode('login') },
+    );
+
+    setNotice(null);
     setLoading(true);
     try {
       if (mode === 'login') {
         const { data, error } = await supabase.auth.signInWithPassword({ email: trimEmail, password });
-        if (error) { Alert.alert('Sign in failed', error.message); return; }
+        if (error) {
+          fail(friendlyAuthError(error), /invalid login/i.test(error.message || '')
+            ? { label: 'Forgot password?', onPress: () => switchMode('reset') } : undefined);
+          return;
+        }
         if (data.user) {
           // 2FA on: the session is only aal1 until the code step.
           if (await needsSecondStep()) { setMfaUser(data.user); return; }
@@ -182,9 +223,30 @@ export default function LoginScreen({ onSuccess, onClose }) {
         const { data, error } = await supabase.auth.signUp({
           email: trimEmail, password,
           // When they agreed, kept with the account (auth user metadata).
-          options: { data: { display_name: displayName.trim() || trimEmail.split('@')[0], terms_accepted_at: new Date().toISOString() } },
+          // No name asked here: onboarding asks "What should we call you?"
+          // a minute later, and asking twice was one more field between a
+          // new person and the app. The email handle is only a placeholder;
+          // onboarding treats it as blank (MultiStepOnboarding).
+          options: { data: { display_name: trimEmail.split('@')[0], terms_accepted_at: new Date().toISOString() } },
         });
-        if (error) { Alert.alert('Sign up failed', error.message); return; }
+        if (error) {
+          // The commonest signup error by far is an account that already
+          // exists (a second try, or forgetting you signed up). Offer the
+          // way forward rather than a dead end.
+          if (/already registered|already exists/i.test(error.message || '')) { alreadyHave(); return; }
+          fail(friendlyAuthError(error));
+          return;
+        }
+
+        // With email confirmation on, Supabase doesn't say an address is
+        // taken (so the form can't be used to test which emails have
+        // accounts): it returns a stand-in user with no identities and no
+        // error. That used to fall through to "Check your email" for an
+        // email that will never get one.
+        if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+          alreadyHave();
+          return;
+        }
 
         // Stashed regardless of whether a session exists yet — if email
         // confirmation is required, this survives until the user actually
@@ -196,7 +258,7 @@ export default function LoginScreen({ onSuccess, onClose }) {
           // Manual profile create as safety net for trigger
           await supabase.from('profiles').upsert({
             id:                   data.user.id,
-            display_name:         displayName.trim() || trimEmail.split('@')[0],
+            display_name:         trimEmail.split('@')[0],
             username:             trimEmail.split('@')[0],
             email:                trimEmail,
             points:               0,
@@ -210,16 +272,13 @@ export default function LoginScreen({ onSuccess, onClose }) {
           if (data.session) {
             await goAfterAuth(data.user);
           } else {
-            Alert.alert(
-              'Check your email 📬',
-              'We sent you a confirmation link. Click it then come back to sign in.',
-              [{ text: 'OK', onPress: () => setMode('login') }]
-            );
+            setMode('login');
+            setNotice({ kind: 'info', text: `Almost there. We sent a confirmation link to ${trimEmail}. Open it, then sign in here.` });
           }
         }
       }
     } catch (e) {
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      fail("Couldn't reach the server. Check your connection and try again.");
       console.warn('auth error', e);
     } finally {
       setLoading(false);
@@ -289,45 +348,6 @@ export default function LoginScreen({ onSuccess, onClose }) {
               : 'Create your account to launch'}
           </Text>
 
-          {/* Display name (signup only) */}
-          {mode === 'signup' && (
-            <View style={s.inputWrap}>
-              <Ionicons name="person-outline" size={16} color="rgba(255,255,255,0.3)" style={s.inputIcon} />
-              <TextInput
-                style={s.input}
-                placeholder="Display name"
-                placeholderTextColor="rgba(255,255,255,0.25)"
-                value={displayName}
-                onChangeText={setDisplayName}
-                autoCapitalize="words"
-              />
-            </View>
-          )}
-
-          {/* Organization code (signup only, optional) — joins a school/
-              business/other org right at signup so the rest of the app
-              (see src/data/orgLabels.js) can speak that org's vocabulary
-              from the very first screen, instead of a bare personal
-              account that joins one later from Settings. */}
-          {mode === 'signup' && (
-            <View style={s.inputWrap}>
-              <Ionicons name="school-outline" size={16} color="rgba(255,255,255,0.3)" style={s.inputIcon} />
-              <TextInput
-                style={s.input}
-                placeholder="Organization code (optional)"
-                placeholderTextColor="rgba(255,255,255,0.25)"
-                value={orgCode}
-                onChangeText={(v) => setOrgCode(v.toUpperCase())}
-                autoCapitalize="characters"
-                autoCorrect={false}
-                maxLength={6}
-              />
-            </View>
-          )}
-          {mode === 'signup' && (
-            <Text style={s.orgHint}>Got a code from a school or team? Enter it to join right away.</Text>
-          )}
-
           {/* Email */}
           <View style={s.inputWrap}>
             <Ionicons name="mail-outline" size={16} color="rgba(255,255,255,0.3)" style={s.inputIcon} />
@@ -336,7 +356,7 @@ export default function LoginScreen({ onSuccess, onClose }) {
               placeholder="Email address"
               placeholderTextColor="rgba(255,255,255,0.25)"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(v) => { setEmail(v); if (notice?.kind === 'error') setNotice(null); }}
               autoCapitalize="none"
               keyboardType="email-address"
               autoCorrect={false}
@@ -349,10 +369,10 @@ export default function LoginScreen({ onSuccess, onClose }) {
               <Ionicons name="lock-closed-outline" size={16} color="rgba(255,255,255,0.3)" style={s.inputIcon} />
               <TextInput
                 style={[s.input, { flex: 1 }]}
-                placeholder="Password"
+                placeholder={mode === 'signup' ? 'Password (6 or more characters)' : 'Password'}
                 placeholderTextColor="rgba(255,255,255,0.25)"
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(v) => { setPassword(v); if (notice?.kind === 'error') setNotice(null); }}
                 secureTextEntry={!showPass}
               />
               <TouchableOpacity accessibilityRole="button" accessibilityLabel={showPass ? 'Hide password' : 'Show password'} onPress={() => setShowPass(v => !v)} style={{ padding: 4 }}>
@@ -361,9 +381,39 @@ export default function LoginScreen({ onSuccess, onClose }) {
             </View>
           )}
 
+          {/* Organization code (signup only, optional) — joins a school/
+              business/other org right at signup so the rest of the app
+              (see src/data/orgLabels.js) can speak that org's vocabulary
+              from the very first screen, instead of a bare personal
+              account that joins one later from Settings. Behind a link:
+              most people don't have one, and an empty box in the middle of
+              the form read as something they were missing. */}
+          {mode === 'signup' && showOrg && (
+            <View style={s.inputWrap}>
+              <Ionicons name="school-outline" size={16} color="rgba(255,255,255,0.3)" style={s.inputIcon} />
+              <TextInput
+                style={s.input}
+                placeholder="Code from your school or team"
+                placeholderTextColor="rgba(255,255,255,0.25)"
+                value={orgCode}
+                onChangeText={(v) => setOrgCode(v.toUpperCase())}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                maxLength={6}
+                autoFocus
+              />
+            </View>
+          )}
+
+          {mode === 'signup' && !showOrg && (
+            <TouchableOpacity onPress={() => setShowOrg(true)} style={s.forgotRow} accessibilityRole="button">
+              <Text style={s.forgotText}>Have a code from a school or team?</Text>
+            </TouchableOpacity>
+          )}
+
           {/* Forgot password (login only) */}
           {mode === 'login' && (
-            <TouchableOpacity onPress={() => setMode('reset')} style={s.forgotRow}>
+            <TouchableOpacity onPress={() => switchMode('reset')} style={s.forgotRow}>
               <Text style={s.forgotText}>Forgot password?</Text>
             </TouchableOpacity>
           )}
@@ -394,11 +444,36 @@ export default function LoginScreen({ onSuccess, onClose }) {
             </View>
           )}
 
+          {notice && (
+            <View
+              style={[s.notice, notice.kind === 'error' ? s.noticeError : s.noticeInfo]}
+              accessibilityRole="alert"
+              accessibilityLiveRegion="polite"
+            >
+              <Ionicons
+                name={notice.kind === 'error' ? 'alert-circle-outline' : 'mail-unread-outline'}
+                size={16}
+                color={notice.kind === 'error' ? '#ff8a8a' : '#5fd4c0'}
+                style={{ marginTop: 1 }}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={s.noticeText}>{notice.text}</Text>
+                {notice.action && (
+                  <Text style={s.noticeAction} onPress={notice.action.onPress} accessibilityRole="button">
+                    {notice.action.label} →
+                  </Text>
+                )}
+              </View>
+            </View>
+          )}
+
           {/* Submit */}
           <TouchableOpacity
             style={[s.btn, mode === 'signup' && !agreed && { opacity: 0.5 }]}
             onPress={handleSubmit}
-            disabled={loading || (mode === 'signup' && !agreed)}
+            // Dimmed until the box is ticked, but still pressable: a disabled
+            // button gave no reason, and a tap now says what's missing.
+            disabled={loading}
             activeOpacity={0.85}
           >
             {loading
@@ -414,13 +489,13 @@ export default function LoginScreen({ onSuccess, onClose }) {
 
           {/* Switch mode */}
           {mode === 'reset' ? (
-            <TouchableOpacity style={s.switchRow} onPress={() => setMode('login')}>
+            <TouchableOpacity style={s.switchRow} onPress={() => switchMode('login')}>
               <Text style={s.switchText}>
                 <Text style={s.switchLink}>← Back to sign in</Text>
               </Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={s.switchRow} onPress={() => setMode(m => m === 'login' ? 'signup' : 'login')}>
+            <TouchableOpacity style={s.switchRow} onPress={() => switchMode(mode === 'login' ? 'signup' : 'login')}>
               <Text style={s.switchText}>
                 {mode === 'login' ? "New traveler? " : 'Already have a base? '}
                 <Text style={s.switchLink}>{mode === 'login' ? 'Create account' : 'Sign in'}</Text>
@@ -477,8 +552,12 @@ const s = StyleSheet.create({
   cardSub:     { fontSize: 13, color: 'rgba(255,255,255,0.4)', textAlign: 'center', marginBottom: 24 },
   inputWrap:   { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 12, paddingHorizontal: 14, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.1)', marginBottom: 12 },
   inputIcon:   { marginRight: 8 },
-  orgHint:     { fontSize: 11.5, color: 'rgba(255,255,255,0.3)', marginTop: -6, marginBottom: 12, marginLeft: 2 },
   forgotRow:   { alignSelf: 'flex-end', marginBottom: 8, marginTop: -4 },
+  notice:      { flexDirection: 'row', gap: 8, borderRadius: 10, borderWidth: 1, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 12 },
+  noticeError: { backgroundColor: 'rgba(239,106,106,0.12)', borderColor: 'rgba(239,106,106,0.45)' },
+  noticeInfo:  { backgroundColor: 'rgba(43,181,160,0.12)', borderColor: 'rgba(43,181,160,0.45)' },
+  noticeText:  { color: '#f2f4f8', fontSize: 13.5, lineHeight: 19 },
+  noticeAction:{ color: '#5fd4c0', fontSize: 13.5, fontWeight: '700', marginTop: 6 },
   forgotText:  { fontSize: 12.5, color: '#2bb5a0', fontWeight: '600' },
   input:       { flex: 1, paddingVertical: 14, fontSize: 15, color: '#fff' },
   btn:         { backgroundColor: '#2bb5a0', borderRadius: 14, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 8 },
