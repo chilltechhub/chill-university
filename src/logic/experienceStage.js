@@ -7,7 +7,7 @@
 // AccessContext is the only caller that holds state; everything else asks it
 // (isScreenVisible, isGameVisible, can(...)) so every surface agrees.
 
-import { PATHS, MAX_STAGE, EXPLORING_WIDGET, STAGED_SCREENS, FIRST_GOALS, AIM_OPENS } from '../data/experienceStages';
+import { PATHS, MAX_STAGE, EXPLORING_WIDGET, STAGED_SCREENS, FIRST_GOALS, AIM_OPENS, CORE_OPENS } from '../data/experienceStages';
 import { getPurpose, getObjective } from '../data/objectives';
 import { getFeature } from '../data/featureCatalog';
 
@@ -100,6 +100,7 @@ export function openedAt(persona, stage = MAX_STAGE, { exploring = false, aim = 
     fab: new Set(),
     caps: new Set(),
   };
+  (CORE_OPENS.features || []).forEach(id => out.features.add(id));
   reached.forEach(step => {
     (step.features || []).forEach(id => out.features.add(id));
     (step.screens || []).forEach(id => out.screens.add(id));
@@ -120,6 +121,9 @@ export function openedAt(persona, stage = MAX_STAGE, { exploring = false, aim = 
   // one further along.
   const pathStages = extra ? reached.slice(1) : reached;
   const headlines = pathStages.slice(1).map(st => (st.widgets || [])[0]).filter(Boolean);
+  // What someone came for shows on Home from the first day: a builder's
+  // projects, a learner's classes, a habit-keeper's rings.
+  if (extra?.widgets?.[0]) headlines.unshift(extra.widgets[0]);
   out.homeWidgets = homeWidgetsAt(out.widgets, stage, headlines);
   return out;
 }
@@ -131,7 +135,10 @@ export function openedAt(persona, stage = MAX_STAGE, { exploring = false, aim = 
 // per stage, in the order they opened: what you came for first. Each one
 // that arrives gets pointed at and explained on Home (HomeScreen's
 // "new on Home" note), so two is about as many as is worth reading.
-export const HOME_BASICS = ['hq', 'stageSteps', 'compass', 'goalSteps'];
+// 'desk' and 'activities' since 2026-10-07: the next thing to pick up and
+// what is on today are the core loop, not a reward for reaching a stage.
+// A builder's first project used to be nowhere on Home.
+export const HOME_BASICS = ['hq', 'stageSteps', 'compass', 'goalSteps', 'desk', 'activities'];
 export const WIDGETS_PER_STAGE = 2;
 
 // `headlines` is each reached stage's own lead widget: it arrives with its
@@ -197,7 +204,7 @@ export function fabActionsFor(opened) {
 // rearranges itself the day the 'dashboard' stage arrives): who you are,
 // where you are in the app, today's focus, then the goal in flight and the
 // next action.
-const LEAD_WIDGETS = ['hq', 'stageSteps', 'focus', 'compass', 'goalSteps', 'desk'];
+const LEAD_WIDGETS = ['hq', 'stageSteps', 'focus', 'compass', 'goalSteps', 'desk', 'activities'];
 
 export function starterWidgetLayout(opened, allKeys) {
   const known = new Set(allKeys);

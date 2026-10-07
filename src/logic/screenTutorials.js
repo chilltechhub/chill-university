@@ -52,7 +52,7 @@ const SCREEN_FEATURES = {
   LibraryScreen: [
     {
       title: 'Life Areas',
-      body: "Eight sides of a life, each with a ring showing how it's actually tracking. Tap one to check in; the ring is only as honest as the check-ins behind it.",
+      body: "Eight sides of a life, each with a ring showing how it's actually tracking. Double-tap one, or press and hold it, to open it and check in; one tap only filters the list below. The ring is only as honest as the check-ins behind it.",
       id: 'library-life-areas',
       librarySubTab: 'domains',
     },
@@ -271,7 +271,7 @@ function personalize(routeName, steps, personalization) {
   if (routeName === 'LibraryScreen') {
     if (areaLabels?.length) {
       next = next.map(step => step.title === 'Life Areas'
-        ? { ...step, body: `${areaLabels.join(', ')} — the sectors you picked at setup. Tap one to check in, or + Add to bring in more.` }
+        ? { ...step, body: `${areaLabels.join(', ')} — the sectors you picked at setup. Double-tap one, or press and hold it, to open it and check in. One tap filters the list below.` }
         : step);
     }
     if (focusHub) {

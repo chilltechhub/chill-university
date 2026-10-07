@@ -189,8 +189,11 @@ export const FEATURES = [
     label: 'Work Mode',
     screen: 'WorkModeScreen',
     icon: 'timer-outline',
-    gate: 'locked',
-    depth: 'deep',
+    // Core, not earned: staying on a task is half of what the app is for
+    // (CORE_OPENS in experienceStages.js). unlockedBy below is kept so the
+    // goals that used to open it still name it, and earned unlocks stand.
+    gate: 'open',
+    depth: 'core',
     purposes: ['build', 'learn', 'career'],
     unlockedBy: ['hold-the-line', 'learn-one-skill'],
     testable: true,

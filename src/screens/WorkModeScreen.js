@@ -23,6 +23,7 @@ import { offlineWrite } from '../api/offlineCache';
 import { saveTimerSession } from '../api/commandCenterService';
 import { AREAS } from '../api/plannerService';
 import { FONTS } from '../theme';
+import { advanceNextAction } from '../api/nextActionService';
 
 const STEPS = [
   { key: 'start',      label: 'START' },
@@ -89,6 +90,10 @@ export default function WorkModeScreen() {
   // would otherwise under-count. `tick` just forces a re-render once a
   // second so the displayed clock keeps moving; it never feeds the math.
   const [accumulatedSeconds, setAccumulatedSeconds] = useState(0);
+  // Finish screen: was the project's next step done, and what's after it?
+  // Without this the step never moved, so Home kept offering the same one.
+  const [stepDone, setStepDone] = useState(false);
+  const [nextStep, setNextStep] = useState('');
   const [runningSince, setRunningSince] = useState(null);
   const [, setTick] = useState(0);
   const intervalRef = useRef(null);
@@ -146,6 +151,9 @@ export default function WorkModeScreen() {
       // valid id to pass here. areaKey still tags the finish summary and
       // routes a project-less scratchpad note below.
       await saveTimerSession(userId, elapsedSeconds, null);
+      if (project && project.next_action && stepDone) {
+        await advanceNextAction(userId, project, { done: true, next: nextStep });
+      }
       const notes = scratchpad.trim();
       if (notes) {
         const now = new Date().toISOString();
@@ -283,6 +291,25 @@ export default function WorkModeScreen() {
                 </Text>
               ) : null}
             </View>
+
+            {!!project?.next_action && (
+              <View style={{ alignSelf: 'stretch', backgroundColor: c.bg1, borderRadius: r.lg, padding: s.md, marginBottom: s.lg, borderWidth: 1, borderColor: c.border }}>
+                <TouchableOpacity onPress={() => setStepDone(v => !v)} accessibilityRole="checkbox" accessibilityState={{ checked: stepDone }}
+                  style={{ flexDirection: 'row', alignItems: 'flex-start', gap: s.sm }}>
+                  <Ionicons name={stepDone ? 'checkbox' : 'square-outline'} size={20} color={stepDone ? color : c.text3} />
+                  <Text style={{ flex: 1, fontSize: t.sm, color: c.text1, lineHeight: 20 }}>
+                    I finished: <Text style={{ fontWeight: t.bold }}>{project.next_action}</Text>
+                  </Text>
+                </TouchableOpacity>
+                {stepDone && (
+                  <TextInput
+                    style={{ marginTop: s.md, backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: c.border }}
+                    value={nextStep} onChangeText={setNextStep}
+                    placeholder="What's the next step? (optional)" placeholderTextColor={c.text4}
+                  />
+                )}
+              </View>
+            )}
 
             <TouchableOpacity onPress={saveAndClose} disabled={saving}
               style={{ backgroundColor: color, borderRadius: r.md, paddingVertical: 16, alignItems: 'center', width: '100%', opacity: saving ? 0.7 : 1 }}>

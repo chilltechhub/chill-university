@@ -55,6 +55,9 @@ import { RANK_LABELS } from '../theme';
 import { GAMES_MASTER } from './GamesScreen';
 import { LIFE_AREAS } from './library/LifeAreaScreen';
 import { recordAction } from '../logic/gamificationService';
+import { getDueItems } from '../api/deadlinesService';
+import { advanceNextAction } from '../api/nextActionService';
+import { openTarget } from '../logic/openTarget';
 
 function daysSince(iso) {
   if (!iso) return null;
@@ -704,7 +707,7 @@ function ActivityRow({ item, onPress, c, t, s, r }) {
         <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1 }} numberOfLines={1}>{item.title}</Text>
         <View style={{ flexDirection: 'row', gap: 6, marginTop: 1 }}>
           {item.time && <Text style={{ fontSize: 11, color: item.color || meta.color, fontWeight: t.bold }}>{fmtActivityTime(item.time)}</Text>}
-          <Text style={{ fontSize: 11, color: c.text3, ...ui.eyebrow, marginBottom: 0 }}>{meta.label}</Text>
+          <Text style={{ fontSize: 11, color: c.text3, ...ui.eyebrow, marginBottom: 0 }} numberOfLines={1}>{item._src === 'due' && item.notes ? item.notes : meta.label}</Text>
         </View>
       </View>
       <Ionicons name="chevron-forward" size={16} color={c.text4} />
@@ -919,6 +922,9 @@ export default function HomeScreen() {
   const [showTodoInput,  setShowTodoInput]  = useState(false);
   const [selectedDeskItem, setSelectedDeskItem] = useState(null); // ticker chip tapped open, shown in NextUpCard's detail sheet
   const [nextActionTarget, setNextActionTarget] = useState(null); // project awaiting a next_action from the quick-set sheet
+  // "New Step" on a project that already has one: was the current step done?
+  // On by default, since that is why people tap New Step.
+  const [stepDone, setStepDone] = useState(true);
   const [nextActionDraft,  setNextActionDraft]  = useState('');
   const [savingNextAction, setSavingNextAction] = useState(false);
 
@@ -1333,7 +1339,7 @@ export default function HomeScreen() {
         focusRes, tasksRes, projRes, capturesRes,
         ideasRes, settingsRes, assignmentsRes,
         eventsRes, todayTasksRes, agendaRes,
-        buildsRes, lifeAreaRowsRes,
+        buildsRes, lifeAreaRowsRes, dueRows,
       ] = await Promise.all([
         supabase.from('daily_focus').select('focus_text').eq('user_id', uid).eq('focus_date', todayStr).maybeSingle(),
         supabase.from('tasks').select('id, title').eq('user_id', uid).eq('completed', false).order('priority').limit(3),
@@ -1360,6 +1366,9 @@ export default function HomeScreen() {
         // Check-ins Due widget — same per-user life_areas rows
         // LibraryScreen's Domains tab reads, matched by label the same way.
         supabase.from('life_areas').select('label, progress, last_check_date').eq('user_id', uid),
+        // Project tasks and project finish dates due today or already late
+        // (deadlinesService.js). Today's plain tasks come in above.
+        getDueItems(uid, '2000-01-01', todayStr).catch(() => []),
       ]);
 
       // Focus
@@ -1422,6 +1431,15 @@ export default function HomeScreen() {
             _src: 'planner', raw: item,
           };
         }),
+        ...(dueRows || [])
+          .filter(d => !d.completed && !(d.kind === 'task' && d.date === todayStr))
+          .map(d => ({
+            id: 'due_' + d.key,
+            title: d.kind === 'project' ? `Finish: ${d.title}` : d.title,
+            time: null, type: 'task', color: d.date < todayStr ? c.error : ACTIVITY_TYPES.task.color,
+            notes: [d.date < todayStr ? 'Late' : 'Due today', d.kind !== 'project' ? d.projectTitle : null].filter(Boolean).join(' · '),
+            _src: 'due', raw: d,
+          })),
         ...(assignmentsRes || []).filter(a => a.due_date === todayStr).map(a => ({
           id: 'aassign_' + a.assignment_id, title: a.title, time: null,
           type: 'assignment', color: ACTIVITY_TYPES.assignment.color,
@@ -1664,7 +1682,10 @@ export default function HomeScreen() {
   // hasNextAction is true).
   const promptNextAction = (item) => {
     closeDeskSheet();
-    setNextActionDraft(item.hasNextAction ? item.title : '');
+    // A step already set: assume it's done and ask for the next one. Untick
+    // "done" to reword the current step instead (it then refills the box).
+    setStepDone(!!item.hasNextAction);
+    setNextActionDraft('');
     setNextActionTarget(item);
   };
 
@@ -1747,8 +1768,11 @@ export default function HomeScreen() {
     const text = nextActionDraft.trim();
     setSavingNextAction(true);
     try {
-      const { error } = await supabase.from('projects').update({ next_action: text, updated_at: new Date().toISOString() }).eq('id', projectId);
-      if (error) throw error;
+      const project = nextActionTarget.meta.project;
+      await advanceNextAction(userId, { ...project, id: projectId }, {
+        done: !!nextActionTarget.hasNextAction && stepDone,
+        next: text,
+      });
       signalAction('project-next-set');
       setTodos(prev => prev.map(it => it.id === nextActionTarget.id
         ? { ...it, title: text, hasNextAction: true, meta: { project: { ...it.meta.project, next_action: text } } }
@@ -2015,19 +2039,27 @@ export default function HomeScreen() {
               key: 'activities', title: "Today's Activities",
               render: () => (
                 todayActivities.length === 0 ? (
-                  editingWidgets ? (
-                    <View style={{ paddingHorizontal: s.lg }}>
-                      <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border, borderStyle: 'dashed' }}>
-                        <Text style={{ fontSize: t.xs, color: c.text3 }}>Today's Activities — nothing scheduled today</Text>
-                      </View>
-                    </View>
-                  ) : <View />
+                  // Always on Home now (HOME_BASICS), so an empty day says so
+                  // and offers the one thing to do about it.
+                  <View style={{ paddingHorizontal: s.lg }}>
+                    <TouchableOpacity
+                      onPress={() => goToLibraryScreen('PlannerScreen')}
+                      accessibilityRole="button"
+                      accessibilityLabel="Nothing planned for today. Open the Planner"
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border, borderStyle: 'dashed' }}>
+                      <Ionicons name="calendar-clear-outline" size={16} color={c.text3} />
+                      <Text style={{ flex: 1, fontSize: t.xs, color: c.text2 }}>Nothing planned for today</Text>
+                      <Text style={{ fontSize: t.xs, color: accent.primary, fontWeight: t.bold }}>Plan →</Text>
+                    </TouchableOpacity>
+                  </View>
                 ) : (
                   <TourSpot id="home-today-activities">
                   <View style={{ paddingHorizontal: s.lg }}>
                     <SectionHead title="Today's Activities" action="Calendar →" onAction={() => setShowCalendar(true)} c={c} t={t} />
                     {todayActivities.slice(0, 3).map(item => (
-                      <ActivityRow key={item.id} item={item} onPress={() => (item._src === 'planner' ? setOpenPlan(item.raw) : setSelectedActivity(item))} c={c} t={t} s={s} r={r} />
+                      <ActivityRow key={item.id} item={item} onPress={() => (item._src === 'planner' ? setOpenPlan(item.raw)
+                        : item._src === 'due' && item.raw?.projectId ? openTarget(navigation, { kind: 'project', id: item.raw.projectId })
+                        : setSelectedActivity(item))} c={c} t={t} s={s} r={r} />
                     ))}
                     {todayActivities.length > 3 && (
                       <TouchableOpacity onPress={() => setShowCalendar(true)}>
@@ -2471,6 +2503,23 @@ export default function HomeScreen() {
               {showEmojis ? '🚩 ' : ''}What's next for {nextActionTarget?.projectTitle}?
             </Text>
             <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: s.md }}>One concrete, physical step — not the whole project.</Text>
+            {nextActionTarget?.hasNextAction && (
+              <TouchableOpacity
+                onPress={() => {
+                  const next = !stepDone;
+                  setStepDone(next);
+                  // Rewording rather than finishing: start from the current step.
+                  if (!next && !nextActionDraft.trim()) setNextActionDraft(nextActionTarget.title);
+                  if (next && nextActionDraft === nextActionTarget.title) setNextActionDraft('');
+                }}
+                accessibilityRole="checkbox" accessibilityState={{ checked: stepDone }}
+                style={{ flexDirection: 'row', alignItems: 'flex-start', gap: s.sm, marginBottom: s.md }}>
+                <Ionicons name={stepDone ? 'checkbox' : 'square-outline'} size={20} color={stepDone ? accent.primary : c.text3} />
+                <Text style={{ flex: 1, fontSize: t.sm, color: c.text1, lineHeight: 20 }}>
+                  Done: <Text style={{ fontWeight: t.bold }}>{nextActionTarget.title}</Text>
+                </Text>
+              </TouchableOpacity>
+            )}
             <TextInput
               style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: c.border, marginBottom: s.lg }}
               value={nextActionDraft} onChangeText={setNextActionDraft}

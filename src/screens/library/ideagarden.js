@@ -708,6 +708,10 @@ export default function IdeaGardenScreen() {
         : c));
       setProjectInfo(prev => ({ ...prev, [project.id]: { ...project, tasksTotal: 0, tasksDone: 0, pct: null } }));
       setOpenItem(null);
+      // A real project now, same as New Project in the Workshop: it ticks a
+      // goal's "start it as a project" step. Promoting from here is the
+      // obvious way in, and it used to leave that step open.
+      signalAction('project-started');
       Alert.alert('🏗️ Sent to the Workshop', `"${core.title}" is now a real build. Open it now?`, [
         { text: 'Stay here', style: 'cancel' },
         { text: 'Open Workshop', onPress: () => navigation.navigate('ProjectDetail', { project }) },

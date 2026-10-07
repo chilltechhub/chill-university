@@ -24,6 +24,8 @@ import { goToScreen } from '../logic/appRoutes';
 import { MAX_STAGE } from '../data/experienceStages';
 import { getFeature } from '../data/featureCatalog';
 import { FONTS } from '../theme';
+import useCalmMoment from '../logic/useCalmMoment';
+import { summarizeProgress } from './LevelUpNotification';
 
 const VIA_COPY = {
   test:      'You passed the quick check — no goal needed.',
@@ -51,16 +53,31 @@ export default function UnlockNotification() {
   // used to open a stage popup and then one "Unlocked" popup per feature the
   // goal opened: three taps of "Later" before seeing what to do next.
   const unlockedFeatures = (unlockEvents || []).map(e => e.feature).filter(Boolean);
-  const { progressEvents } = useUserProgress();
+  const { progressEvents, dismissAllProgressEvents } = useUserProgress();
   const { startLesson, active: tourActiveNow } = useTour();
 
   const s = makeStyles(c, t, sp, r);
 
-  // One celebration at a time. Finishing a game can level you up AND open a
-  // stage in the same moment; the level-up popup and this one are both
-  // native Modals, and two presented together is a known way to leave the
-  // app unresponsive on iOS. The level-up shows first, this waits for it.
-  if (progressEvents?.length) return null;
+  // One celebration per moment. Claiming a goal can level you up AND open a
+  // stage at once; that used to be "Level Up!", then "Unlocked!", then this
+  // card. Now this card carries the level-up too (LevelUpNotification steps
+  // aside while anything is queued here), and it waits until the moment has
+  // settled and nobody is typing (useCalmMoment).
+  const waiting = !!(stageEvents?.length || unlockEvents?.some(e => e.feature));
+  const ready = useCalmMoment(waiting && !tourActiveNow);
+  if (!ready) return null;
+  const progress = summarizeProgress(progressEvents);
+  const levelLine = progress && (progress.level != null || progress.tier || progress.unlocks.length)
+    ? [
+        progress.level != null ? `Level ${progress.level}` : progress.tier ? (progress.tier.rankLabel?.label || 'New tier') : null,
+        progress.unlocks.length ? `you unlocked ${progress.unlocks.map(u => u.name).join(', ')}` : null,
+      ].filter(Boolean).join(' · ')
+    : null;
+  const LevelStrip = levelLine ? (
+    <View style={s.levelStrip}>
+      <Text style={s.levelText}>⭐ {levelLine.charAt(0).toUpperCase() + levelLine.slice(1)}</Text>
+    </View>
+  ) : null;
 
   // "Show me" means show me: take them to the thing, say what it is in one
   // bubble, then the screen's basics (its first-visit steps, not the whole
@@ -92,7 +109,6 @@ export default function UnlockNotification() {
   // finished and every level gained opens one), and it says what's new.
   // Stages open one at a time, so this is normally one thing, not a list.
   // Same rule as LevelUpNotification: not over a running walkthrough.
-  if (tourActiveNow) return null;
   const stageEvent = stageEvents?.[0];
   if (stageEvent) {
     const stages = stageEvent.stages || [];
@@ -136,7 +152,7 @@ export default function UnlockNotification() {
       : games.length
         ? { screen: 'Training', label: 'the new games', what: { title: games.join(', '), body: `New in Training: ${games.join(', ')}. Tap Enter Training, then swipe up or down to find them.` } }
         : { screen: 'Home', label: 'what’s new', what: null };
-    const close = () => { dismissStageEvent(); dismissAllUnlockEvents?.(); };
+    const close = () => { dismissStageEvent(); dismissAllUnlockEvents?.(); dismissAllProgressEvents?.(); };
     const show = () => {
       close();
       openAndTeach(target.screen, target.what);
@@ -152,6 +168,7 @@ export default function UnlockNotification() {
             <View style={s.iconBox}>
               <Ionicons name="sparkles-outline" size={26} color={c.teal} />
             </View>
+            {LevelStrip}
             <Text style={s.kicker}>New in your app · stage {stageEvent.to} of {MAX_STAGE}</Text>
             <Text style={s.title}>{heading.title}</Text>
             {!!heading.blurb && <Text style={s.blurb}>{heading.blurb}</Text>}
@@ -183,7 +200,10 @@ export default function UnlockNotification() {
 
   const { feature, via } = event;
   const others = unlockedFeatures.slice(1);
-  const done = () => (others.length ? dismissAllUnlockEvents?.() : dismissUnlockEvent());
+  const done = () => {
+    if (others.length) dismissAllUnlockEvents?.(); else dismissUnlockEvent();
+    dismissAllProgressEvents?.();
+  };
 
   const go = () => {
     done();
@@ -197,6 +217,7 @@ export default function UnlockNotification() {
           <View style={s.iconBox}>
             <Ionicons name={feature.icon || 'lock-open-outline'} size={26} color={c.teal} />
           </View>
+          {LevelStrip}
           <Text style={s.kicker}>Unlocked</Text>
           <Text style={s.title}>{feature.label}</Text>
           <Text style={s.blurb}>{feature.blurb}</Text>
@@ -244,5 +265,7 @@ const makeStyles = (c, t, sp, r) => StyleSheet.create({
   btn:     { alignSelf: 'stretch', backgroundColor: c.teal, borderRadius: r.md, paddingVertical: sp.md, alignItems: 'center' },
   btnText: { color: c.onFill, fontSize: t.sm, fontWeight: '800' },
   ghost:   { paddingVertical: sp.md },
+  levelStrip: { alignSelf: 'stretch', backgroundColor: c.bg2, borderRadius: r.md, paddingVertical: sp.sm, paddingHorizontal: sp.md, marginBottom: sp.md },
+  levelText:  { fontSize: t.xs, color: c.text1, fontWeight: '700', textAlign: 'center', lineHeight: 18 },
   ghostText:{ color: c.text3, fontSize: t.xs },
 });
