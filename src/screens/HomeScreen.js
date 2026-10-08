@@ -56,7 +56,7 @@ import { GAMES_MASTER } from './GamesScreen';
 import { LIFE_AREAS } from './library/LifeAreaScreen';
 import { recordAction } from '../logic/gamificationService';
 import { getDueItems } from '../api/deadlinesService';
-import { advanceNextAction } from '../api/nextActionService';
+import { advanceNextAction, suggestNextStep } from '../api/nextActionService';
 import { openTarget } from '../logic/openTarget';
 
 function daysSince(iso) {
@@ -926,6 +926,7 @@ export default function HomeScreen() {
   // On by default, since that is why people tap New Step.
   const [stepDone, setStepDone] = useState(true);
   const [nextActionDraft,  setNextActionDraft]  = useState('');
+  const [suggestedStep,    setSuggestedStep]    = useState(null); // the project's soonest open task, offered in that sheet
   const [savingNextAction, setSavingNextAction] = useState(false);
 
   // Today's Activities — everything actually scheduled/due today (calendar
@@ -1706,7 +1707,12 @@ export default function HomeScreen() {
     // "done" to reword the current step instead (it then refills the box).
     setStepDone(!!item.hasNextAction);
     setNextActionDraft('');
+    setSuggestedStep(null);
     setNextActionTarget(item);
+    // A planned project already knows its next step: offer the soonest open
+    // task so it's one tap, not retyping the plan.
+    suggestNextStep(item.meta?.project?.id, item.hasNextAction ? item.title : null)
+      .then(setSuggestedStep).catch(() => {});
   };
 
   // Timer icon on a task/project candidate — jump straight into a focused
@@ -1797,6 +1803,9 @@ export default function HomeScreen() {
       setTodos(prev => prev.map(it => it.id === nextActionTarget.id
         ? { ...it, title: text, hasNextAction: true, meta: { project: { ...it.meta.project, next_action: text } } }
         : it));
+      // Active Projects shows the same next step; it used to say "No next
+      // step set" until Home reloaded.
+      setActiveBuilds(prev => prev.map(p => p.id === projectId ? { ...p, next_action: text } : p));
       setNextActionTarget(null);
     } catch (e) {
       console.warn('HomeScreen: set next action', e.message);
@@ -2156,7 +2165,7 @@ export default function HomeScreen() {
                   ) : <View />
                 ) : (
                   <View style={{ paddingHorizontal: s.lg }}>
-                    <SectionHead title="Latest Ideas" action="Garden →" onAction={() => navigation.navigate('Library')} c={c} t={t} />
+                    <SectionHead title="Latest Ideas" action="Garden →" onAction={() => goToLibraryScreen('IdeaGardenScreen')} c={c} t={t} />
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -s.lg }}>
                       <View style={{ flexDirection: 'row', paddingHorizontal: s.lg, gap: s.sm }}>
                         {ideas.map(idea => (
@@ -2216,7 +2225,7 @@ export default function HomeScreen() {
                   ) : <View />
                 ) : (
                   <View style={{ paddingHorizontal: s.lg }}>
-                    <SectionHead title="Active Projects" action="Workshop →" onAction={() => navigation.navigate('ProjectsScreen')} c={c} t={t} />
+                    <SectionHead title="Active Projects" action="Workshop →" onAction={() => goToLibraryScreen('ProjectsScreen')} c={c} t={t} />
                     <View style={{ backgroundColor: c.bg1, borderRadius: ui.cardRadius, borderWidth: ui.borderWidth, borderColor: c.border, paddingHorizontal: s.md }}>
                       {activeBuilds.slice(0, 4).map((p, i, arr) => (
                         <TouchableOpacity key={p.id} onPress={() => navigation.navigate('Library', { screen: 'ProjectDetail', params: { project: p } })} activeOpacity={0.7}
@@ -2541,6 +2550,16 @@ export default function HomeScreen() {
                 <Ionicons name={stepDone ? 'checkbox' : 'square-outline'} size={20} color={stepDone ? accent.primary : c.text3} />
                 <Text style={{ flex: 1, fontSize: t.sm, color: c.text1, lineHeight: 20 }}>
                   Done: <Text style={{ fontWeight: t.bold }}>{nextActionTarget.title}</Text>
+                </Text>
+              </TouchableOpacity>
+            )}
+            {!!suggestedStep && nextActionDraft.trim() !== suggestedStep && (
+              <TouchableOpacity onPress={() => setNextActionDraft(suggestedStep)}
+                accessibilityRole="button" accessibilityLabel={`Use the next task in your plan: ${suggestedStep}`}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, padding: s.sm, marginBottom: s.sm, borderRadius: r.md, borderWidth: 1, borderColor: accent.primary }}>
+                <Ionicons name="list-outline" size={16} color={accent.primary} />
+                <Text style={{ flex: 1, fontSize: t.sm, color: c.text1 }} numberOfLines={2}>
+                  <Text style={{ color: c.text3 }}>Next in your plan: </Text>{suggestedStep}
                 </Text>
               </TouchableOpacity>
             )}

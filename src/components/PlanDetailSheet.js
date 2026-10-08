@@ -38,18 +38,14 @@ export async function openPlanLink(navigation, instance) {
   // title/status can have changed since the item was linked); class and game
   // links carry their destination directly, no lookup needed.
   if (!instance.link_type || !navigation) return;
+  // Through openTarget, not a bare navigate('ProjectDetail'): this sheet also
+  // opens from Home's calendar, where Library screens can't be reached by name.
   try {
-    if (instance.link_type === 'class' && instance.link_screen) {
-      navigation.navigate('ClassesStack', { screen: instance.link_screen });
-    } else if (instance.link_type === 'game' && instance.link_screen) {
+    if (instance.link_type === 'game' && instance.link_screen) {
       navigation.navigate('Play', { gameId: instance.link_screen });
-    } else if (instance.link_type === 'project' && instance.link_id) {
-      const { data, error } = await supabase.from('projects').select('*').eq('id', instance.link_id).maybeSingle();
-      if (error || !data) { Alert.alert('Not found', "That project isn't there anymore."); return; }
-      navigation.navigate('ProjectDetail', { project: data });
-    } else if (['quest', 'idea', 'vault'].includes(instance.link_type)) {
+    } else if (['class', 'project', 'quest', 'idea', 'vault'].includes(instance.link_type)) {
       const ok = await openTarget(navigation, targetFromInstance(instance));
-      if (!ok) Alert.alert('Not found', "That isn't there anymore.");
+      if (!ok) Alert.alert('Not found', instance.link_type === 'project' ? "That project isn't there anymore." : "That isn't there anymore.");
     }
   } catch (e) {
     console.warn('openLink', e);
@@ -76,6 +72,19 @@ export default function PlanDetailSheet({ instance, onClose, onChanged, onEdit, 
     setConfirmDelete(false); setSeries(null); setBusy(false);
   }, [instance]);
 
+  // Work sessions are written with "Next step: …" copied from the project
+  // when they were scheduled (workSessions.buildSessionRows), so weeks later
+  // they named a step finished long ago. Show the project's step as it is now.
+  const [liveNext, setLiveNext] = useState(undefined); // undefined = not looked up
+  useEffect(() => {
+    setLiveNext(undefined);
+    if (instance?.link_type !== 'project' || !instance.link_id || !instance.notes?.startsWith('Next step: ')) return undefined;
+    let live = true;
+    supabase.from('projects').select('next_action').eq('id', instance.link_id).maybeSingle()
+      .then(({ data }) => { if (live && data) setLiveNext(data.next_action || null); });
+    return () => { live = false; };
+  }, [instance]);
+
   const inst = shown;
   if (!inst) return null;
   const area    = AREAS[inst.area] || AREAS.physical;
@@ -83,7 +92,9 @@ export default function PlanDetailSheet({ instance, onClose, onChanged, onEdit, 
   const skipped = !!inst.skipped;
   const overdue = isOverdue(inst);
   const repeats = inst.cadence && inst.cadence !== 'once';
-  const notes   = inst.notes && !inst.notes.startsWith('notif:') ? inst.notes : null;
+  const stored  = inst.notes && !inst.notes.startsWith('notif:') ? inst.notes : null;
+  const notes   = liveNext === undefined || !stored?.startsWith('Next step: ') ? stored
+    : liveNext ? `Next step: ${liveNext}` : null;
   const todayIso = toISO(new Date());
   const danger  = c.error || '#e05858';
   const status = done ? { label: 'Done', color: c.success || '#3ac860' }
