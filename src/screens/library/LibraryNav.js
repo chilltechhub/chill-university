@@ -25,6 +25,7 @@ import WayfinderScreen         from './wayfinder/WayfinderScreen';
 import PortfolioScreen         from './portfolio';
 import ProjectsScreen          from './projects';
 import ProjectDetailScreen     from './ProjectDetail';
+import ProjectOverviewScreen   from './ProjectOverview';
 import LabsScreen              from './labs';
 
 // Discover
@@ -147,6 +148,7 @@ export default function LibraryNavigator() {
       {/* Academic & Career */}
       <Stack.Screen name="ProjectsScreen"          component={ProjectsScreen}          options={{ title: 'The Workshop' }} />
       <Stack.Screen name="ProjectDetail" component={ProjectDetailScreen} options={{ title: 'Build' }} />
+      <Stack.Screen name="ProjectOverview" component={ProjectOverviewScreen} options={{ title: 'About this project' }} />
       <Stack.Screen name="LabsScreen"              component={GatedLabs}               options={{ title: 'Labs' }} /> 
       <Stack.Screen name="PortfolioScreen"         component={GatedPortfolio}          options={{ title: 'Portfolio' }} />
       <Stack.Screen name="CareerExplorationScreen" component={GatedCareer}             options={{ title: 'Career Explorer' }} />

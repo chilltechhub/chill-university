@@ -1,6 +1,7 @@
 // src/components/ItemLinks.js
 // Generic "linked items" picker + display for attaching ONE record (a note,
-// a resource, etc.) to existing Resources, Projects, or Research items.
+// a resource, etc.) to existing Projects, Ideas, Resources, or Research items.
+// A project or idea shows the notes linked to it (src/api/vaultLinks.js).
 //
 // Unlike RelatedLinks.js (area-scoped — links live as separate area_notes
 // rows), this is item-scoped: the caller owns a plain array of
@@ -13,10 +14,13 @@ import { View, Text, TouchableOpacity, TextInput, Modal, ScrollView, ActivityInd
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../api/supabaseClient';
+import { openTarget as openPlace } from '../logic/openTarget';
 
+// `place` opens the linked thing itself rather than its list.
 const KINDS = [
+  { key: 'project',  label: 'Projects',  icon: 'rocket-outline',   screen: 'ProjectsScreen',        table: 'projects', typeVal: null, place: id => ({ kind: 'project', id }) },
+  { key: 'idea',     label: 'Ideas',     icon: 'bulb-outline',     screen: 'IdeaGardenScreen',      table: 'garden_cores', typeVal: null, place: id => ({ kind: 'idea', id }) },
   { key: 'resource', label: 'Resources', icon: 'bookmark-outline', screen: 'ResourcesToolsScreen', table: 'captures', typeVal: 'resource' },
-  { key: 'project',  label: 'Projects',  icon: 'rocket-outline',   screen: 'ProjectsScreen',        table: 'projects', typeVal: null },
   { key: 'research', label: 'Research',  icon: 'search-outline',   screen: 'ResearchScreen',        table: 'captures', typeVal: 'link' },
 ];
 
@@ -37,10 +41,11 @@ export default function ItemLinks({ links = [], onChange, excludeId, color, c, t
     setSearch('');
     setOptLoading(true);
     const meta = KINDS.find(k => k.key === kind);
-    let query = supabase.from(meta.table).select(meta.table === 'projects' ? 'id,title,emoji,color,status' : 'id,title,url')
+    let query = supabase.from(meta.table).select(meta.table === 'projects' ? 'id,title,emoji,color,status' : meta.table === 'garden_cores' ? 'id,title' : 'id,title,url')
       .eq('user_id', userId).is('deleted_at', null).limit(50);
     if (meta.typeVal) query = query.eq('type', meta.typeVal);
-    if (meta.table === 'projects') query = query.eq('status', 'active');
+    // Projects at any stage: what you learned often comes after it's done.
+    if (meta.table === 'projects') { /* every stage */ }
     else if (meta.typeVal === 'resource') query = query.eq('status', 'active');
     else if (meta.typeVal === 'link') query = query.in('status', ['inbox', 'active']);
     const { data } = await query.order('created_at', { ascending: false });
@@ -56,7 +61,11 @@ export default function ItemLinks({ links = [], onChange, excludeId, color, c, t
 
   const unlink = (kind, refId) => onChange(links.filter(l => !(l.kind === kind && l.refId === refId)));
 
-  const openTarget = (kind) => navigation.navigate(KINDS.find(k => k.key === kind).screen);
+  const openTarget = async (kind, refId) => {
+    const meta = KINDS.find(k => k.key === kind);
+    if (meta.place && await openPlace(navigation, meta.place(refId))) return;
+    navigation.navigate(meta.screen);
+  };
 
   const filteredOptions = options.filter(o => !search || (o.title || '').toLowerCase().includes(search.toLowerCase()));
 
@@ -81,7 +90,7 @@ export default function ItemLinks({ links = [], onChange, excludeId, color, c, t
             ) : (
               items.map(item => (
                 <View key={`${item.kind}_${item.refId}`} style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.sm, marginBottom: 6, borderWidth: 0.5, borderColor: c.border }}>
-                  <TouchableOpacity onPress={() => openTarget(kind.key)} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <TouchableOpacity onPress={() => openTarget(kind.key, item.refId)} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Text style={{ fontSize: t.xs, color: c.text1, flex: 1 }} numberOfLines={1}>{item.title}</Text>
                     <Ionicons name="open-outline" size={12} color={color} />
                   </TouchableOpacity>
@@ -102,7 +111,7 @@ export default function ItemLinks({ links = [], onChange, excludeId, color, c, t
           <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 40, maxHeight: '75%' }}>
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
             <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.md }}>
-              Link a {KINDS.find(k => k.key === picker)?.label.replace(/s$/, '')}
+              {(() => { const one = KINDS.find(k => k.key === picker)?.label.replace(/s$/, '') || ''; return `Link ${/^[AEIOU]/.test(one) ? 'an' : 'a'} ${one}`; })()}
             </Text>
             <TextInput
               style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: c.border, marginBottom: s.md }}

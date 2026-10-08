@@ -30,6 +30,8 @@ import FillWithAIButton from '../../components/FillWithAIButton';
 import { useTour } from '../../../context/TourContext';
 import { useAccess } from '../../../context/AccessContext';
 import { textOn } from '../../logic/contrast';
+import { notesLinkedByRef, noteLine } from '../../api/vaultLinks';
+import { openTarget } from '../../logic/openTarget';
 
 // SW/SH/CANVAS_H are now dynamic via useWindowDimensions inside the component
 
@@ -475,7 +477,25 @@ function buildGardenColors(c) {
   };
 }
 
-function NotePanel({ item, editing, cores, plantTypes, petalTypes, onClose, onSave, onAddPetal, onProgress, onToggle, onDelete, onLinkPress, linkedProject, onPromote, onOpenWorkshop }) {
+// Vault notes linked to an idea (from the note's "Linked" section in the
+// Knowledge Vault). Tapping one opens it there.
+function VaultNotes({ notes, gc, styles, onOpen }) {
+  if (!notes?.length) return null;
+  return (
+    <View style={{ marginTop: 8, gap: 4 }}>
+      {notes.slice(0, 3).map(n => (
+        <TouchableOpacity key={n.id} onPress={() => onOpen(n)} accessibilityRole="button" accessibilityLabel={`Open note: ${noteLine(n)}`}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 3 }}>
+          <Ionicons name="document-text-outline" size={14} color={gc.text3} />
+          <Text style={[styles.petalRowText, { flex: 1 }]} numberOfLines={2}>{noteLine(n)}</Text>
+          <Ionicons name="open-outline" size={12} color={gc.text4} />
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
+function NotePanel({ item, editing, cores, plantTypes, petalTypes, onClose, onSave, onAddPetal, onProgress, onToggle, onDelete, onLinkPress, linkedProject, onPromote, onOpenWorkshop, vaultNotes, onOpenNote }) {
   const { colors: c } = useTheme();
   const gc = buildGardenColors(c);
   const styles = makeStyles(gc);
@@ -558,6 +578,8 @@ function NotePanel({ item, editing, cores, plantTypes, petalTypes, onClose, onSa
         )}
       </View>
 
+      <VaultNotes notes={vaultNotes} gc={gc} styles={styles} onOpen={onOpenNote} />
+
       {/* Linked plants */}
       {linkedCores.length > 0 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.linkedRow}>
@@ -638,6 +660,7 @@ export default function IdeaGardenScreen() {
   const vineNoteTimer = useRef(null);
   const [loading, setLoading] = useState(true);
   const [openItem, setOpenItem] = useState(null);
+  const [vaultByCore, setVaultByCore] = useState({}); // idea id → Vault notes linked to it
   const [connectMode, setConnectMode] = useState(false);
   const [connectFrom, setConnectFrom] = useState(null);
   // react-native-webview has no web implementation — the map view's canvas
@@ -679,6 +702,7 @@ export default function IdeaGardenScreen() {
   const reload = async (uid) => {
     const [c, v] = await Promise.all([getCores(uid), getVines(uid)]);
     setCores(c); setVines(v);
+    notesLinkedByRef('idea').then(setVaultByCore);
     const linkedIds = c.filter(x => x.project_id).map(x => x.project_id);
     try { setProjectInfo(linkedIds.length ? await getLinkedProjectInfo(linkedIds) : {}); }
     catch (e) { console.warn('linked project info error', e); }
@@ -1094,6 +1118,7 @@ export default function IdeaGardenScreen() {
                     })}
                   </View>
                 )}
+                <VaultNotes notes={vaultByCore[core.id]} gc={gc} styles={styles} onOpen={(n) => openTarget(navigation, { kind: 'vault', id: n.id })} />
                 <View style={styles.listCardActions}>
                   <TouchableOpacity style={styles.listAction} onPress={() => openNewPetal(core)}>
                     <Ionicons name="add-circle-outline" size={14} color={gc.text4} />
@@ -1160,6 +1185,8 @@ export default function IdeaGardenScreen() {
           onDelete={() => confirmDeleteCore(openCore)}
           onLinkPress={(linked) => setOpenItem({ type: 'core', data: linked, editing: false })}
           linkedProject={openCore.project_id ? projectInfo[openCore.project_id] : null}
+          vaultNotes={vaultByCore[openCore.id]}
+          onOpenNote={(n) => { setOpenItem(null); openTarget(navigation, { kind: 'vault', id: n.id }); }}
           onPromote={() => handlePromote(openCore)}
           onOpenWorkshop={() => {
             const p = openCore.project_id ? projectInfo[openCore.project_id] : null;

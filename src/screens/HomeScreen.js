@@ -881,7 +881,7 @@ export default function HomeScreen() {
   // far, a couple at a time, with no editor. 'dashboard' brings this type's
   // own layout and an editor offering this type's widgets; 'doors' offers
   // all twenty.
-  const { can, opened, isScreenVisible, isGameVisible, signalAction, stageEvents, activeObjective } = useAccess();
+  const { can, opened, isScreenVisible, isGameVisible, signalAction, stageEvents, activeObjective, purposeKey } = useAccess();
   const { active: tourActive, startLesson } = useTour();
   const homeFocused = useIsFocused();
   const { background: playerBackground } = useCharacterLoadout({ level, points, rank, streakDays });
@@ -2374,7 +2374,7 @@ export default function HomeScreen() {
               key: 'quests', title: 'Quests',
               render: () => (
                 <QuestWidget
-                  type={activeType}
+                  type={activeType} aim={purposeKey}
                   onOpenQuest={(questId) => goToLibraryScreen('ClassesStack', { screen: 'Quest', params: { questId } })}
                   onOpenAll={() => goToLibraryScreen('ClassesStack')}
                 />

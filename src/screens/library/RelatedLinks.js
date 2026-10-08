@@ -15,7 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../../api/profileScopedClient';
 
-const LINK_PREFIX = '__LINK__:';
+// The encoding is shared with the Project Overview (src/api/areaLinks.js).
+import { LINK_PREFIX, encodeLink, decodeLink } from '../../api/areaLinks';
 // Reusable filter for any screen's own area_notes query, so linked items
 // don't show up as garbled entries in that screen's log/notes feed.
 export const EXCLUDE_LINK_FILTER = (query) => query.not('content', 'ilike', `${LINK_PREFIX}%`);
@@ -25,14 +26,6 @@ const KINDS = [
   { key: 'project',  label: 'Projects',  icon: 'rocket-outline',        screen: 'ProjectsScreen',       table: 'projects', typeVal: null },
   { key: 'resource', label: 'Resources', icon: 'bookmark-outline',      screen: 'ResourcesToolsScreen', table: 'captures', typeVal: 'resource' },
 ];
-
-function encodeLink(kind, refId, title) {
-  return LINK_PREFIX + JSON.stringify({ kind, refId, title });
-}
-function decodeLink(content) {
-  try { return JSON.parse(content.slice(LINK_PREFIX.length)); }
-  catch { return null; }
-}
 
 export default function RelatedLinks({ areaId, color, c, t, s, r }) {
   const navigation = useNavigation();

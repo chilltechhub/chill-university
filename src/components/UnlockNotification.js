@@ -150,10 +150,17 @@ export default function UnlockNotification() {
           ? { title: 'New games in Training', blurb: games.join(', ') }
           : { title: 'New on your Home screen', blurb: `${freshWidgets.length || 'A few'} new card${freshWidgets.length === 1 ? '' : 's'} on Home. I'll point out each one and what it's for.` };
     const cap = (fresh ? fresh.caps : stages.flatMap(st => st.caps || [])).map(id => CAP_TARGETS[id]).find(Boolean);
+    // A tool the finished goal earned comes before new games: it's what the
+    // person just worked for. A builder finishing their first project got
+    // "Take me to the new games" while the Portfolio, the goal's own reward,
+    // sat in "Also open" (found 2026-10-08).
+    const earned = unlockedFeatures.find(f => f?.screen);
     const target = cap && !feature
       ? { screen: cap.screen, label: cap.label, what: cap.body ? { title: heading.title, body: cap.body } : null }
       : feature
       ? { screen: feature.screen, label: feature.label, what: { title: feature.label, body: feature.blurb } }
+      : earned
+      ? { screen: earned.screen, label: earned.label, what: { title: earned.label, body: earned.blurb }, earnedId: earned.id }
       : games.length
         ? { screen: 'Training', label: 'the new games', what: { title: games.join(', '), body: `New in Training: ${games.join(', ')}. Tap Enter Training, then swipe up or down to find them.` } }
         : { screen: 'Home', label: 'what’s new', what: null };
@@ -164,7 +171,9 @@ export default function UnlockNotification() {
     };
     const alsoOpen = [
       ...freshFeatures.slice(1).map(f => ({ key: 'n-' + f.id, label: f.label })),
-      ...unlockedFeatures.map(f => ({ key: 'f-' + f.id, label: f.label })),
+      ...unlockedFeatures.filter(f => f.id !== target.earnedId).map(f => ({ key: 'f-' + f.id, label: f.label })),
+      // The games still get a line when the button goes elsewhere.
+      ...(target.earnedId && games.length ? [{ key: 'games', label: `new games in Training (${games.join(', ')})` }] : []),
     ];
     return (
       <Modal transparent animationType="fade" visible onRequestClose={close}>
