@@ -25,6 +25,26 @@
 // someone's night job or their startup. The business-ownership track is the
 // mirror image. Technology & Engineering sits in both, being as useful to a
 // founder as to a learner.
+// Class subject -> the subject key progress is kept under (SUBJECT_CONFIG in
+// context/UserProgressContext.js, the same keys games report). A lesson's
+// practice answers count toward this subject on the Subjects card.
+export const SUBJECT_KEY_FOR_CLASS = {
+  'Math': 'math',
+  'Language Arts': 'language_arts',
+  'Science': 'science',
+  'Social Sciences': 'social_studies',
+  'Art & Music': 'arts',
+  'Home Economics & Workshop': 'home_ec',
+  'Technology & Engineering': 'technology',
+  'Foreign Language': 'foreign_language',
+  'Health & Fitness': 'health',
+  'Business & Finance': 'finance',
+  'Business Foundations': 'finance',
+  'Acquisition & Ownership': 'finance',
+  'Startup & Venture': 'career',
+  'Operations & Compliance': 'career',
+};
+
 export const CLASS_SUBJECTS = [
   {
     title: 'Math',

@@ -91,8 +91,11 @@ export default function StageStepsWidget() {
           key: 'goal',
           icon: 'flag-outline',
           label: 'Start a goal',
-          detail: 'One goal, a few steps. Finishing any of them opens the next stage.',
-          cta: 'Pick one',
+          // The Compass card under this one offers a goal with its own
+          // Start button; this row points at it rather than offering a
+          // second, different-looking way to do the same thing.
+          detail: 'The goal card below has one ready. Finishing any goal opens the next stage.',
+          cta: 'Others',
           onPress: () => navigation.navigate('Compass'),
         },
     {
