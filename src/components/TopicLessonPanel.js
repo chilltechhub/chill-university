@@ -34,7 +34,7 @@ function LearnCards({ learn, color, c, t, s, r }) {
 
 // onAnswer(correct) after each pick, onFinish(score) once every question
 // has one. Both used to be nothing: practice was a quiz that forgot itself.
-function PracticeQuiz({ practice, color, onAnswer, onFinish, done, c, t, s, r }) {
+function PracticeQuiz({ practice, color, onAnswer, onFinish, done, counts = true, c, t, s, r }) {
   const [answers, setAnswers] = useState({}); // index -> chosen option index
 
   const choose = (qIndex, optIndex) => {
@@ -96,7 +96,7 @@ function PracticeQuiz({ practice, color, onAnswer, onFinish, done, c, t, s, r })
       {practice.length > 0 && (
         <Text style={{ fontSize: 12, fontWeight: '700', color: c.text3 }}>
           {answeredCount === practice.length
-            ? `Score: ${correctCount}/${practice.length} · counted toward this subject`
+            ? `Score: ${correctCount}/${practice.length}${counts ? ' · counted toward this subject' : ''}`
             : done
               ? `Done before: ${done.score}/${done.total}. Answer again to practise.`
               : `${answeredCount}/${practice.length} answered`}
@@ -249,6 +249,7 @@ export default function TopicLessonPanel({ topic, color, classKey = null, subjec
   const { user, refreshProfile } = useUserProgress();
   const userId = user?.id || null;
   const [done, setDone] = useState(null); // { score, total, at } once finished
+  const [counted, setCounted] = useState(false); // this run's answers went to the subject
 
   useEffect(() => {
     let alive = true;
@@ -266,6 +267,7 @@ export default function TopicLessonPanel({ topic, color, classKey = null, subjec
   // without paying out twice.
   const onAnswer = (correct) => {
     if (!userId || done) return;
+    setCounted(true);
     handleGameEvent({ type: 'QUESTION_ANSWERED', userId, gameId: `lesson:${topic.key}`, subject: subjectKey, correct });
   };
   const onFinish = async (score) => {
@@ -317,7 +319,7 @@ export default function TopicLessonPanel({ topic, color, classKey = null, subjec
           </View>
 
           {tab === 'learn' && hasLearn && <LearnCards learn={topic.learn} color={color} c={c} t={t} s={s} r={r} />}
-          {tab === 'practice' && hasPractice && <PracticeQuiz practice={topic.practice} color={color} onAnswer={onAnswer} onFinish={onFinish} done={done} c={c} t={t} s={s} r={r} />}
+          {tab === 'practice' && hasPractice && <PracticeQuiz practice={topic.practice} color={color} onAnswer={onAnswer} onFinish={onFinish} done={done} counts={counted} c={c} t={t} s={s} r={r} />}
           {tab === 'apply' && hasApply && <ApplyChallenge apply={topic.apply} topicKey={topic.key} color={color} c={c} t={t} s={s} r={r} />}
         </View>
       )}
