@@ -93,7 +93,7 @@ export const DESTINATIONS = [
     label: 'Plan it into a project',
     icon:  'sparkles-outline',
     color: '#b07be0',
-    desc:  'Paste the transcript or details. Your AI writes the steps, deadlines and work time',
+    desc:  'Your AI turns it into steps and deadlines',
   },
   {
     key:   'project',
@@ -1789,7 +1789,7 @@ export default function CaptureInbox() {
               <View style={{ backgroundColor: c.teal + '12', borderRadius: r.md, padding: s.md, marginBottom: s.md, flexDirection: 'row', alignItems: 'center', gap: s.sm }}>
                 <Ionicons name="information-circle-outline" size={16} color={c.teal} />
                 <Text style={{ fontSize: t.xs, color: c.teal, flex: 1, lineHeight: 17 }}>
-                  Tap a card to process it — send it to a project, note, idea garden, planner, life area, task list, or save for later. Long-press to select several at once.
+                  <Text style={{ fontWeight: '700' }}>Tap</Text> a card to send it somewhere. <Text style={{ fontWeight: '700' }}>Hold</Text> to pick several.
                 </Text>
               </View>
               </TourSpot>

@@ -262,8 +262,7 @@ export function WelcomeStep({ theme }) {
     <View style={st.stepContent}>
       <Text style={st.stepTitle}>Welcome to Deskartes</Text>
       <Text style={st.stepSubtitle}>
-        One app for your days, your learning, your projects and how life is going. It opens up a little at a
-        time, so it never hands you everything at once.
+        Your days, learning, projects and life, in one app. It <Text style={{ fontWeight: '700' }}>opens a little at a time</Text>.
       </Text>
 
       <SectionLabel label="What people use it for" theme={theme} />
@@ -338,7 +337,7 @@ export function AimStep({ data, set, theme, isMinor, ageBand }) {
     <View style={st.stepContent}>
       <Text style={st.stepTitle}>What did you come here for?</Text>
       <Text style={st.stepSubtitle}>
-        Pick the one that matters most right now. The app starts there, and everything else waits its turn.
+        Pick <Text style={{ fontWeight: '700' }}>one</Text>. The app starts there.
       </Text>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
@@ -426,8 +425,8 @@ export function PersonaStep({ data, set, theme, isMinor, ageBand }) {
       <Text style={st.stepTitle}>Which profile fits you?</Text>
       <Text style={st.stepSubtitle}>
         {aim
-          ? `We picked the closest one to “${aim.ask}”. It decides which classes and games come first. Your goal stays the same either way.`
-          : 'It decides which classes and games come first. You can add another profile later.'}
+          ? `Our pick for “${aim.ask}”. It sets which classes and games come first.`
+          : 'It sets which classes and games come first.'}
       </Text>
 
       {options.map(p => {
@@ -477,7 +476,6 @@ export function PersonaStep({ data, set, theme, isMinor, ageBand }) {
 export function StartModeStep({ data, set, theme }) {
   const { c } = theme;
   const st = stepStyles(theme);
-  const exploring = !!data.exploring;
   const chosen = data.active_persona ? getPersona(data.active_persona) : null;
   const first = chosen ? getObjective(firstGoalFor(data.active_persona, data.aim).objective) : null;
   return (
@@ -489,7 +487,7 @@ export function StartModeStep({ data, set, theme }) {
         emoji="🌱"
         title="Start simple"
         tag="Recommended"
-        body={`One goal to start${first ? ` (${first.label})` : ''}, with your guide showing each step. A few tools and games picked for ${exploring || !chosen ? 'you' : chosen.short}; more opens with every goal you finish.`}
+        body={`One goal to start${first ? ` (${first.label})` : ''}, with a guide. More opens as you finish goals.`}
         onPress={() => set('experience_mode', 'auto')}
         theme={theme}
       />
@@ -497,7 +495,7 @@ export function StartModeStep({ data, set, theme }) {
         selected={data.experience_mode === 'full'}
         emoji="🗺️"
         title="Show me everything"
-        body="Every tool, game and widget from day one. Best if you already know apps like this; it is a lot at once."
+        body="Every tool, game and widget at once. For people who know apps like this."
         onPress={() => set('experience_mode', 'full')}
         theme={theme}
       />
@@ -515,7 +513,7 @@ export function NameStep({ data, set, theme }) {
   return (
     <View style={st.stepContent}>
       <Text style={st.stepTitle}>What should we call you?</Text>
-      <Text style={st.stepSubtitle}>Shows on your Home card and, if you join one, the leaderboard. A first name or nickname is fine. Change it any time in Settings.</Text>
+      <Text style={st.stepSubtitle}>Shows on Home. A <Text style={{ fontWeight: '700' }}>first name or nickname</Text> is fine.</Text>
       <TextInput
         style={st.input}
         value={data.display_name}
@@ -578,7 +576,7 @@ export function SectorsStep({ data, set, theme }) {
   return (
     <View style={st.stepContent}>
       <Text style={st.stepTitle}>Which parts of life matter most right now?</Text>
-      <Text style={st.stepSubtitle}>These become your life areas: places to rate how things are going and find small things to do. We picked three to start. Tap to add or remove; 2 to 5 is a good number, and you can add the rest later.</Text>
+      <Text style={st.stepSubtitle}>Your <Text style={{ fontWeight: '700' }}>life areas</Text>: rate how each is going and get small things to do. Pick <Text style={{ fontWeight: '700' }}>2 to 5</Text>.</Text>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
         {LIFE_AREAS.map(area => {
@@ -622,7 +620,7 @@ export function CharacterStep({ data, set, theme }) {
   return (
     <View style={st.stepContent}>
       <Text style={st.stepTitle}>Meet Your Character</Text>
-      <Text style={st.stepSubtitle}>This is who walks around your Home and Training screens — pick who you start as below. New outfits, pets, and gear unlock as you level up either way. Customize any time from your Profile.</Text>
+      <Text style={st.stepSubtitle}>Your <Text style={{ fontWeight: '700' }}>traveler</Text> walks around Home and Training. New gear <Text style={{ fontWeight: '700' }}>unlocks as you level up</Text>.</Text>
 
       {ready && (
         <LandscapeBackground background={background} height={130} style={{ marginBottom: s.md }}>
@@ -726,7 +724,7 @@ export function PlannerStep({ data, set, theme }) {
     return (
       <View style={st.stepContent}>
         <Text style={st.stepTitle}>Set Up Your Planner</Text>
-        <Text style={st.stepSubtitle}>Starter templates are pulled from your chosen sectors, and you haven't got any yet. Pick a few from the Library's life-area grid (or Settings) and come back.</Text>
+        <Text style={st.stepSubtitle}>Pick some <Text style={{ fontWeight: '700' }}>life areas</Text> first (Settings → Life Areas), then come back.</Text>
       </View>
     );
   }
@@ -734,7 +732,7 @@ export function PlannerStep({ data, set, theme }) {
   return (
     <View style={st.stepContent}>
       <Text style={st.stepTitle}>Set Up Your Planner</Text>
-      <Text style={st.stepSubtitle}>Real starter templates for your sectors — turn on the ones you want scheduled today. Add or drop items any time from the Planner itself.</Text>
+      <Text style={st.stepSubtitle}><Text style={{ fontWeight: '700' }}>Turn on</Text> the habits you want. They start today.</Text>
 
       {areas.map(key => {
         const area = PLANNER_AREAS[key];
@@ -860,7 +858,7 @@ export function GoalsStep({ data, set, theme }) {
         // showing it off with nothing in between to explain why. Match
         // SettingsScreen's own toggleReminders: say why.
         setRemindersEnabled(false);
-        Alert.alert('Notifications blocked', 'Enable notifications for this app in your device Settings to use reminders. You can turn this back on any time from Settings.');
+        Alert.alert('Notifications blocked', 'Turn on notifications for this app in your phone\'s Settings to get reminders.');
       }
     }
   };
@@ -1041,7 +1039,7 @@ export function LookStep({ data, set, theme, onThemeChange }) {
         </View>
       ) : (<>
       <SectionLabel label="Library sections" theme={theme} />
-      <Text style={{ fontSize: 12, color: c.text3, marginTop: -6, marginBottom: 10 }}>All on by default — tap to hide any you don't need. Bring them back any time from Settings.</Text>
+      <Text style={{ fontSize: 12, color: c.text3, marginTop: -6, marginBottom: 10 }}>Tap to <Text style={{ fontWeight: '700' }}>hide</Text> any you don't need.</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
         {allSections.map(item => {
           const hidden = (data.hidden_sections || []).includes(item.screen);

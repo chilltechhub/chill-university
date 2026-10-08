@@ -1603,7 +1603,7 @@ export default function PlannerScreen() {
     <SignInPrompt
       icon="calendar-outline"
       title="Your planner lives in your account"
-      body="Sign in to plan your days, set routines and get reminders. It syncs across your devices."
+      body="Sign in to plan your days and get reminders."
     />
   );
 

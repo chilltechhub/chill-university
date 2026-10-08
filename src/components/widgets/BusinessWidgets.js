@@ -65,7 +65,7 @@ export function OrgSnapshotWidget({ userId, onOpenOrg }) {
       title="Organization" icon="business-outline" accent={c.gold}
       loading={org === undefined}
       empty={org === null ? {
-        text: "You're not part of an organization yet. Join one with an invite code to see its roster and shared assignments here.",
+        text: "Not in a team yet. Join one with an invite code.",
         cta: 'Organizations', onPress: onOpenOrg,
       } : null}
     >
@@ -97,7 +97,7 @@ export function SystemsCheckWidget({ areas, onOpenLibrary }) {
       title="Systems check" icon="pulse-outline" accent={c.tech || c.teal}
       action="Library →" onAction={onOpenLibrary}
       empty={rated.length === 0 ? {
-        text: "Rate your Digital and Professional areas to get a read on how your systems and processes are holding up.",
+        text: "Rate your Digital and Professional areas to see how your systems are holding up.",
         cta: 'Check in', onPress: onOpenLibrary,
       } : null}
     >
@@ -147,7 +147,7 @@ export function RecurringOpsWidget({ userId, onOpenPlanner }) {
       action="Planner →" onAction={onOpenPlanner}
       loading={ops === null}
       empty={ops?.length === 0 ? {
-        text: "No recurring processes set up. Weekly and monthly planner items show here as your standing operating rhythm.",
+        text: "No routines yet. Weekly and monthly Planner items show here.",
         cta: 'Add one', onPress: onOpenPlanner,
       } : null}
     >

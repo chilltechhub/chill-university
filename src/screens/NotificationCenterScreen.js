@@ -546,7 +546,7 @@ export default function NotificationCenterScreen() {
                 </TouchableOpacity>
               </>
             ) : (
-              <Text style={{ fontSize: 12, color: c.text3, marginTop: s.md }}>Phone notifications are set up in the app on your phone. Here you can choose what shows in the center.</Text>
+              <Text style={{ fontSize: 12, color: c.text3, marginTop: s.md }}>Phone alerts are set in the phone app. Here: what shows in this list.</Text>
             )}
 
             <SettingLabel c={c} s={s} text="Show in Now" />

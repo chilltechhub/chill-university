@@ -36,6 +36,7 @@ import { goToScreen } from '../logic/appRoutes';
 import LockBadge from '../components/LockBadge';
 import UnlockSheet from '../components/UnlockSheet';
 import { FONTS } from '../theme';
+import RichText from '../components/RichText';
 
 // The words this screen runs on, kept to three plain ones. It used to define
 // purpose, objective, steps and stage and then add a "Stages are not goals"
@@ -323,7 +324,7 @@ export default function CompassScreen() {
                       {i + 1}. {step.label}
                       {step.needed && !step.done ? ` · ${step.count} of ${step.needed}` : ''}
                     </Text>
-                    {showSubtext && !!step.hint && <Text style={s.stepHint}>{step.hint}</Text>}
+                    {showSubtext && !!step.hint && <RichText style={s.stepHint} boldStyle={{ color: c.text1 }}>{step.hint}</RichText>}
                     {/* Which steps look after themselves, said out loud. It
                         was only ever said for `auto` counter steps, so the
                         far more common signal steps looked like chores

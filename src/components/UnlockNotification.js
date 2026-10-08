@@ -36,10 +36,10 @@ const VIA_COPY = {
 // Where each of the four big openings (CAPS in experienceStages.js) lives,
 // for "Take me to…": they open a whole class of thing rather than one tool.
 const CAP_TARGETS = {
-  'all-games': { screen: 'Training', label: 'Training', body: 'Every game is open now. In Training, use the subject and type filters to find one, and the Progress tab to see how each subject is going.' },
-  'dashboard': { screen: 'Home', label: 'Home', body: 'Home is yours to arrange now. Tap Edit at the top right of Home to move cards, hide them, or add ones you want. Any new card gets pointed out when it arrives.' },
-  'all-tools': { screen: 'LibraryScreen', label: 'the Library', body: 'Every tool is on the map now. Look through Life, Build and Knowledge in the Library to see what is new.' },
-  'doors':     { screen: 'Compass', label: 'the Compass', body: 'Locked tools now show up, each with what opens it: finish a goal, pass a short test, or switch it on. The Compass lists them all.' },
+  'all-games': { screen: 'Training', label: 'Training', body: '**Every game is open.** Use the **filters** in Training to find one.' },
+  'dashboard': { screen: 'Home', label: 'Home', body: '**Home is yours to arrange.** Tap **Edit** (top right) to move, hide or add cards.' },
+  'all-tools': { screen: 'LibraryScreen', label: 'the Library', body: '**Every tool is open.** Look through **Life**, **Build** and **Knowledge**.' },
+  'doors':     { screen: 'Compass', label: 'the Compass', body: 'Locked tools now show **what opens them**. The **Compass** lists them all.' },
 };
 
 // Feature screens that are navigators, and the screen each one opens on.
@@ -148,7 +148,7 @@ export default function UnlockNotification() {
         ? { title: feature.label, blurb: feature.blurb }
         : games.length
           ? { title: 'New games in Training', blurb: games.join(', ') }
-          : { title: 'New on your Home screen', blurb: `${freshWidgets.length || 'A few'} new card${freshWidgets.length === 1 ? '' : 's'} on Home. I'll point out each one and what it's for.` };
+          : { title: 'New on your Home screen', blurb: `${freshWidgets.length || 'A few'} new card${freshWidgets.length === 1 ? '' : 's'} on Home. I'll show you each.` };
     const cap = (fresh ? fresh.caps : stages.flatMap(st => st.caps || [])).map(id => CAP_TARGETS[id]).find(Boolean);
     // A tool the finished goal earned comes before new games: it's what the
     // person just worked for. A builder finishing their first project got
@@ -162,7 +162,7 @@ export default function UnlockNotification() {
       : earned
       ? { screen: earned.screen, label: earned.label, what: { title: earned.label, body: earned.blurb }, earnedId: earned.id }
       : games.length
-        ? { screen: 'Training', label: 'the new games', what: { title: games.join(', '), body: `New in Training: ${games.join(', ')}. Tap Enter Training, then swipe up or down to find them.` } }
+        ? { screen: 'Training', label: 'the new games', what: { title: games.join(', '), body: `New: **${games.join(', ')}**. Tap **Enter Training**, then swipe to find them.` } }
         : { screen: 'Home', label: 'what’s new', what: null };
     const close = () => { dismissStageEvent(); dismissAllUnlockEvents?.(); dismissAllProgressEvents?.(); };
     const show = () => {

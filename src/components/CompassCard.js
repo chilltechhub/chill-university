@@ -37,6 +37,7 @@ import { useTour } from '../../context/TourContext';
 import { Button } from './ui';
 import { textOn } from '../logic/contrast';
 import { finishLabel } from '../logic/featureAccess';
+import RichText from './RichText';
 
 export default function CompassCard() {
   const navigation = useNavigation();
@@ -234,7 +235,7 @@ export default function CompassCard() {
                 {nextStep.label}
                 {nextStep.needed ? ` · ${nextStep.count} of ${nextStep.needed}` : ''}
               </Text>
-              {showSubtext && !!nextStep.hint && <Text style={s.stepHint}>{nextStep.hint}</Text>}
+              {showSubtext && !!nextStep.hint && <RichText style={s.stepHint} boldStyle={{ color: c.text1 }}>{nextStep.hint}</RichText>}
               {/* Most steps look after themselves. Saying so is the
                   difference between a checklist and a chore list. */}
               {showSubtext && (nextStep.locked || !!nextStep.signal) && !/ticks itself/i.test(nextStep.hint || '') && (

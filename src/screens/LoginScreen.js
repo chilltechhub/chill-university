@@ -527,7 +527,7 @@ export default function LoginScreen({ onSuccess, onClose }) {
             <Text style={s.guestText}>{onClose ? 'Keep looking around' : 'Try it first, no account needed'}</Text>
           </TouchableOpacity>
           {!onClose && (
-            <Text style={s.guestSub}>Play, plan and explore as a guest. Create an account any time to start saving your progress.</Text>
+            <Text style={s.guestSub}>Look around as a guest. Make an account to save your progress.</Text>
           )}
         </View>
       </View>

@@ -496,7 +496,7 @@ export default function FloatingActionButton({ currentScreen, navigationRef }) {
       <QuickCaptureModal
         visible={captureOpen}
         userId={user?.id}
-        onSaved={() => { setCaptureOpen(false); Alert.alert('Captured', 'Added to your inbox — process it anytime from Capture Inbox.'); }}
+        onSaved={() => { setCaptureOpen(false); Alert.alert('Captured', 'It\'s in your inbox. Sort it any time.'); }}
         onClose={() => setCaptureOpen(false)}
         c={c} t={t} s={s} r={r}
       />

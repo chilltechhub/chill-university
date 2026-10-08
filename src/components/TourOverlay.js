@@ -50,6 +50,7 @@ import { useTour } from '../../context/TourContext';
 import { useProfiles } from '../../context/ProfileAccountsContext';
 import { getGuide } from '../data/guides';
 import PlayerCharacter from './PlayerCharacter';
+import RichText from './RichText';
 import { optionOrder } from '../logic/optionOrder';
 
 const PAD = 10;
@@ -297,7 +298,7 @@ export default function TourOverlay() {
             )}
             <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ paddingBottom: 2 }}>
               {!!currentStep.body && (
-                <Text style={{ fontSize: t.sm, color: c.text2, lineHeight: 20 }}>{currentStep.body}</Text>
+                <RichText style={{ fontSize: t.sm, color: c.text2, lineHeight: 20 }} boldStyle={{ color: c.text1 }}>{currentStep.body}</RichText>
               )}
 
               {/* ── Mini quiz ────────────────────────────────────────────

@@ -71,7 +71,7 @@ export function HabitRingsWidget({ userId, onOpenPlanner }) {
       action="Planner →" onAction={onOpenPlanner}
       loading={rows === null}
       empty={rows?.length === 0 ? {
-        text: "No daily habits scheduled yet. Add a couple and this fills in as you check them off.",
+        text: "No daily habits yet. Add one in the Planner.",
         cta: 'Open Planner', onPress: onOpenPlanner,
       } : null}
     >
@@ -107,7 +107,7 @@ export function LifeAreasWidget({ areas, onOpenArea, onOpenLibrary }) {
       title="Life areas" icon="grid-outline" accent={c.purple}
       action="Library →" onAction={onOpenLibrary}
       empty={rated.length === 0 ? {
-        text: "You haven't checked in on any life areas yet. A check-in takes about ten seconds and this starts tracking how each one is trending.",
+        text: "No check-ins yet. Rate a life area: it takes ten seconds.",
         cta: 'Check in', onPress: onOpenLibrary,
       } : null}
     >

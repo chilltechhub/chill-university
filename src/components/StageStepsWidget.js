@@ -26,22 +26,19 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useUIPrefs } from '../../context/UIPrefsContext';
 import { useAccess } from '../../context/AccessContext';
-import { useProfiles } from '../../context/ProfileAccountsContext';
-import { stageMeta } from '../logic/experienceStage';
 import { MAX_STAGE } from '../data/experienceStages';
 import { goToScreen } from '../logic/appRoutes';
 import WidgetCard from './widgets/WidgetCard';
+import RichText from './RichText';
 
 export default function StageStepsWidget() {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s, radius: r, accent } = useTheme();
   const { showSubtext } = useUIPrefs();
   const { stage, nextStage, activeObjective, experienceMode, loading } = useAccess();
-  const { activeType } = useProfiles();
 
   if (loading) return null;
 
-  const here = stageMeta(stage, activeType);
   const live = !!activeObjective?.active;
 
   // "Show me everything" means the stages aren't deciding anything any more,
@@ -55,8 +52,7 @@ export default function StageStepsWidget() {
       <WidgetCard title="Your stage" icon="layers-outline" accent={accent.primary}
         action="Compass →" onAction={() => navigation.navigate('Compass')}>
         <Text style={{ fontSize: t.sm, color: c.text2, lineHeight: 19 }}>
-          Stage {stage} of {MAX_STAGE} — {here.label}. That's all of it: every tool, game and widget is on
-          the map.
+          Stage {stage} of {MAX_STAGE}: <Text style={{ fontWeight: t.bold, color: c.text1 }}>everything is open.</Text>
         </Text>
       </WidgetCard>
     );
@@ -74,8 +70,8 @@ export default function StageStepsWidget() {
           // button for the next one; quoting the next step here too made a
           // new account's Home say the same thing three times.
           detail: activeObjective.complete
-            ? `All ${activeObjective.total} steps done. Claim it on your goal card above.`
-            : `${activeObjective.done} of ${activeObjective.total} steps done. The steps are on your goal card above.`,
+            ? 'All done. **Claim it** on the goal card.'
+            : `**${activeObjective.done} of ${activeObjective.total}** steps done.`,
           cta: null,
         }
       : {
@@ -85,7 +81,7 @@ export default function StageStepsWidget() {
           // The Compass card above this one offers a goal with its own
           // Start button; this row points at it rather than offering a
           // second, different-looking way to do the same thing.
-          detail: 'The goal card above has one ready. Finishing any goal opens the next stage.',
+          detail: 'One is **ready above**.',
           cta: 'Others',
           onPress: () => navigation.navigate('Compass'),
         },
@@ -93,7 +89,7 @@ export default function StageStepsWidget() {
       key: 'level',
       icon: 'trending-up-outline',
       label: 'Gain a level',
-      detail: 'Training rounds level you up. Either one opens it — you only need one.',
+      detail: 'Play **Training** rounds. Either way works.',
       cta: 'Train',
       onPress: () => goToScreen(navigation, 'Training'),
     },
@@ -122,7 +118,7 @@ export default function StageStepsWidget() {
       </View>
 
       <Text style={{ fontSize: 11, color: c.text3, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: '800', marginBottom: 6 }}>
-        How to open it
+        Two ways to open it
       </Text>
 
       {routes.map((route, i) => (
@@ -137,7 +133,7 @@ export default function StageStepsWidget() {
           <Ionicons name={route.icon} size={15} color={c.text3} />
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1 }} numberOfLines={1}>{route.label}</Text>
-            <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 1, lineHeight: 16 }}>{route.detail}</Text>
+            <RichText style={{ fontSize: t.xs, color: c.text3, marginTop: 1, lineHeight: 16 }} boldStyle={{ color: c.text1 }}>{route.detail}</RichText>
           </View>
           {!!route.cta && (
           <TouchableOpacity

@@ -46,24 +46,24 @@ export const TOUR_STEPS = [
     id: null,
     go: 'Home',
     title: 'A quick look around',
-    body: "Two things before your first goal. Tap Next › to move on, or Skip if you'd rather go straight in.",
+    body: "Two quick things first. Tap **Next ›**, or **Skip** to go straight in.",
   },
   {
     id: 'nav-tabbar',
     go: 'Home',
     title: 'The bar at the bottom',
-    body: 'Three places: Library holds your tools, Home is your day, and Training has quick games. Tap one any time, from anywhere.',
+    body: "**Library** = your tools. **Home** = your day. **Training** = quick games.",
   },
   {
     id: 'fab',
     go: 'Home',
     title: 'The + button',
-    body: 'It follows you to every screen. Tap it to jot a note, set a reminder, or drop a thought in your inbox before you lose it.',
+    body: "On every screen. Tap it to **jot a note**, **set a reminder**, or **capture a thought**.",
   },
   {
     id: null,
     go: 'Home',
     title: "That's all for now",
-    body: "I'll show you the rest as you get to it. Next up is your first goal, and I'll walk you through each step.",
+    body: "I'll show you the rest as you go. Next: **your first goal**.",
   },
 ];

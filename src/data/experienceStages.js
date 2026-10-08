@@ -115,7 +115,7 @@ export const PATHS = {
     {
       key: 'capture',
       label: 'The Capture Inbox',
-      blurb: 'Get a thought out of your head now, decide where it goes later.',
+      blurb: 'Save a thought now, sort it later.',
       features: ['capture'],
       // The desk is where captured things turn into the next action, so it
       // arrives with the inbox rather than three stages later.
@@ -125,7 +125,7 @@ export const PATHS = {
     {
       key: 'games',
       label: 'Three more games and your first quest',
-      blurb: 'Budget Balance, People Skills and Snack Catch, and quests: an idea, your own research, one real thing to do.',
+      blurb: 'Budget Balance, People Skills and Snack Catch, and your first quests.',
       games: ['budget', 'people', 'snackcatch'],
       widgets: ['quests', 'habitRings', 'streak'],
     },
@@ -154,14 +154,14 @@ export const PATHS = {
     {
       key: 'games',
       label: 'Three more games and your first quest',
-      blurb: 'World Explorer, Word Scramble and Memory Match, and quests: an idea, your own research, one real thing to do.',
+      blurb: 'World Explorer, Word Scramble and Memory Match, and your first quests.',
       games: ['world', 'scramble', 'memory'],
       widgets: ['quests', 'dailyDrills', 'streak'],
     },
     {
       key: 'capture',
       label: 'The Capture Inbox',
-      blurb: 'Get a thought out of your head now, decide where it goes later.',
+      blurb: 'Save a thought now, sort it later.',
       features: ['capture'],
       widgets: ['desk', 'activities'],
       fab: ['inbox'],
@@ -169,7 +169,7 @@ export const PATHS = {
     {
       key: 'areas',
       label: 'Life Areas',
-      blurb: 'Eight sides of a life, each with a rating you set and one small thing to do.',
+      blurb: 'Rate each part of your life and get one small thing to do.',
       features: ['life-areas'],
       widgets: ['wayfinder', 'checkins'],
     },
@@ -197,7 +197,7 @@ export const PATHS = {
     {
       key: 'games',
       label: 'Three more games and your first quest',
-      blurb: 'Career Compass, Budget Balance and Survive the Month, and quests: an idea, your own research, one real thing to do.',
+      blurb: 'Career Compass, Budget Balance and Survive the Month, and your first quests.',
       games: ['career', 'budget', 'survivemonth'],
       widgets: ['quests', 'systemsCheck', 'streak'],
     },
@@ -210,7 +210,7 @@ export const PATHS = {
     {
       key: 'areas',
       label: 'Life Areas',
-      blurb: 'Eight sides of a life, each with a rating you set and one small thing to do.',
+      blurb: 'Rate each part of your life and get one small thing to do.',
       features: ['life-areas'],
       widgets: ['checkins', 'orgSnapshot'],
       fab: ['note', 'inbox'],
@@ -231,7 +231,7 @@ export const PATHS = {
     {
       key: 'capture',
       label: 'The Capture Inbox',
-      blurb: 'Get a thought out of your head now, decide where it goes later.',
+      blurb: 'Save a thought now, sort it later.',
       features: ['capture'],
       widgets: ['ideas'],
       fab: ['note', 'inbox'],
@@ -239,7 +239,7 @@ export const PATHS = {
     {
       key: 'games',
       label: 'Three more games and your first quest',
-      blurb: 'Career Compass, People Skills and Code Breaker, and quests: an idea, your own research, one real thing to do.',
+      blurb: 'Career Compass, People Skills and Code Breaker, and your first quests.',
       games: ['career', 'people', 'codebreaker'],
       widgets: ['quests', 'vaultStatus', 'streak'],
     },

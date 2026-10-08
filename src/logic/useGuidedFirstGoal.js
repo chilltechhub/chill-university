@@ -146,23 +146,23 @@ export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
     greetedRef.current = true;
     // How to get there without the guide, said once per step. Being carried
     // somewhere teaches nothing about finding it again.
-    const pathNote = g.path ? ` To find it yourself later: ${g.path}.` : '';
+    const pathNote = g.path ? ` Later, find it at **${g.path}**.` : '';
     // "all 2" reads oddly.
     const allOf = intro.total === 2 ? 'both' : `all ${intro.total}`;
     const title = key === 'claim'
       ? `${intro.objective.label} · ${allOf} done`
       : `Step ${n} of ${intro.total} · ${step.label}`;
     const lead = key === 'claim'
-      ? `That's ${allOf}. Nice work.`
+      ? `**That's ${allOf}.** Nice work.`
       : first
         // Said back in their words, so the first thing the guide does is
         // start on what they came for, not on a tour of the app.
         // (The welcome tour has just said "You came here to…", so this
         // doesn't say it again.)
-        ? `Your first goal: ${intro.total} quick steps${purpose?.you && purpose.key === intro.objective.purpose ? ` to ${purpose.you}` : ''}, and I'll show you each one. First: ${lowerFirst(step.label)}${partway}.`
+        ? `Your first goal: **${intro.total} quick steps**${purpose?.you && purpose.key === intro.objective.purpose ? ` to ${purpose.you}` : ''}. I'll show you each one. First: **${lowerFirst(step.label)}**${partway}.`
         : intro.done > 0
-          ? `That's ${intro.done} of ${intro.total}. Next: ${lowerFirst(step.label)}${partway}.`
-          : `Next: ${lowerFirst(step.label)}${partway}.`;
+          ? `**${intro.done} of ${intro.total}** done. Next: **${lowerFirst(step.label)}**${partway}.`
+          : `Next: **${lowerFirst(step.label)}**${partway}.`;
 
     const firstArea = (Array.isArray(profile?.active_life_areas) && profile.active_life_areas[0]) || 'physical';
     // 'ratedArea': the area this person just rated (their pick), so a
@@ -178,7 +178,7 @@ export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
     // and the Capture Inbox, where most first goals start, have no arrow
     // (found 2026-10-01). The tab bar is on every one of these screens.
     const backTip = pushed && !backTaughtRef.current
-      ? ' When you are done, tap Home in the bar at the bottom to come back.'
+      ? ' Done? Tap **Home** at the bottom.'
       : '';
     if (backTip) backTaughtRef.current = true;
     const pointAt = {
@@ -210,12 +210,12 @@ export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
       : [{
           title,
           body: inGame
-            ? `${lead} Keep playing if you like. When you're done, tap X at the top left, or tap Next and I'll take you back.`
+            ? `${lead} Done playing? Tap **X** (top left) or **Next**.`
             : key === 'claim'
               // Said wherever the last step got done, often over something
               // worth reading (a Wayfinder plan, a new project), so it must
               // not hurry anyone off it.
-              ? `${lead} Take your time here. When you're ready, tap Next and I'll take you to Home to claim it.`
+              ? `${lead} No rush. Tap **Next** to claim it on Home.`
               : `${lead} I'll take you there.${pathNote}`,
           skipLabel: 'Not now',
           nonBlocking: true,
@@ -262,7 +262,7 @@ export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
     const g = script?.[key];
     startLesson([{
       title: `${intro.nextStep.label} · ${nextCount} of ${intro.nextStep.needed}`,
-      body: `That one counted. ${left === 1 ? 'One more' : `${left} more`} to go.${g?.more ? ` ${g.more}` : ''}`,
+      body: `**That counted.** ${left === 1 ? 'One more' : `${left} more`} to go.${g?.more ? ` ${g.more}` : ''}`,
       nonBlocking: true,
       hideSkip: true,
     }]);

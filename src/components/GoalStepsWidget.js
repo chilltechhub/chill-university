@@ -17,6 +17,7 @@ import { goToScreen } from '../logic/appRoutes';
 import WidgetCard from './widgets/WidgetCard';
 import { resumeFirstGoalGuide } from '../logic/useGuidedFirstGoal';
 import { useTour } from '../../context/TourContext';
+import RichText from './RichText';
 
 export default function GoalStepsWidget() {
   const navigation = useNavigation();
@@ -85,7 +86,7 @@ export default function GoalStepsWidget() {
                 {step.label}
               </Text>
               {isNext && !!step.hint && (
-                <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2, lineHeight: 16 }}>{step.hint}</Text>
+                <RichText style={{ fontSize: t.xs, color: c.text3, marginTop: 2, lineHeight: 16 }} boldStyle={{ color: c.text1 }}>{step.hint}</RichText>
               )}
             </View>
             {isNext && step.screen && (

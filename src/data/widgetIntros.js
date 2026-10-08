@@ -7,34 +7,35 @@
 // card nobody explained is just more screen.
 //
 // Keys are HomeScreen's WIDGET_DEFS keys. Keep each one true to what the
-// widget actually renders, and to two or three short sentences.
+// widget actually renders: one short sentence, key words in **bold**
+// (TourOverlay renders the markers).
 //
 // No imports on purpose: plain data.
 
 export const WIDGET_INTROS = {
-  hq:               'Your name, level and points. Play starts a quick game; press and hold it to pick which.',
-  stageSteps:       'Where you are in the app and what opens next. Finish a goal or gain a level to open the next stage.',
-  compass:          'The one goal you are on and its next step. Each step has an Open button that takes you straight to it.',
-  goalSteps:        'Every step of your current goal, ticked or not.',
-  focus:            'Write one line on what today is for, so it is the first thing you see. Tap the date to jump into your calendar.',
-  wisdom:           'A quote a day. Tap + to add your own affirmation and it rotates in with the rest.',
-  activities:       'Everything scheduled for today, in time order: planner items, reminders and class work. If it is not here, it is not scheduled.',
-  desk:             'The next things worth picking up, pulled from your projects, notes and ideas. Tap one to jump to it, or + Add to pin your own.',
-  ideas:            'Your newest ideas from the Idea Garden. Tap one to open it, and grow it into a project when it is ready.',
-  streak:           'Your streak and level. Do anything that counts (a game, a goal step) each day and the streak grows.',
-  builds:           'Your projects in progress and how far along each one is. Tap one to open it and set its next step.',
-  checkins:         'Life areas you have not rated in a while. A check-in takes ten seconds and keeps the picture honest.',
-  wayfinder:        'Work out what you want: a few short questions, then small experiments to try. Tap it to carry on where you left off.',
-  habitRings:       'How often you kept each habit over the last week. Habits come from repeating items in your Planner.',
-  lifeAreas:        'Your rating for each life area, the most out of date first. Tap one to open it and rate it again.',
-  dailyDrills:      'Three small targets that reset every day. Any game counts toward them; tap to play the next one.',
-  studyBlocks:      'Today’s study blocks from your Planner, done or not. Tap one to tick it off.',
-  classProgress:    'How far along you are in each class subject. Tap a subject to pick up where you left off.',
-  orgSnapshot:      'The latest from your school or team, if you have joined one.',
-  systemsCheck:     'Your ratings for the work and digital sides of life, so you can see which system needs attention.',
-  recurringOps:     'Routines that repeat weekly or monthly, and which ones are due.',
-  vaultStatus:      'The worksheets you fill in as you go through the business lessons: which are done and which still need doing. Not the Knowledge Vault, which is your notes.',
-  founderQuest:     'The next step on the founder track. Tap it to open the lesson.',
-  targetsReadiness: 'Your monthly revenue target or venture stage, and how many of the funding-readiness worksheets from your business lessons are done. Tap Set a target to add one.',
-  quests:           'A ten-minute quest: an idea, a bit of your own research, and one real thing to do. Tap it to start.',
+  hq:               "Your name, level and points. **Play** starts a game; **press and hold** to pick one.",
+  stageSteps:       "What **opens next** in the app. Finish a goal or gain a level to get there.",
+  compass:          "Your **goal** and its next step. Tap **Open** to go straight to it.",
+  goalSteps:        "Every step of your goal, **ticked or not**.",
+  focus:            "Write **one line**: what today is for. Tap the date for your calendar.",
+  wisdom:           "A quote a day. Tap **+** to add your own.",
+  activities:       "Everything **scheduled today**, in time order.",
+  desk:             "What to **pick up next**. Tap one to open it, or **+ Add** to pin your own.",
+  ideas:            "Your **newest ideas**. Tap one to open it.",
+  streak:           "Your **streak** and level. Do one thing that counts each day to keep it.",
+  builds:           "Your **projects** and how far along each is.",
+  checkins:         "Life areas **due a check-in**. Takes ten seconds.",
+  wayfinder:        "Work out **what you want**: short questions, then small experiments.",
+  habitRings:       "How often you **kept each habit** this week.",
+  lifeAreas:        "Your **life area ratings**, oldest first. Tap one to rate it again.",
+  dailyDrills:      "**Three small targets**, new each day. Any game counts.",
+  studyBlocks:      "Today’s **study blocks**. Tap one to tick it off.",
+  classProgress:    "Your progress in **each subject**. Tap one to continue.",
+  orgSnapshot:      "The latest from **your school or team**.",
+  systemsCheck:     "Your **work and digital** ratings: which needs attention.",
+  recurringOps:     "**Routines** that repeat, and which are due.",
+  vaultStatus:      "Your **business worksheets**: done and still to do. (Not your notes Vault.)",
+  founderQuest:     "Your **next founder step**. Tap to open the lesson.",
+  targetsReadiness: "Your **revenue target** or stage, and funding worksheets done.",
+  quests:           "A **ten-minute quest**: an idea, some research, one real thing to do.",
 };
