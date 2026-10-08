@@ -57,6 +57,7 @@ import HelpScreen       from './src/screens/HelpScreen';
 import CompassScreen  from './src/screens/CompassScreen';
 import PlusScreen     from './src/screens/PlusScreen';
 import StatsScreen      from './src/screens/StatsScreen';
+import WorkModeScreen   from './src/screens/WorkModeScreen';
 import { gatedScreen } from './src/components/FeatureGate';
 import AnnouncementBanner from './src/components/AnnouncementBanner';
 import LevelUpNotification from './src/components/LevelUpNotification';
@@ -87,6 +88,11 @@ installWebAlertShim(); // web only: Alert.alert → the browser's dialogs
 // rebuild — nothing anywhere linked to it, the same state Discover was in —
 // so this is both its first route and its gate.
 const GatedStats        = gatedScreen('insights', StatsScreen);
+// Work Mode from Home's Focus buttons. Inside the Library stack it had to be
+// reached by switching tabs first, which flashed the Library (setting off its
+// first-visit tutorial over the timer) and made closing land on whatever the
+// Library had open, not on Home. Here, closing goes back to where you were.
+const GatedWorkMode     = gatedScreen('work-mode', WorkModeScreen);
 // Organization is NOT gated here: joining a class with a code, and seeing the
 // classes you're in, is free. Only creating an organization is Plus — the
 // screen gates that one section itself, and create_organization() checks the
@@ -488,6 +494,7 @@ function AppInner() {
               so it lives on the root stack rather than inside a tab. */}
           <Stack.Screen name="Compass"           component={CompassScreen} />
           <Stack.Screen name="Stats"               component={GatedStats} />
+          <Stack.Screen name="WorkMode"            component={GatedWorkMode} />
           {/* The paywall / "your plan" page. Slides up rather than across,
               because it's a detour you close, not a place you go. */}
           <Stack.Screen

@@ -305,7 +305,7 @@ export default function WorkModeScreen() {
                   <TextInput
                     style={{ marginTop: s.md, backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: 1, borderColor: c.border }}
                     value={nextStep} onChangeText={setNextStep}
-                    placeholder="What's the next step? (optional)" placeholderTextColor={c.text4}
+                    placeholder="What's the next step? (blank = next task in the plan)" placeholderTextColor={c.text4}
                   />
                 )}
               </View>

@@ -267,10 +267,12 @@ export default function ProjectDetailScreen() {
     if (!project.next_action || savingNext) return;
     setSavingNext(true);
     try {
-      await advanceNextAction(userId, project, { done: true, next: null });
-      setProject(p => ({ ...p, next_action: null }));
-      setNextDraft('');
-      setEditingNext(true);
+      // With open tasks, the soonest one steps up; the box only opens when
+      // the plan has nothing left.
+      const upcoming = await advanceNextAction(userId, project, { done: true, next: null });
+      setProject(p => ({ ...p, next_action: upcoming }));
+      setNextDraft(upcoming || '');
+      setEditingNext(!upcoming);
       load();
     } catch (e) {
       console.warn('finish next_action error', e);

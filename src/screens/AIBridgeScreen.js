@@ -306,11 +306,17 @@ export default function AIBridgeScreen() {
         try { await attachSource(userId, sourceInfo, project.id, res.undo); } catch (e) { console.warn('AIBridge attachSource', e); }
       }
       const failedKeys = new Set(res.failed.map(f => f.key));
-      const touched = [...new Set(picked.filter(ch => !failedKeys.has(ch.key)).map(ch => ch.target))];
+      const savedOk = picked.filter(ch => !failedKeys.has(ch.key));
+      const touched = [...new Set(savedOk.map(ch => ch.target))];
+      // Count what was saved the way the Save button counted it (tasks,
+      // notes and sessions inside a project each count), not one per project:
+      // a 37-change plan used to say "1 change saved".
+      const sc = countChanges(review.changes, new Set(savedOk.map(ch => ch.key)));
+      const savedCount = sc.create + sc.update + sc.delete;
       const lifeArea = picked.find(ch => ch.target === 'life_areas')?.fields?.area
         || picked.find(ch => ch.target === 'life_areas')?.current?.area || null;
       setResult({
-        ...res, touched, lifeArea, projectId: project?.id || null, filedSource: !!(sourceInfo && project),
+        ...res, savedCount, touched, lifeArea, projectId: project?.id || null, filedSource: !!(sourceInfo && project),
         failedTitles: res.failed.map(f => ({ ...f, title: describe(review.changes.find(ch => ch.key === f.key)).title })),
       });
       setReview(null);
@@ -478,7 +484,7 @@ export default function AIBridgeScreen() {
                 <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, flex: 1 }}>
                   {undone
                     ? (undone.failed.length ? 'Mostly undone' : 'All undone')
-                    : `${result.applied} change${result.applied === 1 ? '' : 's'} saved`}
+                    : `${result.savedCount} change${result.savedCount === 1 ? '' : 's'} saved`}
                 </Text>
               </View>
               {undone && !!undone.failed.length && (
