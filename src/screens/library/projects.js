@@ -22,6 +22,7 @@ import FillWithAIButton from '../../components/FillWithAIButton';
 import { useTour } from '../../../context/TourContext';
 import { useAccess } from '../../../context/AccessContext';
 import { todayStr } from '../../logic/dateUtils';
+import { projectProgress } from '../../logic/projectProgress';
 
 // ─── Graph-paper backdrop ───────────────────────────────────────────────────
 // Defined here rather than imported so this screen's background is visible in
@@ -368,7 +369,7 @@ function BuildCard({ project, bp, onPress, onFavorite, onDelete, onSetNext }) {
   const stage = stageFor(project);
   const total = project.tasks?.total || 0;
   const done  = project.tasks?.done || 0;
-  const pct   = total > 0 ? Math.round((done / total) * 100) : null;
+  const { pct } = projectProgress({ total, done, status: project.status, nextAction: project.next_action });
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={[s.card, { borderLeftColor: color }]}>
@@ -593,7 +594,7 @@ export default function ProjectsScreen() {
   const active  = projects.filter(p => p.status === 'active').length;
   const heroTotal = hero?.tasks?.total || 0;
   const heroDone  = hero?.tasks?.done || 0;
-  const heroPct   = heroTotal > 0 ? Math.round((heroDone / heroTotal) * 100) : null;
+  const heroPct   = hero ? projectProgress({ total: heroTotal, done: heroDone, status: hero.status, nextAction: hero.next_action }).pct : null;
 
   return (
     <View style={s.screen}>
