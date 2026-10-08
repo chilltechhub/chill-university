@@ -34,6 +34,11 @@
 //                 'planner-item-added:physical' only counts a Physical one.
 //                 `signalCount` makes it take more than once ("capture five
 //                 things"), and the step keeps a running number until then.
+//   `have`        'idea' | 'project' | 'next-step' | 'shipped': the step is
+//                 already true if the person has one. Checked once when the
+//                 goal starts (src/api/existingWorkService.js), so a later
+//                 goal doesn't ask someone to redo what an earlier one had
+//                 them do. Use it only where any existing one honestly counts.
 //
 // Only a step nothing can observe is left to a hand tick — "actually teach
 // it to someone", "decide it is ready to show". Those are judgements, not
@@ -308,10 +313,10 @@ export const OBJECTIVES = [
     why: 'A finished small thing teaches more than a shelf of unfinished ambitious ones.',
     estimate: 'About a week',
     steps: [
-      { id: 'seed',    label: 'Plant the idea in the Idea Garden', hint: 'Rough is fine. It only has to be written down.', screen: 'IdeaGardenScreen', signal: 'idea-planted' },
-      { id: 'project', label: 'Start a project in the Workshop',   hint: 'Give it a name you would say out loud.', screen: 'ProjectsScreen', signal: 'project-started' },
-      { id: 'step',    label: 'Set its next physical step',        hint: 'Not "work on it" — the actual next move.', screen: 'ProjectsScreen', signal: 'project-next-set' },
-      { id: 'ship',    label: 'Mark the project done',          hint: 'Open the project and tap DONE at the top. Done beats perfect.', screen: 'ProjectsScreen', signal: 'project-shipped' },
+      { id: 'seed',    label: 'Plant the idea in the Idea Garden', hint: 'Rough is fine. It only has to be written down.', screen: 'IdeaGardenScreen', signal: 'idea-planted', have: 'idea' },
+      { id: 'project', label: 'Start a project in the Workshop',   hint: 'Give it a name you would say out loud.', screen: 'ProjectsScreen', signal: 'project-started', have: 'project' },
+      { id: 'step',    label: 'Set its next physical step',        hint: 'Not "work on it" — the actual next move.', screen: 'ProjectsScreen', signal: 'project-next-set', have: 'next-step' },
+      { id: 'ship',    label: 'Mark the project done',          hint: 'Open the project and tap DONE at the top. Done beats perfect.', screen: 'ProjectsScreen', signal: 'project-shipped', have: 'shipped' },
     ],
     unlocks: ['portfolio'],
     next: 'show-your-work',
@@ -662,7 +667,7 @@ export const OBJECTIVES = [
     why: 'Discover is a room full of other people’s work. Turning up with something of your own changes what it is for.',
     estimate: '2 days',
     steps: [
-      { id: 'ship',      label: 'Have one shipped project',     hint: 'Open the project and tap DONE at the top.', screen: 'ProjectsScreen', signal: 'project-shipped' },
+      { id: 'ship',      label: 'Have one shipped project',     hint: 'Open the project and tap DONE at the top.', screen: 'ProjectsScreen', signal: 'project-shipped', have: 'shipped' },
       { id: 'portfolio', label: 'Add it to your Portfolio',      hint: 'Title, one line on what it was.', screen: 'PortfolioScreen', signal: 'portfolio-added' },
       { id: 'write',     label: 'Write what you learned',        hint: 'Two sentences. The part that surprised you.', screen: 'KnowledgeScreen', signal: 'vault-saved' },
       { id: 'ready',     label: 'Decide it is ready to show',    hint: 'It is. Tick it.' },
