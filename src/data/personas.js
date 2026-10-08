@@ -59,7 +59,7 @@ export const PERSONAS = [
       'Sectors start as Physical, Mental and Social',
     ],
     adultOnly: false,
-    defaultWidgets: ['hq', 'stageSteps', 'focus', 'compass', 'goalSteps', 'desk', 'activities', 'lifeAreas', 'habitRings', 'dailyDrills', 'quests', 'wayfinder', 'streak', 'wisdom'],
+    defaultWidgets: ['hq', 'focus', 'compass', 'goalSteps', 'stageSteps', 'desk', 'activities', 'lifeAreas', 'habitRings', 'dailyDrills', 'quests', 'wayfinder', 'streak', 'wisdom'],
   },
   {
     key: 'STUDENT',
@@ -75,7 +75,7 @@ export const PERSONAS = [
       'Sectors start as Mental, Professional and Social',
     ],
     adultOnly: false,
-    defaultWidgets: ['hq', 'stageSteps', 'focus', 'compass', 'goalSteps', 'desk', 'activities', 'studyBlocks', 'dailyDrills', 'classProgress', 'quests', 'wayfinder', 'checkins', 'streak'],
+    defaultWidgets: ['hq', 'focus', 'compass', 'goalSteps', 'stageSteps', 'desk', 'activities', 'studyBlocks', 'dailyDrills', 'classProgress', 'quests', 'wayfinder', 'checkins', 'streak'],
   },
   {
     key: 'BUSINESS',
@@ -91,7 +91,7 @@ export const PERSONAS = [
       'Sectors start as Professional, Financial and Digital',
     ],
     adultOnly: true,
-    defaultWidgets: ['hq', 'stageSteps', 'focus', 'compass', 'goalSteps', 'desk', 'activities', 'recurringOps', 'systemsCheck', 'builds', 'quests', 'orgSnapshot', 'checkins', 'streak'],
+    defaultWidgets: ['hq', 'focus', 'compass', 'goalSteps', 'stageSteps', 'desk', 'activities', 'recurringOps', 'systemsCheck', 'builds', 'quests', 'orgSnapshot', 'checkins', 'streak'],
   },
   {
     key: 'ENTREPRENEUR',
@@ -107,7 +107,7 @@ export const PERSONAS = [
       'Sectors start as Financial, Professional and Creative',
     ],
     adultOnly: true,
-    defaultWidgets: ['hq', 'stageSteps', 'focus', 'compass', 'goalSteps', 'desk', 'activities', 'founderQuest', 'builds', 'vaultStatus', 'targetsReadiness', 'quests', 'ideas', 'checkins', 'streak'],
+    defaultWidgets: ['hq', 'focus', 'compass', 'goalSteps', 'stageSteps', 'desk', 'activities', 'founderQuest', 'builds', 'vaultStatus', 'targetsReadiness', 'quests', 'ideas', 'checkins', 'streak'],
   },
 ];
 

@@ -36,6 +36,7 @@ import { resumeFirstGoalGuide } from '../logic/useGuidedFirstGoal';
 import { useTour } from '../../context/TourContext';
 import { Button } from './ui';
 import { textOn } from '../logic/contrast';
+import { finishLabel } from '../logic/featureAccess';
 
 export default function CompassCard() {
   const navigation = useNavigation();
@@ -206,7 +207,7 @@ export default function CompassCard() {
           )}
           <Button
             icon="trophy-outline"
-            label={`Finish ${objective.label}`}
+            label={finishLabel(objective.label)}
             onPress={completeActiveObjective}
             color={accent}
             style={s.claimBtn}

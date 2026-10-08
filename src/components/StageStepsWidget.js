@@ -45,19 +45,10 @@ export default function StageStepsWidget() {
   const live = !!activeObjective?.active;
 
   // "Show me everything" means the stages aren't deciding anything any more,
-  // so a card about what they open next would be describing a machine that
-  // has been switched off.
-  if (experienceMode === 'full') {
-    return (
-      <WidgetCard title="Your stage" icon="layers-outline" accent={accent.primary}
-        action="Compass →" onAction={() => navigation.navigate('Compass')}>
-        <Text style={{ fontSize: t.sm, color: c.text2, lineHeight: 19 }}>
-          You chose to see everything, so nothing is waiting on a stage. Switch back on the Compass and the
-          app goes by your progress again.
-        </Text>
-      </WidgetCard>
-    );
-  }
+  // so there is nothing for this card to say. It used to fill a slot on Home
+  // saying exactly that; the switch to go back lives on the Compass and in
+  // Settings, where someone looking for it would look.
+  if (experienceMode === 'full') return null;
 
   if (!nextStage) {
     return (
@@ -79,22 +70,22 @@ export default function StageStepsWidget() {
           key: 'goal',
           icon: 'flag-outline',
           label: activeObjective.objective.label,
-          // Just the tally. The goal card below has the steps and the
+          // Just the tally. The goal card above has the steps and the
           // button for the next one; quoting the next step here too made a
           // new account's Home say the same thing three times.
           detail: activeObjective.complete
-            ? `All ${activeObjective.total} steps done. Claim it on your goal card below.`
-            : `${activeObjective.done} of ${activeObjective.total} steps done. The steps are on your goal card below.`,
+            ? `All ${activeObjective.total} steps done. Claim it on your goal card above.`
+            : `${activeObjective.done} of ${activeObjective.total} steps done. The steps are on your goal card above.`,
           cta: null,
         }
       : {
           key: 'goal',
           icon: 'flag-outline',
           label: 'Start a goal',
-          // The Compass card under this one offers a goal with its own
+          // The Compass card above this one offers a goal with its own
           // Start button; this row points at it rather than offering a
           // second, different-looking way to do the same thing.
-          detail: 'The goal card below has one ready. Finishing any goal opens the next stage.',
+          detail: 'The goal card above has one ready. Finishing any goal opens the next stage.',
           cta: 'Others',
           onPress: () => navigation.navigate('Compass'),
         },

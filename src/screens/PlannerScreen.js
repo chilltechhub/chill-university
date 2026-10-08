@@ -19,13 +19,13 @@ import { useAccess } from '../../context/AccessContext';
 import { supabase } from '../api/profileScopedClient';
 import {
   AREAS, getInstances, getPresetComponents,
-  getUserSubscriptions, generateInstances,
+  getUserSubscriptions, generateInstances, extendRepeatingPlans, clearSeriesStopped,
   completeInstance, skipInstance, rescheduleInstance, addNoteToInstance,
   deleteInstances, getInstancesBetween,
 } from '../api/plannerService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fmt12, timeRange, hourRange, layoutDay, byTime, duplicateIds, isSamePlan } from '../logic/plannerLayout';
-import { repeatDates, REPEAT_COUNTS } from '../logic/aiBridgeFormat';
+import { repeatDates } from '../logic/aiBridgeFormat';
 import { useProfiles } from '../../context/ProfileAccountsContext';
 import { buildProfileLookup } from '../data/personas';
 import useViewScope, { SCOPE_PROFILE } from '../logic/useViewScope';
@@ -107,6 +107,10 @@ function InstanceModal({ visible, instance, userId, date, initialTime = null, on
   const [reminder,    setReminder]    = useState(false);
   const [reminderMin, setReminderMin] = useState(15);
   const [saving,      setSaving]      = useState(false);
+  // Duration, reminder, link and notes sit behind "More options". With all
+  // of them showing, the Add button was below the bottom of the sheet and a
+  // first habit meant scrolling past four optional fields to find it.
+  const [moreOpen,    setMoreOpen]    = useState(false);
   // Link to Class / Project / Game — see supabase/migrations/20260905150000_planner_links.sql.
   // linkScreen carries a ClassesStack screen name for 'class' or a
   // gameRegistry id for 'game'; linkId carries a projects.id for 'project'.
@@ -135,7 +139,8 @@ function InstanceModal({ visible, instance, userId, date, initialTime = null, on
       setDuration(instance.duration_minutes ? String(instance.duration_minutes) : '');
       setNotes(instance.notes || '');
       setReminder(false); // corrected right after, once the id-map lookup below resolves
-      hasScheduledReminder(instance.id).then(setReminder);
+      hasScheduledReminder(instance.id).then(on => { setReminder(on); if (on) setMoreOpen(true); });
+      setMoreOpen(!!(instance.link_type || instance.duration_minutes || instance.notes));
 
       // Resolve a display label for whatever's already linked, if anything.
       setLinkType(instance.link_type || null);
@@ -173,6 +178,7 @@ function InstanceModal({ visible, instance, userId, date, initialTime = null, on
       setTimeVal(initialTime || ''); setDuration(''); setNotes(''); setReminder(false);
       setLinkType(null); setLinkScreen(null); setLinkId(null); setLinkLabel(''); setLinkSubject(null);
       setProjects(null);
+      setMoreOpen(false);
     }
   }, [instance, visible, date, initialTime]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -297,6 +303,8 @@ function InstanceModal({ visible, instance, userId, date, initialTime = null, on
         if (error) throw error;
       }
       const savedRows = data || [];
+      // Adding a habit back that was once ended keeps it going again.
+      if (!isEdit && cadence !== 'once') clearSeriesStopped(userId, basePayload).catch(() => {});
 
       // Schedule (or cancel) the reminder. Its notification id lives in a
       // local id map, not this row — see planReminderActions.js — so this
@@ -445,11 +453,26 @@ function InstanceModal({ visible, instance, userId, date, initialTime = null, on
               {cadence !== 'once' && (
                 <Text style={{ fontSize: 11, color: c.text3, marginTop: 6 }}>
                   {isEdit ? 'Changes here apply to this day only.'
-                    : `Adds it to the next ${REPEAT_COUNTS[cadence]} ${REPEAT_UNITS[cadence]}.`}
+                    : `Repeats every ${REPEAT_UNITS[cadence].slice(0, -1)} until you delete it.`}
                 </Text>
               )}
             </View>
 
+            {/* Time */}
+            <View>
+              <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Time</Text>
+              <TimePickerField value={timeVal} onChange={setTimeVal} placeholder="Any time" />
+            </View>
+
+            {!moreOpen && (
+              <TouchableOpacity onPress={() => setMoreOpen(true)} accessibilityRole="button"
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingVertical: 4 }}>
+                <Ionicons name="add-circle-outline" size={16} color={areaColor} />
+                <Text style={{ fontSize: t.sm, color: areaColor, fontWeight: t.semibold }}>More options: reminder, length, notes, link</Text>
+              </TouchableOpacity>
+            )}
+
+            {moreOpen && (<>
             {/* Link to Class / Project / Game */}
             <View>
               <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Link to (optional)</Text>
@@ -534,12 +557,8 @@ function InstanceModal({ visible, instance, userId, date, initialTime = null, on
               )}
             </View>
 
-            {/* Time + duration */}
+            {/* Duration */}
             <View style={{ flexDirection: 'row', gap: s.sm }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Time</Text>
-                <TimePickerField value={timeVal} onChange={setTimeVal} placeholder="Any time" />
-              </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Duration (min)</Text>
                 <TextInput
@@ -581,6 +600,7 @@ function InstanceModal({ visible, instance, userId, date, initialTime = null, on
                 multiline
               />
             </View>
+            </>)}
 
             {/* Save */}
             <TouchableOpacity onPress={save} disabled={!title.trim() || saving}
@@ -766,7 +786,7 @@ function TimeView({ instances, date, onUpdate, onOpen, onAddAt, c, t, s, r }) {
       {/* Untimed items at top */}
       {untimed.length > 0 && (
         <View style={{ padding: s.lg, paddingBottom: s.sm, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
-          <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Any time today</Text>
+          <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>{isToday ? 'Any time today' : 'Any time'}</Text>
           {shownUntimed.map(inst => (
             <AgendaRow key={inst.id} instance={inst} onUpdate={onUpdate} onOpen={onOpen} c={c} t={t} s={s} r={r} />
           ))}
@@ -1468,6 +1488,15 @@ export default function PlannerScreen() {
     });
   }, [signedInUser?.id]);
 
+  // Keep repeating habits going past the days first written for them (see
+  // extendRepeatingPlans). Once a day; redraws only if it added anything.
+  useEffect(() => {
+    if (!userId) return;
+    extendRepeatingPlans(userId)
+      .then(added => { if (added) setRefresh(k => k + 1); })
+      .catch(e => console.warn('planner top-up', e?.message));
+  }, [userId, activeProfile?.id]);
+
   const toggleArea = (key) => {
     if (key === 'all') { setAreas(new Set()); return; }
     setAreas(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
@@ -1514,6 +1543,16 @@ export default function PlannerScreen() {
     openEdit(editParam);
     navigation.setParams({ editInstance: undefined });
   }, [editParam]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Something just scheduled from elsewhere (the Capture Inbox) opens on its
+  // own day, so it's on screen rather than on a day nobody is looking at.
+  const dateParam = route.params?.date;
+  useEffect(() => {
+    if (!dateParam) return;
+    setView('Daily');
+    setAnchor(new Date(dateParam + 'T00:00:00'));
+    navigation.setParams({ date: undefined });
+  }, [dateParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Copies of the same item on the same day at the same time — what pasting
   // an AI reply twice used to leave behind. Looks a month back and four ahead.

@@ -478,7 +478,7 @@ export default function FloatingActionButton({ currentScreen, navigationRef }) {
       <QuickNoteModal
         visible={noteOpen}
         userId={user?.id}
-        onSaved={() => { setNoteOpen(false); Alert.alert('Saved', 'Note added to your account.'); }}
+        onSaved={() => { setNoteOpen(false); Alert.alert('Note saved', "It's in your Knowledge Vault (Library → Knowledge)."); }}
         onClose={() => setNoteOpen(false)}
         c={c} t={t} s={s} r={r}
       />

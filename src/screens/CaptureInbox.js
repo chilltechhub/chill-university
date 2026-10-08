@@ -167,6 +167,24 @@ export const DESTINATIONS = [
   },
 ];
 
+// The few places each kind of capture usually goes, shown first. All eleven
+// at once was a wall of choices for "call the dentist"; the rest stay one tap
+// away behind "More places".
+const SUGGESTED_BY_TYPE = {
+  note:     ['task', 'planner', 'notes', 'idea_garden'],
+  idea:     ['idea_garden', 'new_project', 'project', 'notes'],
+  link:     ['research', 'plan_ai', 'project', 'later'],
+  video:    ['later', 'plan_ai', 'research', 'project'],
+  task:     ['task', 'planner', 'project', 'later'],
+  resource: ['resource_tool', 'research', 'project', 'later'],
+};
+export function splitDestinations(type) {
+  const keys = SUGGESTED_BY_TYPE[type] || SUGGESTED_BY_TYPE.note;
+  const suggested = keys.map(k => DESTINATIONS.find(d => d.key === k)).filter(Boolean);
+  const more = DESTINATIONS.filter(d => !keys.includes(d.key));
+  return { suggested, more };
+}
+
 // "Start New Project" and "Plan it" only make sense for one item at a time
 // (which one becomes the seed?) — left out of the bulk destination list.
 const BULK_DESTINATIONS = DESTINATIONS.filter(d => d.key !== 'new_project' && d.key !== 'plan_ai');
@@ -276,6 +294,8 @@ function ProcessModal({ item, projects, userId, initialStep = 'choose', onClose,
   const [editBody,  setEditBody]  = useState('');
   const [editTags,  setEditTags]  = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
+  const [showAllPlaces, setShowAllPlaces] = useState(false);
+  const placeSplit = splitDestinations(current.type);
 
   const startEditing = () => {
     setEditTitle(current.title || '');
@@ -482,7 +502,7 @@ function ProcessModal({ item, projects, userId, initialStep = 'choose', onClose,
         }));
         signalAction('planner-item-added', { area: planArea });
         await markDoneAndClose(item.id, onProcessed);
-        navigation.navigate('PlannerScreen');
+        navigation.navigate('PlannerScreen', { date: dateStr(planDate) });
 
       } else if (destination.key === 'life_area' && selectedArea) {
         await mustSucceed(supabase.from('area_notes').insert({
@@ -631,7 +651,7 @@ function ProcessModal({ item, projects, userId, initialStep = 'choose', onClose,
                   Where does this go?
                 </Text>
                 <ScrollView automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
-                  {DESTINATIONS.map(dest => (
+                  {(showAllPlaces ? [...placeSplit.suggested, ...placeSplit.more] : placeSplit.suggested).map(dest => (
                     <TouchableOpacity key={dest.key} onPress={() => handleDestination(dest)}
                       style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border }}>
                       <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: dest.color + '22', alignItems: 'center', justifyContent: 'center' }}>
@@ -645,6 +665,13 @@ function ProcessModal({ item, projects, userId, initialStep = 'choose', onClose,
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
+                {!showAllPlaces && placeSplit.more.length > 0 && (
+                  <TouchableOpacity onPress={() => setShowAllPlaces(true)} accessibilityRole="button"
+                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: s.sm }}>
+                    <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.teal }}>More places ({placeSplit.more.length})</Text>
+                    <Ionicons name="chevron-down" size={14} color={c.teal} />
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity onPress={onClose}
                   style={{ marginTop: s.md, padding: s.md, alignItems: 'center', backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border }}>
                   <Text style={{ color: c.text3, fontWeight: '600' }}>Cancel</Text>

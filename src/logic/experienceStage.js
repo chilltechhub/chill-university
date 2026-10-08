@@ -146,7 +146,7 @@ export function openedAt(persona, stage = MAX_STAGE, { exploring = false, aim = 
 // 'desk' and 'activities' since 2026-10-07: the next thing to pick up and
 // what is on today are the core loop, not a reward for reaching a stage.
 // A builder's first project used to be nowhere on Home.
-export const HOME_BASICS = ['hq', 'stageSteps', 'compass', 'goalSteps', 'desk', 'activities'];
+export const HOME_BASICS = ['hq', 'compass', 'goalSteps', 'stageSteps', 'desk', 'activities'];
 export const WIDGETS_PER_STAGE = 2;
 
 // `headlines` is each reached stage's own lead widget: it arrives with its
@@ -210,9 +210,10 @@ export function fabActionsFor(opened) {
 // same order as every persona default (see defaultWidgets in
 // src/data/personas.js — the two have to agree, or the dashboard silently
 // rearranges itself the day the 'dashboard' stage arrives): who you are,
-// where you are in the app, today's focus, then the goal in flight and the
-// next action.
-const LEAD_WIDGETS = ['hq', 'stageSteps', 'focus', 'compass', 'goalSteps', 'desk', 'activities'];
+// today's focus, the goal in flight, then where you are in the app and the
+// next action. The goal comes before the stage card: on a new account the
+// stage card used to push the one thing to do now below the fold.
+const LEAD_WIDGETS = ['hq', 'focus', 'compass', 'goalSteps', 'stageSteps', 'desk', 'activities'];
 
 export function starterWidgetLayout(opened, allKeys) {
   const known = new Set(allKeys);

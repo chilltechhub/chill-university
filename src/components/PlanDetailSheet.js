@@ -19,7 +19,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../api/profileScopedClient';
 import {
   AREAS, completeInstance, skipInstance, unskipInstance, rescheduleInstance,
-  deleteInstances, getSeriesFrom,
+  deleteInstances, getSeriesFrom, markSeriesStopped,
 } from '../api/plannerService';
 import { openTarget, targetFromInstance } from '../logic/openTarget';
 import { timeRange } from '../logic/plannerLayout';
@@ -214,7 +214,9 @@ export default function PlanDetailSheet({ instance, onClose, onChanged, onEdit, 
                   {btn({ label: laterCount > 0 ? 'Just this one' : 'Delete', icon: 'trash-outline', color: danger, filled: true,
                     onPress: () => run(() => deleteInstances([inst.id])) })}
                   {laterCount > 0 && btn({ label: `This + ${laterCount} later`, icon: 'trash-bin-outline', color: danger,
-                    onPress: () => run(() => deleteInstances(series.map(x => x.id))) })}
+                    // Ending it: the Planner's top-up (extendRepeatingPlans)
+                    // must not bring the rest back tomorrow.
+                    onPress: () => run(async () => { await deleteInstances(series.map(x => x.id)); await markSeriesStopped(inst.user_id, inst); }) })}
                   {btn({ label: 'Cancel', icon: 'close-outline', color: c.text2, onPress: () => setConfirmDelete(false) })}
                 </View>
               </View>

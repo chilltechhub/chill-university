@@ -30,6 +30,7 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 import { supabase } from '../../api/profileScopedClient';
 import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../api/offlineCache';
 import { fetchContentPool } from '../../api/remoteConfigService';
+import { isVaultRow } from '../../api/captureService';
 import { useTheme } from '../../../context/ThemeContext';
 import { useUIPrefs } from '../../../context/UIPrefsContext';
 import { LIFE_AREAS } from './LifeAreaScreen';
@@ -727,15 +728,12 @@ export default function KnowledgeScreen() {
   //   links      — inbox or active       (Research Vault)
   //   resources  — active                (Resources & Instruments)
   //
-  // Except: nothing still waiting in the Capture Inbox (status 'inbox').
-  // The Inbox is what isn't sorted yet and the Vault is what you've kept;
-  // listing unsorted captures here too made the two look like one pile.
-  const isVisibleRow = (row) => {
-    if (row.type === 'note') return row.status !== 'inbox';
-    if (row.type === 'link') return row.status === 'active';
-    if (row.type === 'resource') return row.status === 'active';
-    return false;
-  };
+  // Except: nothing still waiting in the Capture Inbox (status 'inbox'),
+  // and nothing the Inbox already sent somewhere else (status 'done').
+  // The Inbox is what isn't sorted yet and the Vault is what you've kept.
+  // The rule lives in captureService (isVaultRow) so the Library's preview
+  // of this screen counts the same rows.
+  const isVisibleRow = isVaultRow;
 
   const load = async (uid) => {
     setLoading(true);

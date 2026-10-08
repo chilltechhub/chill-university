@@ -6,6 +6,8 @@ import { cacheRead, cacheWrite, isOnline } from './offlineCache';
 import { todayStr, dateStr } from '../logic/dateUtils';
 import { AREA_COLORS } from '../data/areaColors';
 import { recordAction } from '../logic/gamificationService';
+import { addDaysIso, addMonthsIso } from '../logic/aiBridgeFormat';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const AREAS = {
   physical:     { label: 'Physical',     emoji: '💪', color: AREA_COLORS.physical, preset: 'physical_starter' },
@@ -342,6 +344,135 @@ export async function generateInstances(userId, component) {
     .upsert(rows, { onConflict: 'user_id,component_id,date' });
 
   if (error) console.warn('generateInstances error', error);
+}
+
+// ─── Keeping repeating plans going ───────────────────────────────────────────
+// A repeating item is stored as one row per day, written ahead of time: the
+// Planner's Add wrote 7 days of a daily habit (4 weeks, 3 months), the
+// starter templates 30 days. Nothing ever wrote more, so a habit quietly
+// disappeared after its first week, along with the Habits card on Home that
+// counts it. This tops each running series up so it always reaches a couple
+// of weeks ahead. Runs at most once a day per account on this device.
+//
+// A series is the same item repeating: one template (component_id), or the
+// same title, cadence and time for something added by hand (the same match
+// getSeriesFrom uses to delete "this and the rest").
+//
+// Three cases must NOT come back: a series someone ended ("Delete this and
+// the rest" records it with markSeriesStopped); one nobody has had on their
+// plan for a while (its last day is more than GRACE_DAYS ago, so the person
+// stopped, or deleted it on another device); and a single day that was
+// edited ("changes apply to this day only" gives that one row a new time,
+// which on its own looks like a new series, so a series needs two rows).
+const AHEAD_DAYS = { daily: 14, weekly: 56, monthly: 92 };
+const GRACE_DAYS = 3;
+const topupKey = (userId) => `@cth_planner_topup_${userId}_${getActiveProfileId() || 'none'}`;
+const stoppedKey = (userId) => `@cth_planner_stopped_${userId}`;
+
+export function seriesKey(row) {
+  if (row.component_id) return `c:${row.component_id}`;
+  return `t:${String(row.title || '').trim().toLowerCase()}|${row.cadence || ''}|${row.start_time || ''}`;
+}
+
+async function readStopped(userId) {
+  try { return JSON.parse(await AsyncStorage.getItem(stoppedKey(userId)) || '{}') || {}; }
+  catch { return {}; }
+}
+
+// Called when someone deletes "this and the rest" of a repeating item.
+export async function markSeriesStopped(userId, instance) {
+  if (!userId || !instance) return;
+  const stopped = await readStopped(userId);
+  stopped[seriesKey(instance)] = todayStr();
+  try { await AsyncStorage.setItem(stoppedKey(userId), JSON.stringify(stopped)); } catch { /* best effort */ }
+}
+
+// Called when someone adds a repeating item, so adding back a habit they
+// once ended keeps it going again.
+export async function clearSeriesStopped(userId, row) {
+  if (!userId || !row) return;
+  const stopped = await readStopped(userId);
+  if (!stopped[seriesKey(row)]) return;
+  delete stopped[seriesKey(row)];
+  try { await AsyncStorage.setItem(stoppedKey(userId), JSON.stringify(stopped)); } catch { /* best effort */ }
+}
+
+const nextDate = (iso, cadence) => (
+  cadence === 'daily' ? addDaysIso(iso, 1)
+    : cadence === 'weekly' ? addDaysIso(iso, 7)
+      : addMonthsIso(iso, 1)
+);
+
+/**
+ * Extends every running repeating series so it reaches AHEAD_DAYS past today.
+ * @returns {Promise<number>} rows added
+ */
+// Home and the Planner both call this on load; one run at a time, or two
+// first-of-the-day loads would each write the same days.
+let topupRun = null;
+export function extendRepeatingPlans(userId, opts) {
+  if (!topupRun) topupRun = runTopup(userId, opts).finally(() => { topupRun = null; });
+  return topupRun;
+}
+
+async function runTopup(userId, { force = false } = {}) {
+  if (!userId || !(await isOnline())) return 0;
+  const today = todayStr();
+  if (!force) {
+    try { if (await AsyncStorage.getItem(topupKey(userId)) === today) return 0; } catch { /* run anyway */ }
+  }
+  const read = (cols) => supabase
+    .from('agenda_instances')
+    .select(cols)
+    .eq('user_id', userId)
+    .in('cadence', ['daily', 'weekly', 'monthly'])
+    .gte('date', addDaysIso(today, -35))
+    .order('date', { ascending: false })
+    .limit(3000);
+  const base = 'title, area, cadence, type, start_time, duration_minutes, component_id, date';
+  let { data, error } = await read(`${base}, link_type, link_screen, link_id`);
+  // A database without the planner-link columns still gets its habits kept.
+  if (error) ({ data, error } = await read(base));
+  if (error) { console.warn('extendRepeatingPlans', error.message); return 0; }
+
+  const latest = new Map();
+  const count = new Map();
+  (data || []).forEach(row => {
+    const key = seriesKey(row);
+    if (!latest.has(key)) latest.set(key, row);
+    count.set(key, (count.get(key) || 0) + 1);
+  });
+  const stopped = await readStopped(userId);
+  const since = addDaysIso(today, -GRACE_DAYS);
+
+  const fresh = [];
+  latest.forEach((row, key) => {
+    if (stopped[key] || row.date < since || count.get(key) < 2) return;
+    const until = addDaysIso(today, AHEAD_DAYS[row.cadence] || 14);
+    for (let d = nextDate(row.date, row.cadence); d <= until; d = nextDate(d, row.cadence)) {
+      fresh.push({
+        user_id: userId,
+        title: row.title, area: row.area, cadence: row.cadence, type: row.type,
+        start_time: row.start_time, duration_minutes: row.duration_minutes,
+        component_id: row.component_id,
+        ...(row.link_type ? { link_type: row.link_type, link_screen: row.link_screen, link_id: row.link_id } : {}),
+        date: d, completed: false, skipped: false,
+      });
+    }
+  });
+
+  if (fresh.length) {
+    const templated = fresh.filter(r => r.component_id);
+    const custom = fresh.filter(r => !r.component_id);
+    const writes = [];
+    if (templated.length) writes.push(supabase.from('agenda_instances').upsert(templated, { onConflict: 'user_id,component_id,date' }));
+    if (custom.length) writes.push(supabase.from('agenda_instances').insert(custom));
+    const results = await Promise.all(writes);
+    const failed = results.find(r => r.error);
+    if (failed) { console.warn('extendRepeatingPlans write', failed.error.message); return 0; }
+  }
+  try { await AsyncStorage.setItem(topupKey(userId), today); } catch { /* runs again next time */ }
+  return fresh.length;
 }
 
 // ─── Completion stats ─────────────────────────────────────────────────────────

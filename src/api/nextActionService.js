@@ -59,31 +59,38 @@ export async function advanceNextAction(userId, project, { done = false, next = 
   const finished = (project.next_action || '').trim();
   let upcoming = (next || '').trim() || null;
 
+  // Writes that don't decide the next step run alongside the ones that do.
+  // One after another, a tick on a project sat on a spinner for several
+  // seconds (four round trips) before it asked for the next step.
+  const sideWrites = [];
   if (done) {
     let open = await openTasks(project.id);
     const match = finished && open.find(t => sameTitle(t.title, finished));
     if (match) {
-      await supabase.from('project_tasks')
-        .update({ completed: true, completed_at: new Date().toISOString() }).eq('id', match.id);
+      sideWrites.push(supabase.from('project_tasks')
+        .update({ completed: true, completed_at: new Date().toISOString() }).eq('id', match.id)
+        .then(({ error }) => { if (error) console.warn('[nextAction] task', error.message); }));
       open = open.filter(t => t.id !== match.id);
     }
     if (!upcoming) upcoming = [...open].sort(soonestFirst)[0]?.title || null;
   }
 
   if (done && finished) {
-    const { error: logError } = await supabase.from('project_milestones').insert({
+    // The log line is the nice-to-have; the next action is the point.
+    sideWrites.push(supabase.from('project_milestones').insert({
       user_id: userId, project_id: project.id,
       title: `Done: ${finished}`, type: 'step_done', date: todayStr(),
-    });
-    // The log line is the nice-to-have; the next action is the point.
-    if (logError) console.warn('[nextAction] log', logError.message);
+    }).then(({ error }) => { if (error) console.warn('[nextAction] log', error.message); }));
     recordAction('project_step', `${project.id}:${finished}`);
   }
 
-  const { error } = await supabase
-    .from('projects')
-    .update({ next_action: upcoming, updated_at: new Date().toISOString() })
-    .eq('id', project.id);
+  const [{ error }] = await Promise.all([
+    supabase
+      .from('projects')
+      .update({ next_action: upcoming, updated_at: new Date().toISOString() })
+      .eq('id', project.id),
+    ...sideWrites,
+  ]);
   if (error) throw error;
   return upcoming;
 }

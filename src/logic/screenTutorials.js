@@ -373,6 +373,34 @@ const FIRST_VISIT = {
   ],
   Play: [PLAY_STEPS[0], PLAY_STEPS[2]],
   PlayGame: [PLAY_STEPS[0], PLAY_STEPS[2]],
+  // The core screens, said in a sentence or two. Their full walkthroughs
+  // (above) explain the thinking behind each one, which is a lot to read on
+  // a first visit, so a first visit gets what the screen is for and the one
+  // button to press.
+  PlannerScreen: [
+    { title: 'Your plan', body: 'Tap Add to put something on a day. Set it to repeat and it becomes a habit. Daily, Weekly and Monthly change how far ahead you see.', id: 'planner-add' },
+  ],
+  CaptureInbox: [
+    { title: 'Your inbox', body: 'Jot anything here so you stop holding it in your head. Later, tap an item to send it where it belongs.', id: 'inbox-capture' },
+  ],
+  ProjectsScreen: [
+    { title: 'Your projects', body: 'Each project keeps its next step, tasks and notes together. Tap New Project to start one.', id: 'projects-add' },
+  ],
+  ProjectDetail: [
+    { title: 'One step at a time', body: 'The flag at the top is your next step. Tick it when it is done and say what comes after. Work starts a timer for it.' },
+  ],
+  KnowledgeScreen: [
+    { title: 'Your vault', body: 'Notes, links and tools you want to keep, all in one list. Type a quick note in the box and tap + to save it.', id: 'notes-input' },
+  ],
+  NotesScreen: [
+    { title: 'Your vault', body: 'Notes, links and tools you want to keep, all in one list. Type a quick note in the box and tap + to save it.', id: 'notes-input' },
+  ],
+  IdeaGardenScreen: [
+    { title: 'Your ideas', body: 'Each idea is a plant. Tap + to add one. When an idea is ready, turn it into a project.', id: 'ideas-list' },
+  ],
+  ClassesMain: [
+    { title: 'Classes', body: 'Pick a subject to start. Quests at the top take about ten minutes each.', id: 'classes-list' },
+  ],
 };
 const FIRST_VISIT_STEPS = 2;
 const MORE_NOTE = ' For the full tour of this page, tap your picture at the top left, then Screen Tutorial.';

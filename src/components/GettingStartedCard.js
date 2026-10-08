@@ -6,8 +6,14 @@
 // twelve-step tour 300ms after landing — two walkthroughs stacked on each
 // other, before the user had seen a single real screen. Now the wizard asks
 // the two things the app can't render without, and this card carries the
-// rest: one concrete first action, the remaining setup as a checklist, and
-// the tour as an offer rather than an ambush.
+// rest: the remaining setup as a checklist, and the tour as an offer rather
+// than an ambush.
+//
+// It used to lead with "one concrete first action" picked from the account
+// type ("Schedule your first habit"). That line never checked whether it was
+// done, so it kept asking for a habit the person had already scheduled, and
+// it was a second "do this first" next to the goal card, which is the one
+// place that says what to do now.
 //
 // The setup rows open the SAME step components the wizard used to show
 // (src/screens/onboarding/steps.js) as bottom sheets, so nothing was
@@ -31,27 +37,24 @@ import { Button, Eyebrow } from './ui';
 import { useTour } from '../../context/TourContext';
 import { supabase } from '../api/supabaseClient';
 import { saveOnboardingFields, applyPlannerPicks } from '../api/onboardingService';
-import { SETUP_TASKS, firstActionFor } from '../logic/onboardingTasks';
+import { SETUP_TASKS } from '../logic/onboardingTasks';
 import { generateRecommendations } from '../api/recommendationEngine';
 import { pickFocusHub, buildRecommendations } from '../screens/onboarding/steps';
 import { LIFE_AREAS } from '../screens/library/LifeAreaScreen';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
-import { useProfiles } from '../../context/ProfileAccountsContext';
-import { getWayfinderIntent } from '../api/wayfinderService';
 
 // Which deferred tasks have been saved from here. Not derivable from the
 // profile for all five (see the `planner` task's note in onboardingTasks),
 // so it's tracked alongside the derived checks rather than instead of them.
 const DONE_KEY = '@cth_setting_setupTasksDone';
 
-export default function GettingStartedCard({ onNavigate }) {
+export default function GettingStartedCard() {
   const themeCtx = useTheme();
   const { colors: c, typography: t, spacing: s, radius: r, isDark, style: ui, accent } = themeCtx;
   // The step components expect the shorthand bundle, not the raw context.
   const theme = { c, t, s, r, sh: themeCtx.shadows, isDark };
 
   const { startTour, setPersonalization } = useTour();
-  const { activeType } = useProfiles(); // persona key of the active profile
   const [dismissed, setDismissed] = useSetting(SETTING_KEYS.GETTING_STARTED_DISMISSED, false);
 
   const [profile, setProfile] = useState(null);
@@ -62,8 +65,6 @@ export default function GettingStartedCard({ onNavigate }) {
   // keyed by a user id they don't have. A checklist that can only fail is
   // worse than no checklist.
   const [signedIn, setSignedIn] = useState(false);
-  // Onboarding's "I'm not sure yet" — see firstActionFor.
-  const [exploring, setExploring] = useState(false);
 
   // Open sheet: the task being answered, plus its working copy of `data`.
   const [openTask, setOpenTask] = useState(null);
@@ -72,13 +73,11 @@ export default function GettingStartedCard({ onNavigate }) {
 
   const load = useCallback(async () => {
     try {
-      const [{ data: { user } }, rawDone, wantsWayfinder] = await Promise.all([
+      const [{ data: { user } }, rawDone] = await Promise.all([
         supabase.auth.getUser(),
         AsyncStorage.getItem(DONE_KEY),
-        getWayfinderIntent(),
       ]);
       if (rawDone) { try { setDone(new Set(JSON.parse(rawDone))); } catch {} }
-      setExploring(wantsWayfinder);
       setSignedIn(!!user);
       if (!user) { setReady(true); return; }
       const { data } = await supabase
@@ -98,9 +97,6 @@ export default function GettingStartedCard({ onNavigate }) {
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const remaining = SETUP_TASKS.filter(task => !task.isDone(profile, done));
-  // No usage_patterns on a fresh account — that question is itself one of
-  // the deferred tasks — so the persona carries the choice here.
-  const action = firstActionFor(activeType, [], { exploring });
 
   // Nothing left to nudge about, no account to save it to, or the user
   // said no. Any of those, gone.
@@ -190,16 +186,10 @@ export default function GettingStartedCard({ onNavigate }) {
           </TouchableOpacity>
         </View>
 
-        {/* ── One concrete thing to do, chosen from the persona ── */}
-        <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1, marginBottom: 4 }}>
-          {action.label}
-        </Text>
-        <Button label={action.cta} onPress={() => onNavigate?.(action.target)} style={{ marginTop: s.sm }} />
-
         {/* ── The rest of setup, one row at a time ── */}
-        <Eyebrow style={{ marginTop: s.lg, marginBottom: s.sm }}>
-          Finish your setup · {remaining.length} left
-        </Eyebrow>
+        <Text style={{ fontSize: t.sm, color: c.text3, marginBottom: s.sm }}>
+          Finish your setup · {remaining.length} left. Each one takes a minute.
+        </Text>
         {remaining.map(task => (
           <TouchableOpacity
             key={task.key}

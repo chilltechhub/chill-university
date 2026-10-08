@@ -140,7 +140,7 @@ export default function GamesScreen() {
   // is just the email's local-part set at signup (see LoginScreen.js) and
   // never updated after that, so leading with it here showed the raw
   // signup email as this screen's header instead of the chosen name.
-  const displayName = profile?.traveler_name || profile?.display_name || profile?.username || 'Adventurer';
+  const displayName = profile?.traveler_name || profile?.display_name || profile?.username || 'Commander'; // same fallback as Home and Profile
 
   // Refresh saved skill levels whenever this screen regains focus, so a
   // level picked mid-game shows up here as soon as you back out.
