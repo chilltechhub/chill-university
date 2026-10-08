@@ -1594,8 +1594,20 @@ export default function HomeScreen() {
   // Dashboard widgets — WidgetBoard calls this locally on every reorder/
   // hide/show (fast, no network); the layout only actually gets written to
   // Supabase once, when edit mode closes, via exitWidgetEdit below.
+  // Edit then Done with nothing moved saves nothing. Before the 'dashboard'
+  // stage widgetLayout is still the type's default, not the board on screen
+  // (that's derived per stage), so saving it on a no-op Done made the
+  // default the "arranged" layout, and Active Projects and Latest Ideas,
+  // which the stages had put on Home, disappeared for good (found
+  // 2026-10-08 on a fresh Personal/"build" account at stage 3).
+  const layoutAtEditRef = useRef(null);
+  const startWidgetEdit = () => {
+    layoutAtEditRef.current = JSON.stringify(widgetLayout);
+    setEditingWidgets(true);
+  };
   const exitWidgetEdit = async () => {
     setEditingWidgets(false);
+    if (layoutAtEditRef.current === JSON.stringify(widgetLayout)) return;
     setSavedLayout(true);
     await persistWidgetLayout(widgetLayout);
   };
@@ -1949,7 +1961,7 @@ export default function HomeScreen() {
               </View>
             )}
             {canEditWidgets && (
-            <TouchableOpacity onPress={() => (editingWidgets ? exitWidgetEdit() : setEditingWidgets(true))}
+            <TouchableOpacity onPress={() => (editingWidgets ? exitWidgetEdit() : startWidgetEdit())}
               hitSlop={10}
               style={[{ paddingHorizontal: s.sm, paddingVertical: 3 }, bgMode === 'player' && sceneChip]}>
               <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: editingWidgets ? c.teal : c.text3 }}>
