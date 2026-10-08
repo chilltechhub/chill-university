@@ -45,6 +45,7 @@ import {
 } from '../src/api/accessService';
 import { useConfigValue, useFeatureFlag } from './RemoteConfigContext';
 import { getWayfinderIntent } from '../src/api/wayfinderService';
+import { alreadyHas } from '../src/api/existingWorkService';
 import { ageStatus, contentAllowed, gameAllowed } from '../src/logic/allowed';
 import { cacheWrite } from '../src/api/offlineCache';
 import { FEATURES, getFeature, featureForScreen, featuresUnlockedBy } from '../src/data/featureCatalog';
@@ -535,8 +536,31 @@ export function AccessProvider({ children }) {
     });
 
     if (!userId) return {};
-    return startObjectiveApi(userId, objectiveId);
-  }, [userId, applyLocal]);
+    const res = await startObjectiveApi(userId, objectiveId);
+
+    // Steps marked `have` (objectives.js) tick themselves when the person
+    // already has the thing: a later goal asking to "plant an idea" and
+    // "start a project" shouldn't make someone with a planned project redo
+    // both. Checked once, here; after that the step's signal does the work.
+    const wants = objective.steps.filter(st => st.have);
+    if (wants.length && !res?.error) {
+      try {
+        const has = await alreadyHas(wants.map(st => st.have));
+        const credit = wants.filter(st => has.has(st.have));
+        if (credit.length) {
+          const steps = { ...latestSteps(objectiveId) };
+          credit.forEach(st => { steps[st.id] = true; });
+          stepsRef.current = { ...stepsRef.current, [objectiveId]: steps };
+          applyLocal(prev => ({
+            ...prev,
+            objectives: { ...prev.objectives, [objectiveId]: { ...prev.objectives[objectiveId], steps } },
+          }));
+          await saveObjectiveSteps(userId, objectiveId, steps);
+        }
+      } catch (e) { console.warn('[access] credit existing work', e?.message); }
+    }
+    return res;
+  }, [userId, applyLocal, state.objectives]);
 
   // The first goal for what the person came for (their purpose), or for
   // their profile type when they never said — with that type's purpose set
