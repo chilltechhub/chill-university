@@ -510,7 +510,20 @@ export function getQuest(id) {
   return QUESTS.find(q => q.id === id) || null;
 }
 
-export function questsInOrder(type) {
+// What someone came for (their purpose, objectives.js PURPOSES) picks the
+// first quest, ahead of the type's order: every Personal account used to get
+// the sleep quest first, including someone who came to build a homestead.
+// A build runs on a budget, so builders start with 50/30/20.
+export const AIM_FIRST_QUEST = {
+  build: 'budget-50-30-20', money: 'budget-50-30-20', career: 'budget-50-30-20',
+  learn: 'feynman', explore: 'feynman',
+  habits: 'morning-light', wellbeing: 'morning-light', areas: 'morning-light',
+  store: 'password-strength',
+};
+
+export function questsInOrder(type, aim = null) {
   const order = QUEST_ORDER[type] || QUEST_ORDER.PERSONAL;
-  return order.map(getQuest).filter(Boolean);
+  const first = AIM_FIRST_QUEST[aim];
+  const ordered = first && order.includes(first) ? [first, ...order.filter(id => id !== first)] : order;
+  return ordered.map(getQuest).filter(Boolean);
 }

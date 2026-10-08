@@ -17,10 +17,10 @@ import { questsInOrder } from '../../data/quests';
 import { useQuestProgress, QUEST_STEPS } from '../../logic/questProgress';
 import WidgetCard, { Bar } from './WidgetCard';
 
-export default function QuestWidget({ type, onOpenQuest, onOpenAll }) {
+export default function QuestWidget({ type, aim, onOpenQuest, onOpenAll }) {
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   const { byId, finished, ready } = useQuestProgress();
-  const quests = questsInOrder(type);
+  const quests = questsInOrder(type, aim);
   const doneCount = quests.filter(q => finished.has(q.id)).length;
 
   // A quest already started comes before a fresh one.

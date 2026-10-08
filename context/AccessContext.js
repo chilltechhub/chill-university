@@ -373,10 +373,21 @@ export function AccessProvider({ children }) {
     const row = Object.entries(state.objectives || {}).find(([, r]) => r.status === 'active');
     return row ? row[0] : null;
   }, [state.objectives]);
-  const goalUnlocks = useMemo(
-    () => new Set(activeGoalId ? featuresUnlockedBy(activeGoalId).map(f => f.id) : []),
-    [activeGoalId]
-  );
+  // On the map whatever the stage: what the goal in flight will open, and
+  // every tool a goal's steps send someone to — the active goal's (its
+  // "Open" button has to land somewhere) and every finished one's (nothing
+  // somebody worked for disappears). "Show Your Work" had a builder save to
+  // the Knowledge Vault, then the Vault vanished from the Library the moment
+  // the goal was done, taking the note with it (found 2026-10-08).
+  const goalUnlocks = useMemo(() => {
+    const ids = new Set(activeGoalId ? featuresUnlockedBy(activeGoalId).map(f => f.id) : []);
+    const finished = Object.values(state.objectives || {}).filter(o => o.status === 'completed').map(o => o.objective_id);
+    [activeGoalId, ...finished].filter(Boolean).forEach(id => (getObjective(id)?.steps || []).forEach(st => {
+      const tool = st.screen && featureForScreen(st.screen);
+      if (tool) ids.add(tool.id);
+    }));
+    return ids;
+  }, [activeGoalId, state.objectives]);
 
   const experience = useMemo(() => ({ opened, goalUnlocks }), [opened, goalUnlocks]);
 

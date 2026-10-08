@@ -54,7 +54,7 @@ export default function Classes() {
   // (featureCatalog's `settingKey`), next to finishing "Teach It Once" or
   // passing its check. The door knows about all three, so asking it is the
   // whole question — there's no second way round it.
-  const { isOpen, doorSettings, setDoorSetting, isSubjectVisible, signalAction } = useAccess();
+  const { isOpen, doorSettings, setDoorSetting, isSubjectVisible, signalAction, purposeKey } = useAccess();
   const educatorReady = doorSettings && 'educatorMode' in doorSettings;
   const educatorMode = doorSettings?.educatorMode ?? null;
   const setEducatorMode = useCallback((on) => setDoorSetting('educatorMode', on), [setDoorSetting]);
@@ -223,12 +223,13 @@ export default function Classes() {
 
   const recTopics = useMemo(() => pickRecommendedTopics(mergedSubjects, band, 3), [band, mergedSubjects]);
   const recGames  = useMemo(() => pickRecommendedGames(band, 2), [band]);
-  // This account type's order, with anything unfinished ahead of what's done.
+  // What they came for first, then this account type's order, with anything
+  // unfinished ahead of what's done (same as Home's Quests card).
   const questState = useQuestProgress();
   const quests = useMemo(() => {
-    const ordered = questsInOrder(activeType);
+    const ordered = questsInOrder(activeType, purposeKey);
     return [...ordered.filter(q => !questState.finished.has(q.id)), ...ordered.filter(q => questState.finished.has(q.id))];
-  }, [activeType, questState.finished]);
+  }, [activeType, purposeKey, questState.finished]);
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
