@@ -23,6 +23,26 @@ const soonestFirst = (a, b) =>
   || (new Date(a.created_at) - new Date(b.created_at))
   || ((a.sort_order || 0) - (b.sort_order || 0));
 
+const openTasks = async (projectId) => {
+  const { data, error } = await supabase
+    .from('project_tasks').select('id, title, due_date, created_at, sort_order, completed')
+    .eq('project_id', projectId).eq('completed', false);
+  if (error) console.warn('[nextAction] tasks', error.message);
+  return data || [];
+};
+
+/**
+ * The project's soonest open task, for offering as the next step (Home's
+ * "What's next" sheet). `skip` is the step being finished, so it isn't
+ * offered as its own successor.
+ * @returns {Promise<string|null>} its title
+ */
+export async function suggestNextStep(projectId, skip = null) {
+  if (!projectId) return null;
+  const open = (await openTasks(projectId)).filter(t => !sameTitle(t.title, skip));
+  return open.sort(soonestFirst)[0]?.title || null;
+}
+
 /**
  * @param {string} userId
  * @param {{ id: string, next_action?: string|null }} project
@@ -40,11 +60,7 @@ export async function advanceNextAction(userId, project, { done = false, next = 
   let upcoming = (next || '').trim() || null;
 
   if (done) {
-    const { data: tasks, error: taskError } = await supabase
-      .from('project_tasks').select('id, title, due_date, created_at, sort_order, completed')
-      .eq('project_id', project.id).eq('completed', false);
-    if (taskError) console.warn('[nextAction] tasks', taskError.message);
-    let open = tasks || [];
+    let open = await openTasks(project.id);
     const match = finished && open.find(t => sameTitle(t.title, finished));
     if (match) {
       await supabase.from('project_tasks')

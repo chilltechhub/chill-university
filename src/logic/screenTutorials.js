@@ -152,9 +152,9 @@ const SCREEN_FEATURES = {
   // plain centered card (no spotlight). Still real, structured coverage;
   // wire in TourSpots later if the exact highlight matters.
   ProjectDetail: [
-    { title: 'Workspace', body: "The default tab when you open a project — Next (your top few open tasks), Open Questions, and Recent Work, so you always know what to pick up." },
-    { title: 'Library', body: "Everything you've captured for this project — notes, ideas, questions, research, and tasks — filterable by type. Nothing here gets lost." },
-    { title: 'Activity', body: "A running history of milestones and notes for this project — useful for seeing how it actually came together over time." },
+    { title: 'Workbench', body: "The default tab when you open a project — Next on the bench (your top few open tasks), deadlines, work time and open questions, so you always know what to pick up." },
+    { title: 'Materials', body: "Everything you've captured for this project — notes, ideas, questions, research, and tasks — filterable by type. Nothing here gets lost." },
+    { title: 'Project log', body: "A running history of milestones and notes for this project — useful for seeing how it actually came together over time." },
     { title: 'Add', body: "Tap Add (top-right) or the capture prompt any time to log a thought, question, task, or research note without leaving the project." },
   ],
   ResourcesToolsScreen: [
