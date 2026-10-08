@@ -137,7 +137,12 @@ export default function UnlockNotification() {
     // explained there.
     const feature = freshFeatures[0];
     const games = freshGameIds.map(id => GAME_REGISTRY[id]?.name).filter(Boolean);
-    const heading = stageIsNews
+    // A stage whose tools are only partly new ("The Planner and Life Areas"
+    // when the Planner is open from day one) is named by the new ones.
+    const partlyOld = !!fresh && (latest?.features || []).some(id => !fresh.features.includes(id));
+    const heading = stageIsNews && partlyOld && freshFeatures.length
+      ? { title: freshFeatures.map(f => f.label).join(' and '), blurb: freshFeatures.length === 1 ? freshFeatures[0].blurb : latest?.blurb }
+      : stageIsNews
       ? { title: latest?.label || 'More of the app is open', blurb: latest?.blurb }
       : feature
         ? { title: feature.label, blurb: feature.blurb }

@@ -60,7 +60,9 @@ export function nextStageNeeds({ stage, persona, aim = null, exploring = false }
   if (stage >= MAX_STAGE) return null;
   const next = pathFor(persona)[stage];
   const base = { next: stage + 1, label: next.label, blurb: next.blurb, text: 'Finish a goal or gain a level' };
-  if (!AIM_OPENS[aim]) return base;
+  // No early return without an aim any more: CORE_OPENS opens the Planner
+  // for everyone, so a stage named "The Planner and Life Areas" can be half
+  // old news for any account.
   const before = openedAt(persona, stage, { exploring, aim });
   const after = openedAt(persona, stage + 1, { exploring, aim });
   const features = [...after.features].filter(id => !before.features.has(id));
@@ -74,6 +76,12 @@ export function nextStageNeeds({ stage, persona, aim = null, exploring = false }
     // Wayfinder on Home").
     || (!next.features?.length && !next.games?.length && !next.caps?.length
       && (next.widgets || []).slice(0, 1).some(k => widgets.includes(k)));
+  // News, but partly not: name only the stage's tools that are new.
+  const stale = (next.features || []).some(id => before.features.has(id));
+  if (isNews && stale && features.length) {
+    const fresh = features.map(getFeature).filter(Boolean);
+    if (fresh.length) return { ...base, label: fresh.map(f => f.label).join(' and '), blurb: fresh.length === 1 ? fresh[0].blurb : base.blurb };
+  }
   if (isNews) return base;
   const feature = features.map(getFeature).find(Boolean);
   if (feature) return { ...base, label: feature.label, blurb: feature.blurb };

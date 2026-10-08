@@ -4,12 +4,12 @@
 // `topics` array — this renders it consistently, in both light and dark.
 import React, { useEffect, useState } from 'react';
 import { ScrollView, View, Text, TouchableOpacity, Linking } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { fetchContentPool } from '../api/remoteConfigService';
 import TopicLessonPanel from './TopicLessonPanel';
 import { gamesForTopic, openGame } from '../data/skillLinks';
-import { CLASS_SUBJECTS, CLASS_SCREEN_MAP } from '../data/classCatalog';
+import { CLASS_SUBJECTS, CLASS_SCREEN_MAP, SUBJECT_KEY_FOR_CLASS } from '../data/classCatalog';
 import { catalogCounts } from '../data/topicCatalog';
 import { Ionicons } from '@expo/vector-icons';
 import { useBandFraming, bandLabel } from '../logic/useGradeLevel';
@@ -35,6 +35,10 @@ export default function ClassTopicScreen({ title, classKey, fallbackTopics, head
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   const { adult } = useBandFraming();
   const navigation = useNavigation();
+  const route = useRoute();
+  // "Pick up where you left off" (Classes) opens straight onto this lesson.
+  const openTopic = route.params?.openTopic || null;
+  const subjectKey = SUBJECT_KEY_FOR_CLASS[subjectForScreen(classKey)?.title] || 'general';
   const [openSections, setOpenSections] = useState({});
   const [topics, setTopics] = useState(fallbackTopics);
   const toggleHelp = (key) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
@@ -187,7 +191,8 @@ export default function ClassTopicScreen({ title, classKey, fallbackTopics, head
               </View>
             )}
 
-            <TopicLessonPanel topic={topic} color={topic.color} c={c} t={t} s={s} r={r} />
+            <TopicLessonPanel topic={topic} color={topic.color} classKey={classKey} subjectKey={subjectKey}
+              initiallyOpen={openTopic === topic.key} c={c} t={t} s={s} r={r} />
 
             {/* The lessons -> games half of the Training/Academy link:
                 every Training Center game that practises THIS topic (see

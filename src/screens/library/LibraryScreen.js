@@ -19,6 +19,8 @@ import { useUIPrefs } from '../../../context/UIPrefsContext';
 import { useUserProgress } from '../../../context/UserProgressContext';
 import { useTour } from '../../../context/TourContext';
 import { supabase } from '../../api/profileScopedClient';
+import { getDueItems } from '../../api/deadlinesService';
+import { openTarget } from '../../logic/openTarget';
 import { cacheRead, cacheWrite, isOnline } from '../../api/offlineCache';
 import { getProjects, getDomainContent, getCaptureCount, completeTask } from '../../api/captureService';
 import { CAPTURE_TYPES } from '../CaptureInbox';
@@ -502,7 +504,7 @@ export default function LibraryScreen() {
       if (!(await isOnline())) return; // cached hub is as current as we can get right now
 
       const today = todayStr();
-      const [areasRes, trophyRes, agendaRes, profileRes, activeProjRes, careerNoteRes, vaultTotal, recentCapRes, ideasRes] = await Promise.all([
+      const [areasRes, trophyRes, agendaRes, profileRes, activeProjRes, careerNoteRes, vaultTotal, recentCapRes, ideasRes, dueRes] = await Promise.all([
         supabase.from('life_areas').select('*').eq('user_id', uid).order('sort_order'),
         // No .limit() any more — this now feeds the Build tab's Portfolio
         // Archives count instead of a Trophy Hall carousel, so the real
@@ -517,6 +519,9 @@ export default function LibraryScreen() {
         getCaptureCount(uid),
         supabase.from('captures').select('id, title, type, created_at').eq('user_id', uid).is('deleted_at', null).order('created_at', { ascending: false }).limit(5),
         supabase.from('garden_cores').select('id, title, plant_type, color').eq('user_id', uid).is('deleted_at', null).order('created_at', { ascending: false }).limit(4),
+        // Deadlines due today or late (project tasks, tasks, finish dates):
+        // "Today" said "your planner's clear" over a task due that day.
+        getDueItems(uid, '2000-01-01', today).catch(() => []),
       ]);
       if (areasRes.data) setLifeAreas(areasRes.data);
       if (trophyRes.data) setTrophies(trophyRes.data);
@@ -527,9 +532,15 @@ export default function LibraryScreen() {
 
       // Today's still-open agenda items, earliest first — timed ones ahead
       // of anytime ones, same ordering Home's activity list uses.
-      const agendaRows = (agendaRes.data || [])
-        .slice()
-        .sort((a, b) => (a.start_time || '99:99').localeCompare(b.start_time || '99:99'));
+      const agendaRows = [
+        ...(agendaRes.data || [])
+          .slice()
+          .sort((a, b) => (a.start_time || '99:99').localeCompare(b.start_time || '99:99')),
+        // After the planned items: late ones first, then today's.
+        ...(dueRes || []).filter(d => !d.completed)
+          .sort((a, b) => a.date.localeCompare(b.date))
+          .map(d => ({ id: `due-${d.key}`, title: d.kind === 'project' ? `Finish: ${d.title}` : d.title, _due: d })),
+      ];
       setTodayAgenda(agendaRows);
 
       // Career target — resolve the tagged note's career id against
@@ -945,10 +956,12 @@ export default function LibraryScreen() {
                       {todayAgenda.slice(0, 6).map((item, i, arr) => (
                         <PreviewRow
                           key={item.id}
-                          emoji={LIFE_AREA_MAP[item.area]?.emoji || '•'}
+                          emoji={item._due ? '🚩' : (LIFE_AREA_MAP[item.area]?.emoji || '•')}
                           title={item.title}
-                          meta={fmtTime(item.start_time)}
-                          onPress={() => setOpenPlan(item)}
+                          meta={item._due ? (item._due.date < todayStr() ? 'Late' : 'Due') : fmtTime(item.start_time)}
+                          onPress={() => (item._due
+                            ? (item._due.projectId ? openTarget(navigation, { kind: 'project', id: item._due.projectId }) : navigation.navigate('PlannerScreen'))
+                            : setOpenPlan(item))}
                           isLast={i === Math.min(arr.length, 6) - 1 && arr.length <= 6}
                           styles={styles}
                           c={c}
@@ -970,7 +983,17 @@ export default function LibraryScreen() {
                   )}
                 </PreviewSection>
 
-                {checkInDue.length > 0 && (
+                {/* Every area due and none ever rated: the chips would just
+                    repeat the circles above, so one line says it instead. */}
+                {checkInDue.length > 0 && checkInDue.length === visibleAreas.length && checkInDue.every(x => x.days === null) ? (
+                  <PreviewSection title="Check-in due" styles={styles}>
+                    <TouchableOpacity onPress={() => openLifeArea(checkInDue[0].area, checkInDue[0].saved, checkInDue[0].rating)} accessibilityRole="button">
+                      <Text style={styles.previewEmpty}>
+                        None of your areas are rated yet. Double-tap one above, or start with {checkInDue[0].area.label} →
+                      </Text>
+                    </TouchableOpacity>
+                  </PreviewSection>
+                ) : checkInDue.length > 0 && (
                   <PreviewSection title="Check-in due" styles={styles}>
                     <View style={styles.chipWrap}>
                       {checkInDue.map(({ area, saved, rating, days }) => (
