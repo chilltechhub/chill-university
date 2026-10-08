@@ -316,7 +316,7 @@ export const OBJECTIVES = [
       { id: 'seed',    label: 'Plant the idea in the Idea Garden', hint: 'Rough is fine. It only has to be written down.', screen: 'IdeaGardenScreen', signal: 'idea-planted', have: 'idea' },
       { id: 'project', label: 'Start a project in the Workshop',   hint: 'Give it a name you would say out loud.', screen: 'ProjectsScreen', signal: 'project-started', have: 'project' },
       { id: 'step',    label: 'Set its next physical step',        hint: 'Not "work on it" — the actual next move.', screen: 'ProjectsScreen', signal: 'project-next-set', have: 'next-step' },
-      { id: 'ship',    label: 'Mark the project done',          hint: 'Open the project and tap DONE at the top. Done beats perfect.', screen: 'ProjectsScreen', signal: 'project-shipped', have: 'shipped' },
+      { id: 'ship',    label: 'Mark a project done',            hint: 'Open the project and tap DONE at the top. Done beats perfect. A big build? Tap one of its tasks, choose "Make it its own project", and finish that piece.', screen: 'ProjectsScreen', signal: 'project-shipped', have: 'shipped' },
     ],
     unlocks: ['portfolio'],
     next: 'show-your-work',
