@@ -34,7 +34,8 @@
 //                 'planner-item-added:physical' only counts a Physical one.
 //                 `signalCount` makes it take more than once ("capture five
 //                 things"), and the step keeps a running number until then.
-//   `have`        'idea' | 'project' | 'next-step' | 'shipped': the step is
+//   `have`        'idea' | 'project' | 'next-step' | 'shipped' | 'in-portfolio'
+//                 (a shipped project or a Portfolio entry): the step is
 //                 already true if the person has one. Checked once when the
 //                 goal starts (src/api/existingWorkService.js), so a later
 //                 goal doesn't ask someone to redo what an earlier one had
@@ -668,7 +669,7 @@ export const OBJECTIVES = [
     estimate: '2 days',
     steps: [
       { id: 'ship',      label: 'Have one shipped project',     hint: 'Open the project and tap DONE at the top.', screen: 'ProjectsScreen', signal: 'project-shipped', have: 'shipped' },
-      { id: 'portfolio', label: 'Add it to your Portfolio',      hint: 'Title, one line on what it was.', screen: 'PortfolioScreen', signal: 'portfolio-added' },
+      { id: 'portfolio', label: 'See it in your Portfolio',      hint: 'A finished project shows up there by itself. Add anything else you made with Add Entry.', screen: 'PortfolioScreen', signal: 'portfolio-added', have: 'in-portfolio' },
       { id: 'write',     label: 'Write what you learned',        hint: 'Two sentences. The part that surprised you.', screen: 'KnowledgeScreen', signal: 'vault-saved' },
       { id: 'ready',     label: 'Decide it is ready to show',    hint: 'It is. Tick it.' },
     ],

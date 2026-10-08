@@ -271,6 +271,9 @@ export default function ProjectDetailScreen() {
       setProject(p => ({ ...p, status }));
       if (status === 'completed') {
         signalAction('project-shipped');
+        // It's in the Portfolio now too: finished projects are listed there
+        // by themselves, so "see it in your Portfolio" is already true.
+        signalAction('portfolio-added', { section: 'projects' });
         // A piece of a bigger build: tick its task there too. The "Part of"
         // line says so; no pop-up, since finishing also lands on the goal.
         await finishPartOf(userId, project);

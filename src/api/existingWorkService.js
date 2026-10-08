@@ -21,10 +21,16 @@ const CHECKS = {
     .not('next_action', 'is', null).neq('status', 'completed'),
   shipped:     () => supabase.from('projects').select('id', { count: 'exact', head: true }).is('deleted_at', null)
     .eq('status', 'completed'),
+  // A finished project is listed in the Portfolio on its own (portfolio.js
+  // derives it); a hand-added entry counts too.
+  'in-portfolio': async () => {
+    const shipped = await exists(CHECKS.shipped());
+    return shipped ? { count: 1 } : supabase.from('portfolio_entries').select('id', { count: 'exact', head: true });
+  },
 };
 
 /**
- * @param {string[]} kinds  any of 'idea', 'project', 'next-step', 'shipped'
+ * @param {string[]} kinds  any of 'idea', 'project', 'next-step', 'shipped', 'in-portfolio'
  * @returns {Promise<Set<string>>} the kinds this person already has
  */
 export async function alreadyHas(kinds) {
