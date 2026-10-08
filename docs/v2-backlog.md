@@ -29,7 +29,6 @@ areas up). Each item says where it was seen.
 ## Classes
 - 24 of 203 topics are ready. Math for grades 9-12 is one topic page, and a
   lesson is about two paragraphs plus two practice questions.
-- Practising in a class (right answers) earns no subject XP; only games do.
 
 ## Small things
 - "Next unlock" can name games the person already has.

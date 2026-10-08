@@ -1034,6 +1034,13 @@ function WeeklyView({ userId, anchor, activeAreas, onDayPress, refreshKey, showi
   const [byDate,  setByDate]  = useState({});
   const [dueByDate, setDueByDate] = useState({});
   const [loading, setLoading] = useState(true);
+  // 'grid': the week side by side, seven columns. 'list': the day rows it
+  // used to be, kept for long days. Remembered per device.
+  const [layout, setLayout] = useState('grid');
+  useEffect(() => {
+    AsyncStorage.getItem(WEEK_LAYOUT_KEY).then(v => { if (v === 'list' || v === 'grid') setLayout(v); }).catch(() => {});
+  }, []);
+  const pickLayout = (v) => { setLayout(v); AsyncStorage.setItem(WEEK_LAYOUT_KEY, v).catch(() => {}); };
   const weekDays = getWeekDays(anchor);
   const today    = toISO(new Date());
 
@@ -1062,8 +1069,82 @@ function WeeklyView({ userId, anchor, activeAreas, onDayPress, refreshKey, showi
 
   if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color={c.teal} />;
 
+  const allItems = weekDays.flatMap(d => byDate[toISO(d)] || []);
+  const allDue = weekDays.flatMap(d => dueByDate[toISO(d)] || []);
+  const weekDone = allItems.filter(i => i.completed).length + allDue.filter(d => d.completed).length;
+  const weekTotal = allItems.filter(i => !i.skipped).length + allDue.filter(d => d.kind !== 'project').length;
+
+  const Toggle = (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: s.md }}>
+      <Text style={{ flex: 1, fontSize: t.xs, color: c.text3 }}>
+        {weekTotal ? `${weekDone} of ${weekTotal} done this week` : 'Nothing planned this week yet'}{allDue.length ? ` · ${allDue.filter(d => !d.completed).length} due` : ''}
+      </Text>
+      {[['grid', 'grid-outline', 'Week grid'], ['list', 'list-outline', 'Day list']].map(([key, icon, label]) => (
+        <TouchableOpacity key={key} onPress={() => pickLayout(key)} accessibilityRole="button"
+          accessibilityLabel={label} accessibilityState={{ selected: layout === key }}
+          style={{ padding: 6, borderRadius: 8, borderWidth: 1, borderColor: layout === key ? c.teal : c.border, backgroundColor: layout === key ? c.teal + '18' : 'transparent' }}>
+          <Ionicons name={icon} size={15} color={layout === key ? c.teal : c.text3} />
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  if (layout === 'grid') return (
+    <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.md, paddingBottom: 80 }}>
+      {Toggle}
+      <View style={{ flexDirection: 'row', gap: 3 }}>
+        {weekDays.map((day, i) => {
+          const iso = toISO(day);
+          const items = (byDate[iso] || []).filter(x => !x.skipped);
+          const dueHere = dueByDate[iso] || [];
+          const isToday = iso === today;
+          const missed = items.some(x => isOverdue(x));
+          const blocks = [
+            ...dueHere.map(d => ({ key: d.key, due: d, title: d.kind === 'project' ? `Finish: ${d.title}` : d.title, done: d.completed })),
+            ...items.map(x => ({ key: x.id, inst: x, title: x.title, done: x.completed })),
+          ];
+          const shown = blocks.slice(0, WEEK_GRID_MAX);
+          return (
+            <TouchableOpacity key={iso} onPress={() => onDayPress(day)} activeOpacity={0.75}
+              accessibilityRole="button"
+              accessibilityLabel={`${day.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}: ${items.length} planned${dueHere.length ? `, ${dueHere.length} due` : ''}. Open the day`}
+              style={{ flex: 1, minWidth: 0, minHeight: 280, backgroundColor: isToday ? c.teal + '10' : c.bg1, borderRadius: 8, borderWidth: isToday ? 1.5 : 0.5, borderColor: isToday ? c.teal : missed ? c.error : c.border, paddingBottom: 4, overflow: 'hidden' }}>
+              <View style={{ alignItems: 'center', paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: isToday ? c.teal : c.text3 }}>
+                  {day.toLocaleDateString('en-US', { weekday: 'short' })}
+                </Text>
+                <View style={{ marginTop: 2, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: isToday ? c.teal : 'transparent' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '800', color: isToday ? c.onFill : c.text1 }}>{day.getDate()}</Text>
+                </View>
+              </View>
+              {shown.map(b => {
+                const color = b.due ? c.gold : (AREAS[b.inst.area]?.color || c.teal);
+                const time = b.inst?.start_time ? shortTime(b.inst.start_time) : null;
+                return (
+                  <View key={b.key} style={{ marginTop: 3, marginHorizontal: 2, borderRadius: 4, borderLeftWidth: 2, borderLeftColor: color, backgroundColor: color + (b.done ? '12' : '26'), paddingHorizontal: 3, paddingVertical: 2, opacity: b.done ? 0.6 : 1 }}>
+                    {b.due ? (
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: c.gold }}>{b.due.kind === 'project' ? 'FINISH' : 'DUE'}</Text>
+                    ) : time ? (
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: c.text2 }}>{time}</Text>
+                    ) : null}
+                    <Text numberOfLines={3} style={{ fontSize: 11, lineHeight: 13, color: b.done ? c.text3 : c.text1, textDecorationLine: b.done ? 'line-through' : 'none' }}>{b.title}</Text>
+                  </View>
+                );
+              })}
+              {blocks.length > shown.length && (
+                <Text style={{ fontSize: 11, fontWeight: '700', color: c.text3, textAlign: 'center', marginTop: 4 }}>+{blocks.length - shown.length}</Text>
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+      <Text style={{ fontSize: 11, color: c.text3, textAlign: 'center', marginTop: s.sm }}>Tap a day to open it.</Text>
+    </ScrollView>
+  );
+
   return (
     <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 80 }}>
+      {Toggle}
       {weekDays.map((day, i) => {
         const iso     = toISO(day);
         const items   = byDate[iso] || [];
@@ -1083,7 +1164,7 @@ function WeeklyView({ userId, anchor, activeAreas, onDayPress, refreshKey, showi
                   {day.toLocaleDateString('en-US', { weekday: 'long' })}
                 </Text>
                 <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 1 }}>
-                  {items.length} {items.length === 1 ? 'item' : 'items'} · {done} done{missed > 0 ? ` · ${missed} missed` : ''}{dueHere.length ? ` · ${dueHere.length} due` : ''}
+                  {items.length} {items.length === 1 ? 'item' : 'items'} · {done} done{missed > 0 ? ` · ${missed} missed` : ''}{dueHere.some(d => !d.completed) ? ` · ${dueHere.filter(d => !d.completed).length} due` : ''}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={14} color={c.text4} />
@@ -1111,6 +1192,16 @@ function WeeklyView({ userId, anchor, activeAreas, onDayPress, refreshKey, showi
       })}
     </ScrollView>
   );
+}
+
+const WEEK_LAYOUT_KEY = '@cth_planner_week_layout';
+const WEEK_GRID_MAX = 6;
+// '14:30' -> '2:30p', '09:00' -> '9a': room for a time in a seventh of a phone.
+function shortTime(hhmm) {
+  const [h, m] = String(hhmm).split(':').map(Number);
+  if (!Number.isFinite(h)) return '';
+  const hr = h % 12 || 12;
+  return `${hr}${m ? `:${String(m).padStart(2, '0')}` : ''}${h < 12 ? 'a' : 'p'}`;
 }
 
 // ─── Monthly view ─────────────────────────────────────────────────────────────

@@ -3,6 +3,7 @@
 import { supabase } from './profileScopedClient';
 import { cacheRead, cacheWrite, isOnline, offlineWrite } from './offlineCache';
 import { todayStr } from '../logic/dateUtils';
+import { projectProgress } from '../logic/projectProgress';
 
 // ─── Cores ────────────────────────────────────────────────────────────────────
 
@@ -229,7 +230,7 @@ export async function getCoreForProject(userId, projectId) {
 export async function getLinkedProjectInfo(projectIds) {
   if (!projectIds || !projectIds.length) return {};
   const [{ data: projects }, { data: taskRows }] = await Promise.all([
-    supabase.from('projects').select('id, title, objective, status, color, emoji').in('id', projectIds).is('deleted_at', null),
+    supabase.from('projects').select('id, title, objective, status, color, emoji, next_action').in('id', projectIds).is('deleted_at', null),
     supabase.from('project_tasks').select('project_id, completed').in('project_id', projectIds),
   ]);
   const byProject = {};
@@ -241,7 +242,7 @@ export async function getLinkedProjectInfo(projectIds) {
   const out = {};
   (projects || []).forEach(p => {
     const t = byProject[p.id] || { total: 0, done: 0 };
-    out[p.id] = { ...p, tasksTotal: t.total, tasksDone: t.done, pct: t.total > 0 ? Math.round((t.done / t.total) * 100) : null };
+    out[p.id] = { ...p, tasksTotal: t.total, tasksDone: t.done, pct: projectProgress({ total: t.total, done: t.done, status: p.status, nextAction: p.next_action }).pct };
   });
   return out;
 }
