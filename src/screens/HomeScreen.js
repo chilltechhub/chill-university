@@ -1693,8 +1693,8 @@ export default function HomeScreen() {
   // Work Mode session instead of just marking done / opening the project.
   const focusOnDeskItem = (item) => {
     closeDeskSheet();
-    if (item.kind === 'project') { goToLibraryScreen('WorkModeScreen', { project: item.meta.project }); return; }
-    goToLibraryScreen('WorkModeScreen', { presetTitle: item.title });
+    if (item.kind === 'project') { navigation.navigate('WorkMode', { project: item.meta.project }); return; }
+    navigation.navigate('WorkMode', { presetTitle: item.title });
   };
 
   // Captures — send to the inbox's full destination picker (same as
@@ -1835,7 +1835,7 @@ export default function HomeScreen() {
 
   const openActivityInCalendar = (item) => { closeActivitySheet(); setShowCalendar(true); };
   const openActivityInPlanner  = (item) => { closeActivitySheet(); goToLibraryScreen('PlannerScreen'); };
-  const focusOnActivity = (item) => { closeActivitySheet(); goToLibraryScreen('WorkModeScreen', { presetTitle: item.title }); };
+  const focusOnActivity = (item) => { closeActivitySheet(); navigation.navigate('WorkMode', { presetTitle: item.title }); };
 
   // Every action list closes the sheet itself (see above), so there's
   // nothing generic left for the sheet's own dismiss button to do beyond that.

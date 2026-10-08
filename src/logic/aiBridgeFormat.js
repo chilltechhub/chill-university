@@ -366,8 +366,8 @@ export function buildPrompt({ targets, idea = '', today = new Date(), areaCatalo
 
   return [
     editing
-      ? 'I use an app called Chill Tech Hub to organize my life. Below is what is in it right now. Help me add to it, change it, or clean it up, and write the result as a change script the app can run.'
-      : 'I use an app called Chill Tech Hub to organize my life. Help me turn what I want into items the app can import.',
+      ? 'I use an app called Deskartes to organize my life. Below is what is in it right now. Help me add to it, change it, or clean it up, and write the result as a change script the app can run.'
+      : 'I use an app called Deskartes to organize my life. Help me turn what I want into items the app can import.',
     '',
     'WHAT I WANT:',
     '"""',

@@ -51,7 +51,7 @@ Also, for each item, decide:
 - match_type + match_id: if the CONTEXT block lists existing projects or ideas and this item is clearly about one of them, set match_type to "project" or "idea" and match_id to that exact id from the list. Omit both fields if there's no confident match — do not guess or invent an id.`;
 
   if (format === 'enrich') {
-    return `You improve a list of already-extracted items (each has a title and maybe a url) for a personal capture inbox called ChillTech Hub. Keeping each item's title and url exactly as given and in the same order, decide for each one:
+    return `You improve a list of already-extracted items (each has a title and maybe a url) for a personal capture inbox in an app called Deskartes. Keeping each item's title and url exactly as given and in the same order, decide for each one:
 - type: one of ${CAPTURE_TYPES.join(' | ')}
 - description: one short sentence, empty string if nothing to add
 - tags: 2-4 short lowercase topical tags
@@ -61,7 +61,7 @@ If the input starts with a CONTEXT block (the user's real life areas, projects, 
 
 Return exactly the same number of items, in the same order. Call return_items. No commentary outside the tool call.`;
   }
-  return `You extract structured items from raw pasted content (URLs, browser bookmark exports, markdown link lists, plain text with links, tab dumps) for a personal capture inbox called ChillTech Hub.
+  return `You extract structured items from raw pasted content (URLs, browser bookmark exports, markdown link lists, plain text with links, tab dumps) for a personal capture inbox in an app called Deskartes.
 
 For every distinct item you find (a link, or — if there are no links — a distinct note/idea worth capturing):
 - title: short, human-readable title
