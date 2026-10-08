@@ -25,20 +25,25 @@ export default function MiniCalendar({ value, onChange, color, colors, minIso = 
   const month = viewMonth.getMonth();
   const firstDay    = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const cells = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+  const days  = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+  // Always 6 week rows. A 5-row month made the calendar shorter, and inside a
+  // bottom sheet that moved the month arrows up or down under the finger, so
+  // the next tap landed on something else ("In 3 months", or the sheet's
+  // toggle). Same height every month keeps the arrows still.
+  const cells = [...days, ...Array(42 - days.length).fill(null)];
   const todayIso = dateStr(new Date());
   const selIso   = dateStr(value);
 
   return (
     <View style={{ backgroundColor: colors.bg, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: color + '44' }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <TouchableOpacity accessibilityLabel="Previous month" accessibilityRole="button" onPress={() => setViewMonth(new Date(year, month - 1, 1))} style={{ padding: 4 }}>
+        <TouchableOpacity accessibilityLabel="Previous month" accessibilityRole="button" onPress={() => setViewMonth(new Date(year, month - 1, 1))} style={{ padding: 10 }}>
           <Ionicons name="chevron-back" size={16} color={color} />
         </TouchableOpacity>
         <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>
           {viewMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
         </Text>
-        <TouchableOpacity accessibilityLabel="Next month" accessibilityRole="button" onPress={() => setViewMonth(new Date(year, month + 1, 1))} style={{ padding: 4 }}>
+        <TouchableOpacity accessibilityLabel="Next month" accessibilityRole="button" onPress={() => setViewMonth(new Date(year, month + 1, 1))} style={{ padding: 10 }}>
           <Ionicons name="chevron-forward" size={16} color={color} />
         </TouchableOpacity>
       </View>

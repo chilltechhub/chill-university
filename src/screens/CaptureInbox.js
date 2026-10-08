@@ -1298,8 +1298,10 @@ function CaptureCard({ item, onProcess, onPlan, onDone, selectMode, selected, on
 // for pasting a link, and the caller opens the plan step once it's saved.
 export function QuickCaptureModal({ visible, userId, onSaved, onClose, prefill, mode = 'capture', c, t, s, r }) {
   const planning = mode === 'plan';
+  // "Plan from a link" is always a link; it used to open on Note.
+  const blankType = planning ? 'link' : 'note';
   const [draft,  setDraft]  = useState('');
-  const [type,   setType]   = useState('note');
+  const [type,   setType]   = useState(blankType);
   const [tags,   setTags]   = useState('');
   const [saving, setSaving] = useState(false);
   const [url,    setUrl]    = useState(null);
@@ -1309,7 +1311,7 @@ export function QuickCaptureModal({ visible, userId, onSaved, onClose, prefill, 
   useEffect(() => {
     if (!visible || !prefill) return;
     setDraft(prev => prev || prefill.text || '');
-    if (prefill.type) setType(prev => (prev === 'note' ? prefill.type : prev));
+    if (prefill.type) setType(prev => (prev === blankType ? prefill.type : prev));
     if (prefill.url) setUrl(prev => prev || prefill.url);
   }, [visible, prefill]);
 
@@ -1342,7 +1344,7 @@ export function QuickCaptureModal({ visible, userId, onSaved, onClose, prefill, 
       if (!typePicked) setType(CAPTURE_TYPE_FOR_KIND[detectSource(u).kind] || 'link');
     } else {
       setUrl(null);
-      if (!typePicked) setType('note');
+      if (!typePicked) setType(blankType);
     }
   };
 
@@ -1350,7 +1352,7 @@ export function QuickCaptureModal({ visible, userId, onSaved, onClose, prefill, 
     try { const text = await Clipboard.getStringAsync(); if (text) handleText(text); } catch {}
   };
 
-  const reset = () => { setDraft(''); setType('note'); setTags(''); setUrl(null); setTypePicked(false); setLinkInfo(null); };
+  const reset = () => { setDraft(''); setType(blankType); setTags(''); setUrl(null); setTypePicked(false); setLinkInfo(null); };
 
   const save = async () => {
     if (!draft.trim()) return;

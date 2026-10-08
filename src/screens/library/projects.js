@@ -146,11 +146,31 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
   const [type,      setType]      = useState(initialType || '');
   const [nextStep,  setNextStep]  = useState('');
   const [saving,    setSaving]    = useState(false);
+  // Ideas in the Garden not yet linked to a build. The first goal plants an
+  // idea and then sends people here, where they used to retype it and end up
+  // with an idea and a project that never knew about each other.
+  const [ideas,     setIdeas]     = useState([]);
+  const [ideaId,    setIdeaId]    = useState(null);
   const { signalAction: signalBuild } = useAccess();
+
+  useEffect(() => {
+    if (!visible || !userId) return;
+    let live = true;
+    supabase.from('garden_cores').select('id, title, description')
+      .eq('user_id', userId).is('project_id', null).is('deleted_at', null)
+      .order('created_at', { ascending: false }).limit(5)
+      .then(({ data }) => { if (live) setIdeas(data || []); });
+    return () => { live = false; };
+  }, [visible, userId]);
 
   const applyStarter = (ex) => {
     setTitle(ex.title); setObjective(ex.objective); setNextStep(ex.next); setEmoji(ex.emoji);
     if (BUILD_TYPES.includes(ex.type)) setType(ex.type);
+    setIdeaId(null);
+  };
+
+  const applyIdea = (idea) => {
+    setTitle(idea.title || ''); setObjective(idea.description || ''); setIdeaId(idea.id);
   };
 
   // A career (or any deep link) can land here with a build type already
@@ -169,7 +189,7 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
 
   const reset = () => {
     setTitle(''); setObjective(''); setEmoji('🏗️'); setNextStep('');
-    setColor(buildColors[0]); setType(initialType || '');
+    setColor(buildColors[0]); setType(initialType || ''); setIdeaId(null);
   };
 
   const start = async () => {
@@ -190,9 +210,15 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
 
       await supabase.from('project_milestones').insert({
         user_id: userId, project_id: data.id,
-        title: '🏗️ Project started', type: 'project_created',
+        title: ideaId ? '🌱 Grown from an idea in the Garden' : '🏗️ Project started', type: 'project_created',
         date: todayStr(),
       });
+      // Same link "Make it a project" makes (gardenService.promoteCoreToProject).
+      if (ideaId) {
+        const { error: linkError } = await supabase.from('garden_cores')
+          .update({ project_id: data.id, updated_at: new Date().toISOString() }).eq('id', ideaId);
+        if (linkError) console.warn('NewBuild: link idea', linkError.message);
+      }
 
       if (data.next_action) signalBuild('project-next-set');
       onCreated(data);
@@ -222,6 +248,21 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
           </View>
 
           <ScrollView automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 20 }}>
+            {!title && !prefill && ideas.length > 0 && (
+              <>
+                <Text style={s.label}>FROM YOUR IDEAS</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    {ideas.map(idea => (
+                      <TouchableOpacity key={idea.id} onPress={() => applyIdea(idea)} style={[s.typeChip, { borderColor: color }]}
+                        accessibilityRole="button" accessibilityLabel={`Start from your idea: ${idea.title}`}>
+                        <Text style={s.typeText} numberOfLines={1}>{showEmojis ? '🌱 ' : ''}{idea.title}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              </>
+            )}
             {!title && !prefill && (
               <>
                 <Text style={s.label}>START FROM AN EXAMPLE</Text>
