@@ -678,6 +678,17 @@ export default function KnowledgeScreen() {
     navigation.setParams({ focusId: undefined });
   }, [route.params?.focusId, entries, navigation]);
 
+  // An open sheet follows the list. focusId lands on the cached copy, before
+  // the fresh load, and the sheet kept showing it: a note linked to a project
+  // opened from that project read "Nothing linked yet" (found 2026-10-08).
+  useEffect(() => {
+    setDetailItem(prev => {
+      if (!prev) return prev;
+      const fresh = entries.find((e) => e.id === prev.id);
+      return fresh && fresh !== prev ? fresh : prev;
+    });
+  }, [entries]);
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) { setUserId(user.id); load(user.id); }
