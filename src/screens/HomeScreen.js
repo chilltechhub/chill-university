@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
-import { useNavigation, useFocusEffect, useIsFocused } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useIsFocused, useRoute } from '@react-navigation/native';
 import { useTour } from '../../context/TourContext';
 import { WIDGET_INTROS } from '../data/widgetIntros';
 import { useTheme } from '../../context/ThemeContext';
@@ -34,6 +34,7 @@ import WidgetBoard from '../components/WidgetBoard';
 import LevelRing from '../components/LevelRing';
 import PlayerMatchBackground from '../components/PlayerMatchBackground';
 import GettingStartedCard from '../components/GettingStartedCard';
+import RichText from '../components/RichText';
 import { useProfiles } from '../../context/ProfileAccountsContext';
 import { getPersona, DEFAULT_PERSONA } from '../data/personas';
 import { HabitRingsWidget, LifeAreasWidget, DailyDrillsWidget } from '../components/widgets/PersonalWidgets';
@@ -1622,6 +1623,14 @@ export default function HomeScreen() {
     layoutAtEditRef.current = JSON.stringify(widgetLayout);
     setEditingWidgets(true);
   };
+  // "Make it yours" → Home cards lands here in edit mode.
+  const homeRoute = useRoute();
+  const editParam = homeRoute.params?.editWidgets;
+  useEffect(() => {
+    if (!editParam) return;
+    if (!editingWidgets) startWidgetEdit();
+    navigation.setParams({ editWidgets: undefined });
+  }, [editParam]); // eslint-disable-line react-hooks/exhaustive-deps
   const exitWidgetEdit = async () => {
     setEditingWidgets(false);
     if (layoutAtEditRef.current === JSON.stringify(widgetLayout)) return;
@@ -1991,6 +2000,11 @@ export default function HomeScreen() {
             arrives with the 'dashboard' stage, when there's more to set up. */}
         {!editingWidgets && can('dashboard') && <GettingStartedCard />}
 
+        {editingWidgets && (
+          <RichText style={{ marginHorizontal: s.lg, marginBottom: s.md, fontSize: t.sm, color: c.text2 }} boldStyle={{ color: c.text1 }}>
+            **Tap −** to hide a card. **Drag ≡** to move it. Hidden cards wait at the bottom. Tap **Done** when finished.
+          </RichText>
+        )}
         {/* ── Dashboard widgets — order/visibility from widgetLayout, drag
              handles + jiggle only live while editingWidgets. See
              WIDGET_DEFS above for what each key renders. ── */}

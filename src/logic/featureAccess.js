@@ -252,6 +252,25 @@ function evaluateGate(feature, ctx = {}) {
     };
   }
 
+  // Opened by the person's own choice ("Open it now" on the lock screen).
+  // The goal is the suggested way in, not the only one: the app guides, it
+  // doesn't box anyone in. Only for goal-locked tools; Plus and experimental
+  // doors keep their own rules above.
+  const chosen = ctx.chosen;
+  if (chosen && (chosen.has ? chosen.has(feature.id) : chosen.includes?.(feature.id))) {
+    return {
+      feature,
+      gate: feature.gate,
+      status: 'earned',
+      available: true,
+      method: 'choice',
+      headline: 'Opened by you',
+      reason: 'You opened this yourself. Its goal is still there if you want it.',
+      hidden: false,
+      routes: { objectives: [], test: null, plan: false, optIn: false, setting: null },
+    };
+  }
+
   const routeObjectives = (feature.unlockedBy || []).map(id => {
     const progress = objectiveProgress(id, objectives[id], stats);
     return {

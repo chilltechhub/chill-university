@@ -34,7 +34,7 @@ export default function UnlockSheet({ visible, featureId, onClose, onUnlocked })
   const { colors: c, typography: t, spacing: sp, radius: r } = useTheme();
   const {
     accessFor, activeObjectiveId, startObjective, setExperimental,
-    experimentalOn, isPlus, claimPlanFeature, doorSettings, setDoorSetting,
+    experimentalOn, isPlus, claimPlanFeature, doorSettings, setDoorSetting, openByChoice,
   } = useAccess();
 
   const [testOpen, setTestOpen] = useState(false);
@@ -181,11 +181,17 @@ export default function UnlockSheet({ visible, featureId, onClose, onUnlocked })
                 </View>
               )}
 
-              {/* ── Locked with no test on purpose ── */}
-              {access.status === 'locked' && !access.routes.test && (
-                <Text style={s.noTestNote}>
-                  There's no shortcut for this one — doing the thing is the qualification.
-                </Text>
+              {/* ── Or just open it: the goal guides, it doesn't gate ── */}
+              {access.status === 'locked' && (
+                <View style={s.panel}>
+                  <Text style={s.panelHead}>Or open it now</Text>
+                  <Text style={s.testBody}>The goal is the <Text style={{ fontWeight: '700' }}>suggested</Text> way in. Skip it if you already know what you want.</Text>
+                  <TouchableOpacity style={s.outlineBtn} accessibilityRole="button"
+                    onPress={async () => { await openByChoice(featureId); onUnlocked?.(featureId); openFeature(); }}>
+                    <Ionicons name="lock-open-outline" size={14} color={c.gold} />
+                    <Text style={s.outlineBtnText}>Open {feature.label} now</Text>
+                  </TouchableOpacity>
+                </View>
               )}
 
               {/* ── Experimental ── */}

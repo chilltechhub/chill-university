@@ -17,7 +17,8 @@ import { UIPrefsProvider } from './context/UIPrefsContext';
 import { ProfileAccountsProvider } from './context/ProfileAccountsContext';
 import { FabPositionProvider } from './context/FabPositionContext';
 import { RemoteConfigProvider, useFeatureFlag, useConfigValue } from './context/RemoteConfigContext';
-import { AccessProvider } from './context/AccessContext';
+import { AccessProvider, useAccess } from './context/AccessContext';
+import { featureForScreen } from './src/data/featureCatalog';
 import { PlusProvider } from './context/PlusContext';
 import { TourProvider, useTour } from './context/TourContext';
 import { CommandPaletteProvider } from './context/CommandPaletteContext';
@@ -54,6 +55,7 @@ import TopBar           from './src/components/TopBar';
 import FloatingActionButton from './src/components/FloatingActionButton';
 import CommandPalette from './src/components/CommandPalette';
 import HelpScreen       from './src/screens/HelpScreen';
+import MakeItYoursScreen from './src/screens/MakeItYoursScreen';
 import CompassScreen  from './src/screens/CompassScreen';
 import PlusScreen     from './src/screens/PlusScreen';
 import StatsScreen      from './src/screens/StatsScreen';
@@ -260,8 +262,13 @@ function AppInner() {
   // its tutorial describes ("Your rank" pointing at nothing), so those wait
   // until there's an account. See src/components/SignInPrompt.js.
   const { user: signedInUser } = useUserProgress();
+  // A locked screen shows its lock card, not the screen its tutorial
+  // describes ("Your stats" over a padlock), so it teaches once it's open.
+  const { accessFor } = useAccess();
   const maybeTeachScreen = (name) => {
     if (!signedInUser && ACCOUNT_ONLY_SCREENS.has(name)) return;
+    const feature = featureForScreen(name);
+    if (feature && !accessFor(feature.id).available) return;
     teachScreen(name);
   };
 
@@ -488,6 +495,7 @@ function AppInner() {
           <Stack.Screen name="Organization"        component={OrganizationScreen} />
           <Stack.Screen name="CohortRoster"        component={CohortRosterScreen} />
           <Stack.Screen name="Help"                component={HelpScreen} />
+          <Stack.Screen name="MakeItYours"         component={MakeItYoursScreen} options={{ title: 'Make it yours' }} />
           {/* The Compass — purpose, the one active objective, and the
               locked / experimental / Plus rosters. Reachable from Home's
               card, Settings, the Library header and every unlock sheet,

@@ -239,6 +239,19 @@ export async function setShowEverything(userId, on) {
   return { error, missingSchema: isMissingSchema(error) };
 }
 
+/**
+ * Tools the person opened by choice, skipping their goal. Kept in
+ * profiles.metadata (jsonb, otherwise unused) so it follows the account
+ * across devices and sign-ins without a migration. Merges with whatever
+ * else metadata holds.
+ */
+export async function setOpenedByChoice(userId, ids, prevMetadata = null) {
+  const metadata = { ...(prevMetadata && typeof prevMetadata === 'object' ? prevMetadata : {}), opened_by_choice: ids };
+  const { error } = await supabase.from('profiles').update({ metadata }).eq('id', userId);
+  warn('setOpenedByChoice', error);
+  return { error };
+}
+
 /** Drops the cached snapshot — used on sign-out so the next account starts clean. */
 export async function clearAccessCache(userId) {
   if (!userId) return;

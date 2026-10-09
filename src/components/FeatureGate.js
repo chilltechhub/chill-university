@@ -86,7 +86,7 @@ export function gatedScreen(featureId, Component) {
 export default function FeatureGate({ featureId, children, fallback }) {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: sp, radius: r, style: ui, accent } = useTheme();
-  const { accessFor } = useAccess();
+  const { accessFor, openByChoice } = useAccess();
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const access = accessFor(featureId);
@@ -115,6 +115,14 @@ export default function FeatureGate({ featureId, children, fallback }) {
         <Text style={s.hint}>{unlockHint(access)}</Text>
 
         <Button label="How to open this" onPress={() => setSheetOpen(true)} />
+        {/* Guide, don't box in: the goal is the suggested way, and this is
+            the other one. Goal-locked tools only (not Plus, not Labs). */}
+        {access.status === 'locked' && (
+          <>
+            <Button label="Open it now" variant="secondary" onPress={() => openByChoice(featureId)} style={{ marginTop: sp.sm }} />
+            <Text style={s.choiceNote}>Skip the goal. You can still do it later.</Text>
+          </>
+        )}
         <Button label="Back" variant="ghost" onPress={() => navigation.goBack()} style={{ marginTop: sp.xs }} />
       </Card>
 
@@ -134,4 +142,5 @@ const makeStyles = (c, t, sp, r, ui) => StyleSheet.create({
   title:    { fontSize: t.lg, fontFamily: ui.titleFont, fontWeight: '800', color: c.text1, marginBottom: sp.sm, textAlign: 'center' },
   blurb:    { fontSize: t.sm, color: c.text2, lineHeight: 20, textAlign: 'center', marginBottom: sp.sm },
   hint:     { fontSize: t.sm, color: c.text1, fontWeight: t.semibold, lineHeight: 20, textAlign: 'center', marginBottom: sp.lg },
+  choiceNote: { fontSize: t.xs, color: c.text3, textAlign: 'center', marginTop: 4 },
 });

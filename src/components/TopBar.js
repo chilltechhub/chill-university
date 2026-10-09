@@ -35,6 +35,7 @@ function CrestMenu({ visible, onClose, onSelect, signedIn, c, t, s }) {
       : { key: 'signin',  label: 'Sign in', icon: 'log-in-outline',        colorKey: 'teal' },
     { key: 'help',     label: 'Help',           icon: 'help-circle-outline',   colorKey: 'purple' },
     { key: 'tutorial', label: 'Screen Tutorial', icon: 'school-outline',       colorKey: 'teal' },
+    { key: 'yours',    label: 'Make it yours',  icon: 'options-outline',       colorKey: 'gold' },
     { key: 'settings', label: 'Settings',       icon: 'settings-outline',      colorKey: 'text3' },
     // The phone-side entry to the command palette — Cmd/Ctrl+K only exists
     // where there's a keyboard, so search needs a visible control too.
@@ -81,6 +82,7 @@ export default function TopBar({ currentScreen }) {
       case 'signin':   setShowLogin(true); break;
       case 'help':     navigation.navigate('Help', { fromScreen: currentScreen }); break;
       case 'tutorial': startScreenTour(currentScreen); break;
+      case 'yours':    navigation.navigate('MakeItYours'); break;
       case 'settings': navigation.navigate('Settings'); break;
       case 'search':   openPalette(); break;
     }
