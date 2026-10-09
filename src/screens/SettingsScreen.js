@@ -77,7 +77,7 @@ function UnlockSummary({ accessFor, c, t, s, r, onPress }) {
           <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>
             {open === gated.length
               ? 'Everything is open.'
-              : 'The Compass lists what each one needs: a goal, a quick check, or a switch.'}
+              : 'The Compass lists what opens each one: a goal, a short quiz, or a switch.'}
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={16} color={c.text4} />
@@ -1135,9 +1135,11 @@ export default function SettingsScreen() {
           c={c} t={t} s={s} r={r} />
 
         {/* AI Import — bring-your-own Anthropic key. A developer tool, so it
-            isn't offered to under-18 accounts (or guests, whose age is unknown). */}
+            isn't offered to under-18 accounts (or guests, whose age is unknown).
+            Labelled optional: Import Hub's "Use my own key" lands here, but
+            nobody else needs it. */}
         {isAdultProfile(liveProfile) && (<>
-        <SectionLabel label="AI Import" c={c} t={t} s={s} />
+        <SectionLabel label="AI Import (optional, advanced)" c={c} t={t} s={s} />
         <AIKeyCard c={c} t={t} s={s} r={r} />
         </>)}
 

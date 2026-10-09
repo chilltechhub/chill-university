@@ -18,7 +18,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
 import { FONTS } from '../../theme';
 import { formatTime } from '../../api/areaActionsService';
-import { INK, tierLabel, tierColor } from './actionUi';
+import { textOn } from '../../logic/contrast';
+import { tierLabel, tierColor } from './actionUi';
 
 const TIER_ORDER = { step: 0, quick: 1, learn: 2, habit: 3 };
 const ADD_TIERS = ['habit', 'quick', 'step'];
@@ -60,7 +61,7 @@ function Row({ action, aa, color, c, t, r, onError }) {
                   <Text style={{ fontSize: t.sm, color: c.text2 }}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={saveTitle} style={{ flex: 2, minHeight: 40, borderRadius: r.md, backgroundColor: color, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: INK }}>Save wording</Text>
+                  <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: textOn(color) }}>Save wording</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -162,7 +163,7 @@ export default function ActionEditSheet({ visible, onClose, aa, color, title }) 
             </View>
             <TouchableOpacity onPress={onClose} accessibilityRole="button" accessibilityLabel="Done editing"
               style={{ minHeight: 40, paddingHorizontal: 16, borderRadius: r.md, backgroundColor: color, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: INK }}>Done</Text>
+              <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: textOn(color) }}>Done</Text>
             </TouchableOpacity>
           </View>
 
@@ -196,7 +197,7 @@ export default function ActionEditSheet({ visible, onClose, aa, color, title }) 
               </View>
               <TouchableOpacity onPress={add} disabled={!newTitle.trim()} accessibilityRole="button" accessibilityLabel="Add your action"
                 style={{ minHeight: 44, borderRadius: r.md, backgroundColor: color, alignItems: 'center', justifyContent: 'center', opacity: newTitle.trim() ? 1 : 0.45 }}>
-                <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: INK }}>Add it</Text>
+                <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: textOn(color) }}>Add it</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>

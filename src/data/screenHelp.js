@@ -70,7 +70,7 @@ export const SCREEN_HELP = {
     body: 'Where loose ideas get planted as seeds and grow over time as you add to them.',
   },
   DiscoverScreen: {
-    title: 'Discover',
+    title: 'Community',
     body: 'Find mentors, fellow scholars, and interesting people and breakthroughs worth knowing about.',
   },
   WayfinderScreen: {

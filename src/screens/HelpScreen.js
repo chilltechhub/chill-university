@@ -12,70 +12,73 @@ import { useTour } from '../../context/TourContext';
 import { SCREEN_HELP } from '../data/screenHelp';
 import { useAccess } from '../../context/AccessContext';
 import { SUPPORT_EMAIL } from '../config/legal';
+import RichText from '../components/RichText';
 
 // ─── Per-screen "what is this?" copy ──────────────────────────────────────────
 // Keyed by the route name as React Navigation reports it (getCurrentRoute().name).
 // Screens not listed here just skip the "About this screen" card.
 
 // ─── General FAQ ───────────────────────────────────────────────────────────────
+// Short answers, the key words in **bold** (RichText renders them). The
+// names match the screens: Vault, Workshop, the picture menu (top left).
 const FAQ = [
   {
-    q: 'How do points and rank work?',
-    a: 'You earn points by completing daily missions, planner items, and training games. Your total points determine your rank, shown by the crest in the top bar and on your Profile.',
+    q: 'How do points and levels work?',
+    a: 'You earn points for **daily drills**, **planner items**, **project steps** and **games**. Points raise your **level**, shown at the top of every screen.',
   },
   {
-    q: 'What’s the difference between the Capture Inbox and Notes?',
-    a: 'Capture Inbox is a temporary landing zone — jot anything down fast, then decide later where it really belongs (a project, your notes, the planner, a life area, etc.). Notes is the permanent home for quick written thoughts once you’ve decided that’s where something lives.',
+    q: 'Inbox or Vault: where does something go?',
+    a: '**Inbox** = jot it now, sort it later. **Vault** = things you keep: notes, links and tools. From the Inbox, tap an item to send it to the Vault, the Planner or a project.',
   },
   {
     q: 'How do reminders work?',
-    a: 'Two kinds: Calendar/Planner reminders, which you add yourself with a specific time (15 min, 30 min, 1 hour ahead, etc.); and Daily Reminders (Settings → Notifications), which nudge you in the evening if today\'s tasks are still open or your streak is at risk — no setup needed beyond flipping it on.',
+    a: 'Give a Planner item a **time** and turn on **Reminder**. Or tap the **bell** → **New reminder**. **Daily Reminders** (Settings → Notifications) nudge you if your streak is at risk.',
   },
   {
-    q: 'How does linking a parent/child account work?',
-    a: 'Open Family (Settings → Family) on the child\'s account and generate an invite code — it\'s valid for 15 minutes. Enter that code in Family on the parent\'s account to link. It\'s read-only: a linked parent sees level, XP, points, and streak, and can\'t change anything on the child\'s account. Either side can unlink at any time.',
+    q: 'How does linking a parent and child account work?',
+    a: 'On the child\'s account: **Settings → Family → make a code** (valid 15 minutes). Enter it on the parent\'s account. **Read-only**: the parent sees level, points and streak, nothing else. Either side can unlink.',
   },
   {
     q: 'What happens when I delete something?',
-    a: 'Most deletable items (projects, notes, ideas, research) go to Recently Deleted first, inside the Capture Inbox screen, and are kept for a set number of days before being permanently removed — so accidental deletes are recoverable.',
+    a: 'It goes to **Recently Deleted** (Inbox → Deleted) for a few days, so you can **undo** it.',
   },
   {
-    q: 'How do I start a new project?',
-    a: 'Open the Workshop (Library → Projects) and tap the + button, or use the floating + button anywhere and choose "New Project."',
+    q: 'How do I start a project?',
+    a: 'Tap **+** → **New Project**. Or **Library → Build → The Workshop → New Project**.',
   },
   {
     q: 'Can I use Deskartes offline?',
-    a: 'Some data is cached locally, but most features (planner, projects, notes) need a connection to sync with your account.',
+    a: 'You can see what was last loaded, and new notes wait to sync. Most things need a connection.',
   },
   {
-    q: 'How do I switch between light and dark mode?',
-    a: 'Go to Settings and toggle the theme, or leave it set to follow your device’s system setting.',
+    q: 'How do I switch light and dark mode?',
+    a: '**Settings → Appearance → Mode**.',
   },
   {
     q: 'Where do I manage my account or sign out?',
-    a: 'Tap your crest/avatar (top-left, or the floating profile button) to open your Profile, or go to Settings for account-level options.',
+    a: 'Tap **your picture** (top left) → **Settings**. Sign Out is near the bottom.',
   },
   {
     q: 'What’s free, and what’s in Plus?',
     plusOnly: true,
-    a: 'The learning, games, classes, planner, capture, projects and Fill with AI are all free, and stay free. Deskartes Plus is an optional subscription that adds the business and startup courses (the first lesson of each level is free), Deep Insights, AI Import, Custom Objectives and Organizations. The Plus screen shows the current price before you buy.',
+    a: '**Free, and staying free**: learning, games, classes, the Planner, capture, projects and Fill with AI. **Plus** (optional subscription) adds the business and startup courses (the first lesson of each level is free), Deep Insights, AI Import, Custom Objectives and Organizations. The Plus screen shows the price before you buy.',
   },
   {
     q: 'How do I cancel or restore Plus?',
     plusOnly: true,
-    a: 'Cancel in your App Store or Google Play subscriptions at least 24 hours before the period ends, and you won’t be charged again; you keep Plus until then. Deleting the app or your account does not cancel a store subscription. On a new phone, open the Plus screen and tap Restore purchases.',
+    a: 'Cancel in your **App Store or Google Play** subscriptions at least **24 hours** before the period ends; you keep Plus until then. Deleting the app or your account does **not** cancel a store subscription. New phone: open Plus and tap **Restore purchases**.',
   },
   {
-    q: 'Why can’t I see some courses or tools?',
-    a: 'Two reasons. Some tools open as you use the app: the Compass lists what each one needs. And some courses and community features are limited by age, so younger accounts see a smaller, safer set.',
+    q: 'Why can’t I see some tools?',
+    a: 'Some open **as you use the app**: the **Compass** lists what opens each one. Some courses and community features are limited by **age**.',
   },
   {
     q: 'How do I delete my account or get a copy of my data?',
-    a: 'Settings → Export My Data gives you a copy of everything the account stores. Settings → Danger Zone → Delete Account removes the account and everything in it for good; you type DELETE to confirm. A parent or guardian can also email ' + SUPPORT_EMAIL + ' to have a child’s account deleted.',
+    a: '**Settings → Export My Data** for a copy. **Settings → Delete Account** removes everything for good (you type DELETE to confirm). A parent can also email ' + SUPPORT_EMAIL + ' to delete a child’s account.',
   },
   {
-    q: 'I’m stuck or found a bug — what do I do?',
-    a: 'Email ' + SUPPORT_EMAIL + ' (Settings → Contact support opens it for you) and say what you were doing when it happened. In the meantime, most screens have their own explanation: tap Help from the floating button while on that screen.',
+    q: 'I’m stuck or found a bug. What do I do?',
+    a: 'Email **' + SUPPORT_EMAIL + '** (Settings → Contact support) and say what you were doing. For help on any screen: tap **your picture** → **Screen Tutorial**.',
   },
 ];
 
@@ -181,9 +184,7 @@ export default function HelpScreen() {
                 <ChevronRow open={open} />
               </TouchableOpacity>
               {open && (
-                <Text style={{ fontSize: t.sm, color: c.text3, lineHeight: 20, paddingHorizontal: s.md, paddingBottom: s.md }}>
-                  {item.a}
-                </Text>
+                <RichText style={{ fontSize: t.sm, color: c.text3, lineHeight: 20, paddingHorizontal: s.md, paddingBottom: s.md }} boldStyle={{ color: c.text1 }}>{item.a}</RichText>
               )}
             </View>
           );

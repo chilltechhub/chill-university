@@ -28,7 +28,7 @@ import useCalmMoment from '../logic/useCalmMoment';
 import { summarizeProgress } from './LevelUpNotification';
 
 const VIA_COPY = {
-  test:      'You passed the quick check — no goal needed.',
+  test:      'You passed the quiz. No goal needed.',
   objective: 'Earned by finishing your goal.',
   plan:      'Included with your plan.',
 };

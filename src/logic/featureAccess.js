@@ -397,7 +397,8 @@ export function unlockHint(access) {
   const named = inFlight
     ? `${inFlight.done}/${inFlight.total} of ${inFlight.label}`
     : objectives.length === 1
-      ? finishLabel(objectives[0].label)
+      // Says it's a goal: "Finish Draw the Map" read like a game level.
+      ? (/^finish\b/i.test(objectives[0].label) ? objectives[0].label : `Complete the goal “${objectives[0].label}”`)
       : objectives.length > 1
         ? 'Finish a goal'
         : null;
@@ -405,8 +406,9 @@ export function unlockHint(access) {
   const setting = access.routes.setting;
   if (!named && !test && setting) return `Switch on ${setting.label} in Settings`;
 
-  if (test?.available) return named ? `${named} — or pass a quick check` : 'Pass a quick check';
-  if (test?.closed)    return named ? `${named} — the quick check is used up` : 'The quick check is used up';
+  // "Quick check" meant nothing on its own; say what it is.
+  if (test?.available) return named ? `${named}, or take a short quiz to open it now` : 'Take a short quiz to open it';
+  if (test?.closed)    return named ? `${named} (quiz already used)` : 'Quiz already used';
 
   return named || 'Locked';
 }

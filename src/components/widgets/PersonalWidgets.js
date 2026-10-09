@@ -19,20 +19,19 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
 import useDrillPlan from '../../logic/useDrillPlan';
-import { getUserSubscriptions, getCustomItemAreas, getCompletionRate, AREAS } from '../../api/plannerService';
+import { AREAS } from '../../api/plannerService';
+import { supabase } from '../../api/profileScopedClient';
+import { todayStr, addDays } from '../../logic/dateUtils';
 import WidgetCard, { StatRow, Bar } from './WidgetCard';
 
 // ─── Habit Rings ─────────────────────────────────────────────────────────────
-// Seven-day completion rate per life area, over the daily planner components
-// the user is subscribed to *and* any daily item they added themselves with
-// the Planner's "+ Add" (those live only in agenda_instances, so reading
-// subscriptions alone left this empty for exactly the users the empty
-// state's "Open Planner" was sending to the Planner). getCompletionRate returns null for an
-// area with no scheduled instances in the window, which is the difference
-// between "0% done" and "nothing was scheduled" — those are not the same
-// thing and the widget must not conflate them. Today only counts once it's
-// ticked, so a brand-new habit reads "starts today", not "0%".
-
+// The last seven days of every daily habit, templates and ones added by
+// hand alike (both are agenda_instances rows). A habit with no counted day
+// yet (added today, not ticked) reads "starts today", not "0 of 0".
+// One row per habit, by its own name: "Walk 20 minutes a day · 3 of 5
+// days". It used to be one row per life area ("Physical 0%"), which said
+// neither which habit nor how many days. Daily habits only; today counts once
+// it's ticked, so an untouched today never drags the number down.
 export function HabitRingsWidget({ userId, onOpenPlanner }) {
   const { colors: c, typography: t, spacing: s } = useTheme();
   const [rows, setRows] = useState(null);
@@ -42,21 +41,23 @@ export function HabitRingsWidget({ userId, onOpenPlanner }) {
     (async () => {
       if (!userId) { setRows([]); return; }
       try {
-        const [subs, customAreas] = await Promise.all([
-          getUserSubscriptions(userId),
-          getCustomItemAreas(userId, 'daily', 7),
-        ]);
-        const dailyAreas = [...new Set([
-          ...subs.filter(x => x.cadence === 'daily').map(x => x.area),
-          ...customAreas,
-        ])];
-        const rates = await Promise.all(
-          dailyAreas.map(async area => ({ area, pct: await getCompletionRate(userId, area, 'daily', 7) })),
-        );
-        // A null rate is a habit with nothing to count yet (added today,
-        // not ticked yet). It's still a habit, so it stays, as "starts
-        // today", rather than the card claiming nothing is scheduled.
-        if (alive) setRows(rates);
+        const today = todayStr();
+        const { data, error } = await supabase.from('agenda_instances')
+          .select('title, area, date, completed, skipped')
+          .eq('user_id', userId).eq('cadence', 'daily')
+          .gte('date', addDays(today, -6)).lte('date', today)
+          .limit(400);
+        if (error) throw error;
+        const byHabit = new Map();
+        (data || []).forEach((r) => {
+          const key = (r.title || '').trim().toLowerCase();
+          if (!byHabit.has(key)) byHabit.set(key, { title: r.title, area: r.area, done: 0, days: 0 });
+          const h = byHabit.get(key);
+          if (r.skipped) return;
+          if (r.date < today || r.completed) h.days += 1;
+          if (r.completed) h.done += 1;
+        });
+        if (alive) setRows([...byHabit.values()].slice(0, 6));
       } catch (e) {
         console.warn('habitRings', e?.message);
         if (alive) setRows([]);
@@ -75,17 +76,17 @@ export function HabitRingsWidget({ userId, onOpenPlanner }) {
         cta: 'Open Planner', onPress: onOpenPlanner,
       } : null}
     >
-      {rows?.map(({ area, pct }) => {
-        const def = AREAS[area] || { label: area, color: c.teal, emoji: '•' };
+      {rows?.map(({ title, area, done, days }) => {
+        const def = AREAS[area] || { color: c.teal, emoji: '•' };
         return (
-          <View key={area} style={{ marginBottom: s.sm }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: t.sm, color: c.text2 }}>{def.emoji} {def.label}</Text>
-              {pct === null
+          <View key={title} style={{ marginBottom: s.sm }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
+              <Text style={{ fontSize: t.sm, color: c.text2, flex: 1 }} numberOfLines={1}>{def.emoji} {title}</Text>
+              {days === 0
                 ? <Text style={{ fontSize: t.xs, color: c.text3 }}>starts today</Text>
-                : <Text style={{ fontSize: t.sm, color: def.color, fontWeight: t.bold }}>{pct}%</Text>}
+                : <Text style={{ fontSize: t.sm, color: def.color, fontWeight: t.bold }}>{done} of {days} {days === 1 ? 'day' : 'days'}</Text>}
             </View>
-            <Bar pct={pct || 0} color={def.color} />
+            <Bar pct={days ? Math.round((done / days) * 100) : 0} color={def.color} />
           </View>
         );
       })}
