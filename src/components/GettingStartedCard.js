@@ -31,7 +31,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { Button } from './ui';
 import { useTour } from '../../context/TourContext';
@@ -71,6 +71,7 @@ export default function GettingStartedCard() {
   const [draft, setDraft] = useState({});
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
+  const navigation = useNavigation();
 
   const load = useCallback(async () => {
     try {
@@ -229,6 +230,13 @@ export default function GettingStartedCard() {
           }}>
           <Ionicons name="compass-outline" size={16} color={c.text3} />
           <Text style={{ fontSize: t.sm, color: c.text3, fontWeight: t.semibold }}>Show me around again</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('MakeItYours')}
+          accessibilityRole="button"
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 6 }}>
+          <Ionicons name="options-outline" size={16} color={c.text3} />
+          <Text style={{ fontSize: t.sm, color: c.text3, fontWeight: t.semibold }}>Make it yours</Text>
         </TouchableOpacity>
         </View>}
       </View>

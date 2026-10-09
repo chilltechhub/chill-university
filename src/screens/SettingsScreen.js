@@ -8,7 +8,7 @@ import {
   KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useUIPrefs } from '../../context/UIPrefsContext';
 import { supabase } from '../api/supabaseClient';
@@ -611,6 +611,7 @@ function AIKeyCard({ c, t, s, r }) {
 
 export default function SettingsScreen() {
   const navigation  = useNavigation();
+  const route       = useRoute();
   const { colors: c, typography: t, spacing: s, radius: r, style: ui } = useTheme();
 
   const [profile,   setProfile]   = useState(null);
@@ -660,6 +661,13 @@ export default function SettingsScreen() {
     const y = sectionY.current[key];
     if (y != null) scrollRef.current?.scrollTo({ y: Math.max(0, y - 8), animated: true });
   };
+  // "Make it yours" links straight to a section: { section: 'personalization' }.
+  const sectionParam = route?.params?.section;
+  useEffect(() => {
+    if (!sectionParam) return undefined;
+    const timer = setTimeout(() => { jumpTo(sectionParam); navigation.setParams({ section: undefined }); }, 600);
+    return () => clearTimeout(timer);
+  }, [sectionParam]); // eslint-disable-line react-hooks/exhaustive-deps
   const [showDobModal, setShowDobModal] = useState(false);
   const [show2fa, setShow2fa] = useState(false);
   const [savingDob, setSavingDob] = useState(false);
@@ -1057,12 +1065,12 @@ export default function SettingsScreen() {
         {/* Personalization — same fields onboarding's Sectors / Look &
             Layout / Character steps set, editable here without re-running
             the whole flow */}
-        <SectionLabel label="Personalization" c={c} t={t} s={s} />
+        <View {...markSection('personalization')}><SectionLabel label="Personalization" c={c} t={t} s={s} /></View>
         <SettingRow
           icon="easel-outline"
           iconColor={c.purple}
           label="Teacher / Educator Mode"
-          subtitle="Adds the Classroom Day Lesson Plan Builder and My Lesson Plans to Academy Classes. Off: Classes stays a learner's screen — subjects, readings, and quizzes only. Saved plans are kept either way."
+          subtitle="Adds lesson-planning tools to Classes, for teachers. Saved plans are kept either way."
           alwaysShowSubtitle
           right={
             <Switch

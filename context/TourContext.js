@@ -61,7 +61,7 @@ function buildSteps({ welcome = false, purpose = null, firstGoal = null } = {}) 
         const n = firstGoal.steps.length;
         return {
           ...step,
-          body: `I'll show you the rest as you go. Next: **${firstGoal.label}**, ${n} small steps${purpose?.you ? ` to ${purpose.you}` : ''}.`,
+          body: `Next: **${firstGoal.label}**, ${n} small steps${purpose?.you ? ` to ${purpose.you}` : ''}. It's a suggestion: to change anything, tap **your picture** → **Make it yours**.`,
         };
       }
       return step;

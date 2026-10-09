@@ -58,7 +58,7 @@ import { todayStr } from '../logic/dateUtils';
 import { openTarget } from '../logic/openTarget';
 
 // Root-stack screens that replace MainTabs entirely (no bottom tab bar showing).
-const NO_TABBAR_ROUTES = new Set(['Profile', 'Settings', 'Play', 'PlayGame', 'Leaderboard']);
+const NO_TABBAR_ROUTES = new Set(['Profile', 'Settings', 'MakeItYours', 'Play', 'PlayGame', 'Leaderboard']);
 
 // Ordered top-to-bottom in the speed dial; the LAST entry ends up closest to
 // the FAB (bottom), so the most-reached-for actions go last.

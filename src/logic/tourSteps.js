@@ -64,6 +64,6 @@ export const TOUR_STEPS = [
     id: null,
     go: 'Home',
     title: "That's all for now",
-    body: "I'll show you the rest as you go. Next: **your first goal**.",
+    body: "Next: **your first goal**. It's a suggestion: to change anything, tap **your picture** → **Make it yours**.",
   },
 ];

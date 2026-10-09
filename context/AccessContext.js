@@ -41,7 +41,7 @@ import {
   fetchAccessState, startObjective as startObjectiveApi, saveObjectiveSteps,
   completeObjective as completeObjectiveApi, abandonObjective as abandonObjectiveApi,
   unlockFeature as unlockFeatureApi, recordTestAttempt, setPurpose as setPurposeApi,
-  setExperimentalOptIn, setShowEverything, EMPTY_ACCESS,
+  setExperimentalOptIn, setShowEverything, setOpenedByChoice, EMPTY_ACCESS,
 } from '../src/api/accessService';
 import { useConfigValue, useFeatureFlag } from './RemoteConfigContext';
 import { getWayfinderIntent } from '../src/api/wayfinderService';
@@ -129,6 +129,20 @@ export function AccessProvider({ children }) {
       });
     return () => { alive = false; };
   }, [userId]);
+  // Tools opened by choice ("Open it now"), from profiles.metadata. The local
+  // copy answers at once; the account copy is what the next sign-in reads.
+  const [chosenLocal, setChosenLocal] = useState(null);
+  useEffect(() => { setChosenLocal(null); }, [userId]);
+  const chosenIds = chosenLocal ?? (Array.isArray(profile?.metadata?.opened_by_choice) ? profile.metadata.opened_by_choice : []);
+  const chosen = useMemo(() => new Set(chosenIds), [chosenIds.join('|')]); // eslint-disable-line react-hooks/exhaustive-deps
+  const openByChoice = useCallback(async (featureId) => {
+    if (!featureId || chosen.has(featureId)) return;
+    const next = [...chosen, featureId];
+    setChosenLocal(next);
+    tapHaptic?.();
+    if (userId) await setOpenedByChoice(userId, next, profile?.metadata);
+  }, [chosen, userId, profile?.metadata]);
+
   const setDoorSetting = useCallback((key, on) => {
     setDoorSettings(prev => ({ ...prev, [key]: !!on }));
     AsyncStorage.setItem(doorSettingKey(key), JSON.stringify(!!on)).catch(() => {});
@@ -403,9 +417,10 @@ export function AccessProvider({ children }) {
     objectives: state.objectives || {},
     stats,
     settings: doorSettings,
+    chosen,
     plusOnSale,
     experience,
-  }), [profile, experimentalOn, purposeKey, state, stats, doorSettings, plusOnSale, experience]);
+  }), [profile, experimentalOn, purposeKey, state, stats, doorSettings, chosen, plusOnSale, experience]);
 
   const accessFor = useCallback(
     (featureId) => evaluateAccess(getFeature(featureId), gateCtx),
@@ -803,6 +818,7 @@ export function AccessProvider({ children }) {
     // 2. doors that aren't server state
     doorSettings,
     setDoorSetting,
+    openByChoice,
     plusOnSale,
 
     // 3. shown now
@@ -835,7 +851,7 @@ export function AccessProvider({ children }) {
     activeObjective, activeObjectiveId, completedObjectiveIds, startObjective,
     toggleStep, completeActiveObjective, abandonActiveObjective, submitTest,
     claimPlanFeature, unlockEvents, dismissUnlockEvent, dismissAllUnlockEvents,
-    age, isContentAllowed, isGameAllowed, doorSettings, setDoorSetting, plusOnSale,
+    age, isContentAllowed, isGameAllowed, doorSettings, setDoorSetting, openByChoice, plusOnSale,
     stage, derivedStage, nextStage, experienceMode, setExperienceMode, opened, can,
     firstGoal, startFirstGoal, isFeatureShown, isScreenVisible, isGameVisible,
     isSubjectVisible, visibleGameIds, playableGames, visibleFabActions, stageEvents, dismissStageEvent,
