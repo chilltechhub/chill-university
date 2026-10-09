@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { createReminder } from '../api/reminderService';
 import { parseTime, INVALID } from '../logic/aiBridgeParse';
-import { isoDate, addDaysIso, REPEAT_COUNTS } from '../logic/aiBridgeFormat';
+import { isoDate, addDaysIso } from '../logic/aiBridgeFormat';
 import { TARGET_LABEL } from '../logic/openTarget';
 import { AREA_COLORS } from '../data/areaColors';
 import { PHONE_CAPABLE } from '../logic/noticeStore';
@@ -26,7 +26,9 @@ const AREAS = [
   ['professional', '🚀', 'Work & school'], ['spiritual', '✨', 'Spiritual'], ['creative', '🎨', 'Creative'], ['digital', '💻', 'Digital'],
 ];
 const LEADS = [[0, 'At the time'], [5, '5 min before'], [15, '15 min before'], [30, '30 min before']];
-const REPEATS = [[null, 'Once'], ['daily', `Daily ×${REPEAT_COUNTS.daily}`], ['weekly', `Weekly ×${REPEAT_COUNTS.weekly}`], ['monthly', `Monthly ×${REPEAT_COUNTS.monthly}`]];
+// A repeat keeps going (the Planner tops it up, extendRepeatingPlans), so no
+// "×7": that read as "only seven times".
+const REPEATS = [[null, 'Once'], ['daily', 'Daily'], ['weekly', 'Weekly'], ['monthly', 'Monthly']];
 const DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const pad = (n) => String(n).padStart(2, '0');

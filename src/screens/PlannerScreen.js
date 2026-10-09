@@ -19,7 +19,7 @@ import { useAccess } from '../../context/AccessContext';
 import { supabase } from '../api/profileScopedClient';
 import {
   AREAS, getInstances, getPresetComponents,
-  getUserSubscriptions, generateInstances, extendRepeatingPlans, clearSeriesStopped,
+  getUserSubscriptions, generateInstances, extendRepeatingPlans,
   completeInstance, skipInstance, rescheduleInstance, addNoteToInstance,
   deleteInstances, getInstancesBetween,
 } from '../api/plannerService';
@@ -39,6 +39,7 @@ import PlanDetailSheet from '../components/PlanDetailSheet';
 import TourSpot from '../components/TourSpot';
 import FillWithAIButton from '../components/FillWithAIButton';
 import MoreMenu from '../components/MoreMenu';
+import PlannerBacklog from '../components/PlannerBacklog';
 import { CLASS_SUBJECTS, CLASS_SCREEN_MAP } from '../data/classCatalog';
 import { getEnabledGames, getGame } from '../services/gameRegistry';
 import { dateStr } from '../logic/dateUtils';
@@ -303,8 +304,6 @@ function InstanceModal({ visible, instance, userId, date, initialTime = null, on
         if (error) throw error;
       }
       const savedRows = data || [];
-      // Adding a habit back that was once ended keeps it going again.
-      if (!isEdit && cadence !== 'once') clearSeriesStopped(userId, basePayload).catch(() => {});
 
       // Schedule (or cancel) the reminder. Its notification id lives in a
       // local id map, not this row — see planReminderActions.js — so this
@@ -1040,6 +1039,10 @@ function DailyPage({ userId, date, activeAreas, timeMode, onOpen, onAdd, refresh
           </View>
         )}
       </View>
+      {/* Today only: what slipped from earlier days, and to-dos with no day. */}
+      {toISO(date) === toISO(new Date()) && !showingAll && (
+        <PlannerBacklog userId={userId} onChange={load} c={c} t={t} s={s} r={r} />
+      )}
       <DueList items={due} onChange={load} label={toISO(date) === toISO(new Date()) ? 'Due today' : 'Due'} c={c} t={t} s={s} r={r} />
       {timeMode
         ? <TimeView {...sharedProps} />

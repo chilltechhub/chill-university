@@ -507,7 +507,10 @@ export async function attachSource(userId, source, projectId, undo) {
   }
   if (source.captureId) {
     const { data: row } = await supabase.from('captures').select('status, project_id').eq('id', source.captureId).maybeSingle();
-    if (row) await updateRow('captures', source.captureId, { status: 'done', project_id: projectId }, row, undo);
+    // An Inbox item is handled now, so it leaves the Inbox. Something kept in
+    // the Vault stays kept: marking it done would take it out of the Vault.
+    const patch = row?.status === 'inbox' ? { status: 'done', project_id: projectId } : { project_id: projectId };
+    if (row) await updateRow('captures', source.captureId, patch, row, undo);
   }
 }
 

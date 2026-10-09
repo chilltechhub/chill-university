@@ -152,9 +152,15 @@ export default function WidgetBoard({ layout, widgets, editing, onChangeLayout, 
   const GAP = s.lg;
 
   const { tops, total } = useMemo(() => {
-    let y = 0; const map = {};
-    visible.forEach(({ key }) => { map[key] = y; y += (heights[key] || 80) + GAP; });
-    return { tops: map, total: Math.max(0, y - GAP) };
+    // A widget with nothing to show renders nothing (height 0): it takes no
+    // room and no gap. `|| 80` used to turn that 0 into an 80px hole on Home.
+    let y = 0; let gaps = 0; const map = {};
+    visible.forEach(({ key }) => {
+      map[key] = y;
+      const h = heights[key] ?? 80;
+      if (h > 0) { y += h + GAP; gaps += 1; }
+    });
+    return { tops: map, total: Math.max(0, gaps ? y - GAP : 0) };
   }, [visible, heights, GAP]);
 
   const layoutRef = useRef(layout); layoutRef.current = layout;

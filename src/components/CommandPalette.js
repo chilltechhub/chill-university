@@ -73,7 +73,7 @@ export default function CommandPalette() {
 
   const [query, setQuery] = useState('');
   const [userId, setUserId] = useState(null);
-  const [content, setContent] = useState({ captures: [], projects: [] });
+  const [content, setContent] = useState({ captures: [], projects: [], ideas: [], plans: [], tasks: [] });
   const [searching, setSearching] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [recents, setRecents] = useState([]);
@@ -97,7 +97,7 @@ export default function CommandPalette() {
   useEffect(() => {
     if (!open) return;
     setQuery('');
-    setContent({ captures: [], projects: [] });
+    setContent({ captures: [], projects: [], ideas: [], plans: [], tasks: [] });
     setActiveIndex(0);
     handled.current = false;
     cacheRead(RECENTS_KEY).then((saved) => setRecents(Array.isArray(saved) ? saved : []));
@@ -110,7 +110,7 @@ export default function CommandPalette() {
   useEffect(() => {
     if (!open) return;
     const q = query.trim();
-    if (q.length < 2 || !userId) { setContent({ captures: [], projects: [] }); setSearching(false); return; }
+    if (q.length < 2 || !userId) { setContent({ captures: [], projects: [], ideas: [], plans: [], tasks: [] }); setSearching(false); return; }
     setSearching(true);
     const id = ++requestId.current;
     const timer = setTimeout(async () => {
@@ -164,11 +164,49 @@ export default function CommandPalette() {
         rows: content.projects.map((p) => ({
           id: `project:${p.id}`,
           title: p.title || 'Untitled project',
-          subtitle: p.objective || p.status || 'Project',
+          subtitle: p.next_action ? `Next: ${p.next_action}` : (p.objective || 'Project'),
           icon: 'hammer-outline',
           color: p.color || c.gold,
           emoji: p.emoji,
           route: { type: 'tab', tab: 'Library', screen: 'ProjectDetail', params: { project: p } },
+        })),
+      });
+    }
+    // What's planned and what's still to do: found here, opened on its day.
+    if (content.plans?.length || content.tasks?.length) {
+      const dayLabel = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      out.push({
+        title: 'Planner & to-dos',
+        rows: [
+          ...(content.plans || []).map((p) => ({
+            id: `plan:${p.id}`,
+            title: p.title || 'Planned',
+            subtitle: `${p.cadence && p.cadence !== 'once' ? `${p.cadence[0].toUpperCase()}${p.cadence.slice(1)} · next ` : ''}${dayLabel(p.date)}`,
+            icon: 'calendar-outline',
+            color: c.teal,
+            route: { type: 'tab', tab: 'Library', screen: 'PlannerScreen', params: { date: p.date } },
+          })),
+          ...(content.tasks || []).map((tk) => ({
+            id: `task:${tk.id}`,
+            title: tk.title || 'To-do',
+            subtitle: tk.due_date ? `To-do · due ${dayLabel(tk.due_date)}` : 'To-do · no day yet',
+            icon: 'checkbox-outline',
+            color: c.teal,
+            route: { type: 'tab', tab: 'Library', screen: 'PlannerScreen', params: tk.due_date ? { date: tk.due_date } : {} },
+          })),
+        ],
+      });
+    }
+    if (content.ideas?.length) {
+      out.push({
+        title: 'Ideas',
+        rows: content.ideas.map((idea) => ({
+          id: `idea:${idea.id}`,
+          title: idea.title || 'Idea',
+          subtitle: idea.description ? idea.description.slice(0, 70) : 'Idea Garden',
+          icon: 'leaf-outline',
+          color: c.gold,
+          route: { type: 'tab', tab: 'Library', screen: 'IdeaGardenScreen', params: { focusCoreId: idea.id } },
         })),
       });
     }
@@ -238,7 +276,7 @@ export default function CommandPalette() {
                 style={styles.input}
                 value={query}
                 onChangeText={setQuery}
-                placeholder="Search screens, notes, projects, classes..."
+                placeholder="Search notes, plans, projects, ideas..."
                 placeholderTextColor={c.text4}
                 autoCorrect={false}
                 autoCapitalize="none"

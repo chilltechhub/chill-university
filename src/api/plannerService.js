@@ -359,7 +359,9 @@ export async function generateInstances(userId, component) {
 // getSeriesFrom uses to delete "this and the rest").
 //
 // Three cases must NOT come back: a series someone ended ("Delete this and
-// the rest" records it with markSeriesStopped); one nobody has had on their
+// the rest": markSeriesStopped sets its last remaining day's `type` to
+// SERIES_END, in the database, so every device and a fresh sign-in see it;
+// adding the habit again writes newer rows, which start it over); one nobody has had on their
 // plan for a while (its last day is more than GRACE_DAYS ago, so the person
 // stopped, or deleted it on another device); and a single day that was
 // edited ("changes apply to this day only" gives that one row a new time,
@@ -367,34 +369,31 @@ export async function generateInstances(userId, component) {
 const AHEAD_DAYS = { daily: 14, weekly: 56, monthly: 92 };
 const GRACE_DAYS = 3;
 const topupKey = (userId) => `@cth_planner_topup_${userId}_${getActiveProfileId() || 'none'}`;
-const stoppedKey = (userId) => `@cth_planner_stopped_${userId}`;
+export const SERIES_END = 'series_end';
 
 export function seriesKey(row) {
   if (row.component_id) return `c:${row.component_id}`;
   return `t:${String(row.title || '').trim().toLowerCase()}|${row.cadence || ''}|${row.start_time || ''}`;
 }
 
-async function readStopped(userId) {
-  try { return JSON.parse(await AsyncStorage.getItem(stoppedKey(userId)) || '{}') || {}; }
-  catch { return {}; }
-}
-
-// Called when someone deletes "this and the rest" of a repeating item.
+// Called after someone deletes "this and the rest" of a repeating item:
+// marks the day before as where the series ends.
 export async function markSeriesStopped(userId, instance) {
-  if (!userId || !instance) return;
-  const stopped = await readStopped(userId);
-  stopped[seriesKey(instance)] = todayStr();
-  try { await AsyncStorage.setItem(stoppedKey(userId), JSON.stringify(stopped)); } catch { /* best effort */ }
-}
-
-// Called when someone adds a repeating item, so adding back a habit they
-// once ended keeps it going again.
-export async function clearSeriesStopped(userId, row) {
-  if (!userId || !row) return;
-  const stopped = await readStopped(userId);
-  if (!stopped[seriesKey(row)]) return;
-  delete stopped[seriesKey(row)];
-  try { await AsyncStorage.setItem(stoppedKey(userId), JSON.stringify(stopped)); } catch { /* best effort */ }
+  if (!userId || !instance || !instance.cadence || instance.cadence === 'once') return;
+  let q = supabase.from('agenda_instances').select('id')
+    .eq('user_id', userId).lt('date', instance.date)
+    .order('date', { ascending: false }).limit(1);
+  if (instance.component_id) q = q.eq('component_id', instance.component_id);
+  else {
+    q = q.is('component_id', null).eq('title', instance.title).eq('cadence', instance.cadence);
+    q = instance.start_time ? q.eq('start_time', instance.start_time) : q.is('start_time', null);
+  }
+  const { data, error } = await q;
+  if (error) { console.warn('markSeriesStopped', error.message); return; }
+  // Nothing earlier left: the whole series is gone, so there is nothing to extend.
+  if (!data?.length) return;
+  const { error: upErr } = await supabase.from('agenda_instances').update({ type: SERIES_END }).eq('id', data[0].id);
+  if (upErr) console.warn('markSeriesStopped', upErr.message);
 }
 
 const nextDate = (iso, cadence) => (
@@ -442,17 +441,16 @@ async function runTopup(userId, { force = false } = {}) {
     if (!latest.has(key)) latest.set(key, row);
     count.set(key, (count.get(key) || 0) + 1);
   });
-  const stopped = await readStopped(userId);
   const since = addDaysIso(today, -GRACE_DAYS);
 
   const fresh = [];
   latest.forEach((row, key) => {
-    if (stopped[key] || row.date < since || count.get(key) < 2) return;
+    if (row.type === SERIES_END || row.date < since || count.get(key) < 2) return;
     const until = addDaysIso(today, AHEAD_DAYS[row.cadence] || 14);
     for (let d = nextDate(row.date, row.cadence); d <= until; d = nextDate(d, row.cadence)) {
       fresh.push({
         user_id: userId,
-        title: row.title, area: row.area, cadence: row.cadence, type: row.type,
+        title: row.title, area: row.area, cadence: row.cadence, type: row.type || 'checklist',
         start_time: row.start_time, duration_minutes: row.duration_minutes,
         component_id: row.component_id,
         ...(row.link_type ? { link_type: row.link_type, link_screen: row.link_screen, link_id: row.link_id } : {}),
