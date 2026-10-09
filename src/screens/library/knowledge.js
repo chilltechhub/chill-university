@@ -46,6 +46,9 @@ import FolderAssignSheet from '../../components/FolderAssignSheet';
 import ItemLinks from '../../components/ItemLinks';
 import LinkifiedText from '../../components/LinkifiedText';
 import TourSpot from '../../components/TourSpot';
+import ReminderComposer from '../../components/ReminderComposer';
+import { openTarget } from '../../logic/openTarget';
+import { todayStr } from '../../logic/dateUtils';
 
 // ─── Item kinds ────────────────────────────────────────────────────────────
 // Saving here files a thing: status 'active', the same as sorting it into
@@ -143,7 +146,9 @@ const getItemAreaId = (item) => {
 
 // Interleave section headers into an already-bucketed list, following the
 // canonical life-area order (with General last).
-const withAreaHeaders = (list, getAreaId) => {
+// `firstIds`: life areas to put at the top, marked "For you" (Discover puts
+// the person's own areas first, so a sleep guide comes before a citation tool).
+const withAreaHeaders = (list, getAreaId, firstIds = []) => {
   const buckets = {};
   list.forEach((item) => {
     const aid = getAreaId(item);
@@ -151,10 +156,15 @@ const withAreaHeaders = (list, getAreaId) => {
     buckets[aid].push(item);
   });
   const out = [];
-  FILTER_AREAS.forEach((area) => {
+  const ordered = [
+    ...FILTER_AREAS.filter((a) => firstIds.includes(a.id)),
+    ...FILTER_AREAS.filter((a) => !firstIds.includes(a.id)),
+  ];
+  ordered.forEach((area) => {
     const items = buckets[area.id];
     if (items && items.length) {
-      out.push({ __header: true, key: `h_${area.id}`, label: area.label, emoji: area.emoji, icon: area.icon, color: area.color, count: items.length });
+      const mine = firstIds.includes(area.id);
+      out.push({ __header: true, key: `h_${area.id}`, label: mine ? `For you · ${area.label}` : area.label, emoji: area.emoji, icon: area.icon, color: area.color, count: items.length });
       items.forEach((it) => out.push(it));
     }
   });
@@ -420,7 +430,7 @@ function AddItemModal({ visible, defaultKind, onClose, onSave, c, styles, showEm
 // URL banner and open/visit tracking, papers add citation fields, and every
 // kind gets tags, life area, folder, and cross-links.
 function DetailModal({ item, folders, onClose, onSave, onDelete, onAssignFolder, onLinksChange,
-  onToggleStar, onOpenLink, onShare, c, t, s, r, styles, showEmojis }) {
+  onToggleStar, onOpenLink, onShare, onAct, c, t, s, r, styles, showEmojis }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editKind, setEditKind] = useState('note');
@@ -569,6 +579,27 @@ function DetailModal({ item, folders, onClose, onSave, onDelete, onAssignFolder,
                   </TouchableOpacity>
                 </View>
 
+                {/* Saving something is half of it. These turn it into time
+                    on the calendar, a to-do, or a project, in one tap. */}
+                <Text style={[styles.linkedHeader, { color: accent, marginTop: 4 }]}>Put it to use</Text>
+                <View style={styles.useGrid}>
+                  {[
+                    { key: 'plan',    icon: 'calendar-outline',  label: 'Plan time',     sub: 'Put it on a day' },
+                    { key: 'todo',    icon: 'checkbox-outline',  label: 'To-do',         sub: 'Add to your list' },
+                    { key: 'project', icon: 'hammer-outline',    label: 'New project',   sub: 'Build on it' },
+                    { key: 'ai',      icon: 'sparkles-outline',  label: 'Plan with AI',  sub: 'Steps + deadlines' },
+                  ].map((a) => (
+                    <TouchableOpacity key={a.key} onPress={() => onAct(a.key, item)} style={[styles.useBtn, { borderColor: `${accent}55` }]}
+                      accessibilityRole="button" accessibilityLabel={`${a.label}: ${a.sub}`}>
+                      <Ionicons name={a.icon} size={18} color={accent} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.useLabel}>{a.label}</Text>
+                        <Text style={styles.useSub}>{a.sub}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
                 <View style={styles.cardTagRow}>
                   <View style={[styles.pill, { borderColor: `${area.color}55`, backgroundColor: `${area.color}18` }]}>
                     <Text style={[styles.pillText, { color: area.color }]}>{showEmojis ? `${area.emoji} ` : ''}{area.label}</Text>
@@ -621,7 +652,11 @@ export default function KnowledgeScreen() {
   const [tab, setTab] = useState(route.params?.initialTab === 'discover' ? 'discover' : 'vault');
   // Discover keeps both curated catalogs — they group the same kind of thing
   // along two different, both-useful axes, so they stay two sources.
-  const [discoverSource, setDiscoverSource] = useState('research');
+  // Opens on practical picks for each part of life (a sleep guide, a budget
+  // tool), the person's own areas first. The research tools (Scholar, PubMed)
+  // are one tap away; most people came for the first kind.
+  const [discoverSource, setDiscoverSource] = useState('areas');
+  const myAreas = Array.isArray(profile?.active_life_areas) ? profile.active_life_areas : [];
   // Which Discover card has its summary open. One at a time — a list where
   // every card is expanded is the wall of text the short description exists
   // to avoid.
@@ -926,36 +961,107 @@ export default function KnowledgeScreen() {
     patchEntry(item.id, { url_meta: { ...(item.url_meta || {}), links } });
   };
 
+  // ── Put it to use ─────────────────────────────────────────────────────────
+  // A saved link is something to read, a tool something to try, a note says
+  // its own thing. Used as the title of the plan, to-do or project.
+  const [planFor, setPlanFor] = useState(null); // ReminderComposer's `initial`
+  const actionTitle = (item) => {
+    const name = (item.title || deriveTitle(item.body) || 'this').trim();
+    const k = rowKind(item);
+    return k === 'note' ? name : k === 'tool' ? `Try ${name}` : `Read ${name}`;
+  };
+  const areaFor = (item) => { const a = getItemAreaId(item); return a === 'general' ? 'professional' : a; };
+
+  const planTime = (item) => {
+    setDetailItem(null);
+    setPlanFor({ title: actionTitle(item), target: { kind: 'vault', id: item.id }, targetLabel: item.title || 'Vault item', area: areaFor(item) });
+  };
+
+  const makeTodo = async (item) => {
+    const { error } = await supabase.from('tasks').insert({
+      user_id: userId, title: actionTitle(item).slice(0, 200),
+      category: 'personal', priority: 2, completed: false, created_at: new Date().toISOString(),
+    });
+    if (error) { Alert.alert("Couldn't add it", 'Something went wrong. Try again.'); return; }
+    Alert.alert('Added to your to-dos', 'Give it a day in the Planner, under "No day yet".');
+  };
+
+  const startProject = async (item) => {
+    const title = (item.title || deriveTitle(item.body) || 'New project').slice(0, 120);
+    const body = (item.body || '').trim();
+    const { data: project, error } = await supabase.from('projects').insert({
+      user_id: userId, title,
+      objective: body && body !== title ? body.slice(0, 500) : null,
+      emoji: '🏗️', color: '#c9a84c', cover_color: '#c9a84c', banner_emoji: '🏗️',
+      category: 'general', status: 'active', sort_order: 0,
+    }).select().single();
+    if (error || !project) { Alert.alert("Couldn't start it", 'Something went wrong. Try again.'); return; }
+    supabase.from('project_milestones').insert({
+      user_id: userId, project_id: project.id,
+      title: '📚 Started from the Knowledge Vault', type: 'project_created', date: todayStr(),
+    }).then(({ error: e }) => { if (e) console.warn('[vault] milestone', e.message); });
+    // The note and the project point at each other: it shows under "What
+    // you've learned" on the project, and the project under Linked here.
+    updateLinks(item, [...(item.url_meta?.links || []), { kind: 'project', refId: project.id, title: project.title }]);
+    signalAction('project-started');
+    setDetailItem(null);
+    openTarget(navigation, { kind: 'project', id: project.id });
+  };
+
+  const planWithAI = (item) => {
+    setDetailItem(null);
+    openTarget(navigation, { kind: 'inbox', params: { openCapture: item.id, plan: true, at: Date.now() } });
+  };
+
+  const actOn = (key, item) => {
+    if (key === 'plan') planTime(item);
+    else if (key === 'todo') makeTodo(item);
+    else if (key === 'project') startProject(item);
+    else if (key === 'ai') planWithAI(item);
+  };
+
   // ── Discover ──────────────────────────────────────────────────────────────
   const savedIdForUrl = (u) => entries.find((e) => e.url === u)?.id || null;
+
+  const researchPayload = (cat) => ({
+    kind: isPaperUrl(cat.url) ? 'paper' : 'bookmark',
+    title: cat.title,
+    url: cat.url,
+    body: cat.summary || cat.desc,
+    tags: [cat.catId, ...(cat.tags || [])],
+    urlMeta: { emoji: cat.emoji, category: cat.catId, source: 'catalog' },
+    source: 'catalog',
+  });
+  const resourcePayload = (cat) => ({
+    kind: 'tool',
+    title: cat.title,
+    url: cat.url,
+    body: cat.summary || cat.desc,
+    tags: [...(cat.tags || [])],
+    areaId: cat.areaId,
+    urlMeta: { emoji: cat.emoji, source: 'catalog' },
+    source: 'catalog',
+  });
 
   const toggleResearchCatalogItem = (cat) => {
     const existingId = savedIdForUrl(cat.url);
     if (existingId) { removeEntry(existingId); return; }
-    insertItem({
-      kind: isPaperUrl(cat.url) ? 'paper' : 'bookmark',
-      title: cat.title,
-      url: cat.url,
-      body: cat.summary || cat.desc,
-      tags: [cat.catId, ...(cat.tags || [])],
-      urlMeta: { emoji: cat.emoji, category: cat.catId, source: 'catalog' },
-      source: 'catalog',
-    });
+    insertItem(researchPayload(cat));
   };
 
   const toggleResourceCatalogItem = (cat) => {
     const existingId = savedIdForUrl(cat.url);
     if (existingId) { removeEntry(existingId); return; }
-    insertItem({
-      kind: 'tool',
-      title: cat.title,
-      url: cat.url,
-      body: cat.summary || cat.desc,
-      tags: [...(cat.tags || [])],
-      areaId: cat.areaId,
-      urlMeta: { emoji: cat.emoji, source: 'catalog' },
-      source: 'catalog',
-    });
+    insertItem(resourcePayload(cat));
+  };
+
+  // Finding a good resource is only worth it if it gets used: save it (if it
+  // isn't already) and put a time to try it on the calendar, linked back.
+  const planCatalogItem = async (cat, research) => {
+    let id = savedIdForUrl(cat.url);
+    if (!id) id = (await insertItem(research ? researchPayload(cat) : resourcePayload(cat)))?.id;
+    if (!id) { Alert.alert("Couldn't save it", 'Something went wrong. Try again.'); return; }
+    setPlanFor({ title: `Try ${cat.title}`, target: { kind: 'vault', id }, targetLabel: cat.title, area: cat.areaId || 'professional' });
   };
 
   // ── Derived lists ─────────────────────────────────────────────────────────
@@ -1041,8 +1147,9 @@ export default function KnowledgeScreen() {
       const matchAge = bandAllows(item.ageBands || DISCOVER_AGE_BANDS[item.legacyId || item.id], band);
       return matchArea && matchSearch && matchAge;
     }),
-    (item) => item.areaId
-  ), [catalog, search, areaFilter, band]);
+    (item) => item.areaId,
+    myAreas,
+  ), [catalog, search, areaFilter, band, myAreas.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const data = tab === 'vault'
     ? filtered
@@ -1107,7 +1214,15 @@ export default function KnowledgeScreen() {
 
         {!!item.summary && (
           open ? (
-            <Text style={styles.discoverSummary}>{item.summary}</Text>
+            <>
+              <Text style={styles.discoverSummary}>{item.summary}</Text>
+              <TouchableOpacity onPress={() => planCatalogItem(item, discoverSource === 'research')}
+                style={[styles.tryBtn, { borderColor: accentColor }]} accessibilityRole="button"
+                accessibilityLabel={`Plan time to try ${item.title}`}>
+                <Ionicons name="calendar-outline" size={15} color={accentColor} />
+                <Text style={[styles.tryBtnText, { color: accentColor }]}>Plan time to try it</Text>
+              </TouchableOpacity>
+            </>
           ) : (
             <TouchableOpacity onPress={() => setExpandedDiscover(key)} accessibilityRole="button">
               <Text style={styles.discoverMore}>What it's for →</Text>
@@ -1634,10 +1749,18 @@ export default function KnowledgeScreen() {
           onToggleStar={toggleStar}
           onOpenLink={openLink}
           onShare={shareItem}
+          onAct={actOn}
           c={c} t={t} s={s} r={r}
           styles={styles} showEmojis={showEmojis}
         />
       )}
+
+      <ReminderComposer
+        visible={!!planFor}
+        userId={userId}
+        initial={planFor || {}}
+        onClose={() => setPlanFor(null)}
+      />
 
       <FolderAssignSheet
         visible={!!assigningEntry}
@@ -1759,6 +1882,12 @@ const makeStyles = (c) => StyleSheet.create({
   detailActionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 18, marginTop: 16, marginBottom: 14 },
   detailAction: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   detailActionText: { color: c.text3, fontWeight: '700', fontSize: 12 },
+  useGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 6 },
+  useBtn: { flexBasis: '47%', flexGrow: 1, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 9, backgroundColor: c.bg0 },
+  useLabel: { color: c.text1, fontWeight: '700', fontSize: 13 },
+  useSub: { color: c.text3, fontSize: 11, marginTop: 1 },
+  tryBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, marginTop: 10 },
+  tryBtnText: { fontWeight: '700', fontSize: 12 },
   openUrlBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: c.bg2, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: c.teal + '4d', marginBottom: 12 },
   openUrlText: { flex: 1, color: c.teal, fontSize: 12 },
   citationBox: { backgroundColor: c.bg2, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: c.border, marginBottom: 12 },
