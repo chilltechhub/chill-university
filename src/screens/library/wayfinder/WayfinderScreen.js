@@ -542,11 +542,8 @@ export default function WayfinderScreen() {
       <Text style={{ fontSize: 26, fontWeight: '700', color: c.text1, lineHeight: 33, marginBottom: 12 }}>
         Not sure what you want to do — or who you want to be?
       </Text>
-      <Text style={{ fontSize: 15, color: c.text2, lineHeight: 23, marginBottom: 8 }}>
-        That’s where most people start. It isn’t a problem to fix; it’s just the part before you’ve tried enough things to know.
-      </Text>
       <Text style={{ fontSize: 15, color: c.text2, lineHeight: 23, marginBottom: 20 }}>
-        This isn’t a test, and it won’t put you in a box. In about ten minutes you’ll see what you’re drawn to, what you can already do, and a few real paths worth testing — then small experiments to find out for real.
+        Most people start here. In <Text style={{ fontWeight: '700', color: c.text1 }}>about 10 minutes</Text> you’ll see what you’re drawn to and a few paths worth <Text style={{ fontWeight: '700', color: c.text1 }}>trying for real</Text>. Not a test.
       </Text>
 
       <View style={card}>

@@ -140,10 +140,10 @@ export default function LibraryNavigator() {
       <Stack.Screen name="CaptureInbox" component={CaptureInbox} options={{ title: 'Capture Inbox' }} />
       <Stack.Screen name="WorkModeScreen" component={GatedWorkMode} options={{ headerShown: false }} />
       <Stack.Screen name="WeeklyReviewScreen" component={GatedWeeklyReview} options={{ headerShown: false }} />
-      <Stack.Screen name="ImportScreen" component={GatedImport} options={{ headerShown: false }} />
+      <Stack.Screen name="ImportScreen" component={GatedImport} options={{ headerShown: false, title: 'Import Hub' }} />
       {/* Fill with AI — free and open to everyone: it only writes into places
           the person has unlocked, and checks that itself (AIBridgeScreen.js). */}
-      <Stack.Screen name="AIBridgeScreen" component={AIBridgeScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="AIBridgeScreen" component={AIBridgeScreen} options={{ headerShown: false, title: 'Fill with AI' }} />
 
       {/* Academic & Career */}
       <Stack.Screen name="ProjectsScreen"          component={ProjectsScreen}          options={{ title: 'The Workshop' }} />
@@ -158,7 +158,7 @@ export default function LibraryNavigator() {
       <Stack.Screen name="WayfinderScreen"         component={WayfinderScreen}         options={{ title: 'Wayfinder' }} />
 
       {/* Discover */}
-      <Stack.Screen name="DiscoverScreen"      component={GatedDiscover}       options={{ title: 'Discover' }} />
+      <Stack.Screen name="DiscoverScreen"      component={GatedDiscover}       options={{ title: 'Community' }} />
       <Stack.Screen name="CommunityFeedScreen" component={GatedCommunityFeed}  options={{ title: 'Community' }} />
       <Stack.Screen name="ModerationQueueScreen" component={ModerationQueueScreen} options={{ title: 'Moderation' }} />
       <Stack.Screen name="FellowScholarsScreen"component={GatedScholars}       options={{ title: 'Fellow Scholars' }} />

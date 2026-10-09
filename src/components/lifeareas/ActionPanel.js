@@ -13,7 +13,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
 import { FONTS } from '../../theme';
 import { ReadSheet, TimerSheet } from './ActionSheets';
-import { INK, TIER_ICONS, tierLabel, tierColor, buttonLabel, buttonIcon } from './actionUi';
+import { textOn } from '../../logic/contrast';
+import { TIER_ICONS, tierLabel, tierColor, buttonLabel, buttonIcon } from './actionUi';
 
 function Label({ children, c, right }) {
   return (
@@ -87,10 +88,10 @@ export default function ActionPanel({ aa, color, onEdit }) {
                 accessibilityLabel={`${buttonLabel(today, aa.band)}: ${today.title}`}
                 style={{ marginTop: 16, minHeight: aa.band === 'kid' ? 58 : 52, borderRadius: r.lg, backgroundColor: color, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, paddingHorizontal: 14 }}>
                 {busyKey === today.key
-                  ? <ActivityIndicator color={INK} />
+                  ? <ActivityIndicator color={textOn(color)} />
                   : <>
-                      <Ionicons name={buttonIcon(today)} size={18} color={INK} />
-                      <Text style={{ fontSize: aa.band === 'kid' ? t.lg : t.md, fontWeight: t.bold, color: INK }}>{buttonLabel(today, aa.band)}</Text>
+                      <Ionicons name={buttonIcon(today)} size={18} color={textOn(color)} />
+                      <Text style={{ fontSize: aa.band === 'kid' ? t.lg : t.md, fontWeight: t.bold, color: textOn(color) }}>{buttonLabel(today, aa.band)}</Text>
                     </>}
               </TouchableOpacity>
               <TouchableOpacity onPress={aa.another} accessibilityRole="button" accessibilityLabel="Not this one — show another action" style={{ alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 12, marginTop: 4 }}>
@@ -116,7 +117,7 @@ export default function ActionPanel({ aa, color, onEdit }) {
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, padding: 12, borderRadius: r.lg,
                     backgroundColor: done ? c.teal + '14' : c.bg1, borderWidth: 1, borderColor: done ? c.teal + '66' : c.border }}>
                   <View style={{ width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: done ? c.teal : accent + '22' }}>
-                    <Ionicons name={done ? 'checkmark' : TIER_ICONS[slot]} size={done ? 20 : 17} color={done ? INK : accent} />
+                    <Ionicons name={done ? 'checkmark' : TIER_ICONS[slot]} size={done ? 20 : 17} color={done ? textOn(c.teal) : accent} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontFamily: FONTS.mono, fontSize: 11, letterSpacing: 1, textTransform: 'uppercase', color: done ? c.teal : accent }}>
@@ -128,7 +129,7 @@ export default function ActionPanel({ aa, color, onEdit }) {
                     ? <ActivityIndicator color={accent} />
                     : slot === 'habit'
                       ? <View style={{ width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: done ? c.teal : c.border, backgroundColor: done ? c.teal : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
-                          {done && <Ionicons name="checkmark" size={16} color={INK} />}
+                          {done && <Ionicons name="checkmark" size={16} color={textOn(c.teal)} />}
                         </View>
                       : <Ionicons name="chevron-forward" size={18} color={c.text4} />}
                 </TouchableOpacity>

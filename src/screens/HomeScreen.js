@@ -118,6 +118,14 @@ const ACTIVITY_TYPES = {
   assignment: { label: 'Assignment', icon: 'school-outline',       color: '#c9a84c' }, // style-ok: category palette, matches CalendarModal
   planner:  { label: 'Routine',  icon: 'repeat-outline',           color: '#2bb5a0' }, // style-ok: category palette, matches CalendarModal
 };
+// A planner item says how often it happens. "Routine" was on everything,
+// one-off plans ("Call the dentist") included.
+const CADENCE_LABEL = { daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly', once: 'Plan' };
+const activityLabel = (item, meta) => (
+  item._src === 'planner' ? (CADENCE_LABEL[item.raw?.cadence] || 'Plan')
+    : item._src === 'due' && item.notes ? item.notes
+    : meta.label
+);
 // Colours come from the one shared area palette (src/data/areaColors.js) —
 // this map had drifted from it (mental purple here, blue everywhere else).
 const PLANNER_AREA_META = Object.fromEntries(Object.entries({
@@ -711,7 +719,7 @@ function ActivityRow({ item, onPress, c, t, s, r }) {
         <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1 }} numberOfLines={1}>{item.title}</Text>
         <View style={{ flexDirection: 'row', gap: 6, marginTop: 1 }}>
           {item.time && <Text style={{ fontSize: 11, color: item.color || meta.color, fontWeight: t.bold }}>{fmtActivityTime(item.time)}</Text>}
-          <Text style={{ fontSize: 11, color: c.text3, ...ui.eyebrow, marginBottom: 0 }} numberOfLines={1}>{item._src === 'due' && item.notes ? item.notes : meta.label}</Text>
+          <Text style={{ fontSize: 11, color: c.text3, ...ui.eyebrow, marginBottom: 0 }} numberOfLines={1}>{activityLabel(item, meta)}</Text>
         </View>
       </View>
       <Ionicons name="chevron-forward" size={16} color={c.text4} />
@@ -728,7 +736,7 @@ function ActivityDetailCard({ item, actions, c, t, s, r }) {
     <View style={{ backgroundColor: c.bg1, borderRadius: ui.cardRadius, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: color }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: 8 }}>
         <View style={{ backgroundColor: color + '22', borderRadius: r.full, paddingHorizontal: 8, paddingVertical: 2 }}>
-          <Text style={{ fontSize: ui.name === 'plain' ? 11 : 9, color, ...ui.eyebrow }}>{meta.label}</Text>
+          <Text style={{ fontSize: ui.name === 'plain' ? 11 : 9, color, ...ui.eyebrow }}>{item._src === 'planner' ? activityLabel(item, meta) : meta.label}</Text>
         </View>
         {item.time && <Text style={{ fontSize: 11, color: c.text3 }}>{fmtActivityTime(item.time)}</Text>}
       </View>

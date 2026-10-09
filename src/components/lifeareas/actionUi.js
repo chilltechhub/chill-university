@@ -3,9 +3,9 @@
 
 import { formatTime } from '../../api/areaActionsService';
 
-// Dark ink on an area colour. Every area colour clears 4.5:1 against it,
-// which white text on the lighter ones (Mental, Social) does not.
-export const INK = '#12161f';
+// Text on an area-coloured button: textOn(fill) from logic/contrast, not a
+// fixed dark ink. LifeAreaScreen darkens pale area colours so they read as
+// text (readableOn), and dark ink on the darker fill failed (3:1).
 
 const SCREEN_NAMES = {
   WayfinderScreen: 'Wayfinder',

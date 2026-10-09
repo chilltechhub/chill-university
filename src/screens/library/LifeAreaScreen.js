@@ -27,8 +27,8 @@ import { AREA_COLORS } from '../../data/areaColors';
 import { FONTS } from '../../theme';
 import useAreaHubActions from '../../logic/useAreaHubActions';
 import { ReadSheet, TimerSheet } from '../../components/lifeareas/ActionSheets';
-import { INK, tierLabel, tierColor, buttonLabel, buttonIcon } from '../../components/lifeareas/actionUi';
-import { textOn } from '../../logic/contrast';
+import { tierLabel, tierColor, buttonLabel, buttonIcon } from '../../components/lifeareas/actionUi';
+import { textOn, readableOn } from '../../logic/contrast';
 
 // ─── Life area config ─────────────────────────────────────────────────────────
 export const LIFE_AREAS = [
@@ -314,7 +314,9 @@ export default function LifeAreaScreen() {
   };
 
   if (!area) return null;
-  const color = area.color;
+  // The area's colour, darkened (light theme) or lightened (dark) just enough
+  // to read as text: Mental's pale blue was 2:1 on the light background.
+  const color = readableOn(area.color, c.bg0);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -528,10 +530,10 @@ export default function LifeAreaScreen() {
                   <TouchableOpacity onPress={() => actOnHub(f)} disabled={busyKey === f.key} accessibilityRole="button"
                     accessibilityLabel={`${buttonLabel(f, hub.band)}: ${f.title}`}
                     style={{ marginTop: 16, minHeight: 52, borderRadius: r.lg, backgroundColor: color, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, paddingHorizontal: 14 }}>
-                    {busyKey === f.key ? <ActivityIndicator color={INK} /> : (
+                    {busyKey === f.key ? <ActivityIndicator color={textOn(color)} /> : (
                       <>
-                        <Ionicons name={buttonIcon(f)} size={18} color={INK} />
-                        <Text style={{ fontSize: t.md, fontWeight: t.bold, color: INK }}>{buttonLabel(f, hub.band)}</Text>
+                        <Ionicons name={buttonIcon(f)} size={18} color={textOn(color)} />
+                        <Text style={{ fontSize: t.md, fontWeight: t.bold, color: textOn(color) }}>{buttonLabel(f, hub.band)}</Text>
                       </>
                     )}
                   </TouchableOpacity>

@@ -12,7 +12,8 @@ import { View, Text, TouchableOpacity, Modal, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
 import { FONTS } from '../../theme';
-import { INK, tierLabel, tierColor } from './actionUi';
+import { textOn } from '../../logic/contrast';
+import { tierLabel, tierColor } from './actionUi';
 
 function Sheet({ visible, onClose, children, c, r }) {
   return (
@@ -50,8 +51,8 @@ export function ReadSheet({ action, color, band, onClose, onDone }) {
         onPress={async () => { setBusy(true); try { await onDone(action); } finally { setBusy(false); onClose(); } }}
         accessibilityRole="button" accessibilityLabel={band === 'kid' ? 'I read it' : 'Done, I read it'}
         style={{ marginTop: 20, height: 52, borderRadius: r.lg, backgroundColor: color, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, opacity: busy ? 0.6 : 1 }}>
-        <Ionicons name="checkmark" size={18} color={INK} />
-        <Text style={{ fontSize: t.md, fontWeight: t.bold, color: INK }}>{band === 'kid' ? 'I read it' : 'Done — I read it'}</Text>
+        <Ionicons name="checkmark" size={18} color={textOn(color)} />
+        <Text style={{ fontSize: t.md, fontWeight: t.bold, color: textOn(color) }}>{band === 'kid' ? 'I read it' : 'Done — I read it'}</Text>
       </TouchableOpacity>
     </Sheet>
   );
@@ -102,14 +103,14 @@ export function TimerSheet({ action, color, onClose, onDone }) {
       {finished ? (
         <TouchableOpacity onPress={close} accessibilityRole="button" accessibilityLabel="Logged. Close the timer"
           style={{ height: 52, borderRadius: r.lg, backgroundColor: c.teal, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ fontSize: t.md, fontWeight: t.bold, color: INK }}>Logged — nice work</Text>
+          <Text style={{ fontSize: t.md, fontWeight: t.bold, color: textOn(c.teal) }}>Logged — nice work</Text>
         </TouchableOpacity>
       ) : (
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <TouchableOpacity onPress={() => setRunning(v => !v)} accessibilityRole="button" accessibilityLabel={running ? 'Pause the timer' : 'Start the timer'}
             style={{ flex: 2, height: 52, borderRadius: r.lg, backgroundColor: color, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 }}>
-            <Ionicons name={running ? 'pause' : 'play'} size={18} color={INK} />
-            <Text style={{ fontSize: t.md, fontWeight: t.bold, color: INK }}>{running ? 'Pause' : left < minutes * 60 ? 'Keep going' : 'Start'}</Text>
+            <Ionicons name={running ? 'pause' : 'play'} size={18} color={textOn(color)} />
+            <Text style={{ fontSize: t.md, fontWeight: t.bold, color: textOn(color) }}>{running ? 'Pause' : left < minutes * 60 ? 'Keep going' : 'Start'}</Text>
           </TouchableOpacity>
           {left < minutes * 60 && (
             <TouchableOpacity

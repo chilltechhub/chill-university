@@ -382,10 +382,9 @@ export default function CompassScreen() {
           </View>
         ) : (
           <View style={s.objectiveCard}>
-            <Text style={s.objTitle}>Nothing in flight</Text>
+            <Text style={s.objTitle}>No goal yet</Text>
             <Text style={s.objPromise}>
-              One at a time. Pick the one that matches what you're here for and the rest of the app
-              gets out of the way until it's done.
+              Pick <Text style={{ fontWeight: '700' }}>one</Text> from the list below. You work on one at a time.
             </Text>
             <TouchableOpacity onPress={() => setPickingObjective(true)} activeOpacity={0.7}>
               <Text style={[s.inlineAction, { color: accent }]}>Pick a goal</Text>

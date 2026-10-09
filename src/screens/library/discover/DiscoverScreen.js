@@ -22,8 +22,8 @@ export default function DiscoverScreen() {
   return (
     <View style={{ flex:1, backgroundColor:c.bg0 }}>
       <View style={{ backgroundColor:c.headerBg, padding:s.lg, borderBottomWidth:0.5, borderBottomColor:c.border }}>
-        <Text style={{ fontSize:t.xxl, fontWeight:t.bold, color:c.text1 }}>{showEmojis ? '🧭 ' : ''}Discover</Text>
-        <Text style={{ fontSize:t.xs, color:c.text3, marginTop:3 }}>Explore the community</Text>
+        <Text style={{ fontSize:t.xxl, fontWeight:t.bold, color:c.text1 }}>{showEmojis ? '👥 ' : ''}Community</Text>
+        <Text style={{ fontSize:t.xs, color:c.text3, marginTop:3 }}>People, mentors and shared work</Text>
       </View>
       <ScrollView contentContainerStyle={{ padding:s.lg, gap:s.sm, paddingBottom:40 }}>
         <View style={{ backgroundColor:c.tealLight, borderRadius:r.lg, padding:s.lg, borderWidth:1, borderColor:c.teal, marginBottom:s.sm }}>

@@ -466,7 +466,7 @@ function BuildCard({ project, bp, onPress, onFavorite, onDelete, onSetNext }) {
       <View style={s.actions}>
         <View style={[s.outlineBtn, { borderColor: color }]}>
           <Ionicons name="hammer-outline" size={11} color={color} />
-          <Text style={[s.outlineBtnText, { color }]}>ENTER WORKSHOP</Text>
+          <Text style={[s.outlineBtnText, { color }]}>OPEN PROJECT</Text>
         </View>
         <View style={{ flexDirection: 'row', gap: 14 }}>
           <TouchableOpacity accessibilityRole="button" accessibilityLabel={project.is_favorite ? 'Remove from favorites' : 'Add to favorites'} onPress={() => onFavorite(project)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
@@ -702,9 +702,11 @@ export default function ProjectsScreen() {
           <>
 
             {/* Hero — Continue Building */}
-            {hero && filter === 'all' && !search && (
+            {/* Only with more than one project: with one, this card and the list
+                below showed the same project twice. */}
+            {hero && projects.length > 1 && filter === 'all' && !search && (
               <View style={s.section}>
-                <Text style={s.sectionLabel}>SHEET 01 — CONTINUE BUILDING</Text>
+                <Text style={s.sectionLabel}>PICK UP WHERE YOU LEFT OFF</Text>
                 <TouchableOpacity
                   style={s.heroCard}
                   onPress={() => navigation.navigate('ProjectDetail', { project: hero })}
@@ -744,7 +746,7 @@ export default function ProjectsScreen() {
                   <View style={s.heroFooter}>
                     <View style={[s.outlineBtnLg, { borderColor: hero.color || bp.accent }]}>
                       <Ionicons name="hammer-outline" size={13} color={hero.color || bp.accent} />
-                      <Text style={[s.outlineBtnLgText, { color: hero.color || bp.accent }]}>ENTER WORKSHOP</Text>
+                      <Text style={[s.outlineBtnLgText, { color: hero.color || bp.accent }]}>OPEN PROJECT</Text>
                     </View>
                     <Ionicons name={hero.is_favorite ? 'star' : 'star-outline'} size={18} color={bp.stamp} />
                   </View>
@@ -768,8 +770,9 @@ export default function ProjectsScreen() {
             </ScrollView>
             </TourSpot>
 
-            {/* Stats row */}
-            {filter === 'all' && !search && (
+            {/* Stats row: worth a glance once there are a few projects; with one
+                it was four tiles saying 1, 1, 0, 0. */}
+            {filter === 'all' && !search && projects.length >= 4 && (
               <View style={s.statsRow}>
                 {[
                   { label: 'TOTAL', val: projects.length, color: bp.accent },
@@ -788,7 +791,7 @@ export default function ProjectsScreen() {
             {/* Builds list */}
             <View style={s.section}>
               {filter !== 'all' || search ? (
-                <Text style={s.sectionLabel}>{filtered.length} BUILD{filtered.length !== 1 ? 'S' : ''} ON SHEET</Text>
+                <Text style={s.sectionLabel}>{filtered.length} PROJECT{filtered.length !== 1 ? 'S' : ''}</Text>
               ) : (
                 <Text style={s.sectionLabel}>ALL PROJECTS ({filtered.length})</Text>
               )}

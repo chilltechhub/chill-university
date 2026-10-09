@@ -72,36 +72,36 @@ export const LIBRARY_HUBS = [
     id: 'academic',
     tab: 'build',
     title: 'Build',
-    tagline: 'Execution, projects & career archives',
+    tagline: 'Your projects and where they lead',
     icon: 'hammer-outline',
     accentKey: 'teal',
     items: [
       { label: 'The Workshop', screen: 'ProjectsScreen', icon: 'hammer-outline', desc: 'Your projects, from idea to done', featured: true },
-      { label: 'Portfolio Archives', screen: 'PortfolioScreen', icon: 'briefcase-outline', desc: 'Mastery & showcase' },
+      { label: 'Portfolio Archives', screen: 'PortfolioScreen', icon: 'briefcase-outline', desc: 'What you have finished' },
       // For the step before any of the above: not knowing yet what you want
       // to build, or be. Sits next to Career Expeditions, which it links into.
       { label: 'Wayfinder', screen: 'WayfinderScreen', icon: 'navigate-circle-outline', desc: 'Figure out what fits you' },
-      { label: 'Career Expeditions', screen: 'CareerExplorationScreen', icon: 'compass-outline', desc: 'Professional horizons' },
+      { label: 'Career Explorer', screen: 'CareerExplorationScreen', icon: 'compass-outline', desc: 'Careers that could fit you' },
     ],
   },
   {
     id: 'knowledge',
     tab: 'knowledge',
     title: 'Knowledge',
-    tagline: 'Learning, notes & resources',
+    tagline: 'Learn, save and plan',
     icon: 'bulb-outline',
     accentKey: 'gold',
     items: [
-      { label: 'Academy Classes', screen: 'ClassesStack', icon: 'ribbon-outline', desc: 'Structured learning modules & coursework', featured: true },
-      { label: 'Idea Garden', screen: 'IdeaGardenScreen', icon: 'leaf-outline', desc: 'Cultivate & seed thoughts' },
+      { label: 'Academy Classes', screen: 'ClassesStack', icon: 'ribbon-outline', desc: 'Lessons and quests by subject', featured: true },
+      { label: 'Idea Garden', screen: 'IdeaGardenScreen', icon: 'leaf-outline', desc: 'Grow ideas into projects' },
       // One entry, three former ones: Notes Desk, the Research Vault, and
       // Resources & Instruments were all reading and writing the same
       // `captures` rows, so they're now type filters inside one screen.
-      { label: 'Knowledge Vault', screen: 'KnowledgeScreen', icon: 'library-outline', desc: 'Notes, bookmarks, papers & tools' },
-      { label: 'Planner', screen: 'PlannerScreen', icon: 'calendar-outline', desc: 'Agendas & key milestones' },
+      { label: 'Knowledge Vault', screen: 'KnowledgeScreen', icon: 'library-outline', desc: 'Notes, links and tools you keep' },
+      { label: 'Planner', screen: 'PlannerScreen', icon: 'calendar-outline', desc: 'Your days, habits and to-dos' },
       // Was a registered route with help copy and tour steps written for it
       // but no entry point anywhere in the app until it landed in this hub.
-      { label: 'Discover', screen: 'DiscoverScreen', icon: 'people-outline', desc: 'Breakthroughs, projects & mentors' },
+      { label: 'Community', screen: 'DiscoverScreen', icon: 'people-outline', desc: 'People, mentors and shared work' },
     ],
   },
 ];
@@ -756,7 +756,7 @@ export default function LibraryScreen() {
             } else if (item.screen === 'CareerExplorationScreen') {
               desc = targetCareer ? `Target: ${targetCareer.title}` : item.desc;
             } else if (item.screen === 'KnowledgeScreen') {
-              desc = vaultCount > 0 ? `${vaultCount}${vaultCount >= 100 ? '+' : ''} Bookmarks, Notes & Tools` : item.desc;
+              desc = vaultCount > 0 ? `${vaultCount}${vaultCount >= 100 ? '+' : ''} saved: notes, links, tools` : item.desc;
             }
 
             if (item.featured) {

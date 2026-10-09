@@ -993,12 +993,18 @@ export default function IdeaGardenScreen() {
           <FillWithAIButton target="ideas" color={gc.green} />
           {/* radius 16 matches styles.connectBtn — a pill, and the spotlight
               should trace it as one */}
+          {/* Linking takes two ideas, and the view switch and share have
+              nothing to work on in an empty garden: they appear when they can
+              do something, so a first visit sees AI and Plant. */}
+          {cores.length >= 2 && (
           <TourSpot id="garden-vine" radius={16}>
           <TouchableOpacity style={[styles.connectBtn, connectMode && styles.connectBtnActive]} onPress={toggleConnectMode} accessibilityRole="button" accessibilityLabel="Link two ideas">
             <Ionicons name="git-network" size={16} color={connectMode ? gc.white : gc.text2} />
             <Text style={[styles.connectBtnText, connectMode && { color: gc.white }]}>Link ideas</Text>
           </TouchableOpacity>
           </TourSpot>
+          )}
+          {cores.length > 0 && (<>
           <TourSpot id="garden-view" radius={8}>
           <View style={styles.viewToggle}>
             {['map', 'list'].map(v => (
@@ -1011,6 +1017,7 @@ export default function IdeaGardenScreen() {
           <TouchableOpacity accessibilityLabel="Share" accessibilityRole="button" style={styles.exportBtn} onPress={exportGarden}>
             <Ionicons name="share-outline" size={18} color={gc.text2} />
           </TouchableOpacity>
+          </>)}
           {/* Historic id — it wraps the ADD button, not a list. A labelled
               pill: an unlabelled "+" at the end of five icons was the reason
               people couldn't find where to add an idea. */}

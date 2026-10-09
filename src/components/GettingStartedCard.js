@@ -33,7 +33,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
-import { Button, Eyebrow } from './ui';
+import { Button } from './ui';
 import { useTour } from '../../context/TourContext';
 import { supabase } from '../api/supabaseClient';
 import { saveOnboardingFields, applyPlannerPicks } from '../api/onboardingService';
@@ -70,6 +70,7 @@ export default function GettingStartedCard() {
   const [openTask, setOpenTask] = useState(null);
   const [draft, setDraft] = useState({});
   const [saving, setSaving] = useState(false);
+  const [open, setOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -175,8 +176,18 @@ export default function GettingStartedCard() {
   return (
     <>
       <View style={[card, { borderTopWidth: 2, borderTopColor: accent.primary }]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: s.md }}>
-          <Eyebrow style={{ marginBottom: 0 }}>Getting started</Eyebrow>
+        {/* One line until opened: three setup rows at the top of Home pushed
+            the day itself below the fold. */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <TouchableOpacity onPress={() => setOpen(o => !o)} accessibilityRole="button"
+            accessibilityState={{ expanded: open }}
+            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons name="sparkles-outline" size={16} color={accent.primary} />
+            <Text style={{ fontSize: t.sm, color: c.text1 }}>
+              <Text style={{ fontWeight: t.bold }}>Finish setup</Text> · {remaining.length} left
+            </Text>
+            <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color={c.text3} />
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setDismissed(true)}
             accessibilityRole="button"
@@ -186,10 +197,8 @@ export default function GettingStartedCard() {
           </TouchableOpacity>
         </View>
 
+        {open && <View style={{ marginTop: s.md }}>
         {/* ── The rest of setup, one row at a time ── */}
-        <Text style={{ fontSize: t.sm, color: c.text3, marginBottom: s.sm }}>
-          Finish your setup · {remaining.length} left. Each one takes a minute.
-        </Text>
         {remaining.map(task => (
           <TouchableOpacity
             key={task.key}
@@ -221,6 +230,7 @@ export default function GettingStartedCard() {
           <Ionicons name="compass-outline" size={16} color={c.text3} />
           <Text style={{ fontSize: t.sm, color: c.text3, fontWeight: t.semibold }}>Show me around again</Text>
         </TouchableOpacity>
+        </View>}
       </View>
 
       {/* ── Task sheet — the wizard's own step components, unmodified ── */}

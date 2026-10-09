@@ -160,7 +160,7 @@ export const FEATURES = [
   },
   {
     id: 'career-map',
-    label: 'Career Expeditions',
+    label: 'Career Explorer',
     screen: 'CareerExplorationScreen',
     icon: 'map-outline',
     gate: 'locked',
@@ -215,7 +215,7 @@ export const FEATURES = [
   },
   {
     id: 'discover',
-    label: 'Discover',
+    label: 'Community',
     screen: 'DiscoverScreen',
     icon: 'people-outline',
     gate: 'locked',
