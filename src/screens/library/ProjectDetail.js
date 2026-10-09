@@ -138,7 +138,7 @@ function TaskSheet({ task, project, userId, bp, onClose, onToggle, onOpenProject
     {row(task.completed ? 'arrow-undo-outline' : 'checkmark-circle-outline', task.completed ? 'Not done yet' : 'Mark done', () => { onToggle(task); onClose(); }, !task.completed)}
     {split === undefined ? <ActivityIndicator color={bp.accent} style={{ marginVertical: 10 }} />
       : split ? row('open-outline', `Open its project: ${split.title}`, () => onOpenProject(split, false))
-      : !task.completed ? <>{row('git-branch-outline', 'Make it its own project', makeProject)}<Text style={[s.body, { marginTop: -2 }]}>A small project you can finish on its own. It stays in this plan, and ticks here when you mark it done.</Text></> : null}
+      : !task.completed ? <>{row('git-branch-outline', 'Make it its own project', makeProject)}<Text style={[s.body, { marginTop: -2 }]}>Finish this piece on its own. It ticks here when done.</Text></> : null}
   </View></View></Modal>;
 }
 

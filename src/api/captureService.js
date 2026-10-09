@@ -35,6 +35,40 @@ export async function getCaptures(userId, { status = 'inbox', type = null } = {}
   return data;
 }
 
+// ─── What the Knowledge Vault shows ──────────────────────────────────────────
+// One rule for the Vault screen and every preview of it (the Library card's
+// count and "Recent in your vault"), so the three never disagree.
+//   notes     — kept: not waiting in the Inbox ('inbox') and not handled
+//               somewhere else ('done': sent to the Planner, a task, the Idea
+//               Garden, a life area, or ticked off in the Inbox, which keeps
+//               its own Done list). "Call the dentist" sent to the Planner
+//               used to sit in the Vault as a note as well.
+//   links / resources — 'active' only, as the Research and Tools screens had.
+export const VAULT_TYPES = ['note', 'link', 'resource'];
+export function isVaultRow(row) {
+  if (!row || row.deleted_at) return false;
+  if (row.type === 'note') return !['inbox', 'done', 'archived'].includes(row.status);
+  if (row.type === 'link' || row.type === 'resource') return row.status === 'active';
+  return false;
+}
+
+// The Vault's newest rows plus how many it holds, for the Library's
+// Knowledge page. Light columns only; filtered with isVaultRow.
+export async function getVaultPreview(userId, limit = 5) {
+  const { data, error } = await supabase
+    .from('captures')
+    .select('id, title, type, status, created_at')
+    .eq('user_id', userId)
+    .in('type', VAULT_TYPES)
+    .not('status', 'in', '(inbox,done,archived)')
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(1000);
+  if (error) { console.warn('getVaultPreview:', error.message); return { count: 0, recent: [] }; }
+  const rows = (data || []).filter(isVaultRow);
+  return { count: rows.length, recent: rows.slice(0, limit) };
+}
+
 // Total capture count across every status/type — for a card subtitle like
 // "600+ Notes, Bookmarks & Tools", not the inbox-only count getCaptures()
 // returns by default. Count-only (head: true) so it doesn't pull every row

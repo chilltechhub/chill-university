@@ -19,6 +19,13 @@ import { getObjective, getPurpose } from '../data/objectives';
 import { getTest } from '../data/competencyTests';
 import { featureShownAtStage } from './experienceStage';
 
+// "Finish <goal>", without doubling a goal whose name already starts with
+// the word ("Finish Finish Your First Project" was on the Portfolio card).
+export function finishLabel(label) {
+  const name = String(label || '').trim();
+  return /^finish\b/i.test(name) ? name : `Finish ${name}`;
+}
+
 /* ─── Plan ────────────────────────────────────────────────────────────────── */
 
 // Mirror of public.is_plan_active(). Anything that isn't an unexpired
@@ -390,7 +397,7 @@ export function unlockHint(access) {
   const named = inFlight
     ? `${inFlight.done}/${inFlight.total} of ${inFlight.label}`
     : objectives.length === 1
-      ? `Finish ${objectives[0].label}`
+      ? finishLabel(objectives[0].label)
       : objectives.length > 1
         ? 'Finish a goal'
         : null;

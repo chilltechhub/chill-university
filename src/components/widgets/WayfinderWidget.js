@@ -70,7 +70,7 @@ export function WayfinderWidget({ userId, onOpen }) {
         icon="navigate-circle-outline"
         accent={accent}
         empty={{
-          text: 'Not sure what you want to do — or who you want to be? Most people aren’t. Wayfinder helps you find out by trying small things, not by guessing.',
+          text: 'Not sure what you want? Find out by trying small things.',
           cta: 'Start · about 10 min',
           onPress: () => onOpen?.(),
         }}

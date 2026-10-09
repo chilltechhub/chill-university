@@ -56,7 +56,7 @@ export function VaultStatusWidget({ userId, profileId, onOpenVault }) {
       action="Open →" onAction={onOpenVault}
       loading={docs === null}
       empty={docs?.length === 0 ? {
-        text: "Nothing filed yet. Vault documents are the worksheets you complete as you work through the ownership curriculum — they're what a level actually advances on.",
+        text: "No worksheets yet. You fill them in as you go through the business lessons.",
         cta: 'Start a lesson', onPress: onOpenVault,
       } : null}
     >
@@ -157,7 +157,7 @@ export function TargetsReadinessWidget({ userId, profile, onOpenProfiles, onOpen
       title="Targets & readiness" icon="trending-up-outline" accent={c.success}
       loading={docs === null}
       empty={!hasBaseline && readinessDone === 0 ? {
-        text: "No target set for this profile yet. Set a monthly revenue target or venture stage and this tracks it against how much of your funding-readiness paperwork is done.",
+        text: "No target yet. Set a monthly revenue target or venture stage.",
         cta: 'Set a target', onPress: onOpenProfiles,
       } : null}
     >

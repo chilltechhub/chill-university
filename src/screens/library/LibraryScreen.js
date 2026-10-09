@@ -22,7 +22,7 @@ import { supabase } from '../../api/profileScopedClient';
 import { getDueItems } from '../../api/deadlinesService';
 import { openTarget } from '../../logic/openTarget';
 import { cacheRead, cacheWrite, isOnline } from '../../api/offlineCache';
-import { getProjects, getDomainContent, getCaptureCount, completeTask } from '../../api/captureService';
+import { getProjects, getDomainContent, getVaultPreview, completeTask } from '../../api/captureService';
 import { CAPTURE_TYPES } from '../CaptureInbox';
 import { CAREERS } from './careerexplore';
 import { LIFE_AREAS } from './LifeAreaScreen';
@@ -504,7 +504,7 @@ export default function LibraryScreen() {
       if (!(await isOnline())) return; // cached hub is as current as we can get right now
 
       const today = todayStr();
-      const [areasRes, trophyRes, agendaRes, profileRes, activeProjRes, careerNoteRes, vaultTotal, recentCapRes, ideasRes, dueRes] = await Promise.all([
+      const [areasRes, trophyRes, agendaRes, profileRes, activeProjRes, careerNoteRes, vault, ideasRes, dueRes] = await Promise.all([
         supabase.from('life_areas').select('*').eq('user_id', uid).order('sort_order'),
         // No .limit() any more — this now feeds the Build tab's Portfolio
         // Archives count instead of a Trophy Hall carousel, so the real
@@ -516,8 +516,9 @@ export default function LibraryScreen() {
         supabase.from('profiles').select('active_life_areas').eq('id', uid).maybeSingle(),
         getProjects(uid, 'active'),
         supabase.from('area_notes').select('content').eq('user_id', uid).eq('area_id', CAREER_AREA_ID).ilike('content', `[${CAREER_TAG}]%`).order('created_at', { ascending: false }).limit(1),
-        getCaptureCount(uid),
-        supabase.from('captures').select('id, title, type, created_at').eq('user_id', uid).is('deleted_at', null).order('created_at', { ascending: false }).limit(5),
+        // Same rule as the Vault screen itself (isVaultRow), so the card's
+        // count and this list match what opening the Vault shows.
+        getVaultPreview(uid),
         supabase.from('garden_cores').select('id, title, plant_type, color').eq('user_id', uid).is('deleted_at', null).order('created_at', { ascending: false }).limit(4),
         // Deadlines due today or late (project tasks, tasks, finish dates):
         // "Today" said "your planner's clear" over a task due that day.
@@ -526,8 +527,8 @@ export default function LibraryScreen() {
       if (areasRes.data) setLifeAreas(areasRes.data);
       if (trophyRes.data) setTrophies(trophyRes.data);
       setActiveProjects(activeProjRes || []);
-      setVaultCount(vaultTotal || 0);
-      setRecentCaptures(recentCapRes.data || []);
+      setVaultCount(vault.count);
+      setRecentCaptures(vault.recent);
       setGardenIdeas(ideasRes.data || []);
 
       // Today's still-open agenda items, earliest first — timed ones ahead
@@ -569,11 +570,11 @@ export default function LibraryScreen() {
         trophies: trophyRes.data || [],
         activeProjects: activeProjRes || [],
         targetCareer: career || null,
-        vaultCount: vaultTotal || 0,
+        vaultCount: vault.count,
         activeAreaIds: nextActiveAreaIds,
         areaQueue: nextAreaQueue,
         todayAgenda: agendaRows,
-        recentCaptures: recentCapRes.data || [],
+        recentCaptures: vault.recent,
         gardenIdeas: ideasRes.data || [],
       });
     } catch (e) {

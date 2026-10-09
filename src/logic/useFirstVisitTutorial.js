@@ -162,6 +162,16 @@ export default function useFirstVisitTutorial({ tourActive, startScreenTour, pau
 
   return useCallback((routeName) => {
     if (!routeName) return;
+    // Left the screen we were counting down to teach: drop it. Without this
+    // the countdown kept running, so Home's tutorial (armed for the moment a
+    // brand-new account lands on Home) went off over the signup questions
+    // that replaced it, used up the session's one tutorial, and marked Home
+    // as taught.
+    if (armedFor.current && armedFor.current !== routeName) {
+      if (pending.current) clearTimeout(pending.current);
+      pending.current = null;
+      armedFor.current = null;
+    }
     if (NEVER.has(routeName)) return;
     if (tourActive || paused) return;
     // Still loading the seen set. Skipping is the right call: showing a

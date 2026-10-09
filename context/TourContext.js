@@ -54,14 +54,14 @@ function buildSteps({ welcome = false, purpose = null, firstGoal = null } = {}) 
         return {
           ...step,
           title: `You came here to ${purpose.you}`,
-          body: "So that's where we'll start. Two quick things first, so you can find your way back to it on your own. Tap Next › to move on, or Skip to go straight in.",
+          body: "So we'll start there. Two quick things first. Tap **Next ›**, or **Skip** to go straight in.",
         };
       }
       if (i === last && firstGoal) {
         const n = firstGoal.steps.length;
         return {
           ...step,
-          body: `I'll show you the rest as you get to it. Next up is your first goal, ${firstGoal.label}: ${n} small steps${purpose?.you ? ` to ${purpose.you}` : ''}, and I'll walk you through each one.`,
+          body: `I'll show you the rest as you go. Next: **${firstGoal.label}**, ${n} small steps${purpose?.you ? ` to ${purpose.you}` : ''}.`,
         };
       }
       return step;
@@ -70,9 +70,9 @@ function buildSteps({ welcome = false, purpose = null, firstGoal = null } = {}) 
   // Both ends: the opening line ("Two things before your first goal") was
   // also only true right after onboarding.
   return TOUR_STEPS.map((step, i) => (i === TOUR_STEPS.length - 1
-    ? { ...step, body: "That's everything. You can replay this any time from Settings. For the page you're on, tap your picture at the top left, then Screen Tutorial." }
+    ? { ...step, body: "That's it. Replay any time in **Settings**. For help on any page: tap **your picture** (top left) → **Screen Tutorial**." }
     : i === 0
-      ? { ...step, body: "The two things every screen shares. Tap Next › to move on, or Skip to leave." }
+      ? { ...step, body: "Two things on every screen. Tap **Next ›**, or **Skip** to leave." }
       : step));
 }
 

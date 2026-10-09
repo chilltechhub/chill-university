@@ -298,7 +298,7 @@ export const OBJECTIVES = [
     estimate: '3 days',
     steps: [
       { id: 'focus',   label: 'Set a focus for today',        hint: 'One line on Home. What today is actually for.', screen: 'Home', signal: 'focus-set', widget: 'focus' },
-      { id: 'mission', label: 'Finish a daily drill',          hint: "Open shows today's three and a game for each. Ticks itself when one is done.", screen: 'Training', params: { openDrills: true }, auto: { stat: 'missions', value: 1 } },
+      { id: 'mission', label: 'Finish a daily drill',          hint: "Open shows today's three. **Ticks itself.**", screen: 'Training', params: { openDrills: true }, auto: { stat: 'missions', value: 1 } },
       { id: 'plan',    label: 'Put one thing in the Planner',  hint: 'Something real and dated, not a wish.', screen: 'PlannerScreen', signal: 'planner-item-added' },
       { id: 'streak',  label: 'Reach a 3-day streak',          hint: 'Ticks itself the day your streak hits three.', auto: { stat: 'streak', value: 3 } },
     ],
@@ -317,7 +317,7 @@ export const OBJECTIVES = [
       { id: 'seed',    label: 'Plant the idea in the Idea Garden', hint: 'Rough is fine. It only has to be written down.', screen: 'IdeaGardenScreen', signal: 'idea-planted', have: 'idea' },
       { id: 'project', label: 'Start a project in the Workshop',   hint: 'Give it a name you would say out loud.', screen: 'ProjectsScreen', signal: 'project-started', have: 'project' },
       { id: 'step',    label: 'Set its next physical step',        hint: 'Not "work on it" — the actual next move.', screen: 'ProjectsScreen', signal: 'project-next-set', have: 'next-step' },
-      { id: 'ship',    label: 'Mark a project done',            hint: 'Open the project and tap DONE at the top. Done beats perfect. A big build? Tap one of its tasks, choose "Make it its own project", and finish that piece.', screen: 'ProjectsScreen', signal: 'project-shipped', have: 'shipped' },
+      { id: 'ship',    label: 'Mark a project done',            hint: 'Open it and tap **DONE**. Too big? Make one task its own project and finish that.', screen: 'ProjectsScreen', signal: 'project-shipped', have: 'shipped' },
     ],
     unlocks: ['portfolio'],
     next: 'show-your-work',
@@ -333,7 +333,7 @@ export const OBJECTIVES = [
     steps: [
       { id: 'pick',   label: 'Open a class and pick one topic',  hint: 'One. The other twenty will keep.', screen: 'ClassesStack', signal: 'class-opened' },
       { id: 'note',   label: 'Save a note or source to the Vault', hint: 'Something you would want again in a month.', screen: 'KnowledgeScreen', signal: 'vault-saved' },
-      { id: 'drill',  label: 'Finish three game rounds',          hint: 'Any game counts; a class topic often links its own. Ticks itself.', screen: 'Training', signal: 'round-played', signalCount: 3 },
+      { id: 'drill',  label: 'Finish three game rounds',          hint: 'Any game counts. **Ticks itself.**', screen: 'Training', signal: 'round-played', signalCount: 3 },
       { id: 'level',  label: 'Reach level 3',                     hint: 'Ticks itself as your level comes up.', auto: { stat: 'level', value: 3 } },
     ],
     unlocks: ['import-hub', 'work-mode'],
@@ -349,7 +349,7 @@ export const OBJECTIVES = [
     estimate: '1 week',
     steps: [
       { id: 'area',    label: 'Rate your Physical life area',    hint: 'Honestly. Nobody else sees it.', screen: 'LibraryScreen', signal: 'area-rated:physical' },
-      { id: 'agenda',  label: 'Schedule one movement block',     hint: 'Twenty minutes, on a day, in the Planner. Tag it Physical and it ticks itself.', screen: 'PlannerScreen', signal: 'planner-item-added:physical' },
+      { id: 'agenda',  label: 'Schedule one movement block',     hint: '20 minutes in the Planner, tagged **Physical**.', screen: 'PlannerScreen', signal: 'planner-item-added:physical' },
       { id: 'reflect', label: 'Write one reflection',            hint: 'What helped, what did not.', screen: 'KnowledgeScreen', signal: 'vault-saved' },
       { id: 'streak',  label: 'Reach a 5-day streak',            hint: 'Ticks itself on day five.', auto: { stat: 'streak', value: 5 } },
     ],
@@ -368,7 +368,7 @@ export const OBJECTIVES = [
       { id: 'area',    label: 'Rate your Financial life area',    hint: 'Where it actually is today.', screen: 'LibraryScreen', signal: 'area-rated:financial' },
       { id: 'game',    label: 'Play Budget Balance once',         hint: 'A cheap way to find the gaps in what you know.', screen: 'Training' },
       { id: 'capture', label: 'Capture your three biggest costs', hint: 'Rent-sized things, not coffee. Ticks itself at three.', screen: 'CaptureInbox', signal: 'inbox-captured', signalCount: 3 },
-      { id: 'plan',    label: 'Schedule a monthly money review',  hint: 'Recurring, in the Planner. Half an hour — tag it Financial and it ticks itself.', screen: 'PlannerScreen', signal: 'planner-item-added:financial' },
+      { id: 'plan',    label: 'Schedule a monthly money review',  hint: 'Repeating, in the Planner, tagged **Financial**.', screen: 'PlannerScreen', signal: 'planner-item-added:financial' },
     ],
     unlocks: ['savings-investing', 'debt-credit'],
     next: null,
@@ -413,7 +413,7 @@ export const OBJECTIVES = [
     // Not "set a focus": the focus widget isn't on stage 1's Home. Every
     // step here has to be doable with what stage 1 shows.
     steps: [
-      { id: 'area',  label: 'Rate one life area',          hint: 'Honestly. Nobody else sees it. Ticks itself when you rate one.', screen: 'LibraryScreen', signal: 'area-rated' },
+      { id: 'area',  label: 'Rate one life area',          hint: 'Honestly. **Only you see it.**', screen: 'LibraryScreen', signal: 'area-rated' },
       { id: 'habit', label: 'Put one small habit in the Planner', hint: 'Something you could do most days. A glass of water counts.', screen: 'PlannerScreen', signal: 'planner-item-added',
         idea: { cadence: 'daily' } },
       { id: 'drill', label: 'Play one training game',      hint: 'Ticks itself when you finish a round.', screen: 'Training', auto: { stat: 'played', value: 1 } },
@@ -435,7 +435,7 @@ export const OBJECTIVES = [
     why: 'Every habit starts with a day where you showed up once. This is that day.',
     estimate: 'About 5 minutes',
     steps: [
-      { id: 'area',  label: 'Rate one life area',            hint: 'Honestly. Nobody else sees it. Ticks itself when you rate one.', screen: 'LibraryScreen', signal: 'area-rated' },
+      { id: 'area',  label: 'Rate one life area',            hint: 'Honestly. **Only you see it.**', screen: 'LibraryScreen', signal: 'area-rated' },
       { id: 'log',   label: 'Log one thing you did for it',  hint: 'Tap "I did this" or a quick-log chip on that area’s page.', screen: 'LibraryScreen', signal: 'area-logged' },
       { id: 'drill', label: 'Play one training game',        hint: 'Ticks itself when you finish a round.', screen: 'Training', auto: { stat: 'played', value: 1 } },
     ],
@@ -516,7 +516,7 @@ export const OBJECTIVES = [
     steps: [
       { id: 'seed',    label: 'Plant the idea in the Idea Garden',  hint: 'One line on what it is or the problem it solves. Rough is fine.', screen: 'IdeaGardenScreen', signal: 'idea-planted' },
       { id: 'project', label: 'Start it as a project',              hint: 'In the Workshop. Give it a name you would say out loud.', screen: 'ProjectsScreen', signal: 'project-started' },
-      { id: 'step',    label: 'Write its next step',                hint: 'The actual next move, not "work on it". There is a box for it when you start the project.', screen: 'ProjectsScreen', signal: 'project-next-set' },
+      { id: 'step',    label: 'Write its next step',                hint: 'The real next move, not "work on it".', screen: 'ProjectsScreen', signal: 'project-next-set' },
     ],
     unlocks: [],
     next: 'ship-first-build',
@@ -583,7 +583,7 @@ export const OBJECTIVES = [
     steps: [
       { id: 'rate',      label: 'Rate three life areas',            hint: 'Where each one actually is today. Ticks itself at three.', screen: 'LibraryScreen', signal: 'area-rated', signalCount: 3 },
       { id: 'weigh',     label: 'Write down what is weighing on you', hint: 'In the Capture Inbox. The biggest thing, in a sentence.', screen: 'CaptureInbox', signal: 'inbox-captured' },
-      { id: 'situation', label: 'Say what is going on right now',   hint: 'Pick what fits in the Wayfinder and get a plan for it, one step at a time.', screen: 'WayfinderScreen', params: { stage: 'situation' }, signal: 'wayfinder-situation' },
+      { id: 'situation', label: 'Say what is going on right now',   hint: 'Pick what fits in Wayfinder for a step-by-step plan.', screen: 'WayfinderScreen', params: { stage: 'situation' }, signal: 'wayfinder-situation' },
     ],
     unlocks: [],
     next: 'money-baseline',
@@ -669,7 +669,7 @@ export const OBJECTIVES = [
     estimate: '2 days',
     steps: [
       { id: 'ship',      label: 'Have one shipped project',     hint: 'Open the project and tap DONE at the top.', screen: 'ProjectsScreen', signal: 'project-shipped', have: 'shipped' },
-      { id: 'portfolio', label: 'See it in your Portfolio',      hint: 'A finished project shows up there by itself. Add anything else you made with Add Entry.', screen: 'PortfolioScreen', signal: 'portfolio-added', have: 'in-portfolio' },
+      { id: 'portfolio', label: 'See it in your Portfolio',      hint: 'Finished projects land there **by themselves**.', screen: 'PortfolioScreen', signal: 'portfolio-added', have: 'in-portfolio' },
       { id: 'write',     label: 'Write what you learned',        hint: 'Two sentences. The part that surprised you.', screen: 'KnowledgeScreen', signal: 'vault-saved' },
       { id: 'ready',     label: 'Decide it is ready to show',    hint: 'It is. Tick it.' },
     ],

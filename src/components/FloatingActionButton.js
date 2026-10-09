@@ -478,7 +478,7 @@ export default function FloatingActionButton({ currentScreen, navigationRef }) {
       <QuickNoteModal
         visible={noteOpen}
         userId={user?.id}
-        onSaved={() => { setNoteOpen(false); Alert.alert('Saved', 'Note added to your account.'); }}
+        onSaved={() => { setNoteOpen(false); Alert.alert('Note saved', "It's in your Knowledge Vault (Library → Knowledge)."); }}
         onClose={() => setNoteOpen(false)}
         c={c} t={t} s={s} r={r}
       />
@@ -496,7 +496,7 @@ export default function FloatingActionButton({ currentScreen, navigationRef }) {
       <QuickCaptureModal
         visible={captureOpen}
         userId={user?.id}
-        onSaved={() => { setCaptureOpen(false); Alert.alert('Captured', 'Added to your inbox — process it anytime from Capture Inbox.'); }}
+        onSaved={() => { setCaptureOpen(false); Alert.alert('Captured', 'It\'s in your inbox. Sort it any time.'); }}
         onClose={() => setCaptureOpen(false)}
         c={c} t={t} s={s} r={r}
       />

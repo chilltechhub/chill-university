@@ -22,26 +22,26 @@ import { EXAMPLES } from '../config/chilltech';
 // Play and PlayGame share one walkthrough. It replaced the SCREEN_HELP line
 // "A single training game in progress", which told nobody anything.
 const PLAY_STEPS = [
-  { title: 'Switch games', body: "Swipe up or down to move to the next game. Some games use swipes themselves, so these arrows always work too. The number shows which game you're on.", id: 'play-switch' },
-  { title: 'Your level', body: 'Each game asks your level first, then keeps adjusting as you play: a hot streak moves you up, a couple of misses ease you back down.' },
-  { title: 'Leaving', body: 'Tap X at the top left to go back. Every right answer is saved as you go, so leaving early loses nothing.' },
+  { title: 'Switch games', body: "**Swipe up or down**, or tap the arrows, for the next game.", id: 'play-switch' },
+  { title: 'Your level', body: "Pick your **level** first. A hot streak moves you up; misses ease you down." },
+  { title: 'Leaving', body: "Tap **X** (top left) to leave. Every right answer is **already saved**." },
 ];
 
 const SCREEN_FEATURES = {
   Play: PLAY_STEPS,
   PlayGame: PLAY_STEPS,
   Home: [
-    { title: "Today's Wisdom", body: "A quote plus your own affirmation, if you've set one — tap + to write one that rotates in daily.", id: 'home-focus' },
-    { title: "Today's Focus", body: "Pin the one thing that matters most today — it's the first thing you see when you open the app. Tap the date box next to it to jump into the calendar.", id: 'home-focus-input' },
-    { title: 'Study & Play', body: 'STUDY jumps into Daily Drills; PLAY opens a game pick across any subject. Both feed your streak and points.', id: 'home-study-play' },
-    { title: 'On the Desk', body: 'Priorities pulled from your projects, notes, and ideas — the app works out what you should probably pick up. Tap + Add to pin one yourself, or tap a card to jump straight to it.', id: 'home-desk' },
-    { title: "Today's Activities", body: "Anything scheduled for today — planner items, class assignments, reminders — in one list, in time order. If it isn't here, it isn't scheduled.", id: 'home-today-activities' },
+    { title: "Today's Focus", body: "The **one thing** that matters today. Tap the date box for your calendar.", id: 'home-focus-input' },
+    { title: 'On the Desk', body: "What to **pick up next** from your projects, notes and ideas. Tap **+ Add** to pin one.", id: 'home-desk' },
+    { title: "Today's Activities", body: "Everything **scheduled today**, in time order.", id: 'home-today-activities' },
+    { title: 'Study & Play', body: "**Study** opens Daily Drills. **Play** opens a game. Both grow your streak.", id: 'home-study-play' },
+    { title: "Today's Wisdom", body: "A daily quote, plus **your own affirmations** if you add some with **+**.", id: 'home-focus' },
   ],
   Training: [
-    { title: 'Where the points come from', body: "Rank, points and streak, all fed by what you finish here. The streak is the one that matters — it's the difference between using this app and having installed it.", id: 'training-stats' },
-    { title: 'Daily Drills & Challenges', body: "Daily Drills are three small targets that reset every day; any game you play counts toward them. Challenges are the bigger weekly ones and your achievements.", id: 'training-games' },
-    { title: 'Pick a subject', body: "ENTER TRAINING opens the game picker — Math, Science, Language Arts and the rest. Every round feeds that subject's own progress as well as your overall rank.", id: 'training-enter' },
-    { title: 'Try one now', body: "Genuinely — one round takes a couple of minutes, and the app can't recommend anything sensible until it has seen you play once.", id: 'training-enter' },
+    { title: 'Where the points come from', body: "Points and your **streak**. The streak is the one that matters.", id: 'training-stats' },
+    { title: 'Daily Drills & Challenges', body: "**Daily Drills**: three small targets, new each day. **Challenges**: the bigger weekly ones.", id: 'training-games' },
+    { title: 'Pick a subject', body: "Tap **Enter Training** to pick a subject and play.", id: 'training-enter' },
+    { title: 'Try one now', body: "One round takes **two minutes**, and helps the app suggest the right things.", id: 'training-enter' },
   ],
   // The Library is three sub-views behind one tab bar, and a hub's cards only
   // exist while their own sub-view is showing. Steps that point at a card
@@ -52,25 +52,25 @@ const SCREEN_FEATURES = {
   LibraryScreen: [
     {
       title: 'Life Areas',
-      body: "Eight sides of a life, each with a ring showing how it's actually tracking. Double-tap one, or press and hold it, to open it and check in; one tap only filters the list below. The ring is only as honest as the check-ins behind it.",
+      body: "Each circle is a **part of your life**. **Double-tap** to open it. One tap filters the list.",
       id: 'library-life-areas',
       librarySubTab: 'domains',
     },
     {
       title: 'Three views, one Library',
-      body: "Domains is how life is going. Build is what you're making. Knowledge is what you're learning and planning. Same Library, sorted by what you came here to do.",
+      body: "**Life**: how it's going. **Build**: what you're making. **Knowledge**: what you're learning and planning.",
       id: 'library-life-areas',
       librarySubTab: 'domains',
     },
     {
       title: 'Build',
-      body: "The Workshop holds active projects with their own tasks, research and journal. Portfolio Archives is what you've finished. The Research Vault keeps sources that don't belong to any one project, and Career Expeditions is for exploring where this all goes.",
+      body: "**Workshop**: your projects. **Portfolio**: what you've finished. **Wayfinder** and **Careers**: where it could go.",
       id: 'hub-section-academic',
       librarySubTab: 'build',
     },
     {
       title: 'Knowledge',
-      body: "Academy Classes is structured coursework. The Idea Garden grows loose thoughts and links them together. Notes and Resources are the quick stuff. The Planner is your actual agenda, daily to monthly.",
+      body: "**Classes** to learn. **Idea Garden** for ideas. **Vault** for notes and links. **Planner** for your days.",
       id: 'hub-section-knowledge',
       librarySubTab: 'knowledge',
     },
@@ -82,16 +82,16 @@ const SCREEN_FEATURES = {
       // rendered with no highlight at all, describing a screen the user
       // couldn't see. Now points at the card that actually holds it.
       title: 'Portfolio Archives',
-      body: "Ship something — finish a project, complete a class — and it lands in here on its own. This is the honest record of what you've actually done, and it's what you'd show someone.",
+      body: "Finish a project or class and it **lands here** on its own. Your record to show people.",
       id: 'hub-PortfolioScreen',
       librarySubTab: 'build',
     },
-    { title: 'Capture', body: "Capture, top-right, from anywhere in the Library. Get the thought out now and decide where it belongs later — that's the whole trick.", id: 'library-capture', librarySubTab: 'domains' },
+    { title: 'Capture', body: "Tap **Capture** (top right) to save a thought now. **Sort it later.**", id: 'library-capture', librarySubTab: 'domains' },
   ],
   PlannerScreen: [
-    { title: 'Three views', body: "Daily for today, Weekly to see the shape of the week, Monthly for the long view. Filter by life area to check one part of your life at a time.", id: 'planner-views' },
-    { title: 'Habits vs. one-offs', body: "A one-off happens once. A habit repeats every day, week or month, and the habits are what the Habits card on Home keeps score of.", id: 'planner-add' },
-    { title: 'Add', body: 'Tap Add to schedule something — a one-off event, or a recurring habit. ⋯ → Add from ideas has ready-made ones. Reminders can send a notification before the scheduled time.', id: 'planner-add' },
+    { title: 'Three views', body: "**Daily**, **Weekly** or **Monthly** view. Tap a life area to filter.", id: 'planner-views' },
+    { title: 'Habits vs. one-offs', body: "**One-off**: happens once. **Habit**: repeats every day, week or month.", id: 'planner-add' },
+    { title: 'Add', body: "Tap **Add** to plan something. **⋯ → Add from ideas** has ready-made habits.", id: 'planner-add' },
   ],
   // Capture -> label -> process, in that order, because that's the actual
   // loop: the whole point of the inbox is that capturing is separated from
@@ -99,23 +99,23 @@ const SCREEN_FEATURES = {
   CaptureInbox: [
     {
       title: 'Capture first, decide later',
-      body: "Anything you don't want to lose goes in here — a link, a task, half a thought. The reason this screen exists is so you never have to stop and work out where something belongs at the moment you think of it.",
+      body: "Drop anything here: a link, a task, half a thought. **Don't decide where it goes yet.**",
       id: 'inbox-capture',
       prefill: EXAMPLES.capture,
     },
     {
       title: 'Give it a label',
-      body: "Note, Idea, Link, Task, Video, Resource. The label isn't decoration — it decides where the item can be sent next, so a Link offers the Research Vault while a Task offers your Planner.",
+      body: "Pick a **label** (Note, Task, Link…). It decides where the item can go next.",
       id: 'inbox-capture',
     },
     {
       title: 'Then process it',
-      body: "Tap anything in the list to route it: add it to a project, start a new one, plant it in the Idea Garden, file it in your notes. Emptying this inbox is the habit — capture is only half of it.",
+      body: "Tap an item to **send it** to a project, the Planner, your notes or the Idea Garden.",
       id: 'inbox-list',
     },
     {
       title: "Don't let it rot",
-      body: "Items show how long they've got left. That's deliberate pressure: an inbox you never empty is just a second pile. Process a few whenever you open it.",
+      body: "Items show **time left**. Empty the inbox a few at a time.",
       id: 'inbox-list',
     },
   ],
@@ -124,12 +124,12 @@ const SCREEN_FEATURES = {
   // opens pre-filled with EXAMPLES.project — editable, and nothing is saved
   // until the user presses Start themselves.
   ProjectsScreen: [
-    { title: 'This is the Workshop', body: "Every project lives here, from a one-line idea to something you're shipping. A build holds its own tasks, research and journal, so the whole thing stays in one place instead of scattered across notes.", id: 'projects-list' },
-    { title: 'Stages', body: 'Ideas are ones you haven’t started. In progress is underway. Done is finished — and finished projects land in your Portfolio on their own, which is the record you’d actually show someone.', id: 'projects-list' },
-    { title: 'Finding one later', body: 'Search by name once you have a few. Worth knowing now so you don’t end up scrolling for something you made three months ago.', id: 'projects-search' },
+    { title: 'This is the Workshop', body: "**Every project lives here**, with its own tasks, notes and log.", id: 'projects-list' },
+    { title: 'Stages', body: "**Idea**: not started. **In progress**: underway. **Done**: finished, and it goes to your **Portfolio**.", id: 'projects-list' },
+    { title: 'Finding one later', body: "**Search** by name once you have a few.", id: 'projects-search' },
     {
       title: "Let's make one",
-      body: "Tap NEW PROJECT. I've put an example in for you — a Grow Shed sensor rig — so you can see the shape of a good one: a clear title, and an objective that says what done looks like. Change it to whatever you're actually building, or clear it.",
+      body: "Tap **New Project**. I've filled in an example: a **clear name** and what **done** looks like. Change it to yours.",
       id: 'projects-add',
       passthrough: true,
       prefill: EXAMPLES.project,
@@ -139,33 +139,33 @@ const SCREEN_FEATURES = {
   // the Knowledge Vault. All four route names land on the same screen, so
   // each gets a tutorial framed around the view it opens on.
   KnowledgeScreen: [
-    { title: 'One vault', body: "Notes, bookmarks, papers, and tools all live in one list now — tap a type pill to narrow it down, or All to see everything together.", id: 'resources-list' },
-    { title: 'Quick notes', body: 'Type in the box under the folders and tap + to save a note without opening anything.', id: 'notes-input' },
-    { title: 'Add anything else', body: "Tap New for a link, paper, or tool. Paste a URL and it files itself — an arXiv or DOI link becomes a paper, with author, journal and DOI fields already set up.", id: 'research-list' },
-    { title: 'Folders come later', body: "Don't organise up front. Save things, then file them once you can see what you actually keep — a structure you guessed at on day one is a structure you'll fight.", id: 'resources-list' },
+    { title: 'One vault', body: "Notes, links, papers and tools in **one list**. Tap a type to filter.", id: 'resources-list' },
+    { title: 'Quick notes', body: "Type in the box and tap **+** to save a note.", id: 'notes-input' },
+    { title: 'Add anything else', body: "Tap **New** for a link, paper or tool. Paste a URL and it **files itself**.", id: 'research-list' },
+    { title: 'Folders come later', body: "**Save first, sort later.** Make folders once you see what you keep.", id: 'resources-list' },
   ],
   ResearchScreen: [
-    { title: 'Research Vault', body: "Links and resources saved for later reading, outside of any one project — now part of your Knowledge Vault.", id: 'research-list' },
-    { title: 'Papers get citations', body: "Save an arXiv, DOI, JSTOR, or PDF link and it files as a paper, with author, journal, year, and DOI fields.", id: 'resources-list' },
+    { title: 'Research Vault', body: "Links saved to read later. Part of your **Knowledge Vault**.", id: 'research-list' },
+    { title: 'Papers get citations', body: "Save an arXiv, DOI or PDF link and it files as a **paper** with its citation.", id: 'resources-list' },
   ],
   // ProjectDetail has no TourSpots of its own yet — every step below is a
   // plain centered card (no spotlight). Still real, structured coverage;
   // wire in TourSpots later if the exact highlight matters.
   ProjectDetail: [
-    { title: 'Workbench', body: "The default tab when you open a project — Next on the bench (your top few open tasks), deadlines, work time and open questions, so you always know what to pick up." },
-    { title: 'Materials', body: "Everything you've captured for this project — notes, ideas, questions, research, and tasks — filterable by type. Nothing here gets lost." },
-    { title: 'Project log', body: "A running history of milestones and notes for this project — useful for seeing how it actually came together over time." },
-    { title: 'Add', body: "Tap Add (top-right) or the capture prompt any time to log a thought, question, task, or research note without leaving the project." },
+    { title: 'Workbench', body: "**Next tasks**, deadlines, work time and open questions. What to pick up." },
+    { title: 'Materials', body: "**Everything saved** for this project, filterable by type." },
+    { title: 'Project log', body: "The **history** of this project: steps done, notes, milestones." },
+    { title: 'Add', body: "Tap **Add** (top right) to log a thought, task or note here." },
   ],
   ResourcesToolsScreen: [
-    { title: 'Tools you keep coming back to', body: "The Tools filter of your Knowledge Vault — calculators, references, sites worth a second visit. Separate from research because you use these rather than read them.", id: 'resources-list' },
-    { title: 'Discover has more', body: "Browse Discover for curated tools and research sites if you're not sure what's worth saving yet.", id: 'resources-list' },
+    { title: 'Tools you keep coming back to', body: "**Tools** you use again: calculators, references, useful sites.", id: 'resources-list' },
+    { title: 'Discover has more', body: "**Discover** has picked tools and research sites.", id: 'resources-list' },
   ],
   // No TourSpots here yet either — see the ProjectDetail note above.
   DiscoverScreen: [
-    { title: 'Still growing', body: "Discover is where you'll share breakthroughs, find collaborators, and connect with other learners — it gets better as the community grows." },
-    { title: 'Breakthroughs & Top Talent', body: "See what other people are shipping — recent discoveries and standout work worth knowing about." },
-    { title: 'Fellow Scholars & Mentors', body: "Find people on a similar path, or more experienced people to learn from." },
+    { title: 'Still growing', body: "Share wins and **find people** to learn with. Grows as more people join." },
+    { title: 'Breakthroughs & Top Talent', body: "What other people are **making**." },
+    { title: 'Fellow Scholars & Mentors', body: "People on **your path**, and people to **learn from**." },
   ],
   // The garden canvas itself is a WebView (buildGardenHTML in
   // ideagarden.js), so individual plants and vines can't be spotlighted —
@@ -174,17 +174,17 @@ const SCREEN_FEATURES = {
   IdeaGardenScreen: [
     {
       title: 'This is the garden',
-      body: "Every idea is a plant. Ideas that feed each other get a vine drawn between them. It sounds whimsical, but the point is practical: half the value of an idea is what it connects to, and a flat list hides that completely.",
+      body: "Each idea is a **plant**. Ideas that connect get a **vine** between them.",
       id: 'garden-view',
     },
     {
       title: 'Map or list',
-      body: "Map is the growing canvas — tap a plant to open it, hold to edit. List is the same ideas as plain rows, which is easier once you have a lot. (The map is native-only for now; on the web build you'll land in List.)",
+      body: "**Map**: the garden. **List**: the same ideas as rows. Tap a plant to open it.",
       id: 'garden-view',
     },
     {
       title: 'Linking two ideas',
-      body: "Tap Link ideas, then tap two plants to link them. Say you have “sell the rig as a kit” and “3D-print the enclosures in-house” — the kit needs an enclosure and you already print them. That's a vine, and it's exactly the connection you'd otherwise forget you'd made.",
+      body: "Tap **Link ideas**, then tap **two plants** to connect them.",
       id: 'garden-vine',
     },
     // Last on purpose. A passthrough step hands control back to the app,
@@ -193,62 +193,62 @@ const SCREEN_FEATURES = {
     // behind that sheet.
     {
       title: "Now plant one",
-      body: "Tap +. I've put an example in — an idea that came out of the sensor rig project. Give it a title and a line about what it actually is; the description is what makes it worth something when you come back in a month.",
+      body: "Tap **+**. I've filled in an example. Give it a **title** and **one line** on what it is.",
       id: 'ideas-list',
       passthrough: true,
       prefill: EXAMPLES.ideas[0],
     },
   ],
   NotesScreen: [
-    { title: 'Quick notes', body: "Type in the box under the folders and tap + to save. No title, no folder, no decisions — the point is that writing something down costs you nothing.", id: 'notes-input' },
-    { title: 'Same vault as everything else', body: "Notes sit alongside your links, papers and tools rather than in their own silo, so one search finds all of it.", id: 'resources-list' },
-    { title: 'When a note outgrows itself', body: "If a note turns into something you're actually going to do, send it to the Workshop as a project, or plant it in the Idea Garden to see what it connects to.", id: 'resources-list' },
+    { title: 'Quick notes', body: "Type in the box and tap **+**. No title or folder needed.", id: 'notes-input' },
+    { title: 'Same vault as everything else', body: "Notes sit with your links and tools, so **one search finds it all**.", id: 'resources-list' },
+    { title: 'When a note outgrows itself', body: "Note turning into a plan? Send it to the **Workshop** or the **Idea Garden**.", id: 'resources-list' },
   ],
   // The route name React Navigation reports for the Classes list is
   // 'ClassesMain' (the initial screen inside the ClassesStack nested
   // navigator, per src/screens/ClassesStack.js) — not 'ClassesStack'
   // itself, which is never the *current* route once mounted.
   ClassesMain: [
-    { title: 'Real coursework', body: "Structured classes by subject and grade level — not quiz questions dressed up as lessons. Pick one up where you left off, or start something new.", id: 'classes-list' },
-    { title: 'Your account type filters this', body: "Which subjects appear depends on your account type. A Student profile gets the full grade-level set; an Entrepreneur profile also gets the entity, credit and funding tracks. Switch profiles at the top of the screen to see the others.", id: 'classes-list' },
-    { title: 'Finishing counts', body: "Completing a topic earns XP toward your rank and moves that subject's progress — the same figure the Subjects widget on Home reads.", id: 'classes-list' },
+    { title: 'Real coursework', body: "Real lessons by **subject and level**. Pick up where you left off.", id: 'classes-list' },
+    { title: 'Your account type filters this', body: "Your **account type** decides which subjects show. Switch profiles at the top.", id: 'classes-list' },
+    { title: 'Finishing counts', body: "Finishing a topic earns **XP** and grows that **subject's progress**.", id: 'classes-list' },
   ],
   Settings: [
-    { title: 'Backgrounds', body: "Match Home or Library to your traveler's equipped landscape any time, or keep it plain.", id: 'settings-background' },
-    { title: 'Family', body: "Link a parent or child's account here — read-only, no controls over their account.", id: 'settings-family' },
-    { title: 'Organizations', body: "Join a school or team with an invite code, or create one. An organization can set shared assignments and see a roster; it never gets access to your personal profiles.", id: 'settings-organization' },
-    { title: 'Everything else', body: "Theme, life areas, library sections, notifications, screen tutorials and your account all live on this one screen. If something in the app is annoying you, the switch for it is probably here.", id: 'settings-appearance' },
+    { title: 'Backgrounds', body: "Use your character's **landscape** behind Home or the Library, or keep it plain.", id: 'settings-background' },
+    { title: 'Family', body: "Link a parent or child account. **Read-only.**", id: 'settings-family' },
+    { title: 'Organizations', body: "Join a school or team with a **code**, or start one. They never see your personal profiles.", id: 'settings-organization' },
+    { title: 'Everything else', body: "Theme, life areas, notifications, tutorials, account: **all here**.", id: 'settings-appearance' },
   ],
   Profile: [
-    { title: 'Your rank', body: "Level, points and streak. These are shared across every profile on the account — switching from Personal to Student doesn't restart your progress.", id: 'profile-rank' },
-    { title: 'Your character', body: "The traveler here is the one who walks around Home and Training. New outfits, pets and gear unlock as you level up.", id: 'profile-rank' },
+    { title: 'Your rank', body: "Level, points and streak, **shared by all your profiles**.", id: 'profile-rank' },
+    { title: 'Your character', body: "Your **traveler** walks around Home and Training. New gear unlocks as you level up.", id: 'profile-rank' },
   ],
   PortfolioScreen: [
-    { title: 'Your stats', body: 'XP, projects, skills, and streak — a snapshot of everything you\'ve built and how consistent you\'ve been.', id: 'portfolio-stats' },
-    { title: 'Sections', body: 'Experience, Skills, Projects, Education, and more — each tab holds entries you can add yourself, or that auto-populate as you use the app.', id: 'portfolio-sections' },
-    { title: 'Add Entry', body: "Tap Add Entry on any section to fill in something that doesn't auto-populate, like a certification or outside project.", id: 'portfolio-add' },
+    { title: 'Your stats', body: "XP, projects, skills and streak **at a glance**.", id: 'portfolio-stats' },
+    { title: 'Sections', body: "Experience, Skills, Projects, Education… Some **fill in on their own**.", id: 'portfolio-sections' },
+    { title: 'Add Entry', body: "Tap **Add Entry** for anything outside the app, like a certificate.", id: 'portfolio-add' },
   ],
   ImportScreen: [
-    { title: 'Paste anything', body: "Raw URLs, a bookmarks export, a markdown list, CSV, tab dumps — drop in whatever you've got and it figures out the format.", id: 'import-paste' },
-    { title: 'Format', body: "Auto-detect gets it right most of the time — override it here if you know exactly what you pasted.", id: 'import-format' },
-    { title: 'Parse or Analyze', body: "Structured formats parse instantly, no AI needed. Messy or unstructured text uses AI to make sense of it — set your API key in Settings first.", id: 'import-analyze' },
+    { title: 'Paste anything', body: "Paste **anything**: URLs, bookmarks, lists, CSV. It works out the format.", id: 'import-paste' },
+    { title: 'Format', body: "**Auto-detect** usually gets it right. Change it here if not.", id: 'import-format' },
+    { title: 'Parse or Analyze', body: "Tidy formats import **instantly**. Messy text uses **AI** (add your key in Settings).", id: 'import-analyze' },
   ],
   Family: [
-    { title: 'Link a Child', body: "Ask your child to open Family on their account, generate a code, and enter it here to follow their progress.", id: 'family-link' },
-    { title: 'My Invite Code', body: "On a child's account, generate a code here and hand it to a parent — read-only, they can never change anything for you.", id: 'family-invite' },
+    { title: 'Link a Child', body: "Your child makes a **code** in Family on their account. Enter it here.", id: 'family-link' },
+    { title: 'My Invite Code', body: "Make a **code** here and give it to a parent. **Read-only** for them.", id: 'family-invite' },
   ],
   // Route name is 'Organization' (App.js's Stack.Screen), not
   // 'OrganizationScreen'. Both TourSpots here already existed and nothing
   // pointed at them.
   Organization: [
-    { title: 'Join with a code', body: "A school, class or team gives you an invite code — enter it here. Joining lets them set shared assignments and see your progress on those; it does not give them your personal profiles.", id: 'organization-join' },
-    { title: 'Or start one', body: "Creating an organization makes you its manager: you can invite members, group them into cohorts, and hand out assignments.", id: 'organization-create' },
+    { title: 'Join with a code', body: "Got an **invite code** from a school or team? Enter it here.", id: 'organization-join' },
+    { title: 'Or start one', body: "**Start one** to invite members, make groups and set assignments.", id: 'organization-create' },
   ],
   LifeAreaScreen: [
-    { title: 'Rate it', body: "How's this area right now, 1 to 5? Rating it keeps the ring on the Library grid accurate.", id: 'lifearea-rating' },
-    { title: 'Quick Log', body: 'One-tap log entries for the stuff you do often in this area — no typing required.', id: 'lifearea-quicklog' },
-    { title: 'Sub-Sections', body: 'Deeper, focused pages within this life area — tap into any of them for more specific tracking and tips.', id: 'lifearea-sections' },
-    { title: 'Weekly Reflection', body: 'A guided prompt to check in on this area once a week — more thoughtful than a quick log, good for spotting patterns.', id: 'lifearea-reflection' },
+    { title: 'Rate it', body: "Tap **1 to 5**: how this area is going. It keeps the ring honest.", id: 'lifearea-rating' },
+    { title: 'Quick Log', body: "**One tap** logs something you did. No typing.", id: 'lifearea-quicklog' },
+    { title: 'Sub-Sections', body: "**Deeper pages** for one part of this area.", id: 'lifearea-sections' },
+    { title: 'Weekly Reflection', body: "A **weekly check-in** on this area. Good for spotting patterns.", id: 'lifearea-reflection' },
   ],
 };
 
@@ -271,7 +271,7 @@ function personalize(routeName, steps, personalization) {
   if (routeName === 'LibraryScreen') {
     if (areaLabels?.length) {
       next = next.map(step => step.title === 'Life Areas'
-        ? { ...step, body: `${areaLabels.join(', ')} — the sectors you picked at setup. Double-tap one, or press and hold it, to open it and check in. One tap filters the list below.` }
+        ? { ...step, body: `**${areaLabels.join(', ')}**: the parts of life you picked. **Double-tap** one to open it.` }
         : step);
     }
     if (focusHub) {
@@ -283,7 +283,7 @@ function personalize(routeName, steps, personalization) {
   // onboarding (buildRecommendations in MultiStepOnboarding.js), so anyone
   // who skipped past that screen still runs into them here.
   if (routeName === 'Home' && recommendations?.length) {
-    const body = recommendations.map(r => `${r.title} — ${r.body}`).join(' ');
+    const body = recommendations.map(r => `**${r.title}**: ${r.body}`).join(' ');
     next = [...next, { title: 'Recommended for you', body }];
   }
 
@@ -301,7 +301,7 @@ function personalize(routeName, steps, personalization) {
 // to explain something the user had already done to get there. Gone.
 const NAV_STEP_TAB = {
   title: 'Getting around',
-  body: "Three tabs, bottom of the screen. Library is everything you're building and learning, Home is today, Training is games and drills. They're always there.",
+  body: "**Library** = your tools. **Home** = today. **Training** = games and drills. Always at the bottom.",
   // The real bar now (App.js wraps it in a TourSpot); navHint stays as the
   // fallback rectangle if it hasn't measured yet.
   id: 'nav-tabbar',
@@ -332,20 +332,20 @@ export function hasScreenTutorial(routeName) {
 // full version runs next visit (`reteach` in experienceStages.js).
 const STARTER_FEATURES = {
   Home: [
-    { title: 'Your first goal', body: "This card is the one thing to do right now. Each step has an Open button that takes you straight to it, and the whole goal takes a few minutes. Every goal you finish opens a little more of the app.", id: 'home-compass' },
-    { title: 'What opens next', body: "The app opens up in stages. This card says what the next stage brings and the two ways to get there: finish your goal, or gain a level by playing.", id: 'home-stage' },
-    { title: 'Play', body: "PLAY drops you straight into one of the games picked for you. Press and hold it to choose the game yourself. Every round counts toward your streak and your points.", id: 'home-study-play' },
+    { title: 'Your first goal', body: "**The one thing to do now.** Each step has an **Open** button that takes you there.", id: 'home-compass' },
+    { title: 'What opens next', body: "The app opens **in stages**. Finish a goal or gain a level to open the next one.", id: 'home-stage' },
+    { title: 'Play', body: "**Play** starts a game picked for you. **Press and hold** to choose one.", id: 'home-study-play' },
   ],
   LibraryScreen: [
     {
       title: 'Life Areas',
-      body: "Sides of your life, each with a ring showing how it's tracking. Tap one to filter the list below; double-tap or press and hold to open it, rate it and get a small thing to do about it.",
+      body: "Each circle is a **part of your life**. **Double-tap** to open it and rate it.",
       id: 'library-life-areas',
       librarySubTab: 'domains',
     },
-    { title: 'Capture', body: "Capture, top-right. Get a thought out of your head now and decide where it belongs later.", id: 'library-capture', librarySubTab: 'domains' },
-    { title: 'Three pages', body: "Life, Build and Knowledge. Tap one in the bar under the title to switch — swiping left or right works too.", id: 'library-views' },
-    { title: 'More on the way', body: "The Library starts with the tools that fit your profile. Each goal you finish and each level you gain opens a little more, here and across the app." },
+    { title: 'Capture', body: "Tap **Capture** (top right) to save a thought now. **Sort it later.**", id: 'library-capture', librarySubTab: 'domains' },
+    { title: 'Three pages', body: "**Life**, **Build** and **Knowledge**. Tap one under the title, or swipe.", id: 'library-views' },
+    { title: 'More on the way', body: "**More opens** as you finish goals and level up." },
   ],
 };
 
@@ -361,21 +361,49 @@ const FULL_TUTORIAL_AT = { Home: 'dashboard', LibraryScreen: 'all-tools' };
 // steps. Screen Tutorial in the menu always runs the full version.
 const FIRST_VISIT = {
   LibraryScreen: [
-    { title: 'Three pages', body: 'The Library has three pages: Life, Build and Knowledge. Tap one in the bar under the title to switch.', id: 'library-views', librarySubTab: 'domains' },
-    { title: 'Your life areas', body: 'Each circle is one part of your life. Double-tap one, or press and hold it, to open it.', id: 'library-life-areas', librarySubTab: 'domains' },
+    { title: 'Three pages', body: "Three pages: **Life**, **Build**, **Knowledge**. Tap one under the title.", id: 'library-views', librarySubTab: 'domains' },
+    { title: 'Your life areas', body: "Each circle is a **part of your life**. **Double-tap** to open it.", id: 'library-life-areas', librarySubTab: 'domains' },
   ],
   LifeAreaScreen: [
-    { title: 'Rate it', body: 'Tap the number that fits this part of your life right now. Nobody else sees it.', id: 'lifearea-rating' },
-    { title: 'Getting back', body: 'Tap the arrow at the top left, or swipe right from the left edge of the screen, to go back. That works on every page like this one.', id: 'lifearea-back' },
+    { title: 'Rate it', body: "Tap the **number** that fits right now. Only you see it.", id: 'lifearea-rating' },
+    { title: 'Getting back', body: "Tap the **arrow** (top left) or **swipe right** to go back.", id: 'lifearea-back' },
   ],
   Training: [
-    { title: 'Training', body: 'Quick games that earn points. Tap Enter Training to play. Inside, swipe up or down to switch games, and tap X to come back.', id: 'training-enter' },
+    { title: 'Training', body: "Quick games that earn points. Tap **Enter Training**. **Swipe** to switch games, **X** to leave.", id: 'training-enter' },
   ],
   Play: [PLAY_STEPS[0], PLAY_STEPS[2]],
   PlayGame: [PLAY_STEPS[0], PLAY_STEPS[2]],
+  // The core screens, said in a sentence or two. Their full walkthroughs
+  // (above) explain the thinking behind each one, which is a lot to read on
+  // a first visit, so a first visit gets what the screen is for and the one
+  // button to press.
+  PlannerScreen: [
+    { title: 'Your plan', body: "Tap **Add** to plan something. Set it to **repeat** and it's a habit.", id: 'planner-add' },
+  ],
+  CaptureInbox: [
+    { title: 'Your inbox', body: "Jot anything here. Later, **tap it** to send it where it belongs.", id: 'inbox-capture' },
+  ],
+  ProjectsScreen: [
+    { title: 'Your projects', body: "Each project keeps its **next step**, tasks and notes. Tap **New Project** to start.", id: 'projects-add' },
+  ],
+  ProjectDetail: [
+    { title: 'One step at a time', body: "The **flag** is your next step. **Tick it** when done. **Work** starts a timer." },
+  ],
+  KnowledgeScreen: [
+    { title: 'Your vault', body: "Notes, links and tools in **one list**. Type a note and tap **+**.", id: 'notes-input' },
+  ],
+  NotesScreen: [
+    { title: 'Your vault', body: "Notes, links and tools in **one list**. Type a note and tap **+**.", id: 'notes-input' },
+  ],
+  IdeaGardenScreen: [
+    { title: 'Your ideas', body: "Each idea is a **plant**. Tap **+** to add one. Ready? **Make it a project.**", id: 'ideas-list' },
+  ],
+  ClassesMain: [
+    { title: 'Classes', body: "Pick a **subject**. **Quests** at the top take ten minutes.", id: 'classes-list' },
+  ],
 };
 const FIRST_VISIT_STEPS = 2;
-const MORE_NOTE = ' For the full tour of this page, tap your picture at the top left, then Screen Tutorial.';
+const MORE_NOTE = ' Full tour: tap **your picture** (top left) → **Screen Tutorial**.';
 
 // `can` is AccessContext's stage check; omitted means the full walkthroughs.
 // `firstVisit` is the automatic first-visit version: the basics only.

@@ -24,7 +24,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../api/profileScopedClient';
 import { fetchContentPool } from '../api/remoteConfigService';
 import { getMyOpenAssignments, updateAssignmentStatus } from '../api/organizationService';
-import { completeInstance, skipInstance } from '../api/plannerService';
+import { completeInstance, skipInstance, extendRepeatingPlans } from '../api/plannerService';
 import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../api/offlineCache';
 import { syncReminders, computeReminderState } from '../logic/notificationScheduler';
 import TourSpot from '../components/TourSpot';
@@ -376,6 +376,10 @@ function FocusModal({ visible, draft, setDraft, onSave, onClose, presets, onAddP
             value={draft} onChangeText={setDraft}
             placeholder="What matters most today?" placeholderTextColor={c.text4}
             multiline autoFocus
+            // One line: Enter saves it instead of starting a second line
+            // nobody asked for. Long text still wraps.
+            returnKeyType="done" blurOnSubmit submitBehavior="blurAndSubmit"
+            onSubmitEditing={() => { if (draft?.trim()) onSave(); }}
           />
 
           {/* Presets */}
@@ -1346,6 +1350,11 @@ export default function HomeScreen() {
 
   const loadAll = async (uid) => {
     const cacheKey = `home_desk_${uid}`;
+    // Keeps repeating habits going (the Habits card and today's list read
+    // them). Once a day, off the main load; reloads only if it added any.
+    extendRepeatingPlans(uid)
+      .then(added => { if (added) loadAll(uid); })
+      .catch(e => console.warn('home planner top-up', e?.message));
     try {
       const cached = await cacheRead(cacheKey);
       if (cached) applyDeskSnapshot(cached);
@@ -1663,15 +1672,6 @@ export default function HomeScreen() {
     setTimeout(() => navigation.navigate('Library', { screen, params }), 0);
   };
 
-  // Target shape used by GettingStartedCard's first action: {tab} switches
-  // tabs, {tab: 'Library', screen} goes into the Library stack via the
-  // priming helper above.
-  const goToTarget = (target) => {
-    if (!target?.tab) return;
-    if (target.tab === 'Library' && target.screen) goToLibraryScreen(target.screen, target.params);
-    else navigation.navigate(target.tab);
-  };
-
   // Removes a resolved candidate from the ranked list — the ticker just
   // renders one fewer chip next tick, nothing to re-index.
   const dismissDeskItem = (id) => setTodos(prev => prev.filter(it => it.id !== id));
@@ -1981,7 +1981,7 @@ export default function HomeScreen() {
         {/* Not early on: the goal on the Compass card is the one thing to
             do, and a setup checklist beside it would be a second. It
             arrives with the 'dashboard' stage, when there's more to set up. */}
-        {!editingWidgets && can('dashboard') && <GettingStartedCard onNavigate={goToTarget} />}
+        {!editingWidgets && can('dashboard') && <GettingStartedCard />}
 
         {/* ── Dashboard widgets — order/visibility from widgetLayout, drag
              handles + jiggle only live while editingWidgets. See

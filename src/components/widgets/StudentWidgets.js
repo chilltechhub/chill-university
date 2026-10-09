@@ -54,7 +54,7 @@ export function StudyBlocksWidget({ userId, onOpenPlanner }) {
       action="Planner →" onAction={onOpenPlanner}
       loading={blocks === null}
       empty={blocks?.length === 0 ? {
-        text: "Nothing scheduled for today. Block out some study time and it'll show here with the rest of your day.",
+        text: "Nothing today. Add a study block in the Planner.",
         cta: 'Schedule study time', onPress: onOpenPlanner,
       } : null}
     >
@@ -105,7 +105,7 @@ export function ClassProgressWidget({ subjectProgress, onOpenClasses }) {
       title="Subjects" icon="ribbon-outline" accent={c.tech || c.teal}
       action="Academy →" onAction={onOpenClasses}
       empty={subjects.length === 0 ? {
-        text: "No subject progress yet. Finish a lesson or a round of practice and each subject starts tracking here.",
+        text: "No progress yet. Finish a lesson or a practice round.",
         cta: 'Open Academy', onPress: onOpenClasses,
       } : null}
     >

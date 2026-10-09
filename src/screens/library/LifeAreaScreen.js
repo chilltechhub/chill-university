@@ -1,7 +1,7 @@
 // src/screens/library/LifeAreaScreen.js
 // Dynamic life area screen — uses ThemeContext for light/dark
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   TextInput, Modal, ActivityIndicator,
@@ -147,16 +147,33 @@ export const LIFE_AREAS = [
 ];
 
 // ─── Quick log chips ──────────────────────────────────────────────────────────
+// A tap logs it straight away. The entry lands in Notes & Logs at the
+// bottom of the page, out of sight, so the chip itself says it worked —
+// without that, a tap looked like nothing happened and got tapped again.
 function QuickLogChips({ options, onLog, color, c, t, s }) {
+  const [logged, setLogged] = useState(null);
+  const timer = useRef(null);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const log = (opt) => {
+    if (logged === opt) return;
+    onLog(opt);
+    setLogged(opt);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setLogged(null), 1800);
+  };
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: s.md }}>
-      {options.map((opt, i) => (
-        <TouchableOpacity key={i} onPress={() => onLog(opt)}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: color + '18', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: color + '44' }}>
-          <Ionicons name="add-circle" size={13} color={color} />
-          <Text style={{ fontSize: t.xs, color, fontWeight: '600' }}>{opt}</Text>
-        </TouchableOpacity>
-      ))}
+      {options.map((opt, i) => {
+        const done = logged === opt;
+        return (
+          <TouchableOpacity key={i} onPress={() => log(opt)}
+            accessibilityRole="button" accessibilityLabel={done ? `Logged: ${opt}` : `Log: ${opt}`}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: done ? color : color + '18', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: done ? color : color + '44' }}>
+            <Ionicons name={done ? 'checkmark-circle' : 'add-circle'} size={13} color={done ? '#fff' : color} />
+            <Text style={{ fontSize: t.xs, color: done ? '#fff' : color, fontWeight: '600' }}>{done ? 'Logged' : opt}</Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 }

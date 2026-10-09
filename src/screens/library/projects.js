@@ -151,6 +151,10 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
   // with an idea and a project that never knew about each other.
   const [ideas,     setIdeas]     = useState([]);
   const [ideaId,    setIdeaId]    = useState(null);
+  // The example and idea chips stay put until one is picked. They used to
+  // vanish on the first letter typed, which shifted every field up under the
+  // person's finger, so the next tap landed on the icon row.
+  const [pickedStart, setPickedStart] = useState(false);
   const { signalAction: signalBuild } = useAccess();
 
   useEffect(() => {
@@ -167,10 +171,12 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
     setTitle(ex.title); setObjective(ex.objective); setNextStep(ex.next); setEmoji(ex.emoji);
     if (BUILD_TYPES.includes(ex.type)) setType(ex.type);
     setIdeaId(null);
+    setPickedStart(true);
   };
 
   const applyIdea = (idea) => {
     setTitle(idea.title || ''); setObjective(idea.description || ''); setIdeaId(idea.id);
+    setPickedStart(true);
   };
 
   // A career (or any deep link) can land here with a build type already
@@ -189,7 +195,7 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
 
   const reset = () => {
     setTitle(''); setObjective(''); setEmoji('🏗️'); setNextStep('');
-    setColor(buildColors[0]); setType(initialType || ''); setIdeaId(null);
+    setColor(buildColors[0]); setType(initialType || ''); setIdeaId(null); setPickedStart(false);
   };
 
   const start = async () => {
@@ -248,7 +254,7 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
           </View>
 
           <ScrollView automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 20 }}>
-            {!title && !prefill && ideas.length > 0 && (
+            {!pickedStart && !prefill && ideas.length > 0 && (
               <>
                 <Text style={s.label}>FROM YOUR IDEAS</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -263,7 +269,7 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
                 </ScrollView>
               </>
             )}
-            {!title && !prefill && (
+            {!pickedStart && !prefill && (
               <>
                 <Text style={s.label}>START FROM AN EXAMPLE</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
