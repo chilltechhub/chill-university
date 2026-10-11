@@ -581,7 +581,7 @@ export default function MultiStepOnboarding() {
     // "Show me around" on landing: the tab bar, top bar, + button, Library
     // pages and going back, before the first goal starts. Home reads this
     // on its first render, so it has to be down before navigating.
-    await queueWelcomeTour(userId);
+    await queueWelcomeTour(userId, { aimChosen: !!data.aim });
     // What they came for. choosePurpose sets it locally before its write
     // goes out, so Home's first render already has the tools it opens
     // (AIM_OPENS) and the tour already knows what to say. The write itself

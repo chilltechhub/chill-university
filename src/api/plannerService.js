@@ -83,6 +83,26 @@ export async function getUserSubscriptions(userId) {
   return (data || []).map(row => ({ ...row.planner_components, sub_id: row.id }));
 }
 
+// The weekly and monthly series someone made themselves in the Planner
+// ("Repeats: Monthly"), one row per series. Those live as agenda_instances
+// with a cadence, not as subscriptions, so a list built only from
+// getUserSubscriptions never showed them.
+export async function getRepeatingPlans(userId, cadences = ['weekly', 'monthly']) {
+  if (!userId) return [];
+  const { data, error } = await supabase
+    .from('agenda_instances')
+    .select('id, title, area, cadence, start_time, component_id, date')
+    .eq('user_id', userId)
+    .in('cadence', cadences)
+    .gte('date', addDaysIso(todayStr(), -35))
+    .order('date', { ascending: false })
+    .limit(500);
+  if (error) throw error;
+  const seen = new Map();
+  (data || []).forEach(row => { if (!seen.has(seriesKey(row))) seen.set(seriesKey(row), row); });
+  return [...seen.values()];
+}
+
 export async function subscribeToComponent(userId, componentId) {
   const { error } = await supabase
     .from('user_planner_components')

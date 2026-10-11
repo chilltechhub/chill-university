@@ -94,6 +94,7 @@ function QuickNoteModal({ visible, userId, onSaved, onClose, c, t, s, r }) {
   const [body,   setBody]   = useState('');
   const [tags,   setTags]   = useState('');
   const [saving, setSaving] = useState(false);
+  const { signalAction } = useAccess();
 
   const reset = () => { setBody(''); setTags(''); };
   const close = () => { reset(); onClose(); };
@@ -113,6 +114,9 @@ function QuickNoteModal({ visible, userId, onSaved, onClose, c, t, s, r }) {
         // the action next to it, is the one for things to sort later.
         status: 'active',
       });
+      // Same tick as saving on the Vault screen: a goal's "write it down"
+      // step shouldn't care which door the note came in by.
+      signalAction('vault-saved', { kind: 'note' });
       onSaved(saved);
       reset();
     } catch (e) {
@@ -291,7 +295,7 @@ export default function FloatingActionButton({ currentScreen, navigationRef }) {
   // should always land nearest the FAB, whichever way that is.
   // Early stages (src/data/experienceStages.js) offer the actions this
   // profile type's path has opened; the 'dashboard' stage brings all of them.
-  const { visibleFabActions } = useAccess();
+  const { visibleFabActions, signalAction } = useAccess();
   // "Plan from a link" is a capture that goes straight to planning, so it
   // opens with the Inbox.
   const stageActions = visibleFabActions
@@ -496,7 +500,7 @@ export default function FloatingActionButton({ currentScreen, navigationRef }) {
       <QuickCaptureModal
         visible={captureOpen}
         userId={user?.id}
-        onSaved={() => { setCaptureOpen(false); Alert.alert('Captured', 'It\'s in your inbox. Sort it any time.'); }}
+        onSaved={() => { setCaptureOpen(false); signalAction('inbox-captured'); Alert.alert('Captured', 'It\'s in your inbox. Sort it any time.'); }}
         onClose={() => setCaptureOpen(false)}
         c={c} t={t} s={s} r={r}
       />
@@ -508,6 +512,7 @@ export default function FloatingActionButton({ currentScreen, navigationRef }) {
         userId={user?.id}
         onSaved={(row) => {
           setPlanOpen(false);
+          signalAction('inbox-captured');
           if (row?.id) openTarget(navigationRef?.current, { kind: 'inbox', params: { openCapture: row.id, plan: true, at: Date.now() } });
         }}
         onClose={() => setPlanOpen(false)}

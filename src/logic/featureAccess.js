@@ -410,17 +410,21 @@ export function unlockHint(access) {
   const objectives = access.routes.objectives || [];
   const test = access.routes.test;
 
-  // Where several objectives open the same feature, naming one of them
-  // arbitrarily would be a half-truth — say "a goal" instead.
+  // Where several objectives open the same feature, name them all. "Finish
+  // a goal" read as "any goal" — someone with six goals done still saw
+  // Weekly Review locked behind it, when only two particular goals open it.
   const inFlight = objectives.find(o => o.active);
+  const quoted = objectives.map(o => `“${o.label}”`);
   const named = inFlight
     ? `${inFlight.done}/${inFlight.total} of ${inFlight.label}`
     : objectives.length === 1
       // Says it's a goal: "Finish Draw the Map" read like a game level.
-      ? (/^finish\b/i.test(objectives[0].label) ? objectives[0].label : `Complete the goal “${objectives[0].label}”`)
-      : objectives.length > 1
-        ? 'Finish a goal'
-        : null;
+      ? (/^finish\b/i.test(objectives[0].label) ? objectives[0].label : `Complete the goal ${quoted[0]}`)
+      : objectives.length === 2
+        ? `Complete ${quoted[0]} or ${quoted[1]}`
+        : objectives.length > 2
+          ? `Complete one of: ${quoted.join(', ')}`
+          : null;
 
   const setting = access.routes.setting;
   if (!named && !test && setting) return `Switch on ${setting.label} in Settings`;

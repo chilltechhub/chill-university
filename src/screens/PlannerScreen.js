@@ -78,13 +78,25 @@ function isOverdue(instance) {
 // "Put one small habit in the Planner" comes right after onboarding asked
 // for "a habit you want to hold", so that answer is the habit: asking for
 // it a second time, in a blank box, was the first thing a new account hit.
-function goalIdeaFor(objective, baseline) {
+//
+// The area comes from the goal too: a step that says "tagged Financial"
+// (signal 'planner-item-added:financial') opens on Financial, and "plan one
+// small thing for it" right after rating an area opens on that area. The
+// sheet used to open on the person's first area whatever the goal said.
+function goalIdeaFor(objective, baseline, ratedArea = null) {
   if (!objective?.active || objective.complete) return null;
-  const idea = objective.nextStep?.idea;
-  if (!idea) return null;
+  const step = objective.nextStep;
+  const signal = typeof step?.signal === 'string' ? step.signal : '';
+  const named = signal.startsWith('planner-item-added:') ? signal.split(':')[1] : null;
+  const ratesAnArea = (objective.objective?.steps || objective.steps || [])
+    .some(st => typeof st.signal === 'string' && st.signal.startsWith('area-rated'));
+  const goalArea = named || (signal === 'planner-item-added' && ratesAnArea ? ratedArea : null);
+  const idea = step?.idea;
+  if (!idea) return goalArea ? { area: goalArea } : null;
+  const withArea = idea.area || !goalArea ? idea : { ...idea, area: goalArea };
   const own = typeof baseline?.habit_target === 'string' ? baseline.habit_target.trim() : '';
-  if (idea.title || !own || objective.nextStep.id !== 'habit') return idea;
-  return { ...idea, title: own, mine: true };
+  if (withArea.title || !own || step.id !== 'habit') return withArea;
+  return { ...withArea, title: own, mine: true };
 }
 
 // ─── Add / Edit instance modal ────────────────────────────────────────────────
@@ -1483,7 +1495,7 @@ export default function PlannerScreen() {
   // Re-read when the account changes, so signing in from the guest prompt
   // opens the planner without leaving the screen.
   const { user: signedInUser, profile: progressProfile } = useUserProgress();
-  const { activeObjective } = useAccess();
+  const { activeObjective, lastSignalDetail } = useAccess();
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUserId(user ? user.id : null);
@@ -1753,7 +1765,7 @@ export default function PlannerScreen() {
         date={modalDate}
         initialTime={modalTime}
         defaultArea={activeAreas.size === 1 ? [...activeAreas][0] : (progressProfile?.active_life_areas?.[0] || 'physical')}
-        goalIdea={goalIdeaFor(activeObjective, activeProfile?.baseline)}
+        goalIdea={goalIdeaFor(activeObjective, activeProfile?.baseline, lastSignalDetail?.('area-rated')?.area || null)}
         onSave={(saved) => {
           setShowModal(false);
           setRefresh(k => k + 1);

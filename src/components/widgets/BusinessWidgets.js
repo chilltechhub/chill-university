@@ -23,7 +23,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
 import { supabase } from '../../api/supabaseClient';
-import { getUserSubscriptions, AREAS } from '../../api/plannerService';
+import { getUserSubscriptions, getRepeatingPlans, seriesKey, AREAS } from '../../api/plannerService';
 import WidgetCard, { StatRow, Bar } from './WidgetCard';
 
 // ─── Org Snapshot ────────────────────────────────────────────────────────────
@@ -131,8 +131,17 @@ export function RecurringOpsWidget({ userId, onOpenPlanner }) {
     (async () => {
       if (!userId) { setOps([]); return; }
       try {
-        const subs = await getUserSubscriptions(userId);
-        if (alive) setOps(subs.filter(x => x.cadence === 'weekly' || x.cadence === 'monthly'));
+        // Template routines and the ones made by hand in the Planner, once
+        // each: a subscribed component's instances carry its component_id.
+        const [subs, plans] = await Promise.all([
+          getUserSubscriptions(userId),
+          getRepeatingPlans(userId).catch(() => []),
+        ]);
+        const fromSubs = subs.filter(x => x.cadence === 'weekly' || x.cadence === 'monthly');
+        const subIds = new Set(fromSubs.map(x => x.id));
+        const own = plans.filter(p => !(p.component_id && subIds.has(p.component_id)))
+          .map(p => ({ ...p, id: seriesKey(p) }));
+        if (alive) setOps([...fromSubs, ...own]);
       } catch (e) {
         console.warn('recurringOps', e?.message);
         if (alive) setOps([]);

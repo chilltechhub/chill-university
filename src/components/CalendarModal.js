@@ -11,6 +11,7 @@ import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-na
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
+import { useAccess } from '../../context/AccessContext';
 import { supabase } from '../api/profileScopedClient';
 import { unscoped } from '../api/profileScopedClient';
 import { useProfiles } from '../../context/ProfileAccountsContext';
@@ -92,6 +93,7 @@ function AddEventForm({ date, userId, onSave, onCancel, c, t, s, r, initialType 
   const [time,     setTime]     = useState('');
   const [allDay,   setAllDay]   = useState(false);
   const [reminder, setReminder] = useState(null);
+  const { signalAction } = useAccess();
   const [saving,   setSaving]   = useState(false);
   const tc = EVENT_TYPES.find(tp => tp.key === type);
 
@@ -123,6 +125,11 @@ function AddEventForm({ date, userId, onSave, onCancel, c, t, s, r, initialType 
       }
       if (reminder && time && !allDay)
         await scheduleReminder(title.trim(), toISO(date), time, reminder);
+      // Something put on a day counts for a goal's "plan it" step, and a
+      // focus for its "set a focus" step, the same as doing it from the
+      // Planner or Home. The + button's New Reminder lands here.
+      if (type === 'focus') signalAction('focus-set');
+      else if (type !== 'task') signalAction('planner-item-added');
       onSave(data);
     } catch { Alert.alert('Error', 'Could not save.'); }
     setSaving(false);
@@ -198,7 +205,7 @@ const fS = StyleSheet.create({
 // the floating button's copy of this popup lives outside the navigator, so
 // it has none and its planner items show no Edit button.
 export default function CalendarModal({ visible, onClose, userId, initialDate, autoAdd, quickType, onEditPlan }) {
-  const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
+  const { colors: c, typography: t, spacing: s, radius: r, isDark } = useTheme();
   const today  = new Date();
   const [anchor,  setAnchor]  = useState(initialDate || today);
   const [events,  setEvents]  = useState({});
@@ -253,7 +260,6 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
   const weekStart = toISO(weekDays[0]);
   const weekEnd   = toISO(weekDays[6]);
 
-  const isDark  = c.bg0 === '#0e0818';
   const paperBg = isDark ? '#1a1508' : '#fffef8';
   const lineClr = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
   const redLine = isDark ? '#e0585833' : '#e0585820';

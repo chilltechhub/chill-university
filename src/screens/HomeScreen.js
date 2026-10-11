@@ -77,11 +77,13 @@ const CHECKIN_DUE_DAYS = 7;
 // The four "study" destinations the STUDY button picks randomly among (tap),
 // or lets you choose explicitly (hold). Screen names match the Stack.Screen
 // names registered in LibraryNav.js.
+// Ordered: a tap on STUDY goes to the first one this stage shows (Classes
+// whenever it's open); a long press lists them all.
 const STUDY_DESTINATIONS = [
+  { key: 'ClassesStack',     label: 'Classes',      icon: 'ribbon-outline' },
   { key: 'ProjectsScreen',   label: 'Workshop',    icon: 'hammer-outline' },
   { key: 'IdeaGardenScreen', label: 'Idea Garden',  icon: 'leaf-outline' },
   { key: 'ResearchScreen',   label: 'Research',     icon: 'flask-outline' },
-  { key: 'ClassesStack',     label: 'Classes',      icon: 'ribbon-outline' },
 ];
 
 // ─── Quotes pool ──────────────────────────────────────────────────────────────
@@ -1496,7 +1498,15 @@ export default function HomeScreen() {
       setLifeAreaStats(areaStats);
 
       // Check-ins Due — domains not rated in CHECKIN_DUE_DAYS+ days (or never).
-      const dueAreas = areaStats
+      // Only the person's own areas (the onboarding pick, plus any they've
+      // added or rated since). Taking the first four of all eight showed
+      // Physical/Mental/Social to everyone, whatever they'd chosen — the
+      // Library already filtered this way.
+      const picked = Array.isArray(profile?.active_life_areas) ? profile.active_life_areas : [];
+      const mine = picked.length
+        ? areaStats.filter(x => picked.includes(x.area.id) || x.lastCheck)
+        : areaStats;
+      const dueAreas = mine
         .filter(x => x.days === null || x.days >= CHECKIN_DUE_DAYS)
         .slice(0, 4);
       setCheckInDue(dueAreas);
@@ -1921,7 +1931,9 @@ export default function HomeScreen() {
 
   const goStudy = () => {
     if (!studyDestinations.length) return;
-    const pick = studyDestinations[Math.floor(Math.random() * studyDestinations.length)];
+    // Same place every time. A random pick sent a Student to a filtered,
+    // empty Research view when they expected their classes.
+    const pick = studyDestinations[0];
     goToLibraryScreen(pick.key);
   };
   const pickStudy = (key) => {
