@@ -174,6 +174,17 @@ export default function CompassScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
 
         <View style={s.header}>
+          {/* The Compass sits on the root stack with no header and no tab
+              bar, so without this the only way out on web (and the only
+              visible one on a phone) was tapping a goal or a tool row. */}
+          <TouchableOpacity
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('MainTabs'))}
+            accessibilityRole="button" accessibilityLabel="Back"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={s.back}
+          >
+            <Ionicons name="chevron-back" size={22} color={c.teal} />
+          </TouchableOpacity>
           <Text style={s.headerTitle}>Compass</Text>
           {showSubtext && <Text style={s.headerSub}>What you’re here for, the goal you’re on, and what it opens.</Text>}
         </View>
@@ -576,6 +587,7 @@ const makeStyles = (c, t, sp, r) => StyleSheet.create({
   scroll:    { paddingBottom: 96, paddingTop: sp.lg }, // clears the + button and the guide pill
 
   header:      { paddingHorizontal: sp.xl, marginBottom: sp.lg },
+  back:        { alignSelf: 'flex-start', marginBottom: sp.xs, marginLeft: -4, padding: 2 },
   headerTitle: { fontSize: t.xxxl, fontFamily: FONTS.display, fontWeight: '800', color: c.text1 },
   headerSub:   { fontSize: t.xs, color: c.text3, marginTop: 4, lineHeight: 18 },
 

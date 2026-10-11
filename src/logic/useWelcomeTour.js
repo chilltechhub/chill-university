@@ -33,10 +33,14 @@ const SETTLE_MS = 1200;
 const queueListeners = new Set();
 
 /** Called by onboarding's finish(), before it leaves for Home. */
-export async function queueWelcomeTour(uid) {
+// `aimChosen` false when onboarding was skipped before the "What did you
+// come here for?" card, so the tour doesn't open with "You came here to…"
+// about a purpose they never picked. Stored as its own pending value.
+export async function queueWelcomeTour(uid, { aimChosen = true } = {}) {
   if (!uid) return;
-  queueListeners.forEach(fn => fn(uid));
-  try { await AsyncStorage.setItem(key(uid), 'pending'); } catch { /* the tour stays in Settings */ }
+  const value = aimChosen ? 'pending' : 'pending-noaim';
+  queueListeners.forEach(fn => fn(uid, value));
+  try { await AsyncStorage.setItem(key(uid), value); } catch { /* the tour stays in Settings */ }
 }
 
 /**
@@ -56,13 +60,13 @@ export default function useWelcomeTour(routeName) {
     setState(null);
     if (!uid) { setState('done'); return undefined; }
     AsyncStorage.getItem(key(uid))
-      .then(raw => { if (alive) setState(raw === 'pending' ? 'pending' : 'done'); })
+      .then(raw => { if (alive) setState(raw === 'pending' || raw === 'pending-noaim' ? raw : 'done'); })
       .catch(() => { if (alive) setState('done'); });
     return () => { alive = false; };
   }, [uid]);
 
   useEffect(() => {
-    const onQueued = (queuedUid) => { if (queuedUid === uid) setState('pending'); };
+    const onQueued = (queuedUid, value = 'pending') => { if (queuedUid === uid) setState(value); };
     queueListeners.add(onQueued);
     return () => { queueListeners.delete(onQueued); };
   }, [uid]);
@@ -80,8 +84,9 @@ export default function useWelcomeTour(routeName) {
   }, [uid]);
 
   useEffect(() => {
-    if (state !== 'pending' || tourActive || routeName !== 'Home') return undefined;
-    const timer = setTimeout(() => startTour({ onEnd: finish, welcome: true }), SETTLE_MS);
+    if ((state !== 'pending' && state !== 'pending-noaim') || tourActive || routeName !== 'Home') return undefined;
+    const aimChosen = state !== 'pending-noaim';
+    const timer = setTimeout(() => startTour({ onEnd: finish, welcome: true, aimChosen }), SETTLE_MS);
     return () => clearTimeout(timer);
   }, [state, tourActive, routeName, startTour, finish]);
 

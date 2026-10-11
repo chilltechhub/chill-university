@@ -46,11 +46,14 @@ const PERSONALIZATION_KEY = '@cth_setting_tourPersonalization';
 // closes on what the person said they came for, and hands over to the first
 // goal that serves it — the tour is the minute of "how to get around" before
 // that, not the point. Replayed later from Settings it can't promise a goal.
-function buildSteps({ welcome = false, purpose = null, firstGoal = null } = {}) {
+// `aimChosen` false: onboarding was skipped before "What did you come here
+// for?", so the purpose is only the account type's fallback. The tour then
+// doesn't tell them they came for it.
+function buildSteps({ welcome = false, purpose = null, firstGoal = null, aimChosen = true } = {}) {
   if (welcome) {
     const last = TOUR_STEPS.length - 1;
     return TOUR_STEPS.map((step, i) => {
-      if (i === 0 && purpose?.you) {
+      if (i === 0 && purpose?.you && aimChosen) {
         return {
           ...step,
           title: `You came here to ${purpose.you}`,
@@ -61,7 +64,7 @@ function buildSteps({ welcome = false, purpose = null, firstGoal = null } = {}) 
         const n = firstGoal.steps.length;
         return {
           ...step,
-          body: `Next: **${firstGoal.label}**, ${n} small steps${purpose?.you ? ` to ${purpose.you}` : ''}. It's a suggestion: to change anything, tap **your picture** → **Make it yours**.`,
+          body: `Next: **${firstGoal.label}**, ${n} small steps${purpose?.you && aimChosen ? ` to ${purpose.you}` : ''}. It's a suggestion: to change anything, tap **your picture** → **Make it yours**.`,
         };
       }
       return step;
@@ -125,9 +128,10 @@ export function TourProvider({ children }) {
   }, []);
 
   const [welcomeRun, setWelcomeRun] = useState(false);
+  const [aimChosen, setAimChosen] = useState(true);
   const steps = useMemo(
-    () => scopedSteps || buildSteps({ welcome: welcomeRun, purpose, firstGoal: getObjective(firstGoalId) }),
-    [scopedSteps, welcomeRun, purpose, firstGoalId]
+    () => scopedSteps || buildSteps({ welcome: welcomeRun, purpose, firstGoal: getObjective(firstGoalId), aimChosen }),
+    [scopedSteps, welcomeRun, purpose, firstGoalId, aimChosen]
   );
 
   // Which route is on screen, so a step marked `stay` can skip navigating
@@ -173,6 +177,7 @@ export function TourProvider({ children }) {
     endWith('replaced');
     onEndRef.current = typeof opts?.onEnd === 'function' ? opts.onEnd : null;
     setWelcomeRun(!!opts?.welcome);
+    setAimChosen(opts?.aimChosen !== false);
     setScopedSteps(null); // the main tour always wins over a scoped one
     setActive(true);
     const first = TOUR_STEPS[0];

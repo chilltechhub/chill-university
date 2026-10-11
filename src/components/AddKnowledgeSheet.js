@@ -19,6 +19,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { addCapture } from '../api/captureService';
 import { LIFE_AREAS } from '../screens/library/LifeAreaScreen';
+import { useAccess } from '../../context/AccessContext';
 
 export const MY_KNOWLEDGE_TAG = 'my-knowledge';
 const OTHER = 'Other';
@@ -46,6 +47,7 @@ export default function AddKnowledgeSheet({ visible, onClose, subjects, userId, 
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState(null);
   const styles = makeStyles(c, t, r);
+  const { signalAction } = useAccess();
 
   const reset = () => {
     setSubject(null); setArea(null); setAreaTouched(false);
@@ -85,6 +87,9 @@ export default function AddKnowledgeSheet({ visible, onClose, subjects, userId, 
         source: 'manual',
       });
       setSaved(true);
+      // It lands in the Vault, so it ticks a goal's "write it down" step
+      // the same way a note saved on the Vault screen does.
+      signalAction('vault-saved', { kind: 'note' });
       onSaved?.();
     } catch (e) {
       setError("Couldn't save that. Check your connection and try again.");

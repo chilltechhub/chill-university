@@ -117,7 +117,12 @@ export default function CompassCard() {
     // another purpose. It used to keep their purpose's label ("Learn a real
     // skill" over a habits goal), so say whose it is, and that the set they
     // were on is finished.
-    const crossover = !!suggestion && !!purposeKey && suggestion.purpose !== purposeKey;
+    // A goal on the purpose's own `path` (objectives.js) belongs to it even
+    // when its `purpose` field is another one: "Improve parts of my life"
+    // leads with Steady State, a wellbeing goal. Counting those as a
+    // crossover said "You've finished every … goal" after the first.
+    const onPath = !!suggestion && (purpose?.path || []).includes(suggestion.id);
+    const crossover = !!suggestion && !!purposeKey && suggestion.purpose !== purposeKey && !onPath;
     const shown = crossover ? getPurpose(suggestion.purpose) : purpose;
     return (
       <View style={[s.card, { borderLeftColor: accent }]}>

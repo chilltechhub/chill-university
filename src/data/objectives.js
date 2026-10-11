@@ -348,7 +348,7 @@ export const OBJECTIVES = [
     why: 'Every other goal in here is downstream of whether you are rested.',
     estimate: '1 week',
     steps: [
-      { id: 'area',    label: 'Rate your Physical life area',    hint: 'Honestly. Nobody else sees it.', screen: 'LibraryScreen', signal: 'area-rated:physical' },
+      { id: 'area',    label: 'Rate your Physical life area',    hint: 'Honestly. Nobody else sees it.', screen: 'LifeAreaScreen', params: { areaId: 'physical' }, signal: 'area-rated:physical' },
       { id: 'agenda',  label: 'Schedule one movement block',     hint: '20 minutes in the Planner, tagged **Physical**.', screen: 'PlannerScreen', signal: 'planner-item-added:physical' },
       { id: 'reflect', label: 'Write one reflection',            hint: 'What helped, what did not.', screen: 'KnowledgeScreen', signal: 'vault-saved' },
       { id: 'streak',  label: 'Reach a 5-day streak',            hint: 'Ticks itself on day five.', auto: { stat: 'streak', value: 5 } },
@@ -365,7 +365,7 @@ export const OBJECTIVES = [
     why: 'You cannot plan around numbers you are avoiding looking at.',
     estimate: '3 days',
     steps: [
-      { id: 'area',    label: 'Rate your Financial life area',    hint: 'Where it actually is today.', screen: 'LibraryScreen', signal: 'area-rated:financial' },
+      { id: 'area',    label: 'Rate your Financial life area',    hint: 'Where it actually is today.', screen: 'LifeAreaScreen', params: { areaId: 'financial' }, signal: 'area-rated:financial' },
       { id: 'game',    label: 'Play Budget Balance once',         hint: 'A cheap way to find the gaps in what you know.', screen: 'Training' },
       { id: 'capture', label: 'Capture your three biggest costs', hint: 'Rent-sized things, not coffee. Ticks itself at three.', screen: 'CaptureInbox', signal: 'inbox-captured', signalCount: 3 },
       { id: 'plan',    label: 'Schedule a monthly money review',  hint: 'Repeating, in the Planner, tagged **Financial**.', screen: 'PlannerScreen', signal: 'planner-item-added:financial' },
@@ -382,7 +382,7 @@ export const OBJECTIVES = [
     why: '"Advance my career" is not a plan. A named target and one artefact is.',
     estimate: 'About a week',
     steps: [
-      { id: 'area',    label: 'Rate your Professional life area', hint: 'Start from where you are, not where you would like to be.', screen: 'LibraryScreen', signal: 'area-rated:professional' },
+      { id: 'area',    label: 'Rate your Professional life area', hint: 'Start from where you are, not where you would like to be.', screen: 'LifeAreaScreen', params: { areaId: 'professional' }, signal: 'area-rated:professional' },
       { id: 'capture', label: 'Capture the role you are aiming at', hint: 'A title, a company, or a description of the work.', screen: 'CaptureInbox', signal: 'inbox-captured' },
       { id: 'project', label: 'Start a project that proves it',   hint: 'Something a stranger could look at.', screen: 'ProjectsScreen', signal: 'project-started' },
       { id: 'points',  label: 'Earn 250 points',                  hint: 'Ticks itself. Evidence that you kept at it.', auto: { stat: 'points', value: 250 } },
@@ -633,7 +633,7 @@ export const OBJECTIVES = [
     why: 'Most money stress comes from not looking. Looking is the first step and the hardest one.',
     estimate: 'About 15 minutes',
     steps: [
-      { id: 'area',    label: 'Rate your Financial life area',  hint: 'Where it actually is today, not where it should be.', screen: 'LibraryScreen', signal: 'area-rated:financial' },
+      { id: 'area',    label: 'Rate your Financial life area',  hint: 'Where it actually is today, not where it should be.', screen: 'LifeAreaScreen', params: { areaId: 'financial' }, signal: 'area-rated:financial' },
       { id: 'capture', label: 'Write down your biggest monthly cost', hint: 'In the Capture Inbox. Rent-sized, not coffee.', screen: 'CaptureInbox', signal: 'inbox-captured' },
       { id: 'game',    label: 'Play a round of Budget Balance', hint: 'It finds the gaps in what you know. Ticks itself when a round ends.', screen: 'Training', auto: { stat: 'played', value: 1 } },
     ],
