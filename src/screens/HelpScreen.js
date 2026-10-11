@@ -70,7 +70,7 @@ const FAQ = [
   },
   {
     q: 'Why can’t I see some tools?',
-    a: 'Some open **as you use the app**: the **Compass** lists what opens each one. Some courses and community features are limited by **age**.',
+    a: 'Some open **as you use the app**: **App Nav** lists what opens each one. Some courses and community features are limited by **age**.',
   },
   {
     q: 'How do I delete my account or get a copy of my data?',

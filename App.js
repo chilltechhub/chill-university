@@ -36,6 +36,7 @@ import TourOverlay from './src/components/TourOverlay';
 import TourSpot from './src/components/TourSpot';
 import { rootStackRouter } from './src/logic/navRules';
 import DrillToast from './src/components/DrillToast';
+import QuickToast from './src/components/QuickToast';
 import RewardToast from './src/components/RewardToast';
 
 import HomeScreen    from './src/screens/HomeScreen';
@@ -500,7 +501,7 @@ function AppInner() {
               locked / experimental / Plus rosters. Reachable from Home's
               card, Settings, the Library header and every unlock sheet,
               so it lives on the root stack rather than inside a tab. */}
-          <Stack.Screen name="Compass"           component={CompassScreen} />
+          <Stack.Screen name="Compass"           component={CompassScreen} options={{ title: 'App Nav' }} />
           <Stack.Screen name="Stats"               component={GatedStats} />
           <Stack.Screen name="WorkMode"            component={GatedWorkMode} />
           {/* The paywall / "your plan" page. Slides up rather than across,
@@ -529,6 +530,7 @@ function AppInner() {
       {/* Pet coins (not on Training, where you watch it eat them) and the
           XP real work earns. */}
       <RewardToast hideCoins={currentRouteName === 'Training'} />
+      <QuickToast />
       <ShareIntentListener navigationRef={navigationRef} />
     </NavigationContainer>
   );

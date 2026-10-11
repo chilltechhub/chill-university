@@ -11,9 +11,10 @@
 
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
+import { useUserProgress } from '../../context/UserProgressContext';
 import { cacheRead, cacheWrite } from '../api/offlineCache';
 import { OUTFITS, ACCESSORIES, DEFAULT_OUTFIT_ID, DEFAULT_ACCESSORY_ID } from '../data/characterOptions';
-import { PET_TIERS, DEFAULT_PET_ID } from '../data/petOptions';
+import { PET_TIERS, DEFAULT_PET_ID, petsOpen } from '../data/petOptions';
 import { BACKGROUNDS, DEFAULT_BACKGROUND_ID } from '../data/backgroundOptions';
 
 const KEY = 'characterLoadout';
@@ -30,15 +31,23 @@ function findUnlocked(list, id, stats) {
   return found && found.unlock(stats) ? found : list.find(o => o.unlock(stats)) || list[0];
 }
 
+// No pet before the first game (petsOpen): null, not the first tier.
+function petFor(id, stats) {
+  return petsOpen(stats) ? findUnlocked(PET_TIERS, id || DEFAULT_PET_ID, stats) : null;
+}
+
 // The equipped pet, read fresh from storage, for things that live outside a
 // screen and so can't use the hook below (its refresh runs on screen focus):
 // RewardToast shows the pet that found the coin.
 export async function readEquippedPet(stats) {
   const saved = await cacheRead(KEY);
-  return findUnlocked(PET_TIERS, saved?.petId || DEFAULT_PET_ID, stats);
+  return petFor(saved?.petId, stats);
 }
 
-export default function useCharacterLoadout(stats) {
+export default function useCharacterLoadout(baseStats) {
+  // Rounds played, for petsOpen. Callers pass level/points/rank/streak.
+  const { gameplayStats } = useUserProgress();
+  const stats = { ...baseStats, played: baseStats?.played ?? (gameplayStats?.totalProblemsAttempted || 0) };
   const [loadout, setLoadoutState] = useState(DEFAULT_LOADOUT);
   const [ready, setReady] = useState(false);
 
@@ -77,7 +86,7 @@ export default function useCharacterLoadout(stats) {
   // actually unlocked rather than rendering a broken/locked combo.
   const safeOutfit = findUnlocked(OUTFITS, loadout.outfitId, stats);
   const safeAccessory = findUnlocked(ACCESSORIES, loadout.accessoryId, stats);
-  const safePet = findUnlocked(PET_TIERS, loadout.petId, stats);
+  const safePet = petFor(loadout.petId, stats);
   const safeBackground = findUnlocked(BACKGROUNDS, loadout.backgroundId, stats);
 
   return {

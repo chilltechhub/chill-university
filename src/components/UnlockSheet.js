@@ -249,7 +249,7 @@ export default function UnlockSheet({ visible, featureId, onClose, onUnlocked })
 
               <TouchableOpacity style={s.ghostBtn} onPress={goToCompass} activeOpacity={0.7}>
                 <Ionicons name="navigate-outline" size={14} color={c.text3} />
-                <Text style={s.ghostBtnText}>See everything in the Compass</Text>
+                <Text style={s.ghostBtnText}>See everything in App Nav</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>

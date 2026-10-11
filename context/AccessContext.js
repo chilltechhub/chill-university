@@ -46,6 +46,7 @@ import {
 import { useConfigValue, useFeatureFlag } from './RemoteConfigContext';
 import { getWayfinderIntent } from '../src/api/wayfinderService';
 import { alreadyHas } from '../src/api/existingWorkService';
+import { onPlanDone } from '../src/api/plannerService';
 import { ageStatus, contentAllowed, gameAllowed } from '../src/logic/allowed';
 import { cacheWrite } from '../src/api/offlineCache';
 import { FEATURES, getFeature, featureForScreen, featuresUnlockedBy } from '../src/data/featureCatalog';
@@ -689,6 +690,16 @@ export function AccessProvider({ children }) {
     }));
     if (userId) await saveObjectiveSteps(userId, activeObjectiveId, steps);
   }, [activeObjectiveId, state.objectives, userId, applyLocal]);
+
+  // Ticking a Planner item off, from wherever it was ticked (plannerService
+  // completeInstance), is the 'planner-item-done' signal: "Tick off something
+  // you planned". The detail is its area, so 'planner-item-done:physical'
+  // works the same way 'planner-item-added:physical' does.
+  const signalRef = useRef(signalAction);
+  signalRef.current = signalAction;
+  useEffect(() => onPlanDone(row => {
+    signalRef.current('planner-item-done', row?.area ? { area: row.area } : {});
+  }), []);
 
   const completeActiveObjective = useCallback(async () => {
     if (!activeObjectiveId) return { error: new Error('Nothing active') };

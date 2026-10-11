@@ -188,7 +188,8 @@ const CharacterWalker = forwardRef(function CharacterWalker({
   useEffect(() => {
     // Infinity = the saved timing hasn't loaded yet. (setTimeout treats an
     // endless delay as zero, so it has to be skipped here, not scheduled.)
-    if (nextCoinAt === undefined || !Number.isFinite(nextCoinAt) || stageWidth <= 0 || !appOpen || coins.length) return undefined;
+    // No pet yet (before the first game, see petsOpen): nothing to find coins.
+    if (!pet || nextCoinAt === undefined || !Number.isFinite(nextCoinAt) || stageWidth <= 0 || !appOpen || coins.length) return undefined;
     // Past the day's 50, nextCoinAt is when the 24-hour window frees one up,
     // so this simply waits until then.
     const delay = Math.max(FIRST_COIN_MS, nextCoinAt - Date.now());
@@ -196,10 +197,10 @@ const CharacterWalker = forwardRef(function CharacterWalker({
       setCoins(prev => (prev.length ? prev : [{ id: coinIdRef.current++, xFraction: 0.1 + Math.random() * 0.8 }]));
     }, delay);
     return () => clearTimeout(timeoutId);
-  }, [nextCoinAt, stageWidth, appOpen, coins.length]);
+  }, [nextCoinAt, stageWidth, appOpen, coins.length, pet]);
 
   useEffect(() => {
-    if (nextCoinAt !== undefined || stageWidth <= 0 || !appOpen) return;
+    if (!pet || nextCoinAt !== undefined || stageWidth <= 0 || !appOpen) return;
     let cancelled = false;
     let timeoutId;
     const scheduleNext = () => {
@@ -212,7 +213,7 @@ const CharacterWalker = forwardRef(function CharacterWalker({
     };
     scheduleNext();
     return () => { cancelled = true; clearTimeout(timeoutId); };
-  }, [stageWidth, appOpen, nextCoinAt]);
+  }, [stageWidth, appOpen, nextCoinAt, pet]);
 
   // When the pet's wandering brings it close enough to a coin, eat it —
   // and, if there's still allowance left this cycle, credit it for real.
@@ -343,7 +344,7 @@ const CharacterWalker = forwardRef(function CharacterWalker({
         </Animated.View>
       )}
 
-      {petX != null && (
+      {!!pet && petX != null && (
         <View
           style={{
             position: 'absolute', left: petX, bottom: 6,

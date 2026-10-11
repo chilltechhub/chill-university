@@ -53,6 +53,8 @@ import { addCapture } from '../api/captureService';
 import CalendarModal from './CalendarModal';
 import FloatingCard from './FloatingCard';
 import { QuickCaptureModal } from '../screens/CaptureInbox';
+import { showWhatsNext } from '../logic/useGuidedFirstGoal';
+import { showQuickToast } from './QuickToast';
 import LoginScreen from '../screens/LoginScreen';
 import { todayStr } from '../logic/dateUtils';
 import { openTarget } from '../logic/openTarget';
@@ -63,6 +65,9 @@ const NO_TABBAR_ROUTES = new Set(['Profile', 'Settings', 'MakeItYours', 'Play', 
 // Ordered top-to-bottom in the speed dial; the LAST entry ends up closest to
 // the FAB (bottom), so the most-reached-for actions go last.
 const ACTIONS = [
+  // The guide, on demand: "an option to start that again at any time on
+  // what step is next" (2026-10-10). Always offered, whatever the stage.
+  { key: 'next',     label: "What's next?",   icon: 'chatbubble-ellipses-outline', colorKey: 'teal', always: true },
   { key: 'project',  label: 'New Project',    icon: 'hammer-outline',           colorKey: 'gold' },
   { key: 'calendar', label: 'Calendar',       icon: 'calendar-outline',         colorKey: 'teal' },
   { key: 'reminder', label: 'New Reminder',   icon: 'notifications-outline',    color: '#c9a84c' },
@@ -299,7 +304,7 @@ export default function FloatingActionButton({ currentScreen, navigationRef }) {
   // "Plan from a link" is a capture that goes straight to planning, so it
   // opens with the Inbox.
   const stageActions = visibleFabActions
-    ? ACTIONS.filter(a => visibleFabActions.has(a.key === 'plan' ? 'inbox' : a.key))
+    ? ACTIONS.filter(a => a.always || visibleFabActions.has(a.key === 'plan' ? 'inbox' : a.key))
     : ACTIONS;
   const orderedActions = vSide === 'top' ? [...stageActions].reverse() : stageActions;
 
@@ -332,6 +337,9 @@ export default function FloatingActionButton({ currentScreen, navigationRef }) {
   const run = (action) => {
     close();
     switch (action.key) {
+      case 'next':
+        showWhatsNext();
+        break;
       case 'inbox':
         if (!needsSignIn()) setCaptureOpen(true);
         break;
@@ -482,7 +490,7 @@ export default function FloatingActionButton({ currentScreen, navigationRef }) {
       <QuickNoteModal
         visible={noteOpen}
         userId={user?.id}
-        onSaved={() => { setNoteOpen(false); Alert.alert('Note saved', "It's in your Knowledge Vault (Library → Knowledge)."); }}
+        onSaved={() => { setNoteOpen(false); showQuickToast('Note saved to your Knowledge Vault.'); }}
         onClose={() => setNoteOpen(false)}
         c={c} t={t} s={s} r={r}
       />
@@ -491,7 +499,7 @@ export default function FloatingActionButton({ currentScreen, navigationRef }) {
       <QuickProjectModal
         visible={projectOpen}
         userId={user?.id}
-        onCreated={() => { setProjectOpen(false); Alert.alert('Project started', 'Find it in the Workshop (Library → Projects).'); }}
+        onCreated={() => { setProjectOpen(false); showQuickToast('Project started. Find it in the Workshop.'); }}
         onClose={() => setProjectOpen(false)}
         c={c} t={t} s={s} r={r}
       />
@@ -500,7 +508,7 @@ export default function FloatingActionButton({ currentScreen, navigationRef }) {
       <QuickCaptureModal
         visible={captureOpen}
         userId={user?.id}
-        onSaved={() => { setCaptureOpen(false); signalAction('inbox-captured'); Alert.alert('Captured', 'It\'s in your inbox. Sort it any time.'); }}
+        onSaved={() => { setCaptureOpen(false); signalAction('inbox-captured'); showQuickToast('Captured. It is in your inbox.'); }}
         onClose={() => setCaptureOpen(false)}
         c={c} t={t} s={s} r={r}
       />

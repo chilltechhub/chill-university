@@ -52,11 +52,9 @@ import {
   StyleSheet,
   Platform,
   StatusBar,
-  TouchableOpacity,
   useWindowDimensions,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import TourSpot from './TourSpot';
+import { useIsFocused } from '@react-navigation/native';
 import { useGameTheme } from './GameShell';
 
 import FactorCraftGame from './FactorCraftGame';
@@ -155,6 +153,19 @@ const GAMES_MASTER = shuffle(getEnabledGames()).map(g => ({
   component: COMPONENT_MAP[g.component],
 }));
 
+// No scrollbar down the side of any game (2026-10-10: "get rid of the side
+// screen bar in the games, just screen should bounce"). The feed and most
+// games already pass showsVerticalScrollIndicator={false}; on web the
+// thirty-odd game screens' own ScrollViews still drew a browser scrollbar,
+// so it's hidden here once for everything inside the feed. Phones only show
+// an indicator while scrolling, and the bounce on open does the explaining.
+if (Platform.OS === 'web' && typeof document !== 'undefined' && !document.getElementById('gamefeed-no-scrollbar')) {
+  const style = document.createElement('style');
+  style.id = 'gamefeed-no-scrollbar';
+  style.textContent = '[data-gamefeed] *{scrollbar-width:none}[data-gamefeed] *::-webkit-scrollbar{display:none}';
+  document.head.appendChild(style);
+}
+
 // `initialGame` is either a numeric index or a game id/key — PlayScreen
 // passes through whichever route param it got (`index` or `gameId`).
 const GameFeed = forwardRef(({ initialGame }, ref) => {
@@ -235,6 +246,52 @@ const GameFeed = forwardRef(({ initialGame }, ref) => {
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [pageHeight, startIndex]);
 
+  // A little bounce every time the feed opens: the page lifts to show the
+  // next game's edge and settles back, so "there's more below, swipe" is
+  // shown rather than said. It replaces the up/down arrow bar down the side,
+  // which the user asked to go (2026-10-10). On focus, not on startIndex:
+  // the same instance is reused, and opening the same game twice running
+  // (likely, with three games on the shelf) skipped it.
+  const isFocused = useIsFocused();
+  useEffect(() => {
+    if (!isFocused || pageHeight == null) return undefined;
+    const peek = Math.min(90, Math.round(pageHeight * 0.14));
+    const at = () => activeIndexRef.current * pageHeight;
+    // Toward the next game; on the last one, toward the one before it.
+    const dir = () => (activeIndexRef.current < GAMES.length - 1 ? 1 : activeIndexRef.current > 0 ? -1 : 0);
+    // On web, pagingEnabled is CSS scroll-snap ("y mandatory"), which
+    // swallows a scroll that stops between pages, and smooth scrollTo was
+    // ignored outright in testing. So on web the bounce is stepped by hand,
+    // frame by frame, with snap off while it runs.
+    const node = Platform.OS === 'web' ? scrollRef.current?.getScrollableNode?.() : null;
+    const tween = (from, to, ms, done) => {
+      const t0 = Date.now();
+      const step = () => {
+        const p = Math.min(1, (Date.now() - t0) / ms);
+        const eased = p < 0.5 ? 2 * p * p : 1 - ((-2 * p + 2) ** 2) / 2;
+        node.scrollTop = from + (to - from) * eased;
+        if (p < 1) requestAnimationFrame(step); else done?.();
+      };
+      requestAnimationFrame(step);
+    };
+    const timer = setTimeout(() => {
+      const d = dir();
+      if (!d) return;
+      const base = at();
+      const to = base + d * peek;
+      if (node) {
+        node.style.scrollSnapType = 'none';
+        tween(base, to, 380, () => tween(to, base, 420, () => { node.style.scrollSnapType = ''; }));
+      } else {
+        scrollRef.current?.scrollTo({ y: to, animated: true });
+        setTimeout(() => scrollRef.current?.scrollTo({ y: base, animated: true }), 420);
+      }
+    }, 900);
+    // Only the wait is cancelled. A bounce already moving finishes, or the
+    // page was left 90px off (the effect re-ran mid-bounce in testing).
+    return () => clearTimeout(timer);
+  }, [isFocused, pageHeight]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useImperativeHandle(ref, () => ({
     goToIndex: (indexOrId) => {
       const idx = indexForGame(indexOrId);
@@ -244,14 +301,6 @@ const GameFeed = forwardRef(({ initialGame }, ref) => {
       }
     },
   }), [pageHeight, indexForGame]);
-
-  // Used by the on-screen up/down buttons below.
-  const goTo = (idx) => {
-    const clamped = Math.max(0, Math.min(idx, GAMES.length - 1));
-    if (clamped === activeIndexRef.current) return;
-    setActiveIndex(clamped);
-    if (pageHeight != null) scrollRef.current?.scrollTo({ y: clamped * pageHeight, animated: true });
-  };
 
   const onScrollSettle = (e) => {
     if (pageHeight == null) return;
@@ -263,6 +312,7 @@ const GameFeed = forwardRef(({ initialGame }, ref) => {
   return (
     <View
       style={{ flex: 1 }}
+      dataSet={{ gamefeed: 'on' }}
       onLayout={(e) => {
         if (pageHeight != null) return; // measured once, never again
         const h = Math.round(e.nativeEvent.layout.height);
@@ -301,56 +351,13 @@ const GameFeed = forwardRef(({ initialGame }, ref) => {
         </ScrollView>
       )}
 
-      {/* Buttons, not just the swipe. A game fills the page with its own
-          taps and drags (lanes, canvases, answer rows), which eat the
-          vertical swipe often enough that moving to the next game felt
-          broken. These always work, and say where you are. */}
-      {pageHeight != null && (
-        <TourSpot id="play-switch" radius={20} style={styles.nav}>
-          <TouchableOpacity
-            style={[styles.navBtn, activeIndex === 0 && styles.navBtnOff]}
-            disabled={activeIndex === 0}
-            onPress={() => goTo(activeIndex - 1)}
-            accessibilityRole="button"
-            accessibilityLabel="Previous game"
-          >
-            <Ionicons name="chevron-up" size={20} color="#eaf2ff" />
-          </TouchableOpacity>
-          <Text style={[styles.navCount, { color: G.muted }]}>{activeIndex + 1}/{GAMES.length}</Text>
-          <TouchableOpacity
-            style={[styles.navBtn, activeIndex >= GAMES.length - 1 && styles.navBtnOff]}
-            disabled={activeIndex >= GAMES.length - 1}
-            onPress={() => goTo(activeIndex + 1)}
-            accessibilityRole="button"
-            accessibilityLabel="Next game"
-          >
-            <Ionicons name="chevron-down" size={20} color="#eaf2ff" />
-          </TouchableOpacity>
-        </TourSpot>
-      )}
     </View>
   );
 });
 
 export default GameFeed;
 
-const NAV_GUTTER = 36;
-
 const styles = StyleSheet.create({
-  // The arrows get a gutter of their own (NAV_GUTTER, kept free on every
-  // page by pageContent). They used to float over the game, on the right
-  // edge where games put prices and totals: Budget Balance's $5 and $3 sat
-  // underneath them (found 2026-09-25).
-  nav: {
-    position: 'absolute', right: 3, top: '38%', alignItems: 'center', gap: 6,
-  },
-  navBtn: {
-    width: 32, height: 32, borderRadius: 16,
-    backgroundColor: 'rgba(10,22,40,0.72)', borderWidth: 1, borderColor: 'rgba(234,242,255,0.22)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  navBtnOff: { opacity: 0.3 },
-  navCount: { fontSize: 11, fontWeight: '700', color: 'rgba(234,242,255,0.75)' },
   // No flex: 1 here. Every page gets an explicit height (pageHeight), and
   // on web flex: 1 overrode it, so pages sized to their content: a tall game
   // ran past the screen (its Start button unreachable) and the next game's
@@ -361,7 +368,6 @@ const styles = StyleSheet.create({
   pageContent: {
     flex: 1,
     width: '100%',
-    paddingRight: NAV_GUTTER,
   },
   placeholder: {
     flex: 1,

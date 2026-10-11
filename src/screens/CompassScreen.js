@@ -37,6 +37,8 @@ import LockBadge from '../components/LockBadge';
 import UnlockSheet from '../components/UnlockSheet';
 import { FONTS } from '../theme';
 import RichText from '../components/RichText';
+import TourSpot from '../components/TourSpot';
+import StageList from '../components/StageList';
 
 // The words this screen runs on, kept to three plain ones. It used to define
 // purpose, objective, steps and stage and then add a "Stages are not goals"
@@ -185,8 +187,10 @@ export default function CompassScreen() {
           >
             <Ionicons name="chevron-back" size={22} color={c.teal} />
           </TouchableOpacity>
-          <Text style={s.headerTitle}>Compass</Text>
-          {showSubtext && <Text style={s.headerSub}>What you’re here for, the goal you’re on, and what it opens.</Text>}
+          {/* "App Nav" since 2026-10-10 — the user's name for it. The route
+              is still 'Compass'. */}
+          <Text style={s.headerTitle}>App Nav</Text>
+          {showSubtext && <Text style={s.headerSub}>Every <Text style={{ fontWeight: '700' }}>stage</Text>, the goal you’re on, and <Text style={{ fontWeight: '700' }}>what’s next</Text>.</Text>}
         </View>
 
         {/* ── What this screen is ──
@@ -204,14 +208,13 @@ export default function CompassScreen() {
             accessibilityState={{ expanded: showExplainer }}
           >
             <Ionicons name="help-circle-outline" size={16} color={c.teal} />
-            <Text style={s.explainerTitle}>What is the Compass?</Text>
+            <Text style={s.explainerTitle}>What is App Nav?</Text>
             <Ionicons name={showExplainer ? 'chevron-up' : 'chevron-down'} size={15} color={c.text4} />
           </TouchableOpacity>
           {showExplainer && (
             <View style={s.explainerBody}>
               <Text style={s.explainerLead}>
-                The app can do a great many things, which is the problem this screen solves. It keeps one
-                answer to "what now" instead of handing you a directory.
+                Your map of the app: <Text style={{ fontWeight: '700' }}>where you are</Text>, what’s open, and <Text style={{ fontWeight: '700' }}>what’s next</Text>.
               </Text>
               {EXPLAINER_TERMS.map(term => (
                 <View key={term.word} style={s.termRow}>
@@ -224,6 +227,7 @@ export default function CompassScreen() {
         </View>
 
         {/* ── Where you are — so a short list reads as "not yet", not "that's all" ── */}
+        <TourSpot id="appnav-stages">
         <View style={s.stageCard}>
           <Text style={s.stageKicker}>Stage {stage} of {MAX_STAGE} · {stageMeta(stage, activeType).label}</Text>
           <Text style={s.stageText}>
@@ -240,7 +244,10 @@ export default function CompassScreen() {
               </Text>
             </TouchableOpacity>
           )}
+          {/* Every stage by name, locked ones too, so the path has a shape. */}
+          <StageList showBlurbs style={{ marginTop: sp.md }} />
         </View>
+        </TourSpot>
 
         {/* ── 1. Purpose ── */}
         <View style={[s.section, { borderLeftColor: accent }]}>

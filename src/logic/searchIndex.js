@@ -57,7 +57,7 @@ const STANDALONE = [
   { title: 'Mentors & Experts', subtitle: 'More experienced people',         icon: 'school-outline',          route: library('MentorsScreen') },
   { title: 'Community Projects', subtitle: 'Projects from the community',      icon: 'git-network-outline',     route: library('CommunityProjectsScreen') },
   { title: 'Profile',         subtitle: 'Rank, points, streak & account',    icon: 'person-circle-outline',   route: root('Profile') },
-  { title: 'Compass',       subtitle: 'Your purpose, goal & unlocks',  icon: 'navigate-outline',        route: root('Compass') },
+  { title: 'App Nav',       subtitle: 'Every stage, your goal & what opens next',  icon: 'navigate-outline',        route: root('Compass') },
   { title: 'Deep Insights',   subtitle: 'Long-range stats across subjects',   icon: 'analytics-outline',       route: root('Stats') },
   { title: 'Settings',        subtitle: 'Theme, sections, notifications',    icon: 'settings-outline',        route: root('Settings') },
   { title: 'Help',            subtitle: 'What this screen is for',           icon: 'help-circle-outline',     route: root('Help') },

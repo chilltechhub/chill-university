@@ -11,7 +11,7 @@ import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   ActivityIndicator, StyleSheet, Alert, Modal, FlatList, Image,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -34,6 +34,7 @@ import BadgeMedal from '../components/BadgeMedal';
 import TourSpot from '../components/TourSpot';
 import { textOn } from '../logic/contrast';
 import { RANK_LABELS } from '../theme';
+import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 
 const WARDROBE_TABS = [
   { key: 'outfitId', label: 'Outfit', icon: 'shirt-outline' },
@@ -49,7 +50,7 @@ export default function ProfileScreen() {
   const progress = useUserProgress();
   const { user, level, points, rank, streakDays, subjectProgress, gameplayStats, refreshDailyMissions } = progress;
 
-  const stats = { level, points, rank, streakDays };
+  const stats = { level, points, rank, streakDays, played: gameplayStats?.totalProblemsAttempted || 0 };
   const { ready: loadoutReady, outfit, pet, accessory, background, equip } = useCharacterLoadout(stats);
   const bonusRewards = useBonusRewards(user?.id, refreshDailyMissions);
   const coinRewards = useCoinRewards(user?.id);
@@ -260,6 +261,7 @@ export default function ProfileScreen() {
         equip={equip}
         styles={styles}
         c={c}
+        t={t}
       />
     </KeyboardAvoidingView>
   );
@@ -278,13 +280,20 @@ function StatChip({ label, value, icon, c, t, s, r }) {
   );
 }
 
-function WardrobeModal({ visible, onClose, tab, setTab, loadout, stats, equip, styles, c }) {
+function WardrobeModal({ visible, onClose, tab, setTab, loadout, stats, equip, styles, c, t }) {
+  // Once they've picked a look, offer the choice about what tapping it does
+  // (2026-10-10: "after character, pet, bg picked, show option to turn off
+  // the click to profile and show option in corner"). Off, Training shows a
+  // small Profile button in the hero's corner instead.
+  const [picked, setPicked] = useState(false);
+  const [heroTap, setHeroTap] = useSetting(SETTING_KEYS.HERO_TAP_TO_PROFILE, true);
+  const pick = (category, id) => { equip(category, id); setPicked(true); };
   const TABLES = { outfitId: OUTFITS, petId: PET_TIERS, accessoryId: ACCESSORIES, backgroundId: BACKGROUNDS };
   const LABELERS = {
     outfitId: unlockLabel, petId: petUnlockLabel, accessoryId: unlockLabel, backgroundId: backgroundUnlockLabel,
   };
   const CURRENT = {
-    outfitId: loadout.outfit.id, petId: loadout.pet.id, accessoryId: loadout.accessory.id, backgroundId: loadout.background.id,
+    outfitId: loadout.outfit.id, petId: loadout.pet?.id, accessoryId: loadout.accessory.id, backgroundId: loadout.background.id,
   };
 
   const options = TABLES[tab];
@@ -326,7 +335,7 @@ function WardrobeModal({ visible, onClose, tab, setTab, loadout, stats, equip, s
                 <TouchableOpacity
                   style={[styles.wardrobeOption, equipped && styles.wardrobeOptionActive, locked && styles.wardrobeOptionLocked]}
                   disabled={!!locked}
-                  onPress={() => equip(tab, item.id)}
+                  onPress={() => pick(tab, item.id)}
                 >
                   <WardrobePreview tab={tab} item={item} />
                   <Text style={styles.wardrobeOptionName} numberOfLines={1}>{item.name}</Text>
@@ -339,6 +348,18 @@ function WardrobeModal({ visible, onClose, tab, setTab, loadout, stats, equip, s
               );
             }}
           />
+          {picked && (
+            <View style={{ borderTopWidth: 0.5, borderTopColor: c.border, paddingTop: 12, marginTop: 4 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Ionicons name="hand-left-outline" size={16} color={c.text3} />
+                <Text style={{ flex: 1, fontSize: t.sm, color: c.text1 }}>Tap your character to open <Text style={{ fontWeight: '700' }}>Profile</Text></Text>
+                <Switch value={heroTap !== false} onValueChange={setHeroTap} accessibilityLabel="Tap your character to open Profile" />
+              </View>
+              <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 4, marginLeft: 26 }}>
+                {heroTap !== false ? 'Off: tapping makes them jump, and a Profile button sits in the corner.' : 'A Profile button sits in the corner of Training instead.'}
+              </Text>
+            </View>
+          )}
         </View>
       </View>
     </Modal>
