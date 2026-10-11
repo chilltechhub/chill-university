@@ -77,7 +77,7 @@ function UnlockSummary({ accessFor, c, t, s, r, onPress }) {
           <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>
             {open === gated.length
               ? 'Everything is open.'
-              : 'The Compass lists what opens each one: a goal, a short quiz, or a switch.'}
+              : 'App Nav lists what opens each one: a goal, a short quiz, or a switch.'}
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={16} color={c.text4} />
@@ -1014,7 +1014,7 @@ export default function SettingsScreen() {
         {/* Compass — the purpose/objective/gating layer. First under
             Personalization because it's the setting that changes most of
             what the rest of the app shows you. */}
-        <SectionLabel label="Compass" c={c} t={t} s={s} />
+        <SectionLabel label="App Nav" c={c} t={t} s={s} />
         <SettingRow
           icon="navigate-outline"
           iconColor={c.gold}

@@ -337,15 +337,19 @@ export default function LoginScreen({ onSuccess, onClose }) {
 
         {/* Card */}
         <View style={[s.card, mfaUser && { display: 'none' }]}>
+          {/* Plain words: the first screen anyone sees. "Begin your
+              mission", "launch" and "your base" were theme, not meaning
+              (2026-10-10: "fix the first page, it's the first thing people
+              land on"). */}
           <Text style={s.cardTitle}>
-            {mode === 'login' ? 'Welcome back, Traveler'
-              : mode === 'reset' ? 'Recover your base'
-              : 'Begin your mission'}
+            {mode === 'login' ? 'Welcome back'
+              : mode === 'reset' ? 'Reset your password'
+              : 'Make your free account'}
           </Text>
           <Text style={s.cardSub}>
-            {mode === 'login' ? 'Sign in to return to your base'
-              : mode === 'reset' ? "Enter your email and we'll send a reset link"
-              : 'Create your account to launch'}
+            {mode === 'login' ? 'Pick up where you left off.'
+              : mode === 'reset' ? "Enter your email and we'll send a reset link."
+              : <>Plan your days. Learn. Build. <Text style={{ fontWeight: '700' }}>One app.</Text></>}
           </Text>
 
           {/* Email */}
@@ -497,7 +501,7 @@ export default function LoginScreen({ onSuccess, onClose }) {
           ) : (
             <TouchableOpacity style={s.switchRow} onPress={() => switchMode(mode === 'login' ? 'signup' : 'login')}>
               <Text style={s.switchText}>
-                {mode === 'login' ? "New traveler? " : 'Already have a base? '}
+                {mode === 'login' ? 'New here? ' : 'Have an account? '}
                 <Text style={s.switchLink}>{mode === 'login' ? 'Create account' : 'Sign in'}</Text>
               </Text>
             </TouchableOpacity>

@@ -32,9 +32,9 @@ const TOP_BAR_CLEARANCE = 58; // sits just under the top bar
 export default function RewardToast({ hideCoins }) {
   const { colors: c, typography: t } = useTheme();
   const insets = useSafeAreaInsets();
-  const { level, points, rank, streakDays } = useUserProgress();
+  const { level, points, rank, streakDays, gameplayStats } = useUserProgress();
   const statsRef = useRef(null);
-  statsRef.current = { level, points, rank, streakDays };
+  statsRef.current = { level, points, rank, streakDays, played: gameplayStats?.totalProblemsAttempted || 0 };
 
   const [kind, setKind] = useState(null); // 'coin' | 'action' | null (hidden)
   const [total, setTotal] = useState(0);

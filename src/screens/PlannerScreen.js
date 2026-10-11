@@ -120,6 +120,11 @@ function InstanceModal({ visible, instance, userId, date, initialTime = null, on
   const [reminder,    setReminder]    = useState(false);
   const [reminderMin, setReminderMin] = useState(15);
   const [saving,      setSaving]      = useState(false);
+  // Shown above Save instead of an Alert. On web an Alert is a blocking
+  // browser dialog, and in a preview that never shows it the sheet just
+  // looked frozen after "Add" (2026-10-10, scheduling a movement block that
+  // was already on the planner).
+  const [saveError,   setSaveError]   = useState(null);
   // Duration, reminder, link and notes sit behind "More options". With all
   // of them showing, the Add button was below the bottom of the sheet and a
   // first habit meant scrolling past four optional fields to find it.
@@ -143,6 +148,7 @@ function InstanceModal({ visible, instance, userId, date, initialTime = null, on
 
   useEffect(() => {
     setShowCal(false);
+    setSaveError(null);
     if (instance) {
       setTitle(instance.title || '');
       setArea(instance.area || 'physical');
@@ -256,6 +262,7 @@ function InstanceModal({ visible, instance, userId, date, initialTime = null, on
 
   const save = async () => {
     if (!title.trim()) return;
+    setSaveError(null);
     setSaving(true);
     try {
       const basePayload = {
@@ -291,7 +298,7 @@ function InstanceModal({ visible, instance, userId, date, initialTime = null, on
         const free = dates.filter(d => !(existing || []).some(x => isSamePlan(x, { ...basePayload, date: d })));
         if (!free.length) {
           setSaving(false);
-          Alert.alert('Already planned', `“${basePayload.title}” is already on your planner ${dates.length > 1 ? 'on those days' : 'that day'}.`);
+          setSaveError(`“${basePayload.title}” is already on your planner ${dates.length > 1 ? 'on those days' : 'that day'}. Pick another day or change the name.`);
           return;
         }
         rows = free.map(d => ({ ...basePayload, date: d }));
@@ -334,7 +341,7 @@ function InstanceModal({ visible, instance, userId, date, initialTime = null, on
       onSave(savedRows[0]);
     } catch (e) {
       console.warn('InstanceModal save', e);
-      Alert.alert("Couldn't save", e?.message || 'Something went wrong — try again.');
+      setSaveError(`Couldn't save. ${e?.message || 'Something went wrong, try again.'}`);
     }
     setSaving(false);
   };
@@ -452,7 +459,7 @@ function InstanceModal({ visible, instance, userId, date, initialTime = null, on
 
             {/* Cadence */}
             <View>
-              <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Repeats</Text>
+              <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: s.sm }}>Repeats · makes it a habit</Text>
               <View style={{ flexDirection: 'row', gap: s.sm }}>
                 {['once','daily','weekly','monthly'].map(cad => (
                   <TouchableOpacity key={cad} onPress={() => setCadence(cad)}
@@ -461,11 +468,20 @@ function InstanceModal({ visible, instance, userId, date, initialTime = null, on
                   </TouchableOpacity>
                 ))}
               </View>
+              {/* "What is a habit? I had no way to label one" (2026-10-10).
+                  A habit is anything that repeats: it's what the Habits card
+                  on Home counts. Say so where the choice is made. */}
               {cadence !== 'once' && (
-                <Text style={{ fontSize: 11, color: c.text3, marginTop: 6 }}>
-                  {isEdit ? 'Changes here apply to this day only.'
-                    : `Repeats every ${REPEAT_UNITS[cadence].slice(0, -1)} until you delete it.`}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 7, paddingVertical: 2, borderRadius: r.full, backgroundColor: areaColor + '22' }}>
+                    <Ionicons name="repeat" size={11} color={areaColor} />
+                    <Text style={{ fontSize: 11, fontWeight: t.bold, color: areaColor }}>Habit</Text>
+                  </View>
+                  <Text style={{ flex: 1, fontSize: 11, color: c.text3 }}>
+                    {isEdit ? 'Changes here apply to this day only.'
+                      : `Every ${REPEAT_UNITS[cadence].slice(0, -1)}, for good. Stop it any time.`}
+                  </Text>
+                </View>
               )}
             </View>
 
@@ -613,6 +629,13 @@ function InstanceModal({ visible, instance, userId, date, initialTime = null, on
             </View>
             </>)}
 
+            {!!saveError && (
+              <View accessibilityLiveRegion="polite" style={{ flexDirection: 'row', gap: 6, alignItems: 'flex-start', padding: s.sm, borderRadius: r.md, backgroundColor: '#e0585818' }}>
+                <Ionicons name="alert-circle-outline" size={15} color="#e05858" style={{ marginTop: 1 }} />
+                <Text style={{ flex: 1, fontSize: t.xs, color: c.text1 }}>{saveError}</Text>
+              </View>
+            )}
+
             {/* Save */}
             <TouchableOpacity onPress={save} disabled={!title.trim() || saving}
               style={{ backgroundColor: areaColor, borderRadius: r.md, padding: s.lg, alignItems: 'center', opacity: (!title.trim() || saving) ? 0.5 : 1 }}>
@@ -708,7 +731,7 @@ function AgendaRow({ instance, onUpdate, onOpen, c, t, s, r }) {
               <Text style={{ fontSize: t.xs, color: c.text3 }}>{instance.duration_minutes} min</Text>
             ) : null}
             {instance.cadence && instance.cadence !== 'once' && (
-              <Text style={{ fontSize: t.xs, color: c.text3 }}>· {instance.cadence}</Text>
+              <Text style={{ fontSize: t.xs, color: c.text3 }}>· {instance.cadence} habit</Text>
             )}
             {!!instance.notes && !instance.notes.startsWith('notif:') && (
               <Ionicons name="document-text-outline" size={12} color={c.text3} accessibilityLabel="Has notes" />
@@ -1569,6 +1592,20 @@ export default function PlannerScreen() {
     navigation.setParams({ date: undefined });
   }, [dateParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // "+ Plan" on a life area's calendar (AreaPlanCalendar): the add sheet,
+  // open on that day, already in that area.
+  const [addArea, setAddArea] = useState(null);
+  const addParam = route.params?.addFor;
+  useEffect(() => {
+    if (!addParam) return;
+    const day = addParam.date ? new Date(addParam.date + 'T00:00:00') : new Date();
+    setView('Daily');
+    setAnchor(day);
+    setAddArea(addParam.area || null);
+    setEditInst(null); setModalDate(toISO(day)); setModalTime(null); setShowModal(true);
+    navigation.setParams({ addFor: undefined });
+  }, [addParam]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Copies of the same item on the same day at the same time — what pasting
   // an AI reply twice used to leave behind. Looks a month back and four ahead.
   // The next 30 days as a calendar file (audit 4.6). One-way: the phone's
@@ -1764,17 +1801,26 @@ export default function PlannerScreen() {
         userId={userId}
         date={modalDate}
         initialTime={modalTime}
-        defaultArea={activeAreas.size === 1 ? [...activeAreas][0] : (progressProfile?.active_life_areas?.[0] || 'physical')}
-        goalIdea={goalIdeaFor(activeObjective, activeProfile?.baseline, lastSignalDetail?.('area-rated')?.area || null)}
+        defaultArea={addArea || (activeAreas.size === 1 ? [...activeAreas][0] : (progressProfile?.active_life_areas?.[0] || 'physical'))}
+        goalIdea={addArea ? null : goalIdeaFor(activeObjective, activeProfile?.baseline, lastSignalDetail?.('area-rated')?.area || null)}
         onSave={(saved) => {
           setShowModal(false);
+          setAddArea(null);
           setRefresh(k => k + 1);
           // A new plan is what ticks "put one habit / study block / routine
           // in the Planner" on a first goal. Edits don't count.
           if (!editInst) signalAction('planner-item-added', { area: saved?.area });
+          // A new habit is written a week ahead; run the top-up now so it
+          // reaches as far as every other habit straight away, instead of
+          // looking like it stops after 7 days until tomorrow's top-up.
+          if (!editInst && saved?.cadence && saved.cadence !== 'once' && userId) {
+            extendRepeatingPlans(userId, { force: true })
+              .then(added => { if (added) setRefresh(k => k + 1); })
+              .catch(e => console.warn('planner top-up', e?.message));
+          }
         }}
         onDelete={() => { setShowModal(false); setRefresh(k => k + 1); }}
-        onClose={() => setShowModal(false)}
+        onClose={() => { setShowModal(false); setAddArea(null); }}
         c={c} t={t} s={s} r={r}
       />
     </View>

@@ -1060,7 +1060,7 @@ export default function LibraryScreen() {
               <Ionicons name="sparkles-outline" size={16} color={accent.primary} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.moreSoonText}>More tools open here as you finish goals.</Text>
-                <Text style={[styles.moreSoonLink, { color: accent.primary }]}>See what opens next →</Text>
+                <Text style={[styles.moreSoonLink, { color: accent.primary }]}>See what's next →</Text>
               </View>
             </TouchableOpacity>
           );
