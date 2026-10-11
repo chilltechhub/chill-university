@@ -18,16 +18,20 @@
 //
 // With a keyboard up the card sits just above it rather than centring in
 // what's left, which is what kept throwing a short sheet up near the status
-// bar while the cursor was at the bottom of the screen.
+// bar while the cursor was at the bottom of the screen. It also never goes
+// above the status bar: if there isn't room it gets shorter and scrolls.
 import React, { useRef, useEffect, useState } from 'react';
 import { View, Modal, TouchableOpacity, StyleSheet, Keyboard, Platform, ScrollView, Dimensions } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Gap between the bottom of the card and the top of the keyboard. Small on
 // purpose: the point is that what you're typing and the thing you're typing
 // into are near each other.
 const KEYBOARD_GAP = 10;
+// Room kept between the status bar and the top of the card.
+const TOP_GAP = 8;
 
 // `nudgeDown` (px) sits the card that much lower than centre, keyboard down.
 export default function FloatingCard({ visible, onClose, children, c, width = '90%', maxWidth = 440, maxHeight = '82%', nudgeDown = 0 }) {
@@ -40,15 +44,31 @@ export default function FloatingCard({ visible, onClose, children, c, width = '9
   // card re-centres in whatever space is LEFT, which on a phone throws it up
   // near the status bar — a long way from the field the cursor is in. Sitting
   // it just above the keyboard instead keeps the two together.
+  //
+  // Measured from where the keyboard's top edge lands (screenY), not the
+  // height it reports, and kept up to date as it changes size (suggestion
+  // bar, switching fields) — iOS only says so through keyboardWillChangeFrame.
+  // Going by the first reported height alone left the card a long way above
+  // the keyboard, pushed up under the status bar ("this popup is too high
+  // up", 2026-10-11).
   const [kbHeight, setKbHeight] = useState(0);
   useEffect(() => {
     const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const onShow = (e) => setKbHeight(e?.endCoordinates?.height || 0);
+    const onShow = (e) => {
+      const end = e?.endCoordinates;
+      if (!end) return;
+      const screenH = Dimensions.get('screen').height;
+      const fromTop = end.screenY > 0 ? screenH - end.screenY : end.height;
+      setKbHeight(Math.max(0, Math.min(end.height || fromTop, fromTop)));
+    };
     const onHide = () => setKbHeight(0);
     const subs = [Keyboard.addListener(showEvt, onShow), Keyboard.addListener(hideEvt, onHide)];
+    if (Platform.OS === 'ios') subs.push(Keyboard.addListener('keyboardWillChangeFrame', onShow));
     return () => subs.forEach(sub => sub.remove());
   }, []);
+  const insets = useSafeAreaInsets();
+  const topLimit = insets.top + TOP_GAP;
 
   // Closing resets it: on Android the hide event can land after the modal is
   // already gone, leaving the next opening positioned for a keyboard that
@@ -57,10 +77,11 @@ export default function FloatingCard({ visible, onClose, children, c, width = '9
 
   const screenH = Dimensions.get('window').height;
   const open = kbHeight > 0;
-  // With the keyboard up the card gets whatever is left above it, less the
-  // gap — so it can still scroll internally instead of being clipped.
+  // With the keyboard up the card gets whatever is left between it and the
+  // status bar, less the gaps — so it can still scroll internally instead of
+  // being clipped or tucked under the clock.
   const cardMaxHeight = open
-    ? Math.max(180, screenH - kbHeight - KEYBOARD_GAP * 2)
+    ? Math.max(180, screenH - kbHeight - KEYBOARD_GAP - topLimit)
     : maxHeight;
 
   // Re-center every time it opens — a card left in a corner from last time
@@ -100,7 +121,7 @@ export default function FloatingCard({ visible, onClose, children, c, width = '9
           alignItems: 'center',
           justifyContent: open ? 'flex-end' : 'center',
           paddingBottom: open ? kbHeight + KEYBOARD_GAP : 0,
-          paddingTop: open ? 0 : nudgeDown * 2,
+          paddingTop: open ? topLimit : nudgeDown * 2,
         }}
         pointerEvents="box-none"
       >
