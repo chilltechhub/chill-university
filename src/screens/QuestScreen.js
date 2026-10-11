@@ -53,6 +53,16 @@ function parseNumber(text) {
   return Number(cleaned);
 }
 
+// Back and Done return to wherever the quest was opened from. From Home's
+// Quests card that's Home: going back into Classes showed a page of subjects
+// most new accounts can't use yet ("you technically can't even get to it
+// because the rest is closed", 2026-10-10).
+function leaveQuest(navigation, from) {
+  if (from === 'Home') { navigation.navigate('MainTabs', { screen: 'Home' }); return; }
+  if (navigation.canGoBack()) navigation.goBack();
+  else navigation.navigate('ClassesMain');
+}
+
 export default function QuestScreen() {
   const navigation = useNavigation();
   const route = useRoute();
@@ -103,7 +113,7 @@ export default function QuestScreen() {
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <TouchableOpacity
-            onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('ClassesMain'))}
+            onPress={() => leaveQuest(navigation, route.params?.from)}
             accessibilityLabel="Back"
           >
             <Ionicons name="chevron-back" size={22} color={c.teal} />
@@ -156,7 +166,7 @@ export default function QuestScreen() {
               />
             )}
             {step === 'done' && (
-              <DoneStep quest={quest} progress={progress} userId={user?.id} navigation={navigation} ui={ui} />
+              <DoneStep quest={quest} progress={progress} userId={user?.id} navigation={navigation} from={route.params?.from} ui={ui} />
             )}
           </>
         )}
@@ -590,7 +600,7 @@ function DoItStep({ quest, progress, userId, firstTime, onFinish, ui }) {
 
 // ── 5. Done ─────────────────────────────────────────────────────────────────
 
-function DoneStep({ quest, progress, userId, navigation, ui }) {
+function DoneStep({ quest, progress, userId, navigation, from, ui }) {
   const { c, t, s } = ui;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -636,7 +646,7 @@ function DoneStep({ quest, progress, userId, navigation, ui }) {
         {error && <Text style={{ fontSize: 12, color: c.error, marginTop: 6 }}>{error}</Text>}
       </Card>
 
-      <PrimaryButton label="Done" onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('ClassesMain'))} ui={ui} />
+      <PrimaryButton label="Done" onPress={() => leaveQuest(navigation, from)} ui={ui} />
       {userId && (progress.explanation || progress.source?.title) ? (
         <SecondaryButton label="Open my Vault" icon="library-outline" onPress={() => navigation.navigate('KnowledgeScreen')} ui={ui} />
       ) : null}

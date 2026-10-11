@@ -135,7 +135,10 @@ export const FEATURES = [
   },
   {
     id: 'compass',
-    label: 'Compass',
+    // Shown as "App Nav" since 2026-10-10 (user: "compass should say APP
+    // NAV"). The id and route stay 'compass' / 'Compass': saved progress
+    // and every navigate() use them.
+    label: 'App Nav',
     screen: 'Compass',
     icon: 'navigate-outline',
     gate: 'open',

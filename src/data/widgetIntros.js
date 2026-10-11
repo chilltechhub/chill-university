@@ -14,7 +14,7 @@
 
 export const WIDGET_INTROS = {
   hq:               "Your name, level and points. **Play** starts a game; **press and hold** to pick one.",
-  stageSteps:       "What **opens next** in the app. Finish a goal or gain a level to get there.",
+  stageSteps:       "**What's next** in the app. Finish a goal or gain a level to get there.",
   compass:          "Your **goal** and its next step. Tap **Open** to go straight to it.",
   goalSteps:        "Every step of your goal, **ticked or not**.",
   focus:            "Write **one line**: what today is for. Tap the date for your calendar.",
@@ -22,7 +22,6 @@ export const WIDGET_INTROS = {
   activities:       "Everything **scheduled today**, in time order.",
   desk:             "What to **pick up next**. Tap one to open it, or **+ Add** to pin your own.",
   ideas:            "Your **newest ideas**. Tap one to open it.",
-  streak:           "Your **streak** and level. Do one thing that counts each day to keep it.",
   builds:           "Your **projects** and how far along each is.",
   checkins:         "Life areas **due a check-in**. Takes ten seconds.",
   wayfinder:        "Work out **what you want**: short questions, then small experiments.",

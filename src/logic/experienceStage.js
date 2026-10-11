@@ -146,7 +146,9 @@ export function openedAt(persona, stage = MAX_STAGE, { exploring = false, aim = 
 // 'desk' and 'activities' since 2026-10-07: the next thing to pick up and
 // what is on today are the core loop, not a reward for reaching a stage.
 // A builder's first project used to be nowhere on Home.
-export const HOME_BASICS = ['hq', 'compass', 'goalSteps', 'stageSteps', 'desk', 'activities'];
+// 'focus' since 2026-10-10: goals ask for a focus on day one, and the card
+// only arriving at stage 2 meant "Set a focus" pointed at nothing.
+export const HOME_BASICS = ['hq', 'focus', 'compass', 'goalSteps', 'stageSteps', 'desk', 'activities'];
 export const WIDGETS_PER_STAGE = 2;
 
 // `headlines` is each reached stage's own lead widget: it arrives with its

@@ -22,7 +22,7 @@
 // one line; the screen gets the detail. Putting the roster here would
 // recreate the exact wall of options this feature exists to remove.
 
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -38,6 +38,9 @@ import { Button } from './ui';
 import { textOn } from '../logic/contrast';
 import { finishLabel } from '../logic/featureAccess';
 import RichText from './RichText';
+import TourSpot from './TourSpot';
+import StageList from './StageList';
+import { MAX_STAGE } from '../data/experienceStages';
 
 export default function CompassCard() {
   const navigation = useNavigation();
@@ -79,6 +82,7 @@ export default function CompassCard() {
           onPress={() => { startFirstGoal(); resumeFirstGoalGuide(); }}
           style={s.claimBtn}
         />
+        <WhatsNext />
       </View>
     );
   }
@@ -88,7 +92,7 @@ export default function CompassCard() {
     const suggestion = getPurpose(suggestedPurposeKey);
     return (
       <TouchableOpacity style={[s.card, { borderLeftColor: c.gold }]} onPress={goCompass} activeOpacity={0.85}>
-        <Text style={s.kicker}>{showEmojis ? '🧭 ' : ''}Compass</Text>
+        <Text style={s.kicker}>{showEmojis ? '🧭 ' : ''}Your aim</Text>
         <Text style={s.headline}>What are you here for?</Text>
         {showSubtext && (
           <Text style={s.sub}>
@@ -101,6 +105,7 @@ export default function CompassCard() {
           <Text style={s.cta}>Set my purpose</Text>
           <Ionicons name="arrow-forward" size={14} color={c.gold} />
         </View>
+        <WhatsNext />
       </TouchableOpacity>
     );
   }
@@ -158,6 +163,7 @@ export default function CompassCard() {
             <Ionicons name="arrow-forward" size={14} color={accent} />
           </TouchableOpacity>
         )}
+        <WhatsNext />
       </View>
     );
   }
@@ -270,12 +276,9 @@ export default function CompassCard() {
             )}
           </View>
           {after.length > 0 && <View style={{ marginTop: sp.sm }}>{after.map(miniStep)}</View>}
-          {showSubtext && opensStage && (
-            <Text style={s.stageHint}>Finish this goal to open: {opensStage}.</Text>
-          )}
-          {/* A first goal has a guide. If they sent it away, this is the
-              way to call it back (src/logic/useGuidedFirstGoal.js). */}
-          {objective.intro && !tourActive && (
+          {/* Every goal has the guide now, not only the first. If it was
+              sent away, this calls it back (src/logic/useGuidedFirstGoal.js). */}
+          {!tourActive && (
             <Button
               variant="secondary"
               size="sm"
@@ -289,6 +292,62 @@ export default function CompassCard() {
           )}
         </>
       )}
+      <WhatsNext live />
+    </View>
+  );
+}
+
+// "What's next" — the stage card, folded into the goal card. They were two
+// cards saying nearly the same thing one under the other ("too clumpy",
+// 2026-10-10), and "What opens next" became just "What's next". App Nav (the
+// Compass screen's new name) is one tap from here, and every stage, locked
+// ones included, one more.
+function WhatsNext({ live = false }) {
+  const navigation = useNavigation();
+  const { colors: c, typography: t, spacing: sp, radius: r, accent } = useTheme();
+  const { nextStage, experienceMode, stage } = useAccess();
+  const [open, setOpen] = useState(false);
+  const full = experienceMode === 'full';
+
+  return (
+    <View style={{ marginTop: sp.md, paddingTop: sp.md, borderTopWidth: 0.5, borderTopColor: c.border }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: sp.sm }}>
+        <Ionicons name="lock-open-outline" size={14} color={accent.primary} />
+        <Text style={{ flex: 1, fontSize: t.sm, color: c.text1 }} numberOfLines={2}>
+          {full
+            ? <Text style={{ fontWeight: t.bold }}>Everything is open.</Text>
+            : nextStage
+              ? <>What's next: <Text style={{ fontWeight: t.bold }}>{nextStage.label}</Text></>
+              : <Text style={{ fontWeight: t.bold }}>Everything is open.</Text>}
+        </Text>
+        <TourSpot id="home-appnav" radius={8}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Compass')}
+            accessibilityRole="button" accessibilityLabel="Open App Nav"
+            hitSlop={8}
+            style={{ borderWidth: 1, borderColor: accent.primary, borderRadius: r.sm, paddingHorizontal: 10, paddingVertical: 4 }}
+          >
+            <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: accent.primary }}>App Nav</Text>
+          </TouchableOpacity>
+        </TourSpot>
+      </View>
+      {!full && !!nextStage && (
+        <RichText style={{ fontSize: t.xs, color: c.text3, marginTop: 4, lineHeight: 17 }} boldStyle={{ color: c.text1 }}>
+          {live ? '**Finish this goal**' : '**Finish a goal**'}{' or **gain a level** in Training to open it.'}
+        </RichText>
+      )}
+      <TouchableOpacity
+        onPress={() => setOpen(o => !o)}
+        accessibilityRole="button" accessibilityState={{ expanded: open }}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: sp.sm, alignSelf: 'flex-start' }}
+        hitSlop={6}
+      >
+        <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: accent.primary }}>
+          {open ? 'Hide stages' : `See all ${MAX_STAGE} stages`}{!full ? ` · you're on ${stage}` : ''}
+        </Text>
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={13} color={accent.primary} />
+      </TouchableOpacity>
+      {open && <StageList style={{ marginTop: 4 }} />}
     </View>
   );
 }

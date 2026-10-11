@@ -165,6 +165,10 @@ export default function MultiStepOnboarding() {
   const [countryCode, setCountryCode] = useState('US');
   const [parentEmail, setParentEmail] = useState('');
   const [gateBusy, setGateBusy] = useState(false);
+  // Said under the form, not in an Alert: on web an Alert is a blocking
+  // browser dialog, and in a preview that never shows it the first page of
+  // the app just looked stuck.
+  const [gateError, setGateError] = useState(null);
   const [consentChecked, setConsentChecked] = useState(false);
   // The age band, from the birth date — decides which personas PersonaStep
   // offers. Not profiles.is_minor: that's the digital-consent flag (under 13
@@ -313,9 +317,10 @@ export default function MultiStepOnboarding() {
     // Month + year required, day optional — see dobFromParts.
     const dateOfBirth = dobFromParts(birthMonth, birthDay, birthYear);
     if (!dateOfBirth) {
-      Alert.alert('Check your birth date', 'Enter your birth month and year. The day is optional.');
+      setGateError('Enter your birth **month** and **year**. The day is optional.');
       return;
     }
+    setGateError(null);
     const isMinor = isMinorRequiringConsent(dateOfBirth, countryCode);
     setAgeBand(ageCategoryFromDob(dateOfBirth));
     dobRef.current = dateOfBirth;
@@ -336,7 +341,7 @@ export default function MultiStepOnboarding() {
       }
       setPhase(minor ? (kidsClosed ? 'kids_closed' : 'parent_email') : 'main');
     } catch (e) {
-      Alert.alert('Save error', e.message || 'Could not save your birth date.');
+      setGateError(`Couldn't save that. ${e.message || 'Try again.'}`);
     } finally {
       setGateBusy(false);
     }
@@ -688,26 +693,50 @@ export default function MultiStepOnboarding() {
       <KeyboardAvoidingView style={[{ flex: 1 }, webFit]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={cs.bg}>
           <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={gs.body} showsVerticalScrollIndicator={false}>
-            <Text style={gs.title}>First, when's{'\n'}your birthday?</Text>
-            <Text style={gs.subtitle}>We ask everyone this. It decides which parts of the app fit your age.</Text>
-            <View style={gs.dobRow}>
-              <TextInput style={[gs.input, gs.dobInput]} placeholder="MM" placeholderTextColor={c.text4}
-                value={birthMonth} onChangeText={setBirthMonth} keyboardType="number-pad" maxLength={2} />
-              <TextInput style={[gs.input, gs.dobInput]} placeholder="DD (opt.)" accessibilityLabel="Birth day, optional" placeholderTextColor={c.text4}
-                value={birthDay} onChangeText={setBirthDay} keyboardType="number-pad" maxLength={2} />
-              <TextInput style={[gs.input, gs.dobInputYear]} placeholder="YYYY" placeholderTextColor={c.text4}
-                value={birthYear} onChangeText={setBirthYear} keyboardType="number-pad" maxLength={4} />
+            {/* The very first page after signing up (2026-10-10: "fix first
+                page of onboarding, this is the first thing people land on").
+                One short ask, labelled fields, and the country as a compact
+                grid instead of eight full-width buttons down the page. */}
+            <View style={gs.hello}>
+              <Text style={{ fontSize: 30 }}>👋</Text>
             </View>
-            <Text style={gs.sectionLabel}>Where do you live?</Text>
-            {COUNTRY_CHOICES.map(item => {
-              const selected = countryCode === item.value;
-              return (
-                <TouchableOpacity key={item.value} style={[gs.choice, selected && gs.choiceSelected]} onPress={() => setCountryCode(item.value)}>
-                  <Text style={[gs.choiceText, selected && gs.choiceTextSelected]}>{item.label}</Text>
-                  {selected && <Ionicons name="checkmark-circle" size={20} color="#fff" />}
-                </TouchableOpacity>
-              );
-            })}
+            <Text style={gs.title}>Welcome! When's your <Text style={{ color: c.teal }}>birthday</Text>?</Text>
+            <Text style={gs.subtitle}>So the app fits your <Text style={{ fontWeight: '700', color: c.text1 }}>age</Text>. Month and year is enough.</Text>
+            <View style={gs.dobRow}>
+              {[
+                { key: 'm', label: 'Month', ph: 'MM', value: birthMonth, set: setBirthMonth, max: 2, style: gs.dobInput },
+                { key: 'd', label: 'Day (optional)', ph: 'DD', value: birthDay, set: setBirthDay, max: 2, style: gs.dobInput },
+                { key: 'y', label: 'Year', ph: 'YYYY', value: birthYear, set: setBirthYear, max: 4, style: gs.dobInputYear },
+              ].map(f => (
+                <View key={f.key} style={f.style}>
+                  <Text style={gs.fieldLabel} numberOfLines={1}>{f.label}</Text>
+                  <TextInput style={[gs.input, { textAlign: 'center', marginBottom: 0 }]} placeholder={f.ph} placeholderTextColor={c.text4}
+                    accessibilityLabel={`Birth ${f.label.toLowerCase()}`}
+                    value={f.value} onChangeText={(v) => { f.set(v); if (gateError) setGateError(null); }} keyboardType="number-pad" maxLength={f.max} />
+                </View>
+              ))}
+            </View>
+            <Text style={[gs.sectionLabel, { marginTop: 22 }]}>Country</Text>
+            <View style={gs.countryGrid}>
+              {COUNTRY_CHOICES.map(item => {
+                const selected = countryCode === item.value;
+                return (
+                  <TouchableOpacity key={item.value} style={[gs.countryChip, selected && gs.choiceSelected]} onPress={() => setCountryCode(item.value)}
+                    accessibilityRole="radio" accessibilityState={{ selected }}>
+                    <Text style={[gs.choiceText, selected && gs.choiceTextSelected]} numberOfLines={1}>{item.label}</Text>
+                    {selected && <Ionicons name="checkmark-circle" size={16} color={c.onFill} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {!!gateError && (
+              <View accessibilityLiveRegion="polite" style={gs.errorBox}>
+                <Ionicons name="alert-circle-outline" size={16} color="#e05858" />
+                <Text style={{ flex: 1, fontSize: 13, color: c.text1 }}>
+                  {gateError.split('**').map((part, i) => (i % 2 ? <Text key={i} style={{ fontWeight: '700' }}>{part}</Text> : part))}
+                </Text>
+              </View>
+            )}
           </ScrollView>
           <View style={gs.bottomBar}>
             <TouchableOpacity onPress={submitBirthDate} disabled={gateBusy} style={cs.nextBtn}>
@@ -909,6 +938,14 @@ const gateStyles = ({ c, r }) => StyleSheet.create({
     padding: 14, marginBottom: 20, fontSize: 15, color: c.text1, backgroundColor: c.bg1,
   },
   dobRow: { flexDirection: 'row', gap: 12 },
+  hello: { width: 56, height: 56, borderRadius: 18, backgroundColor: c.teal + '22', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  fieldLabel: { fontSize: 12, fontWeight: '600', color: c.text3, marginBottom: 6 },
+  countryGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 8 },
+  countryChip: {
+    width: '49%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6,
+    paddingVertical: 11, paddingHorizontal: 12, borderRadius: r.md, borderWidth: 1, borderColor: c.border, backgroundColor: c.bg1,
+  },
+  errorBox: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16, padding: 12, borderRadius: r.md, backgroundColor: '#e0585818' },
   // minWidth 0: on web a text input has an intrinsic width (~200px) that
   // flex won't shrink below, which pushed the year box off a phone screen.
   dobInput: { flex: 1, minWidth: 0, textAlign: 'center' },

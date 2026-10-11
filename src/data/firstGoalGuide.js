@@ -240,3 +240,61 @@ export const CLAIM_STEP = {
   path: "your goal card on Home",
   say: "Tap **Finish** on your goal card to claim it.",
 };
+
+// ── Every other goal ────────────────────────────────────────────────────────
+// The guide walks every goal now, not only the first (2026-10-10). A goal
+// with no hand-written script above gets one built from its own steps: go
+// to the step's screen, light up that screen's main button, say the step's
+// hint. Each `spot` here is a TourSpot that scripts/check-tour-spots.mjs
+// already checks for the hand-written scripts.
+const SPOT_FOR = {
+  PlannerScreen: 'planner-add',
+  CaptureInbox: 'inbox-capture',
+  KnowledgeScreen: 'notes-input',
+  IdeaGardenScreen: 'ideas-list',
+  ProjectsScreen: 'projects-add',
+  Training: 'training-enter',
+  LifeAreaScreen: 'lifearea-rating',
+};
+// Steps whose signal is done somewhere other than the screen's main button.
+const SPOT_FOR_SIGNAL = {
+  'area-logged': 'lifearea-quicklog',
+  'inbox-processed': 'inbox-list',
+  'inbox-zero': 'inbox-list',
+  'project-next-set': 'projects-list',
+  'project-shipped': 'projects-list',
+  'planner-item-done': null, // a circle on any item: pointed at, not lit
+  'class-opened': null,
+};
+const GO_FOR = { ClassesStack: 'ClassesMain' };
+
+export function autoScript(objective) {
+  if (!objective?.steps) return null;
+  const out = {};
+  objective.steps.forEach(st => {
+    // A step nothing can see happen ("teach it to someone") is ticked by
+    // hand on the goal card. A counted one with no screen (level, points)
+    // is earned in Training.
+    if (!st.screen) {
+      out[st.id] = st.auto
+        ? { go: 'Training', spot: 'training-enter', mode: 'tap', path: 'Training', say: st.hint || 'Play a round. **Ticks itself.**' }
+        : { go: 'Home', spot: 'home-compass', mode: 'point', path: 'your goal card on Home', say: `${st.hint ? `${st.hint} ` : ''}Then **tick it** on your goal card.` };
+      return;
+    }
+    const go = GO_FOR[st.screen] || st.screen;
+    const base = typeof st.signal === 'string' ? st.signal.split(':')[0] : null;
+    let spot = base && base in SPOT_FOR_SIGNAL ? SPOT_FOR_SIGNAL[base] : (SPOT_FOR[go] || null);
+    if (go === 'Home' && st.widget === 'focus') spot = 'home-focus-input';
+    // Today's drills open in a sheet over Training: nothing on the screen to light.
+    if (st.params?.openDrills) spot = null;
+    out[st.id] = {
+      go,
+      // Not Home's openFocus: the guide lights up the box instead.
+      params: go === 'Home' ? undefined : st.params,
+      spot,
+      mode: spot ? 'tap' : 'point',
+      say: st.hint || st.label,
+    };
+  });
+  return out;
+}

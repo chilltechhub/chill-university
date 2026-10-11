@@ -22,12 +22,21 @@ import { EXAMPLES } from '../config/chilltech';
 // Play and PlayGame share one walkthrough. It replaced the SCREEN_HELP line
 // "A single training game in progress", which told nobody anything.
 const PLAY_STEPS = [
-  { title: 'Switch games', body: "**Swipe up or down**, or tap the arrows, for the next game.", id: 'play-switch' },
+  { title: 'Switch games', body: "**Swipe up or down** for the next game." },
   { title: 'Your level', body: "Pick your **level** first. A hot streak moves you up; misses ease you down." },
   { title: 'Leaving', body: "Tap **X** (top left) to leave. Every right answer is **already saved**." },
 ];
 
+// App Nav (route 'Compass'). The guide sends people here once their first
+// goal is done (src/logic/useGuidedFirstGoal.js), and this is what greets them.
+const APP_NAV_STEPS = [
+  { title: 'App Nav', body: "Your **map** of the app. Every **stage**: ✓ open, 🔒 still to come.", id: 'appnav-stages' },
+  { title: 'How stages open', body: "**Finish a goal** or **gain a level**. Each one opens the next stage." },
+  { title: 'Getting back', body: "Tap the **arrow** (top left) for Home. **App Nav** is always on your goal card." },
+];
+
 const SCREEN_FEATURES = {
+  Compass: APP_NAV_STEPS,
   Play: PLAY_STEPS,
   PlayGame: PLAY_STEPS,
   Home: [
@@ -333,7 +342,7 @@ export function hasScreenTutorial(routeName) {
 const STARTER_FEATURES = {
   Home: [
     { title: 'Your first goal', body: "**The one thing to do now.** Each step has an **Open** button that takes you there.", id: 'home-compass' },
-    { title: 'What opens next', body: "The app opens **in stages**. Finish a goal or gain a level to open the next one.", id: 'home-stage' },
+    { title: "What's next", body: "The app opens **in stages**. Finish a goal or gain a level for the next one. **App Nav** shows them all.", id: 'home-appnav' },
     { title: 'Play', body: "**Play** starts a game picked for you. **Press and hold** to choose one.", id: 'home-study-play' },
   ],
   LibraryScreen: [
@@ -360,6 +369,7 @@ const FULL_TUTORIAL_AT = { Home: 'dashboard', LibraryScreen: 'all-tools' };
 // on the screen where they're used. Screens not listed get their first two
 // steps. Screen Tutorial in the menu always runs the full version.
 const FIRST_VISIT = {
+  Compass: APP_NAV_STEPS,
   LibraryScreen: [
     { title: 'Three pages', body: "Three pages: **Life**, **Build**, **Knowledge**. Tap one under the title.", id: 'library-views', librarySubTab: 'domains' },
     { title: 'Your life areas', body: "Each circle is a **part of your life**. **Double-tap** to open it.", id: 'library-life-areas', librarySubTab: 'domains' },

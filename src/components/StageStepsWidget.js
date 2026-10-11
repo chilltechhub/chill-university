@@ -1,5 +1,7 @@
 // src/components/StageStepsWidget.js
-// "What opens next, and what opens it" — the stage layer, on Home.
+// "What's next, and what opens it" — the stage layer, on Home. Only shown
+// when the goal card (CompassCard) is hidden: that card carries the same
+// line itself now (its WhatsNext footer).
 //
 // The app opens ten stages at a time (src/data/experienceStages.js) and the
 // Compass screen has always said so, but Home never did. That left the one
@@ -50,7 +52,7 @@ export default function StageStepsWidget() {
   if (!nextStage) {
     return (
       <WidgetCard title="Your stage" icon="layers-outline" accent={accent.primary}
-        action="Compass →" onAction={() => navigation.navigate('Compass')}>
+        action="App Nav →" onAction={() => navigation.navigate('Compass')}>
         <Text style={{ fontSize: t.sm, color: c.text2, lineHeight: 19 }}>
           Stage {stage} of {MAX_STAGE}: <Text style={{ fontWeight: t.bold, color: c.text1 }}>everything is open.</Text>
         </Text>
@@ -99,10 +101,10 @@ export default function StageStepsWidget() {
     <WidgetCard
       // No stage number on Home: "Stage 1 of 10", "Next:", "NEXT STEPS" and the
       // goal card's "Next step" all at once read as four different nexts.
-      title="What opens next"
+      title="What's next"
       icon="layers-outline"
       accent={accent.primary}
-      action="Compass →"
+      action="App Nav →"
       onAction={() => navigation.navigate('Compass')}
     >
       {/* What's behind the next door, before what opens it — the reason
@@ -110,7 +112,7 @@ export default function StageStepsWidget() {
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: s.md }}>
         <Ionicons name="lock-open-outline" size={14} color={accent.primary} style={{ marginTop: 2 }} />
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.text1 }}>Next unlock: {nextStage.label}</Text>
+          <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.text1 }}>Next: {nextStage.label}</Text>
           {showSubtext && !!nextStage.blurb && (
             <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2, lineHeight: 17 }}>{nextStage.blurb}</Text>
           )}

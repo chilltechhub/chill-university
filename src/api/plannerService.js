@@ -212,8 +212,21 @@ export async function completeInstance(instanceId, completed = true) {
     .single();
   if (error) throw error;
   // Real work counts: a little XP and the day's streak (record_action).
-  if (completed) recordAction('planner_done', instanceId);
+  if (completed) {
+    recordAction('planner_done', instanceId);
+    planDoneListeners.forEach(fn => { try { fn(data); } catch { /* a listener's problem, not the save's */ } });
+  }
   return data;
+}
+
+// "Something planned got done", for goal steps that wait on it
+// (objectives.js signal 'planner-item-done'). Done is ticked from six places
+// (Planner, Home, the detail sheet, the backlog, a reminder's action...), all
+// through completeInstance, so AccessContext listens here once instead.
+const planDoneListeners = new Set();
+export function onPlanDone(fn) {
+  planDoneListeners.add(fn);
+  return () => planDoneListeners.delete(fn);
 }
 
 export async function skipInstance(instanceId) {
@@ -386,7 +399,10 @@ export async function generateInstances(userId, component) {
 // stopped, or deleted it on another device); and a single day that was
 // edited ("changes apply to this day only" gives that one row a new time,
 // which on its own looks like a new series, so a series needs two rows).
-const AHEAD_DAYS = { daily: 14, weekly: 56, monthly: 92 };
+// Far enough that a month view never shows a habit just stopping (the user
+// asked "is daily only up to 7 days?", 2026-10-10). Reminders aren't
+// written per row here, so this costs rows, not notifications.
+const AHEAD_DAYS = { daily: 42, weekly: 91, monthly: 183 };
 const GRACE_DAYS = 3;
 const topupKey = (userId) => `@cth_planner_topup_${userId}_${getActiveProfileId() || 'none'}`;
 export const SERIES_END = 'series_end';

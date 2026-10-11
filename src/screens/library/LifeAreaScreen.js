@@ -16,6 +16,7 @@ import { supabase } from '../../api/profileScopedClient';
 import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../api/offlineCache';
 import RelatedLinks, { EXCLUDE_LINK_FILTER } from './RelatedLinks';
 import TourSpot from '../../components/TourSpot';
+import AreaPlanCalendar from '../../components/AreaPlanCalendar';
 import FillWithAIButton from '../../components/FillWithAIButton';
 import LockBadge from '../../components/LockBadge';
 import { useFeatureGate } from '../../components/FeatureGate';
@@ -555,6 +556,12 @@ export default function LifeAreaScreen() {
           <TourSpot id="lifearea-quicklog">
           <QuickLogChips options={area.quickLog} onLog={(opt) => addNote(opt)} color={color} c={c} t={t} s={s} />
           </TourSpot>
+
+          {/* ── This week: the area's Planner items ── */}
+          <Text style={{ fontSize: t.xs, color: color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.sm, marginTop: s.md }}>
+            {showEmojis ? '📅 ' : ''}Planned for {area.label}
+          </Text>
+          <AreaPlanCalendar areaId={area.id} areaLabel={area.label} color={color} navigation={navigation} />
 
           {/* ── Sections ── */}
           <Text style={{ fontSize: t.xs, color: color, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: t.bold, marginBottom: s.sm, marginTop: s.md }}>

@@ -39,7 +39,7 @@ const CAP_TARGETS = {
   'all-games': { screen: 'Training', label: 'Training', body: '**Every game is open.** Use the **filters** in Training to find one.' },
   'dashboard': { screen: 'Home', label: 'Home', body: '**Home is yours to arrange.** Tap **Edit** (top right) to move, hide or add cards.' },
   'all-tools': { screen: 'LibraryScreen', label: 'the Library', body: '**Every tool is open.** Look through **Life**, **Build** and **Knowledge**.' },
-  'doors':     { screen: 'Compass', label: 'the Compass', body: 'Locked tools now show **what opens them**. The **Compass** lists them all.' },
+  'doors':     { screen: 'Compass', label: 'App Nav', body: 'Locked tools now show **what opens them**. **App Nav** lists them all.' },
 };
 
 // Feature screens that are navigators, and the screen each one opens on.

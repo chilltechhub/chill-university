@@ -247,12 +247,16 @@ const exploringChanges = (baseKey, ageBand) => [
 // Deliberately concrete rather than aspirational — each use case names the
 // real part of the app it maps to, so the words here stay checkable against
 // the thing that ships.
+// One line each, the key word bold (the user's rule for app copy: no text
+// blocks). It was five two-line cards and a paragraph, on the first page
+// anyone sees after signing up ("fix first page of onboarding... super
+// important", 2026-10-10). Each line still names a real part of the app.
 const WELCOME_USES = [
-  { emoji: '🎯', icon: 'flag-outline',      title: 'Know what to do next',  body: 'One small goal at a time, right on your Home screen.' },
-  { emoji: '🗓️', icon: 'calendar-outline',  title: 'Run your days',         body: 'A planner for habits and to-dos, and a quick place to jot things down.' },
-  { emoji: '📚', icon: 'school-outline',    title: 'Learn something',       body: 'Short classes and quick games that earn you points.' },
-  { emoji: '🏗️', icon: 'hammer-outline',    title: 'Build your projects',   body: 'Turn an idea into a project and keep track of it.' },
-  { emoji: '🌿', icon: 'analytics-outline', title: 'See how life is going', body: 'Rate parts of your life, like health or money, and get ideas for each.' },
+  { emoji: '🎯', icon: 'flag-outline',      bold: 'One goal',  rest: 'at a time, on Home' },
+  { emoji: '🗓️', icon: 'calendar-outline',  bold: 'Plan',      rest: 'your days and habits' },
+  { emoji: '🎮', icon: 'game-controller-outline', bold: 'Learn', rest: 'with quick games and classes' },
+  { emoji: '🏗️', icon: 'hammer-outline',    bold: 'Build',     rest: 'your projects' },
+  { emoji: '🌿', icon: 'analytics-outline', bold: 'Check in',  rest: 'on health, money and more' },
 ];
 
 export function WelcomeStep({ theme }) {
@@ -260,34 +264,39 @@ export function WelcomeStep({ theme }) {
   const st = stepStyles(theme);
   return (
     <View style={st.stepContent}>
-      <Text style={st.stepTitle}>Welcome to Deskartes</Text>
-      <Text style={st.stepSubtitle}>
-        Your days, learning, projects and life, in one app. It <Text style={{ fontWeight: '700' }}>opens a little at a time</Text>.
-      </Text>
-
-      <SectionLabel label="What people use it for" theme={theme} />
-      {WELCOME_USES.map(use => (
-        <View
-          key={use.title}
-          style={{ flexDirection: 'row', gap: 12, backgroundColor: c.bg1, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: c.border }}
-        >
-          <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: c.teal + '22', alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontSize: 17 }}>{use.emoji}</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 14, fontWeight: '700', color: c.text1, marginBottom: 3 }}>{use.title}</Text>
-            <Text style={{ fontSize: 12.5, color: c.text3, lineHeight: 18 }}>{use.body}</Text>
-          </View>
+      <View style={{ alignItems: 'center', marginBottom: 18 }}>
+        <View style={{ width: 64, height: 64, borderRadius: 20, backgroundColor: c.teal + '22', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+          <Text style={{ fontSize: 32 }}>👋</Text>
         </View>
-      ))}
-
-      <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, padding: 12, borderRadius: 12, backgroundColor: c.gold + '14', borderWidth: 1, borderColor: c.gold + '44' }}>
-        <Ionicons name="time-outline" size={15} color={c.gold} style={{ marginTop: 1 }} />
-        <Text style={{ flex: 1, fontSize: 12.5, color: c.text2, lineHeight: 18 }}>
-          Six quick questions next, about a minute, starting with what you came here for. Then your guide takes you straight into it.
-          Every answer can be changed later in Settings.
+        <Text style={[st.stepTitle, { textAlign: 'center', fontSize: 26 }]}>Welcome to Deskartes</Text>
+        <Text style={{ fontSize: 15, color: c.text2, textAlign: 'center', lineHeight: 21 }}>
+          <Text style={{ fontWeight: '800', color: c.text1 }}>Your whole life</Text>, one app.
         </Text>
       </View>
+
+      <View style={{ backgroundColor: c.bg1, borderRadius: 16, borderWidth: 1, borderColor: c.border, paddingVertical: 4, paddingHorizontal: 14 }}>
+        {WELCOME_USES.map((use, i) => (
+          <View
+            key={use.bold}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, borderTopWidth: i ? 0.5 : 0, borderTopColor: c.border }}
+          >
+            <Text style={{ fontSize: 20, width: 26, textAlign: 'center' }}>{use.emoji}</Text>
+            <Text style={{ flex: 1, fontSize: 15, color: c.text2 }}>
+              <Text style={{ fontWeight: '800', color: c.text1 }}>{use.bold}</Text> {use.rest}
+            </Text>
+          </View>
+        ))}
+      </View>
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 18 }}>
+        <Ionicons name="time-outline" size={15} color={c.gold} />
+        <Text style={{ fontSize: 13, color: c.text2 }}>
+          <Text style={{ fontWeight: '800', color: c.text1 }}>1 minute</Text> of setup. Then a guide shows you around.
+        </Text>
+      </View>
+      <Text style={{ fontSize: 12, color: c.text3, textAlign: 'center', marginTop: 4 }}>
+        Change any answer later.
+      </Text>
     </View>
   );
 }

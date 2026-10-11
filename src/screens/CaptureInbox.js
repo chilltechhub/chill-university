@@ -1412,7 +1412,10 @@ export function QuickCaptureModal({ visible, userId, onSaved, onClose, prefill, 
   };
 
   return (
-    <FloatingCard visible={visible} onClose={onClose} c={c}>
+    // A little below centre: it opened up under the top bar, over the
+    // goal card it was often opened from ("bring the capture popup down a
+    // tad", 2026-10-10).
+    <FloatingCard visible={visible} onClose={onClose} c={c} nudgeDown={48}>
       <View style={{ padding: s.xl, paddingTop: s.sm }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: s.lg }}>
             <Text style={{ fontSize: t.xl, fontWeight: t.bold, color: c.text1 }}>{planning ? '✨ Plan from a link' : '⚡ Quick Capture'}</Text>

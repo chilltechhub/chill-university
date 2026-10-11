@@ -47,6 +47,17 @@ export const GAMES_MASTER = getEnabledGames().map(g => ({
   desc: g.desc,
 }));
 const GAME_IDS = GAMES_MASTER.map(g => g.key);
+// The grid's order, shuffled once per app start, so the same game isn't
+// always top-left. Once, not per render: cards jumping around while you
+// look at them would be worse than a fixed order.
+const SHUFFLED_GAMES = (() => {
+  const out = [...GAMES_MASTER];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+})();
 const { width: SW } = Dimensions.get('window');
 
 const TABS = ['Overview', 'Training', 'Progress'];
@@ -100,7 +111,7 @@ export default function GamesScreen() {
   const starter = !can('all-games');
   const tabs = starter ? STARTER_TABS : TABS;
   const GAMES = useMemo(
-    () => GAMES_MASTER.filter(g => isGameVisible(g.key)),
+    () => SHUFFLED_GAMES.filter(g => isGameVisible(g.key)),
     [isGameVisible]
   );
   const [activeTab, setActiveTab] = useState('Overview');
@@ -212,6 +223,20 @@ export default function GamesScreen() {
                 />
               </LandscapeBackground>
             </TouchableOpacity>
+            {/* With tap-to-profile off (Profile → Customize), Profile is a
+                small button in the hero's corner instead. */}
+            {!heroTapEnabled && (
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Profile')}
+                accessibilityRole="button"
+                accessibilityLabel="Open your profile"
+                hitSlop={8}
+                style={{ position: 'absolute', top: s.xl + 8, right: s.lg + 8, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, backgroundColor: 'rgba(10,22,40,0.6)' }}
+              >
+                <Ionicons name="person-circle-outline" size={15} color="#fff" />
+                <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff' }}>Profile</Text>
+              </TouchableOpacity>
+            )}
 
             {/* Quick stat chips */}
             {/* width on the TourSpots: the rows inside size themselves by
@@ -235,7 +260,13 @@ export default function GamesScreen() {
             <TourSpot id="training-enter">
             <TouchableOpacity
               style={styles.playBtn}
-              onPress={() => navigation.navigate('Play', { index: 0 })}
+              // A different game each time, not whichever came first in
+              // the list (2026-10-10: "games should be randomized, even on
+              // startup").
+              onPress={() => {
+                const pick = GAMES.length ? GAMES[Math.floor(Math.random() * GAMES.length)] : null;
+                navigation.navigate('Play', pick ? { gameId: pick.key } : { index: 0 });
+              }}
               activeOpacity={0.85}
             >
               <Ionicons name="play" size={16} color="#fff" />

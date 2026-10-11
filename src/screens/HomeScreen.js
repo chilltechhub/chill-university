@@ -159,7 +159,6 @@ const WIDGET_DEFS = [
   { key: 'activities',  title: "Today's Activities" },
   { key: 'desk',        title: 'On the Desk' },
   { key: 'ideas',       title: 'Latest Ideas' },
-  { key: 'streak',      title: 'Streak & Level' },
   { key: 'builds',      title: 'Active Projects' },
   { key: 'checkins',    title: 'Check-ins Due' },
   // Not tied to one persona — see personas.defaultWidgets and the
@@ -168,13 +167,13 @@ const WIDGET_DEFS = [
   // The purpose/objective layer. A widget rather than a pinned card so the
   // board stays the one system that owns the dashboard — it defaults to
   // directly under the HQ card, and stays reorderable from there.
-  { key: 'compass',     title: 'Compass' },
+  { key: 'compass',     title: 'Your goal' },
   // The steps of the goal in flight, ticked or not — the Compass card
   // shows only the next one.
   { key: 'goalSteps',   title: 'Your steps' },
   // Which stage the app is at, what the next one brings, and the two things
   // that open it. See src/components/StageStepsWidget.js.
-  { key: 'stageSteps',  title: 'Your stage' },
+  { key: 'stageSteps',  title: "What's next" },
   // Persona widgets — src/components/widgets/
   { key: 'habitRings',       title: 'Habits' },
   { key: 'lifeAreas',        title: 'Life Areas' },
@@ -202,13 +201,12 @@ const WIDGET_BLURBS = {
   activities:       'Everything scheduled for today, in time order.',
   desk:             'The next thing to pick up from your projects, notes and ideas.',
   ideas:            'The newest ideas in your Idea Garden.',
-  streak:           'Your streak and level at a glance.',
   builds:           'Projects in progress and how far along each is.',
   checkins:         'Life areas you have not rated in a while.',
   wayfinder:        'Work out what you want, one small experiment at a time.',
-  compass:          'Your goal in flight and its next step.',
+  compass:          "Your goal in flight, its next step, and what's next in the app.",
   goalSteps:        'Every step of your current goal, ticked or not.',
-  stageSteps:       'What opens next in the app, and how to get there.',
+  stageSteps:       "What's next in the app, and how to get there.",
   habitRings:       'How often you kept each habit over the last week.',
   lifeAreas:        'Your rating for each life area, most out of date first.',
   dailyDrills:      "Today's three drills and the game for the next one.",
@@ -1185,7 +1183,9 @@ export default function HomeScreen() {
   const shownBoardLayout = useMemo(() => {
     if (editingWidgets) return boardLayout;
     const compassShown = boardLayout.some(l => l.key === 'compass' && !l.hidden);
-    return compassShown ? boardLayout.filter(l => l.key !== 'goalSteps') : boardLayout;
+    // The Compass card carries the goal's steps AND "What's next" now, so
+    // both of those cards step aside while it's showing (2026-10-10).
+    return compassShown ? boardLayout.filter(l => l.key !== 'goalSteps' && l.key !== 'stageSteps') : boardLayout;
   }, [boardLayout, editingWidgets]);
   // The board only ever sees boardLayout, so what it hands back is missing
   // whatever the tray left out. Put those back, as they were.
@@ -1641,6 +1641,15 @@ export default function HomeScreen() {
     if (!editingWidgets) startWidgetEdit();
     navigation.setParams({ editWidgets: undefined });
   }, [editParam]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A goal step's Open ("Set a focus for today") lands here with the focus
+  // box already open, instead of on a Home that looks like nothing happened.
+  const focusParam = homeRoute.params?.openFocus;
+  useEffect(() => {
+    if (!focusParam) return;
+    setFocusDraft(todayFocus || '');
+    setEditFocus(true);
+    navigation.setParams({ openFocus: undefined });
+  }, [focusParam]); // eslint-disable-line react-hooks/exhaustive-deps
   const exitWidgetEdit = async () => {
     setEditingWidgets(false);
     if (layoutAtEditRef.current === JSON.stringify(widgetLayout)) return;
@@ -2239,26 +2248,6 @@ export default function HomeScreen() {
               ),
             },
             {
-              key: 'streak', title: 'Streak & Level',
-              render: () => (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, backgroundColor: c.bg1, borderRadius: ui.cardRadius, padding: s.lg, marginHorizontal: s.lg, borderWidth: ui.borderWidth, borderColor: c.border }}>
-                  <LevelRing pct={progress || 0} size={44} strokeWidth={3} color={c.gold} trackColor={c.bg2}>
-                    <Readout size={13} color={c.gold}>{level}</Readout>
-                  </LevelRing>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: t.sm, fontWeight: '700', color: c.text1 }}>Level {level} · {Math.round(progress || 0)}% to next</Text>
-                    <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>{(points || 0).toLocaleString()} points earned</Text>
-                  </View>
-                  {streakDays > 0 && (
-                    <View style={{ alignItems: 'center', minWidth: 34 }}>
-                      {showEmojis && <Text style={{ fontSize: 17 }}>🔥</Text>}
-                      <Readout size={t.xs} color={c.gold}>{streakDays}d</Readout>
-                    </View>
-                  )}
-                </View>
-              ),
-            },
-            {
               key: 'builds', title: 'Active Projects',
               render: () => (
                 activeBuilds.length === 0 ? (
@@ -2409,7 +2398,7 @@ export default function HomeScreen() {
               render: () => (
                 <QuestWidget
                   type={activeType} aim={purposeKey}
-                  onOpenQuest={(questId) => goToLibraryScreen('ClassesStack', { screen: 'Quest', params: { questId } })}
+                  onOpenQuest={(questId) => goToLibraryScreen('ClassesStack', { screen: 'Quest', params: { questId, from: 'Home' } })}
                   onOpenAll={() => goToLibraryScreen('ClassesStack')}
                 />
               ),
@@ -2424,7 +2413,7 @@ export default function HomeScreen() {
               ),
             },
             {
-              key: 'compass', title: 'Compass',
+              key: 'compass', title: 'Your goal',
               render: () => (
                 <TourSpot id="home-compass">
                   <CompassCard />
@@ -2436,7 +2425,7 @@ export default function HomeScreen() {
               render: () => <GoalStepsWidget />,
             },
             {
-              key: 'stageSteps', title: 'Your stage',
+              key: 'stageSteps', title: "What's next",
               render: () => (
                 <TourSpot id="home-stage">
                   <StageStepsWidget />

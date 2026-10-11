@@ -23,16 +23,30 @@
 //     voices explaining different things at once is worse than either.
 //
 // Scripts live in src/data/firstGoalGuide.js.
+//
+// Every goal, since 2026-10-10. The guide used to stop after the first one,
+// and the user "unlocked more because I didn't know what to do next... the
+// entire steps to unlock the whole app should be a tutorial guy". A goal
+// without a hand-written script gets one built from its steps (autoScript).
+// "What's next?" on the + button and "Show me how" on the goal card start it
+// again from wherever the person is.
+//
+// Once the first goal is done it also points at App Nav (the goal card's
+// link), whose own tutorial takes over from there, then at the Start button
+// on the next goal.
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAccess } from '../../context/AccessContext';
 import { useTour } from '../../context/TourContext';
 import { useUserProgress } from '../../context/UserProgressContext';
-import { FIRST_GOAL_GUIDE, CLAIM_STEP } from '../data/firstGoalGuide';
+import { FIRST_GOAL_GUIDE, CLAIM_STEP, autoScript } from '../data/firstGoalGuide';
+import { getObjective, objectivesForPurpose } from '../data/objectives';
 import { markScreensSeen } from './useFirstVisitTutorial';
 
 const modeKey = (uid) => `@cth_first_goal_guide_${uid || 'guest'}`;
+// The one-time "this is App Nav" pointer after the first goal.
+const appNavKey = (uid) => `@cth_guide_appnav_${uid || 'guest'}`;
 const HUBS = new Set(['Home', 'Training', 'LibraryScreen']);
 // Where games run. Not calm in general (nobody gets pulled out of a game),
 // but once the last step is done the guide says so right there, as a note
@@ -48,6 +62,11 @@ const resumeListeners = new Set();
 export function resumeFirstGoalGuide() {
   resumeListeners.forEach(fn => fn());
 }
+// "What's next?" on the + button: the same, but right now, on whatever
+// screen they're on, rather than waiting for a calm one.
+export function showWhatsNext() {
+  resumeListeners.forEach(fn => fn({ now: true }));
+}
 
 const lowerFirst = (str = '') => str.charAt(0).toLowerCase() + str.slice(1);
 
@@ -57,12 +76,18 @@ const lowerFirst = (str = '') => str.charAt(0).toLowerCase() + str.slice(1);
  */
 export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
   const { user, profile } = useUserProgress();
-  const { activeObjective, loading, purpose, lastSignalDetail } = useAccess();
-  const { active: tourActive, startLesson, endTour } = useTour();
+  const { activeObjective, loading, purpose, purposeKey, lastSignalDetail, completedObjectiveIds = [] } = useAccess();
+  const { active: tourActive, startLesson, endTour, startScreenTour } = useTour();
   const uid = user?.id || null;
 
-  const intro = activeObjective?.active && activeObjective.objective?.intro ? activeObjective : null;
-  const script = intro ? FIRST_GOAL_GUIDE[intro.objective.id] : null;
+  // `intro` kept as the name, but it is whichever goal is running now.
+  const intro = activeObjective?.active && activeObjective.objective ? activeObjective : null;
+  const isFirst = !!intro?.objective?.intro;
+  const goalId = intro?.objective?.id || null;
+  const script = useMemo(
+    () => (goalId ? (FIRST_GOAL_GUIDE[goalId] || autoScript(getObjective(goalId))) : null),
+    [goalId],
+  );
   // What the guide is on: the next unticked step, or claiming the goal.
   const key = intro ? (intro.complete ? 'claim' : intro.nextStep?.id || null) : null;
 
@@ -71,6 +96,9 @@ export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
   // that step gets done, or when the person comes back to Home.
   const [waiting, setWaiting] = useState(null);
   const skipsRef = useRef(0);
+  const startPointedRef = useRef(null);
+  // Asked for just now ("What's next?"): skip the wait for a calm screen.
+  const [asked, setAsked] = useState(false);
   const runRef = useRef(null); // { key, screen, arrived }
   const greetedRef = useRef(false);
   // "How to get back" is said once, on the first step that takes someone
@@ -96,9 +124,11 @@ export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
   }, [uid]);
 
   useEffect(() => {
-    const resume = () => {
+    const resume = ({ now = false } = {}) => {
       skipsRef.current = 0;
       setWaiting(null);
+      startPointedRef.current = null;
+      if (now) setAsked(true);
       persistMode('on');
     };
     resumeListeners.add(resume);
@@ -106,6 +136,10 @@ export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
   }, [persistMode]);
 
   const guiding = mode === 'on' && !!script && !loading;
+  // Screens' own first-visit tutorials only wait for the FIRST goal. Later
+  // goals are guided too, but holding every tutorial back for as long as
+  // any goal runs would mean they never ran at all.
+  const guidingFirst = guiding && isFirst;
 
   // The step it was waiting on is done — move on.
   useEffect(() => {
@@ -159,7 +193,9 @@ export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
         // start on what they came for, not on a tour of the app.
         // (The welcome tour has just said "You came here to…", so this
         // doesn't say it again.)
-        ? `Your first goal: **${intro.total} quick steps**${purpose?.you && purpose.key === intro.objective.purpose ? ` to ${purpose.you}` : ''}. I'll show you each one. First: **${lowerFirst(step.label)}**${partway}.`
+        ? (isFirst
+          ? `Your first goal: **${intro.total} quick steps**${purpose?.you && purpose.key === intro.objective.purpose ? ` to ${purpose.you}` : ''}. I'll show you each one. First: **${lowerFirst(step.label)}**${partway}.`
+          : `New goal: **${intro.objective.label}**, ${intro.total} steps. I'll show you each one. First: **${lowerFirst(step.label)}**${partway}.`)
         : intro.done > 0
           ? `**${intro.done} of ${intro.total}** done. Next: **${lowerFirst(step.label)}**${partway}.`
           : `Next: **${lowerFirst(step.label)}**${partway}.`;
@@ -281,15 +317,100 @@ export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
     prevKeyRef.current = key;
     if (prev && key && prev !== key) setJustTicked(true);
   }, [key]);
-  useEffect(() => { if (tourActive) setJustTicked(false); }, [tourActive]);
+  useEffect(() => { if (tourActive) { setJustTicked(false); setAsked(false); } }, [tourActive]);
   const calm = !!routeName && (HUBS.has(routeName) || scriptScreens.includes(routeName)
     || (key === 'claim' && PLAY_ROUTES.has(routeName))
-    || justTicked);
+    || justTicked || asked);
   useEffect(() => {
     if (!guiding || hold || tourActive || !key || waiting || !calm) return;
     const timer = setTimeout(begin, SETTLE_MS);
     return () => clearTimeout(timer);
   }, [guiding, hold, tourActive, key, waiting, calm, begin]);
 
-  return { guiding };
+  // ── Between goals ─────────────────────────────────────────────────────
+  // Nothing running. Once, after the first goal: "this is App Nav" over the
+  // goal card's link (its own tutorial runs when they tap it). After that,
+  // whenever they're back on Home with a goal on offer: point at Start.
+  const firstDone = completedObjectiveIds.some(id => getObjective(id)?.intro);
+  const [appNavTaught, setAppNavTaught] = useState(null); // null while loading
+  useEffect(() => {
+    let alive = true;
+    setAppNavTaught(null);
+    AsyncStorage.getItem(appNavKey(uid))
+      .then(raw => { if (alive) setAppNavTaught(raw === '1'); })
+      .catch(() => { if (alive) setAppNavTaught(false); });
+    return () => { alive = false; };
+  }, [uid]);
+  const offered = useMemo(() => (!intro && firstDone
+    ? objectivesForPurpose(purposeKey).find(o => !completedObjectiveIds.includes(o.id)) || null
+    : null), [intro, firstDone, purposeKey, completedObjectiveIds]);
+  useEffect(() => {
+    if (mode !== 'on' || loading || hold || tourActive || intro) return undefined;
+    if (routeName !== 'Home' && !asked) return undefined;
+    if (appNavTaught === null) return undefined;
+    // Before the first goal is done the goal card offers it with its own
+    // Start; asked "what's next?" then, point there.
+    const showAppNav = firstDone && !appNavTaught;
+    const pick = offered || (!firstDone && asked ? { id: 'first', label: 'Your first goal' } : null);
+    if (!showAppNav && !pick && asked) {
+      setAsked(false);
+      startLesson([{ go: 'Home', title: "What's next", body: "**No goal waiting** right now. **App Nav** shows every stage and what's open.", id: 'home-appnav', passthrough: true, skipLabel: 'OK' }]);
+      return undefined;
+    }
+    if (!showAppNav && (!pick || (!asked && startPointedRef.current === pick.id))) return undefined;
+    // Longer than SETTLE_MS: claiming a goal fires its reward cards first.
+    const timer = setTimeout(() => {
+      if (showAppNav) {
+        setAppNavTaught(true);
+        AsyncStorage.setItem(appNavKey(uid), '1').catch(() => {});
+        betweenRef.current = 'appnav';
+        startLesson([{
+          go: 'Home',
+          title: 'App Nav',
+          body: "Nice. This is **App Nav**: every **stage** of the app, and **what's next**. Tap it.",
+          id: 'home-appnav',
+          passthrough: true,
+          skipLabel: 'Later',
+        }], { onEnd: () => { betweenRef.current = null; } });
+        return;
+      }
+      startPointedRef.current = pick.id;
+      betweenRef.current = 'start';
+      startLesson([{
+        go: 'Home',
+        title: `Next goal · ${pick.label}`,
+        body: `Ready for the next one? Tap **Start**. I'll walk you through it.`,
+        id: 'home-compass',
+        passthrough: true,
+        skipLabel: 'Not now',
+      }], {
+        onEnd: (reason) => {
+          betweenRef.current = null;
+          if (reason !== 'skip') return;
+          skipsRef.current += 1;
+          if (skipsRef.current >= 2) persistMode('off');
+        },
+      });
+    }, asked ? 300 : 2500);
+    return () => clearTimeout(timer);
+  }, [mode, loading, hold, tourActive, intro, firstDone, routeName, appNavTaught, offered, uid, startLesson, persistMode, asked]);
+
+  // Those two pointers ask for a real tap (passthrough), so they end when
+  // the tap has done its job: a goal started, or App Nav opened. App Nav's
+  // own tutorial runs straight after, from here: the automatic first-visit
+  // one allows one a session and has usually been spent by then.
+  const betweenRef = useRef(null);
+  useEffect(() => {
+    const what = betweenRef.current;
+    if (!what || !tourActive) return;
+    if (what === 'start' && intro) { betweenRef.current = null; endTour('done'); }
+    if (what === 'appnav' && routeName === 'Compass') {
+      betweenRef.current = null;
+      endTour('handoff');
+      markScreensSeen(['Compass']);
+      setTimeout(() => startScreenTour('Compass', { firstVisit: true }), SETTLE_MS);
+    }
+  }, [intro, routeName, tourActive, endTour, startScreenTour]);
+
+  return { guiding: guidingFirst };
 }

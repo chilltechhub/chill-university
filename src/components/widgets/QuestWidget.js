@@ -36,6 +36,11 @@ export default function QuestWidget({ type, aim, onOpenQuest, onOpenAll }) {
       action="All quests →" onAction={onOpenAll}
       loading={!ready}
     >
+      {/* What a quest is, said once on the card itself. It used to arrive
+          as "your first quest" with no word on what one was (2026-10-10). */}
+      <Text style={{ fontSize: t.xs, color: c.text3, lineHeight: 17, marginBottom: s.sm }}>
+        A quest is a <Text style={{ fontWeight: t.bold, color: c.text1 }}>10-minute lesson</Text>: an idea, a bit of research, then <Text style={{ fontWeight: t.bold, color: c.text1 }}>one real thing to do</Text>. Tap to start.
+      </Text>
       {next ? (
         <TouchableOpacity onPress={() => onOpenQuest(next.id)} activeOpacity={0.85} accessibilityRole="button">
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md }}>

@@ -105,7 +105,7 @@ export const PATHS = {
     {
       key: 'start',
       label: 'Getting started',
-      blurb: 'Home with your first goal and what opens next; Life Areas, the Planner and three games.',
+      blurb: "Home with your first goal and what's next; Life Areas, the Planner and three games.",
       features: ['home-desk', 'compass', 'training', 'life-areas', 'planner'],
       screens: ['WayfinderScreen'],
       widgets: ['hq', 'focus', 'compass', 'goalSteps', 'stageSteps', 'lifeAreas'],
@@ -127,7 +127,7 @@ export const PATHS = {
       label: 'Three more games and your first quest',
       blurb: 'Budget Balance, People Skills and Snack Catch, and your first quests.',
       games: ['budget', 'people', 'snackcatch'],
-      widgets: ['quests', 'habitRings', 'streak'],
+      widgets: ['quests', 'habitRings'],
     },
     {
       key: 'wayfinder',
@@ -156,7 +156,7 @@ export const PATHS = {
       label: 'Three more games and your first quest',
       blurb: 'World Explorer, Word Scramble and Memory Match, and your first quests.',
       games: ['world', 'scramble', 'memory'],
-      widgets: ['quests', 'dailyDrills', 'streak'],
+      widgets: ['quests', 'dailyDrills'],
     },
     {
       key: 'capture',
@@ -199,7 +199,7 @@ export const PATHS = {
       label: 'Three more games and your first quest',
       blurb: 'Career Compass, Budget Balance and Survive the Month, and your first quests.',
       games: ['career', 'budget', 'survivemonth'],
-      widgets: ['quests', 'systemsCheck', 'streak'],
+      widgets: ['quests', 'systemsCheck'],
     },
     {
       key: 'classes',
@@ -241,7 +241,7 @@ export const PATHS = {
       label: 'Three more games and your first quest',
       blurb: 'Career Compass, People Skills and Code Breaker, and your first quests.',
       games: ['career', 'people', 'codebreaker'],
-      widgets: ['quests', 'vaultStatus', 'streak'],
+      widgets: ['quests', 'vaultStatus'],
     },
     {
       key: 'classes',
@@ -325,7 +325,7 @@ export const AIM_OPENS = {
   },
   habits: {
     features: ['planner', 'capture'],
-    widgets: ['habitRings', 'streak'],
+    widgets: ['habitRings'],
     fab: ['reminder', 'inbox'],
   },
   money: {

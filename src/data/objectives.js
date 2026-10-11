@@ -35,7 +35,9 @@
 //                 `signalCount` makes it take more than once ("capture five
 //                 things"), and the step keeps a running number until then.
 //   `have`        'idea' | 'project' | 'next-step' | 'shipped' | 'in-portfolio'
-//                 (a shipped project or a Portfolio entry): the step is
+//                 (a shipped project or a Portfolio entry) | 'planner-item'
+//                 ('planner-item:physical' narrows it to an area) |
+//                 'planner-done' | 'focus-today': the step is
 //                 already true if the person has one. Checked once when the
 //                 goal starts (src/api/existingWorkService.js), so a later
 //                 goal doesn't ask someone to redo what an earlier one had
@@ -47,6 +49,11 @@
 //
 // Two steps of the SAME objective must not share a signal: one action would
 // tick both.
+//
+// No step waits on the calendar ("reach a 3-day streak", "do it again
+// tomorrow"). Someone ready to keep going was stuck for days behind one, and
+// the stages behind it with them (2026-10-10). Every step is something you
+// can do today.
 //
 // `idea` (a Planner step) fills the Planner's new-item sheet: { title,
 // cadence, area }, all optional. A habit step without a title gets the
@@ -292,15 +299,18 @@ export const OBJECTIVES = [
   {
     id: 'hold-the-line',
     purpose: 'habits',
-    label: 'Hold the Line',
-    promise: 'Three days in a row where you showed up. That is the whole thing.',
-    why: 'Nothing else in here works until turning up is boring. This is the smallest version of that.',
-    estimate: '3 days',
+    // id kept: saved progress and featureCatalog's unlockedBy use it. It was
+    // "Hold the Line" with a 3-day streak step, which read as jargon and
+    // couldn't be finished today however much someone did (2026-10-10).
+    label: 'Plan Your Day',
+    promise: 'Four small things that make a normal day work.',
+    why: 'A day with a focus and a plan is easier to win than one without.',
+    estimate: 'About 10 minutes',
     steps: [
-      { id: 'focus',   label: 'Set a focus for today',        hint: 'One line on Home. What today is actually for.', screen: 'Home', signal: 'focus-set', widget: 'focus' },
+      { id: 'focus',   label: 'Set a focus for today',        hint: 'One line on Home. What today is **for**.', screen: 'Home', params: { openFocus: true }, signal: 'focus-set', widget: 'focus', have: 'focus-today' },
+      { id: 'plan',    label: 'Put one thing in the Planner',  hint: 'Something **real**, on a real day.', screen: 'PlannerScreen', signal: 'planner-item-added', have: 'planner-item' },
       { id: 'mission', label: 'Finish a daily drill',          hint: "Open shows today's three. **Ticks itself.**", screen: 'Training', params: { openDrills: true }, auto: { stat: 'missions', value: 1 } },
-      { id: 'plan',    label: 'Put one thing in the Planner',  hint: 'Something real and dated, not a wish.', screen: 'PlannerScreen', signal: 'planner-item-added' },
-      { id: 'streak',  label: 'Reach a 3-day streak',          hint: 'Ticks itself the day your streak hits three.', auto: { stat: 'streak', value: 3 } },
+      { id: 'done',    label: 'Tick off something you planned', hint: 'Tap the circle next to it in the Planner. **Ticks itself.**', screen: 'PlannerScreen', signal: 'planner-item-done', have: 'planner-done' },
     ],
     unlocks: ['weekly-review', 'work-mode'],
     next: 'clear-the-inbox',
@@ -343,15 +353,17 @@ export const OBJECTIVES = [
   {
     id: 'steady-body',
     purpose: 'wellbeing',
-    label: 'Steady State',
-    promise: 'A week of paying attention to sleep, movement and mood on purpose.',
-    why: 'Every other goal in here is downstream of whether you are rested.',
-    estimate: '1 week',
+    // Was "Steady State", ending on a 5-day streak: no way to finish it
+    // today, so the app stalled for days (2026-10-10). No step waits on time.
+    label: 'Look After Your Body',
+    promise: 'Sleep, movement and mood, looked at on purpose.',
+    why: 'Every other goal in here is easier when you are rested.',
+    estimate: 'About 15 minutes',
     steps: [
       { id: 'area',    label: 'Rate your Physical life area',    hint: 'Honestly. Nobody else sees it.', screen: 'LifeAreaScreen', params: { areaId: 'physical' }, signal: 'area-rated:physical' },
-      { id: 'agenda',  label: 'Schedule one movement block',     hint: '20 minutes in the Planner, tagged **Physical**.', screen: 'PlannerScreen', signal: 'planner-item-added:physical' },
+      { id: 'agenda',  label: 'Schedule one movement block',     hint: '20 minutes in the Planner, tagged **Physical**.', screen: 'PlannerScreen', signal: 'planner-item-added:physical', have: 'planner-item:physical' },
       { id: 'reflect', label: 'Write one reflection',            hint: 'What helped, what did not.', screen: 'KnowledgeScreen', signal: 'vault-saved' },
-      { id: 'streak',  label: 'Reach a 5-day streak',            hint: 'Ticks itself on day five.', auto: { stat: 'streak', value: 5 } },
+      { id: 'log',     label: 'Log one thing you did for your body', hint: 'A quick-log chip on the **Physical** page. Small counts.', screen: 'LifeAreaScreen', params: { areaId: 'physical' }, signal: 'area-logged:physical' },
     ],
     unlocks: ['weekly-review'],
     next: 'clear-the-inbox',
@@ -363,7 +375,7 @@ export const OBJECTIVES = [
     label: 'Know Your Numbers',
     promise: 'The unglamorous baseline: what comes in, what goes out, what is owed.',
     why: 'You cannot plan around numbers you are avoiding looking at.',
-    estimate: '3 days',
+    estimate: 'About 15 minutes',
     steps: [
       { id: 'area',    label: 'Rate your Financial life area',    hint: 'Where it actually is today.', screen: 'LifeAreaScreen', params: { areaId: 'financial' }, signal: 'area-rated:financial' },
       { id: 'game',    label: 'Play Budget Balance once',         hint: 'A cheap way to find the gaps in what you know.', screen: 'Training' },
@@ -377,7 +389,7 @@ export const OBJECTIVES = [
   {
     id: 'map-your-career',
     purpose: 'career',
-    label: 'Draw the Map',
+    label: 'Map Your Career',
     promise: 'Name where you are trying to get to, and one piece of evidence you could get there.',
     why: '"Advance my career" is not a plan. A named target and one artefact is.',
     estimate: 'About a week',
@@ -646,15 +658,16 @@ export const OBJECTIVES = [
   {
     id: 'clear-the-inbox',
     purpose: 'habits',
-    label: 'Clear the Deck',
+    label: 'Empty Your Inbox',
     promise: 'Empty the Capture Inbox once, properly, and learn where things go.',
-    why: 'A capture inbox you never process is a to-do list wearing a disguise.',
-    estimate: '2 days',
+    why: 'A capture inbox you never sort is just another to-do list.',
+    estimate: 'About 15 minutes',
     steps: [
       { id: 'capture', label: 'Capture five things',          hint: 'Anything on your mind. Speed over tidiness. Ticks itself at five.', screen: 'CaptureInbox', signal: 'inbox-captured', signalCount: 5 },
       { id: 'route',   label: 'Route three of them',          hint: 'To a project, a note, the planner — anywhere but back. Ticks itself at three.', screen: 'CaptureInbox', signal: 'inbox-processed', signalCount: 3 },
       { id: 'zero',    label: 'Get the inbox to zero',         hint: 'Archive counts. Deciding it does not matter is deciding.', screen: 'CaptureInbox', signal: 'inbox-zero' },
-      { id: 'repeat',  label: 'Do it again the next day',     hint: 'Once is a tidy-up. Twice is a habit forming.', screen: 'CaptureInbox' },
+      // Was "Do it again the next day": a wait, not a task (2026-10-10).
+      { id: 'plan',    label: 'Put one of them in the Planner', hint: 'Give it a **real day**. That is where sorted things go.', screen: 'PlannerScreen', signal: 'planner-item-added' },
     ],
     unlocks: ['import-hub'],
     next: null,

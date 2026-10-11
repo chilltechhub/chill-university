@@ -29,7 +29,8 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 // into are near each other.
 const KEYBOARD_GAP = 10;
 
-export default function FloatingCard({ visible, onClose, children, c, width = '90%', maxWidth = 440, maxHeight = '82%' }) {
+// `nudgeDown` (px) sits the card that much lower than centre, keyboard down.
+export default function FloatingCard({ visible, onClose, children, c, width = '90%', maxWidth = 440, maxHeight = '82%', nudgeDown = 0 }) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const start = useRef({ x: 0, y: 0 });
@@ -99,6 +100,7 @@ export default function FloatingCard({ visible, onClose, children, c, width = '9
           alignItems: 'center',
           justifyContent: open ? 'flex-end' : 'center',
           paddingBottom: open ? kbHeight + KEYBOARD_GAP : 0,
+          paddingTop: open ? 0 : nudgeDown * 2,
         }}
         pointerEvents="box-none"
       >

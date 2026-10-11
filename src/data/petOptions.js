@@ -66,8 +66,17 @@
 
 import { fetchContentPool } from '../api/remoteConfigService';
 
+// No pet at all until the first game is played (2026-10-10: "shouldn't
+// unlock a pet until 1 game is played"). The pet finds coins as a reward
+// for being in the app, so it arrives as the first reward, not as decor on
+// a brand-new account. Level 2 counts too: that only comes from playing or
+// finishing goals, and `played` isn't known everywhere stats are.
+export function petsOpen(stats = {}) {
+  return (stats.played || 0) > 0 || (stats.level || 0) >= 2;
+}
+
 function withUnlock(option) {
-  return { ...option, unlock: (stats) => (stats.level || 0) >= option.requiredLevel };
+  return { ...option, unlock: (stats) => petsOpen(stats) && (stats.level || 0) >= option.requiredLevel };
 }
 
 // Metro's bundler needs require() calls to be static string literals (no
@@ -161,6 +170,7 @@ export const PET_TIERS = [
 export const DEFAULT_PET_ID = PET_TIERS[0].id;
 
 export function petUnlockLabel(option, stats) {
+  if (!petsOpen(stats)) return 'Play 1 game to get a pet';
   if ((stats.level || 0) >= option.requiredLevel) return null;
   return `Unlocks at Level ${option.requiredLevel}`;
 }
