@@ -100,6 +100,160 @@
         "8599"
       ],
       "port": 8599
+    },
+    {
+      "name": "why-you-came-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "C:\\Users\\tawhi\\chill-app\\.claude\\worktrees\\why-you-came",
+        "run",
+        "web",
+        "--",
+        "--port",
+        "8699"
+      ],
+      "port": 8699
+    },
+    {
+      "name": "lock-down-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "C:\\Users\\tawhi\\chill-app\\.claude\\worktrees\\lock-down",
+        "run",
+        "web",
+        "--",
+        "--port",
+        "8099"
+      ],
+      "port": 8099
+    },
+    {
+      "name": "planner-calendar-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "C:\\Users\\tawhi\\chill-app\\.claude\\worktrees\\planner-calendar",
+        "run",
+        "web",
+        "--",
+        "--port",
+        "8799"
+      ],
+      "port": 8799
+    },
+    {
+      "name": "capture-to-project-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "C:/Users/tawhi/chill-app/.claude/worktrees/capture-to-project",
+        "run",
+        "web",
+        "--",
+        "--port",
+        "8899"
+      ],
+      "port": 8899
+    },
+    {
+      "name": "audit-phase1-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "C:/Users/tawhi/chill-app/.claude/worktrees/audit-phase1",
+        "run",
+        "web",
+        "--",
+        "--port",
+        "8999"
+      ],
+      "port": 8999
+    },
+    {
+      "name": "signup-walkthrough-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "C:/Users/tawhi/chill-app/.claude/worktrees/signup-walkthrough",
+        "run",
+        "web",
+        "--",
+        "--port",
+        "8090"
+      ],
+      "port": 8090
+    },
+    {
+      "name": "ship-test-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "C:/Users/tawhi/chill-app/.claude/worktrees/signup-walkthrough",
+        "run",
+        "web",
+        "--",
+        "--port",
+        "8093"
+      ],
+      "port": 8093
+    },
+    {
+      "name": "farm-test-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "C:/Users/tawhi/chill-app/.claude/worktrees/farm-test",
+        "run",
+        "web",
+        "--",
+        "--port",
+        "8094"
+      ],
+      "port": 8094
+    },
+    {
+      "name": "main-pass-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "C:/Users/tawhi/chill-app/.claude/worktrees/main-pass",
+        "run",
+        "web",
+        "--",
+        "--port",
+        "8095"
+      ],
+      "port": 8095
+    },
+    {
+      "name": "main-pass-web-2",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "C:/Users/tawhi/chill-app/.claude/worktrees/main-pass",
+        "run",
+        "web",
+        "--",
+        "--port",
+        "8096"
+      ],
+      "port": 8096
+    },
+    {
+      "name": "onboarding-feedback-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "C:/Users/tawhi/chill-app/.claude/worktrees/onboarding-feedback",
+        "run",
+        "web",
+        "--",
+        "--port",
+        "8097"
+      ],
+      "port": 8097
     }
   ]
 }
