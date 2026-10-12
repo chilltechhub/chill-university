@@ -228,6 +228,18 @@ export default function CompassScreen() {
 
         {/* ── Where you are — so a short list reads as "not yet", not "that's all" ── */}
         <TourSpot id="appnav-stages">
+        {experienceMode === 'picks' ? (
+        <View style={s.stageCard}>
+          <Text style={s.stageKicker}>Just my picks</Text>
+          <Text style={s.stageText}>Only what you picked is on show. Goals suggest one more thing at a time.</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('MyFeatures')} activeOpacity={0.7}>
+            <Text style={[s.inlineAction, { color: c.teal, marginTop: sp.sm }]}>Add or remove features</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setExperienceMode('auto')} activeOpacity={0.7}>
+            <Text style={[s.inlineAction, { color: c.teal, marginTop: sp.sm }]}>Switch to Level up</Text>
+          </TouchableOpacity>
+        </View>
+        ) : (
         <View style={s.stageCard}>
           <Text style={s.stageKicker}>Stage {stage} of {MAX_STAGE} · {stageMeta(stage, activeType).label}</Text>
           <Text style={s.stageText}>
@@ -247,6 +259,7 @@ export default function CompassScreen() {
           {/* Every stage by name, locked ones too, so the path has a shape. */}
           <StageList showBlurbs style={{ marginTop: sp.md }} />
         </View>
+        )}
         </TourSpot>
 
         {/* ── 1. Purpose ── */}

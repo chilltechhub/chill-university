@@ -48,6 +48,8 @@ import { isAdultProfile } from '../logic/useGradeLevel';
 // instant you turn it off would bury the very control you'd need to turn
 // it back on.
 // Thin adapter: the existing call sites pass `label`, and c/t/s/r (ignored).
+const TRACK_LABEL = { picks: 'Just my picks', auto: 'Level up', full: 'All in' };
+
 function SettingRow({ label, ...rest }) {
   return <ListRow title={label} {...rest} />;
 }
@@ -983,6 +985,25 @@ export default function SettingsScreen() {
             stage. See src/data/experienceStages.js. */}
         <View {...markSection('experience')}><SectionLabel label="App experience" c={c} t={t} s={s} /></View>
         <SettingRow
+          icon="apps-outline"
+          iconColor={c.teal}
+          label={`How you start: ${TRACK_LABEL[experienceMode] || 'Level up'}`}
+          subtitle="Pick what's in your app, and how it grows."
+          alwaysShowSubtitle
+          onPress={() => navigation.navigate('MakeItYours')}
+          c={c} t={t} s={s} r={r}
+        />
+        <SettingRow
+          icon="checkbox-outline"
+          iconColor={c.teal}
+          label="My features"
+          subtitle="Add or remove any part of the app."
+          alwaysShowSubtitle
+          onPress={() => navigation.navigate('MyFeatures')}
+          c={c} t={t} s={s} r={r}
+        />
+        {experienceMode === 'auto' && (<>
+        <SettingRow
           icon="layers-outline"
           iconColor={c.teal}
           label={`Stage ${stage} of ${MAX_STAGE} · ${stageMeta(stage, activeType).label}`}
@@ -1010,6 +1031,7 @@ export default function SettingsScreen() {
           }
           c={c} t={t} s={s} r={r}
         />
+        </>)}
 
         {/* Compass — the purpose/objective/gating layer. First under
             Personalization because it's the setting that changes most of

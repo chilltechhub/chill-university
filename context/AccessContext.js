@@ -41,7 +41,7 @@ import {
   fetchAccessState, startObjective as startObjectiveApi, saveObjectiveSteps,
   completeObjective as completeObjectiveApi, abandonObjective as abandonObjectiveApi,
   unlockFeature as unlockFeatureApi, recordTestAttempt, setPurpose as setPurposeApi,
-  setExperimentalOptIn, setShowEverything, setOpenedByChoice, EMPTY_ACCESS,
+  setExperimentalOptIn, setOpenedByChoice, saveStartChoices, EMPTY_ACCESS,
 } from '../src/api/accessService';
 import { useConfigValue, useFeatureFlag } from './RemoteConfigContext';
 import { getWayfinderIntent } from '../src/api/wayfinderService';
@@ -54,9 +54,13 @@ import { getObjective, getPurpose, suggestPurpose } from '../src/data/objectives
 import { gradeTest } from '../src/data/competencyTests';
 import { evaluateAccess, objectiveProgress, planActive as planIsActive, rankForPurpose, signalTarget } from '../src/logic/featureAccess';
 import {
-  stageFromProgress, resolveStage, openedAt, screenShownAtStage, visibleGameIdsFor,
-  fabActionsFor, nextStageNeeds, stagesBetween, reteachBetween, firstGoalFor,
+  stageFromProgress, resolveStage, openedAt, openedForTrack, screenShownAtStage, visibleGameIdsFor,
+  fabActionsFor, nextStageNeeds, stagesBetween, reteachBetween, firstGoalFor, pathFor,
 } from '../src/logic/experienceStage';
+import {
+  getPickable, normalizeTrack, picksFromOpened, nextSuggestion, PICKABLE_IDS,
+} from '../src/data/pickables';
+import { getPersona } from '../src/data/personas';
 import { forgetSeenScreens } from '../src/logic/useFirstVisitTutorial';
 import { getEnabledGames } from '../src/services/gameRegistry';
 import { tapHaptic } from '../src/logic/haptics';
@@ -87,6 +91,9 @@ const GUEST_FIRST_GOAL = { objective: 'first-look', purpose: 'habits' };
 // lives on the server, so the only thing a reinstall loses is an explicit
 // "show me everything" — which is one switch in Settings to get back.
 const modeKey = (userId) => `@cth_experience_mode_${userId || 'guest'}`;
+// The ticked list from "Pick your features", device copy. The account copy
+// (profiles.metadata.picks) wins once it's loaded; guests only have this.
+const picksKey = (userId) => `@cth_feature_picks_${userId || 'guest'}`;
 // v2: stages went from three big ones to ten small ones, so a number saved
 // under the old scheme means something else. A fresh key makes the first
 // load record a baseline instead of celebrating stages nobody just reached.
@@ -221,11 +228,17 @@ export function AccessProvider({ children }) {
   }, [userId]);
 
   // Queues a celebration for anything newly earned.
+  // On "Just my picks" a goal doesn't open things, it offers them: what it
+  // earned becomes the first suggestion (see the stage effect below) rather
+  // than an "Unlocked" card for something they never asked for.
+  const trackRef = useRef('auto');
+  const earnedRef = useRef([]);
   const noteUnlocks = useCallback((featureIds, via) => {
     const known = knownUnlocksRef.current;
     const fresh = featureIds.filter(id => !known || !known.has(id));
     if (!fresh.length) return;
     fresh.forEach(id => known?.add(id));
+    if (trackRef.current === 'picks') { earnedRef.current = [...earnedRef.current, ...fresh]; return; }
     setUnlockEvents(q => [
       ...q,
       ...fresh.map(id => ({ feature: getFeature(id), via })).filter(e => e.feature),
@@ -267,7 +280,8 @@ export function AccessProvider({ children }) {
      small stages; each finished goal and each level gained opens the next.
      Worked out from progress, so there's nothing to keep in sync. */
 
-  const [deviceMode, setDeviceMode] = useState('auto');
+  const [deviceMode, setDeviceMode] = useState(null);
+  const [devicePicks, setDevicePicks] = useState(null);
   const [stageEvents, setStageEvents] = useState([]);
   // The highest stage this account has been seen at, read back at launch.
   // Progress (objectives, level) arrives a beat after first render, and
@@ -281,17 +295,23 @@ export function AccessProvider({ children }) {
 
   useEffect(() => {
     let alive = true;
-    setDeviceMode('auto');
+    setDeviceMode(null);
+    setDevicePicks(null);
     setCachedStage(null);
     setPrefsReady(false);
     Promise.all([
       AsyncStorage.getItem(modeKey(userId)),
       userId ? AsyncStorage.getItem(seenStageKey(userId)) : Promise.resolve(null),
       getWayfinderIntent(),
+      AsyncStorage.getItem(picksKey(userId)),
     ])
-      .then(([rawMode, rawSeen, intent]) => {
+      .then(([rawMode, rawSeen, intent, rawPicks]) => {
         if (!alive) return;
-        if (rawMode === 'full') setDeviceMode('full');
+        if (rawMode) setDeviceMode(normalizeTrack(rawMode));
+        try {
+          const list = JSON.parse(rawPicks);
+          if (Array.isArray(list)) setDevicePicks(list);
+        } catch { /* none saved */ }
         const n = parseInt(rawSeen, 10);
         if (Number.isFinite(n)) setCachedStage(n);
         setExploring(!!intent);
@@ -301,21 +321,40 @@ export function AccessProvider({ children }) {
     return () => { alive = false; };
   }, [userId]);
 
-  // "Show everything" lives on the account (profiles.show_everything) so it
-  // follows someone to a new phone. The device copy covers the time before
-  // that column exists, and guests, who have no account to put it on.
+  // How someone starts (src/data/pickables.js): 'picks' Just my picks,
+  // 'auto' Level up, 'full' All in. Kept on the account in
+  // profiles.metadata.track so it follows them to a new phone; the device
+  // copy covers guests and the moment before the profile loads. Accounts
+  // from before tracks existed read from show_everything.
   const [modeOverride, setModeOverride] = useState(null);
-  useEffect(() => { setModeOverride(null); }, [userId]);
+  // undefined = no local opinion yet; null = cleared on purpose (All in).
+  const [picksOverride, setPicksOverride] = useState(undefined);
+  const [declinedOverride, setDeclinedOverride] = useState(null);
+  useEffect(() => { setModeOverride(null); setPicksOverride(undefined); setDeclinedOverride(null); }, [userId]);
+  const meta = profile?.metadata && typeof profile.metadata === 'object' ? profile.metadata : {};
   const experienceMode = modeOverride
-    ?? (profile?.show_everything === true || deviceMode === 'full' ? 'full' : 'auto');
+    ?? (meta.track ? normalizeTrack(meta.track) : null)
+    ?? (profile?.show_everything === true ? 'full' : null)
+    ?? deviceMode
+    ?? 'auto';
+  trackRef.current = experienceMode;
+  const savedPicks = picksOverride !== undefined
+    ? picksOverride
+    : (Array.isArray(meta.picks) ? meta.picks : null) ?? devicePicks;
+  const declinedPicks = declinedOverride ?? (Array.isArray(meta.picks_declined) ? meta.picks_declined : []);
 
-  const setExperienceMode = useCallback(async (mode) => {
-    const next = mode === 'full' ? 'full' : 'auto';
-    setModeOverride(next);
-    setDeviceMode(next);
-    try { await AsyncStorage.setItem(modeKey(userId), next); } catch { /* local pref */ }
+  const persistStart = useCallback(async (patch) => {
+    if (patch.track) {
+      try { await AsyncStorage.setItem(modeKey(userId), patch.track); } catch { /* local pref */ }
+    }
+    if (patch.picks !== undefined) {
+      try {
+        if (patch.picks) await AsyncStorage.setItem(picksKey(userId), JSON.stringify(patch.picks));
+        else await AsyncStorage.removeItem(picksKey(userId));
+      } catch { /* local pref */ }
+    }
     if (userId) {
-      await setShowEverything(userId, next === 'full');
+      await saveStartChoices(userId, patch);
       refreshProfile?.();
     }
   }, [userId, refreshProfile]);
@@ -329,14 +368,53 @@ export function AccessProvider({ children }) {
   const derivedStage = progressReady ? liveStage : Math.max(liveStage, cachedStage || 1);
   const stage = resolveStage({ derived: derivedStage, mode: experienceMode });
   const persona = activeType || null;
+  const typeDefaults = getPersona(persona)?.defaultWidgets || [];
+  // Picks for an account on "Just my picks" that never ticked any (it
+  // switched over later): whatever it can see now, so nothing vanishes.
+  const picks = useMemo(() => {
+    if (savedPicks) return savedPicks;
+    if (experienceMode !== 'picks') return null;
+    const now = openedAt(persona, derivedStage, { exploring, aim: purposeKey });
+    return picksFromOpened(now, { allGames: now.caps.has('all-games') });
+  }, [savedPicks, experienceMode, persona, derivedStage, exploring, purposeKey]);
   // The purpose is also the answer to onboarding's "What did you come here
   // for?", and what it opens joins stage 1 (AIM_OPENS). Changing it on the
   // Compass later re-tailors the start the same way.
   const opened = useMemo(
-    () => openedAt(persona, stage, { exploring, aim: purposeKey }),
-    [persona, stage, exploring, purposeKey]
+    () => openedForTrack({
+      track: experienceMode, persona, stage: derivedStage, exploring, aim: purposeKey, picks, typeDefaults,
+    }),
+    [experienceMode, persona, derivedStage, exploring, purposeKey, picks, typeDefaults.join('|')] // eslint-disable-line react-hooks/exhaustive-deps
   );
   const can = useCallback((cap) => opened.caps.has(cap), [opened]);
+
+  // `picks` comes with it from onboarding, so both land in one write.
+  const setExperienceMode = useCallback(async (mode, { picks: chosenPicks } = {}) => {
+    const next = normalizeTrack(mode);
+    setModeOverride(next);
+    setDeviceMode(next);
+    const patch = { track: next };
+    if (Array.isArray(chosenPicks)) {
+      patch.picks = PICKABLE_IDS.filter(id => chosenPicks.includes(id));
+      setPicksOverride(patch.picks);
+      if (patch.picks.includes('labs')) {
+        setExperimentalOverride(true);
+        if (userId) setExperimentalOptIn(userId, true).catch(() => {});
+      }
+    } else if (next === 'full') {
+      // All in means everything: switching to it starts from a full list
+      // again, and My features is where to untick.
+      patch.picks = null;
+      setPicksOverride(null);
+    } else if (next === 'picks' && !savedPicks) {
+      // Switching to "Just my picks" keeps what's showing now as the picks,
+      // so the switch itself changes nothing until they untick something.
+      const now = openedAt(persona, derivedStage, { exploring, aim: purposeKey });
+      patch.picks = picksFromOpened(now, { allGames: now.caps.has('all-games') });
+      setPicksOverride(patch.picks);
+    }
+    await persistStart(patch);
+  }, [persistStart, savedPicks, persona, derivedStage, exploring, purposeKey, userId]);
 
   // "More of the app is open" — only for stages reached by progress. A
   // stage you switched on yourself isn't news. The first real load records
@@ -350,7 +428,17 @@ export function AccessProvider({ children }) {
       let seen = null;
       try { seen = parseInt(await AsyncStorage.getItem(seenStageKey(userId)), 10); } catch {}
       if (!alive) return;
-      if (Number.isFinite(seen) && derivedStage > seen && experienceMode !== 'full') {
+      if (Number.isFinite(seen) && derivedStage > seen && experienceMode === 'picks') {
+        // Just my picks: a finished goal offers ONE more thing, and adds it
+        // only on a yes (UnlockNotification's suggestion card).
+        const pathFeatures = pathFor(persona).slice(seen).flatMap(st => [...(st.features || []), ...(st.screens || [])]);
+        const suggest = nextSuggestion({
+          picks: picks || [], declined: declinedPicks, earnedFeatures: earnedRef.current, pathFeatures,
+          allowed: (item) => !item.labs && !(item.features || []).some(f => getFeature(f)?.gate === 'paid' && !plusOnSale),
+        });
+        earnedRef.current = [];
+        if (suggest) setStageEvents(q => (q.some(e => e.suggest) ? q : [...q, { suggest, from: seen, to: derivedStage }]));
+      } else if (Number.isFinite(seen) && derivedStage > seen && experienceMode === 'auto') {
         // What is actually new, not just what the stage lists: what someone
         // came for opens tools early (AIM_OPENS), so a stage can "add" the
         // Planner to an account that has used it since day one. The card
@@ -377,7 +465,7 @@ export function AccessProvider({ children }) {
       }
     })();
     return () => { alive = false; };
-  }, [userId, progressReady, prefsReady, derivedStage, experienceMode, persona, exploring, purposeKey]);
+  }, [userId, progressReady, prefsReady, derivedStage, experienceMode, persona, exploring, purposeKey, picks, declinedPicks, plusOnSale]);
 
   const dismissStageEvent = useCallback(() => setStageEvents(q => q.slice(1)), []);
 
@@ -404,7 +492,45 @@ export function AccessProvider({ children }) {
     return ids;
   }, [activeGoalId, state.objectives]);
 
-  const experience = useMemo(() => ({ opened, goalUnlocks }), [opened, goalUnlocks]);
+  // Just the goal in flight's tools: these show even if unticked, until the
+  // goal is done (featureShownAtStage).
+  const activeTools = useMemo(() => {
+    const ids = new Set();
+    (getObjective(activeGoalId)?.steps || []).forEach(st => {
+      const tool = st.screen && featureForScreen(st.screen);
+      if (tool) ids.add(tool.id);
+    });
+    return ids;
+  }, [activeGoalId]);
+  const experience = useMemo(() => ({ opened, goalUnlocks, activeTools }), [opened, goalUnlocks, activeTools]);
+  // Picking a tool is choosing it: a picked tool that normally waits for a
+  // goal opens the same way "Open it now" does. The goal is still there.
+  const openChoices = useMemo(() => {
+    if (!picks?.length) return chosen;
+    const ids = new Set(chosen);
+    picks.forEach(id => (getPickable(id)?.features || []).forEach(f => { if (getFeature(f)?.gate === 'locked') ids.add(f); }));
+    return ids;
+  }, [chosen, picks]);
+
+  // Ticking and unticking on "Pick your features" (onboarding and Make it
+  // yours). Labs is one switch: ticking it is the experimental opt-in.
+  const setPicks = useCallback(async (list) => {
+    const next = PICKABLE_IDS.filter(id => list.includes(id));
+    setPicksOverride(next);
+    const labsOn = next.includes('labs');
+    const labsWas = (picks || []).includes('labs');
+    if (labsOn !== labsWas) {
+      setExperimentalOverride(labsOn);
+      if (userId) setExperimentalOptIn(userId, labsOn).catch(() => {});
+    }
+    await persistStart({ picks: next });
+  }, [persistStart, picks, userId]);
+  const addPick = useCallback((id) => setPicks([...(picks || []), id]), [setPicks, picks]);
+  const declinePick = useCallback(async (id) => {
+    const next = [...new Set([...declinedPicks, id])];
+    setDeclinedOverride(next);
+    if (userId) await saveStartChoices(userId, { picks_declined: next });
+  }, [declinedPicks, userId]);
 
   // The context handed to evaluateAccess. Built from the local profile echoes
   // rather than the raw row, so a just-flipped toggle is reflected everywhere
@@ -418,10 +544,10 @@ export function AccessProvider({ children }) {
     objectives: state.objectives || {},
     stats,
     settings: doorSettings,
-    chosen,
+    chosen: openChoices,
     plusOnSale,
     experience,
-  }), [profile, experimentalOn, purposeKey, state, stats, doorSettings, chosen, plusOnSale, experience]);
+  }), [profile, experimentalOn, purposeKey, state, stats, doorSettings, openChoices, plusOnSale, experience]);
 
   const accessFor = useCallback(
     (featureId) => evaluateAccess(getFeature(featureId), gateCtx),
@@ -500,7 +626,7 @@ export function AccessProvider({ children }) {
   }, [isContentAllowed, persona, can]);
 
   const nextStage = useMemo(
-    () => (experienceMode === 'full' ? null : nextStageNeeds({ stage: derivedStage, persona, aim: purposeKey, exploring })),
+    () => (experienceMode !== 'auto' ? null : nextStageNeeds({ stage: derivedStage, persona, aim: purposeKey, exploring })),
     [derivedStage, persona, experienceMode, purposeKey, exploring]
   );
 
@@ -838,6 +964,10 @@ export function AccessProvider({ children }) {
     nextStage,
     experienceMode,
     setExperienceMode,
+    picks,
+    setPicks,
+    addPick,
+    declinePick,
     opened,
     can,
     firstGoalId: firstGoal.objective,
@@ -863,7 +993,7 @@ export function AccessProvider({ children }) {
     toggleStep, completeActiveObjective, abandonActiveObjective, submitTest,
     claimPlanFeature, unlockEvents, dismissUnlockEvent, dismissAllUnlockEvents,
     age, isContentAllowed, isGameAllowed, doorSettings, setDoorSetting, openByChoice, plusOnSale,
-    stage, derivedStage, nextStage, experienceMode, setExperienceMode, opened, can,
+    stage, derivedStage, nextStage, experienceMode, setExperienceMode, picks, setPicks, addPick, declinePick, opened, can,
     firstGoal, startFirstGoal, isFeatureShown, isScreenVisible, isGameVisible,
     isSubjectVisible, visibleGameIds, playableGames, visibleFabActions, stageEvents, dismissStageEvent,
     signalAction,

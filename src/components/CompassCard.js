@@ -308,6 +308,25 @@ function WhatsNext({ live = false }) {
   const { nextStage, experienceMode, stage } = useAccess();
   const [open, setOpen] = useState(false);
   const full = experienceMode === 'full';
+  // "Just my picks" has no stages: what's next is whatever they add.
+  if (experienceMode === 'picks') {
+    return (
+      <View style={{ marginTop: sp.md, paddingTop: sp.md, borderTopWidth: 0.5, borderTopColor: c.border, flexDirection: 'row', alignItems: 'center', gap: sp.sm }}>
+        <Ionicons name="apps-outline" size={14} color={accent.primary} />
+        <Text style={{ flex: 1, fontSize: t.sm, color: c.text1 }} numberOfLines={2}>
+          <Text style={{ fontWeight: t.bold }}>Just your picks.</Text> Add more any time.
+        </Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('MyFeatures')}
+          accessibilityRole="button" accessibilityLabel="Open My features"
+          hitSlop={8}
+          style={{ borderWidth: 1, borderColor: accent.primary, borderRadius: r.sm, paddingHorizontal: 10, paddingVertical: 4 }}
+        >
+          <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: accent.primary }}>My features</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={{ marginTop: sp.md, paddingTop: sp.md, borderTopWidth: 0.5, borderTopColor: c.border }}>

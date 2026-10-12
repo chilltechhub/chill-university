@@ -23,6 +23,7 @@ import { markScreensSeen } from '../logic/useFirstVisitTutorial';
 import { goToScreen } from '../logic/appRoutes';
 import { MAX_STAGE } from '../data/experienceStages';
 import { getFeature } from '../data/featureCatalog';
+import { getPickable } from '../data/pickables';
 import { FONTS } from '../theme';
 import useCalmMoment from '../logic/useCalmMoment';
 import { summarizeProgress } from './LevelUpNotification';
@@ -48,7 +49,7 @@ const TUTORIAL_ROUTE = { ClassesStack: 'ClassesMain' };
 export default function UnlockNotification() {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: sp, radius: r } = useTheme();
-  const { unlockEvents, dismissUnlockEvent, dismissAllUnlockEvents, stageEvents, dismissStageEvent } = useAccess();
+  const { unlockEvents, dismissUnlockEvent, dismissAllUnlockEvents, stageEvents, dismissStageEvent, addPick, declinePick } = useAccess();
   // Everything earned in the same moment goes on ONE card. Claiming a goal
   // used to open a stage popup and then one "Unlocked" popup per feature the
   // goal opened: three taps of "Later" before seeing what to do next.
@@ -110,6 +111,42 @@ export default function UnlockNotification() {
   // Stages open one at a time, so this is normally one thing, not a list.
   // Same rule as LevelUpNotification: not over a running walkthrough.
   const stageEvent = stageEvents?.[0];
+  // "Just my picks": a finished goal offers one thing, and it's added only
+  // on a yes. Nothing about the app changes unless they say so.
+  const suggestion = stageEvent?.suggest ? getPickable(stageEvent.suggest) : null;
+  if (suggestion) {
+    const feature = (suggestion.features || []).map(getFeature).find(f => f?.screen);
+    const screen = feature?.screen || suggestion.screens?.[0] || 'Home';
+    const close = () => { dismissStageEvent(); dismissAllProgressEvents?.(); };
+    const add = () => {
+      close();
+      addPick(suggestion.id);
+      openAndTeach(screen, { title: suggestion.label, body: `**${suggestion.label}**: ${suggestion.blurb}` });
+    };
+    const no = () => { close(); declinePick(suggestion.id); };
+    return (
+      <Modal transparent animationType="fade" visible onRequestClose={close}>
+        <View style={s.overlay}>
+          <View style={s.card}>
+            <View style={s.iconBox}>
+              <Ionicons name={suggestion.icon || 'add-circle-outline'} size={26} color={c.teal} />
+            </View>
+            {LevelStrip}
+            <Text style={s.kicker}>Goal done · want more?</Text>
+            <Text style={s.title}>{`Add ${suggestion.label}?`}</Text>
+            <Text style={s.blurb}>{suggestion.blurb}</Text>
+            <Text style={s.via}>Only if you want it. Change it any time in My features.</Text>
+            <TouchableOpacity style={s.btn} onPress={add} activeOpacity={0.85} accessibilityRole="button">
+              <Text style={s.btnText}>Add it</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.ghost} onPress={no} activeOpacity={0.7} accessibilityRole="button">
+              <Text style={s.ghostText}>No thanks</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
   if (stageEvent) {
     const stages = stageEvent.stages || [];
     const latest = stages[stages.length - 1];

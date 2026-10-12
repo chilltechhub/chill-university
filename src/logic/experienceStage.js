@@ -10,10 +10,19 @@
 import { PATHS, MAX_STAGE, EXPLORING_WIDGET, STAGED_SCREENS, FIRST_GOALS, AIM_OPENS, CORE_OPENS } from '../data/experienceStages';
 import { getPurpose, getObjective } from '../data/objectives';
 import { getFeature } from '../data/featureCatalog';
+import { ALWAYS_ON_FEATURES, BASE_WIDGETS, contributionsOf, hiddenBy } from '../data/pickables';
 
-// 'auto' grows with progress. 'full' is "show me everything", picked in
-// onboarding or Settings. Anything else reads as auto.
-export const EXPERIENCE_MODES = ['auto', 'full'];
+// How someone starts, picked in onboarding and changed in Make it yours
+// (src/data/pickables.js has the long version):
+//   'picks'  Just my picks: only what they ticked, nothing opens on its own
+//   'auto'   Level up: grows with progress, plus whatever they ticked
+//   'full'   All in: everything, minus whatever they unticked
+// Anything else reads as auto.
+export const EXPERIENCE_MODES = ['picks', 'auto', 'full'];
+
+// Every quick action the + button can offer (FloatingActionButton ACTIONS,
+// minus the always-on ones).
+export const FAB_ACTIONS = ['project', 'calendar', 'reminder', 'note', 'inbox'];
 
 // One point per finished goal and one per level gained. Each point opens
 // one stage, so the app opens a little at a time instead of in two big
@@ -136,6 +145,72 @@ export function openedAt(persona, stage = MAX_STAGE, { exploring = false, aim = 
   return out;
 }
 
+// What's on the map for a track (see EXPERIENCE_MODES). `picks` is the
+// account's ticked list from src/data/pickables.js, or null when it never
+// chose one; `typeDefaults` is the account type's default dashboard.
+export function openedForTrack({
+  track = 'auto', persona, stage = 1, exploring = false, aim = null, picks = null, typeDefaults = [],
+} = {}) {
+  const chosen = Array.isArray(picks) ? picks : null;
+  if (track === 'picks' && chosen) {
+    // Only what they picked. No stages, so no drip: every card they picked
+    // is on Home from the start, and nothing else arrives on its own.
+    const add = contributionsOf(chosen, { typeDefaults });
+    const home = [...BASE_WIDGETS, ...add.widgets.filter(k => !BASE_WIDGETS.includes(k))];
+    return {
+      features: new Set([...ALWAYS_ON_FEATURES, ...add.features]),
+      screens: add.screens,
+      // Everything their picks allow; Home shows `homeWidgets` and keeps the
+      // rest in its Edit tray (HomeScreen's boardLayout).
+      widgets: [...home, ...add.extraWidgets.filter(k => !home.includes(k))],
+      homeWidgets: home,
+      games: new Set(),
+      fab: add.fab,
+      caps: new Set(add.allGames ? ['all-games'] : []),
+      hidden: hiddenBy(chosen),
+      track: 'picks',
+    };
+  }
+  if (track === 'full') {
+    const all = openedAt(persona, MAX_STAGE, { exploring, aim });
+    return chosen ? withHidden(all, hiddenBy(chosen)) : all;
+  }
+  // Level up: the path as it stands, plus anything they asked for early.
+  const out = openedAt(persona, stage, { exploring, aim });
+  if (!chosen || !chosen.length) return out;
+  const add = contributionsOf(chosen, { typeDefaults });
+  add.features.forEach(f => out.features.add(f));
+  add.screens.forEach(s => out.screens.add(s));
+  add.fab.forEach(a => out.fab.add(a));
+  if (add.allGames) out.caps.add('all-games');
+  // Asked for, so its main card is on Home now rather than two a stage;
+  // the others queue with the rest.
+  add.widgets.forEach(k => {
+    if (!out.widgets.includes(k)) out.widgets.push(k);
+    if (!out.homeWidgets.includes(k)) out.homeWidgets.push(k);
+  });
+  add.extraWidgets.forEach(k => { if (!out.widgets.includes(k)) out.widgets.push(k); });
+  return out;
+}
+
+// Takes what was unticked off a full map. The `hidden` sets also go along,
+// because a catalog feature that was earned shows whatever the stage says
+// (featureShownAtStage), and unticking it has to win over that.
+function withHidden(opened, hidden) {
+  const out = {
+    ...opened,
+    features: new Set([...opened.features].filter(f => !hidden.features.has(f))),
+    screens: new Set([...opened.screens].filter(s => !hidden.screens.has(s))),
+    widgets: opened.widgets.filter(k => !hidden.widgets.has(k)),
+    homeWidgets: (opened.homeWidgets || []).filter(k => !hidden.widgets.has(k)),
+    fab: new Set([...opened.fab].filter(a => !hidden.fab.has(a))),
+    caps: new Set(opened.caps),
+    hidden,
+  };
+  if (hidden.games) { out.caps.delete('all-games'); out.games = new Set(); }
+  return out;
+}
+
 // What Home actually shows before the 'dashboard' stage. The stages open
 // widgets faster than anyone can take them in (stage 1 alone used to put
 // six on a brand-new Home), so Home starts with the three cards that say
@@ -174,8 +249,13 @@ export function homeWidgetsAt(openedWidgets = [], stage = 1, headlines = []) {
 //   opened by the goal  always shown — the goal you're on says what it opens
 //   open door           once a stage lists it, or from 'all-tools'
 //   any other door      from 'doors'
-export function featureShownAtStage(feature, access, { opened, goalUnlocks } = {}) {
+export function featureShownAtStage(feature, access, { opened, goalUnlocks, activeTools } = {}) {
   if (!feature || !opened) return true;
+  // Unticked on "Pick your features": their choice outranks everything,
+  // including something earned, except the goal they're on right now (its
+  // steps have to lead somewhere they can see). Hidden is not shut — a
+  // link still gets there.
+  if (opened.hidden?.features?.has(feature.id) && !activeTools?.has(feature.id)) return false;
   if (access?.status === 'earned' && access.gate !== 'experimental') return true;
   if (goalUnlocks?.has(feature.id)) return true;
   if (feature.gate === 'open') {
@@ -188,6 +268,7 @@ export function featureShownAtStage(feature, access, { opened, goalUnlocks } = {
 export function screenShownAtStage(screen, { opened, featureShown } = {}) {
   const rule = STAGED_SCREENS[screen];
   if (rule === undefined || !opened) return true;
+  if (opened.hidden?.screens?.has(screen)) return false;
   if (typeof rule === 'string') return featureShown ? featureShown(rule) : true;
   return opened.caps.has('all-tools') || opened.screens.has(screen);
 }
@@ -201,7 +282,11 @@ export function visibleGameIdsFor(opened) {
 
 // Null means "every action".
 export function fabActionsFor(opened) {
-  if (!opened || opened.caps.has('dashboard')) return null;
+  if (!opened) return null;
+  if (opened.caps.has('dashboard')) {
+    // All in with some things unticked: every action but theirs.
+    return opened.hidden?.fab?.size ? new Set(FAB_ACTIONS.filter(a => !opened.hidden.fab.has(a))) : null;
+  }
   return opened.fab;
 }
 

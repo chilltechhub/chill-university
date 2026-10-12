@@ -57,6 +57,7 @@ import FloatingActionButton from './src/components/FloatingActionButton';
 import CommandPalette from './src/components/CommandPalette';
 import HelpScreen       from './src/screens/HelpScreen';
 import MakeItYoursScreen from './src/screens/MakeItYoursScreen';
+import MyFeaturesScreen from './src/screens/MyFeaturesScreen';
 import CompassScreen  from './src/screens/CompassScreen';
 import PlusScreen     from './src/screens/PlusScreen';
 import StatsScreen      from './src/screens/StatsScreen';
@@ -144,6 +145,11 @@ const forShiftWeb = ({ current }) => ({
 
 function MainTabs() {
   const { colors: c } = useTheme();
+  // Untick Training games on "Pick your features" and its tab goes. The
+  // screen stays mounted (the pet on it finds coins while the app is open),
+  // and a goal step or Home's Play button can still get there.
+  const { isFeatureShown } = useAccess();
+  const trainingTab = isFeatureShown('training');
   return (
     <Tab.Navigator
       initialRouteName="Home"
@@ -202,7 +208,7 @@ function MainTabs() {
       {/* Mounted at launch, not on first visit: the pet on this tab finds
           coins while the app is open on any screen (src/logic/useCoinRewards.js),
           so it has to be out from the start. */}
-      <Tab.Screen name="Training" component={GamesScreen} options={{ lazy: false }} />
+      <Tab.Screen name="Training" component={GamesScreen} options={{ lazy: false, ...(trainingTab ? null : { tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }) }} />
     </Tab.Navigator>
   );
 }
@@ -497,6 +503,7 @@ function AppInner() {
           <Stack.Screen name="CohortRoster"        component={CohortRosterScreen} />
           <Stack.Screen name="Help"                component={HelpScreen} />
           <Stack.Screen name="MakeItYours"         component={MakeItYoursScreen} options={{ title: 'Make it yours' }} />
+          <Stack.Screen name="MyFeatures"          component={MyFeaturesScreen} options={{ title: 'My features' }} />
           {/* The Compass — purpose, the one active objective, and the
               locked / experimental / Plus rosters. Reachable from Home's
               card, Settings, the Library header and every unlock sheet,

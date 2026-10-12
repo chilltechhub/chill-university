@@ -47,7 +47,8 @@ export default function StageStepsWidget() {
   // so there is nothing for this card to say. It used to fill a slot on Home
   // saying exactly that; the switch to go back lives on the Compass and in
   // Settings, where someone looking for it would look.
-  if (experienceMode === 'full') return null;
+  // Same on "Just my picks": nothing opens by stage there.
+  if (experienceMode !== 'auto') return null;
 
   if (!nextStage) {
     return (
