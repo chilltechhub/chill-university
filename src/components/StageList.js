@@ -20,14 +20,14 @@ export default function StageList({ showBlurbs = false, style }) {
   const { activeType } = useProfiles();
   const path = pathFor(activeType);
   // "Show me everything" opens the lot, so every stage reads as open.
-  const reached = experienceMode === 'full' ? path.length : stage;
+  const reached = experienceMode === 'auto' ? stage : path.length;
 
   return (
     <View style={style}>
       {path.map((st, i) => {
         const n = i + 1;
         const open = n <= reached;
-        const current = n === reached && experienceMode !== 'full';
+        const current = n === reached && experienceMode === 'auto';
         return (
           <View
             key={`${st.key}-${n}`}

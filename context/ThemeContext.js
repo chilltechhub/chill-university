@@ -14,9 +14,10 @@ import React, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColorScheme } from 'react-native';
 import {
-  THEMES, STYLES, ACCENTS, DEFAULT_STYLE, DEFAULT_ACCENT, PERSONA_ACCENT,
+  THEMES, STYLES, ACCENTS, DEFAULT_STYLE, DEFAULT_ACCENT, PERSONA_ACCENT, HIGH_CONTRAST,
   makeShadows, typography, spacing, radius,
 } from '../src/theme';
+import { useA11yPrefs } from '../src/logic/a11yPrefs';
 
 const ThemeContext = createContext(null);
 const STORAGE_KEY = '@cth_theme';
@@ -54,9 +55,11 @@ export function ThemeProvider({ children }) {
   const accent = ACCENTS[accentName][activeName];
   // The tab bar's active colour follows the accent — the one piece of
   // global chrome every screen shares.
+  // High contrast (Settings → Accessibility) darkens the greys and borders.
+  const { highContrast } = useA11yPrefs();
   const colors = useMemo(
-    () => ({ ...THEMES[activeName], tabActive: accent.primary }),
-    [activeName, accent],
+    () => ({ ...THEMES[activeName], ...(highContrast ? HIGH_CONTRAST[activeName] : null), tabActive: accent.primary }),
+    [activeName, accent, highContrast],
   );
   const shadows = useMemo(() => makeShadows(isDark), [isDark]);
 
@@ -122,7 +125,8 @@ export function ThemeProvider({ children }) {
     accentSet,
     setAccent,
     suggestAccentForPersona,
-  }), [activeName, colors, shadows, isDark, themeName, style, styleName, accent, accentName, accentSet,
+    highContrast,
+  }), [highContrast, activeName, colors, shadows, isDark, themeName, style, styleName, accent, accentName, accentSet,
     setMode, setTheme, toggleTheme, followSystem, setStyle, setAccent, suggestAccentForPersona]);
 
   return (

@@ -25,14 +25,20 @@ import { getPersona } from '../data/personas';
 import { LIFE_AREAS } from './library/LifeAreaScreen';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import RichText from '../components/RichText';
+import AccessibilitySettings from '../components/AccessibilitySettings';
 
+const TRACK_VALUE = {
+  picks: '**Just my picks.** Only what you chose. Goals suggest more.',
+  auto: '**Level up.** A few tools first, more with each goal.',
+  full: '**All in.** Everything, minus what you untick.',
+};
 const MODES = [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']];
 const CORNERS = [['top-left', 'Top left'], ['top-right', 'Top right'], ['bottom-left', 'Bottom left'], ['bottom-right', 'Bottom right']];
 
 export default function MakeItYoursScreen() {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s, radius: r, mode, setMode, accent } = useTheme();
-  const { purpose, experienceMode, setExperienceMode } = useAccess();
+  const { purpose, experienceMode, setExperienceMode, picks } = useAccess();
   const { profile } = useUserProgress();
   const { activeType } = useProfiles();
   const { fabPosition, setFabPosition } = useFabPosition();
@@ -41,7 +47,8 @@ export default function MakeItYoursScreen() {
   const areaNames = (Array.isArray(profile?.active_life_areas) ? profile.active_life_areas : [])
     .map(id => LIFE_AREAS.find(a => a.id === id)?.label).filter(Boolean);
   const persona = getPersona(activeType);
-  const full = experienceMode === 'full';
+  const track = ['picks', 'auto', 'full'].includes(experienceMode) ? experienceMode : 'auto';
+  const pickCount = (picks || []).length;
 
   const goLibrary = (screen, params) => navigation.navigate('MainTabs', { screen: 'Library', params: { screen, params } });
 
@@ -102,6 +109,22 @@ export default function MakeItYoursScreen() {
             onPress={() => navigation.navigate('AllProfiles')} last />
         </View>
 
+        <Head>What's in your app</Head>
+        <View style={card}>
+          <Row icon="apps-outline" title="My features"
+            value={track === 'full' && !pickCount ? "**Everything.** Untick what you don’t want" : pickCount ? `**${pickCount} picked.** Add or remove any part of the app` : '**Add or remove** any part of the app'}
+            onPress={() => navigation.navigate('MyFeatures')} />
+          <Row icon="layers-outline" title="How you start"
+            value={TRACK_VALUE[track]} />
+          <Segments label="How you start" value={track}
+            options={[['picks', 'Just my picks'], ['auto', 'Level up'], ['full', 'All in']]}
+            onChange={(v) => {
+              setExperienceMode(v);
+              // Just my picks is only as good as the picks: straight to them.
+              if (v === 'picks' && track !== 'picks') navigation.navigate('MyFeatures');
+            }} />
+        </View>
+
         <Head>What you see</Head>
         <View style={card}>
           <Row icon="grid-outline" title="Home cards" value="**Add, hide or move** the cards on Home"
@@ -113,14 +136,8 @@ export default function MakeItYoursScreen() {
             onPress={() => navigation.navigate('Settings', { section: 'personalization' })} last />
         </View>
 
-        <Head>How much is open</Head>
-        <View style={card}>
-          <Row icon="layers-outline" title={full ? 'Everything is open' : 'Opens as you go'}
-            value={full ? 'Every tool from today. Locked ones say what opens them.' : 'A few tools first, more with each goal. Any locked tool has **Open it now**.'} />
-          <Segments label="How much is open" value={full ? 'full' : 'auto'}
-            options={[['auto', 'Step by step'], ['full', 'Everything']]}
-            onChange={(v) => setExperienceMode(v)} />
-        </View>
+        <Head>Easier to read and use</Head>
+        <AccessibilitySettings />
 
         <Head>How it feels</Head>
         <View style={card}>

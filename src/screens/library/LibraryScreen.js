@@ -332,7 +332,7 @@ export default function LibraryScreen() {
   // isScreenVisible is the experience stage (src/data/experienceStages.js):
   // on a first day this Library is a handful of tools picked for the
   // profile type, and a view with none of them in it isn't offered at all.
-  const { purpose, isScreenVisible } = useAccess();
+  const { purpose, isScreenVisible, isFeatureShown, experienceMode } = useAccess();
 
   const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -360,12 +360,17 @@ export default function LibraryScreen() {
   const [tabOrder, setTabOrder] = useSetting(SETTING_KEYS.LIBRARY_TAB_ORDER, DEFAULT_TAB_ORDER);
   const allOrderedTabs = tabOrder.filter(k => TABS_BY_KEY[k]).map(k => TABS_BY_KEY[k]);
   TABS.forEach(t => { if (!allOrderedTabs.find(ot => ot.key === t.key)) allOrderedTabs.push(t); });
-  // Life always shows — it's the life-area grid. Build and Knowledge show
-  // once at least one of their hub cards does.
-  const tabHasCards = (key) => key === 'domains' || LIBRARY_HUBS
-    .filter(hub => hub.tab === key)
-    .some(hub => hub.items.some(item => isScreenVisible(item.screen)));
-  const orderedTabs = allOrderedTabs.filter(tb => tabHasCards(tb.key));
+  // Life is the life-area grid: always there on Level up, and on the other
+  // tracks only if Life Areas is ticked. Build and Knowledge show once at
+  // least one of their hub cards does. Never zero tabs: Life comes back if
+  // it would be the only thing left.
+  const tabHasCards = (key) => (key === 'domains'
+    ? experienceMode === 'auto' || isFeatureShown('life-areas')
+    : LIBRARY_HUBS
+      .filter(hub => hub.tab === key)
+      .some(hub => hub.items.some(item => isScreenVisible(item.screen))));
+  const shownTabs = allOrderedTabs.filter(tb => tabHasCards(tb.key));
+  const orderedTabs = shownTabs.length ? shownTabs : allOrderedTabs.filter(tb => tb.key === 'domains');
 
   const [activeTab, setActiveTabRaw] = useState(orderedTabs[0]?.key || 'domains');
   const [tabMenuOpen, setTabMenuOpen] = useState(false);
@@ -851,6 +856,9 @@ export default function LibraryScreen() {
               </TouchableOpacity>
             )}
           </View>
+          {/* Only with the Inbox on the map: unticked on "Pick your
+              features", the button that leads there goes too. */}
+          {isFeatureShown('capture') && (
           <TourSpot id="library-capture">
           <TouchableOpacity
             style={styles.captureBtn}
@@ -861,6 +869,7 @@ export default function LibraryScreen() {
             <Text style={styles.captureBtnText}>Capture</Text>
           </TouchableOpacity>
           </TourSpot>
+          )}
         </View>
 
         {/* ── The three pages, always visible. Switching used to mean knowing
@@ -1050,17 +1059,21 @@ export default function LibraryScreen() {
             reads as broken. Say that it fills up, and where to see what's next. */}
         {activeTab !== 'domains' && (() => {
           const open = LIBRARY_HUBS.filter(h => h.tab === activeTab).reduce((n, h) => n + visibleItemsFor(h).length, 0);
-          if (open === 0 || open >= 3) return null;
+          // All in: what's missing was unticked on purpose, so no nudge.
+          if (open >= 3 || experienceMode === 'full') return null;
+          if (open === 0 && experienceMode !== 'picks') return null;
+          // Just my picks: nothing opens by itself, so point at adding.
+          const picks = experienceMode === 'picks';
           return (
             <TouchableOpacity
-              onPress={() => navigation.navigate('Compass')}
+              onPress={() => navigation.navigate(picks ? 'MyFeatures' : 'Compass')}
               accessibilityRole="button"
               style={styles.moreSoon}
             >
-              <Ionicons name="sparkles-outline" size={16} color={accent.primary} />
+              <Ionicons name={picks ? 'add-circle-outline' : 'sparkles-outline'} size={16} color={accent.primary} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.moreSoonText}>More tools open here as you finish goals.</Text>
-                <Text style={[styles.moreSoonLink, { color: accent.primary }]}>See what's next →</Text>
+                <Text style={styles.moreSoonText}>{picks ? 'Want more tools here?' : 'More tools open here as you finish goals.'}</Text>
+                <Text style={[styles.moreSoonLink, { color: accent.primary }]}>{picks ? 'Add them in My features →' : "See what's next →"}</Text>
               </View>
             </TouchableOpacity>
           );
@@ -1285,7 +1298,7 @@ const makeStyles = (c, t, s, r, ui, accent) =>
     dropdownHint: { fontSize: 11, color: c.text3, paddingHorizontal: 12, paddingVertical: 8, textAlign: 'center' },
     moreSoon: {
       flexDirection: 'row', gap: s.sm, alignItems: 'flex-start',
-      padding: s.md, marginTop: s.sm, marginHorizontal: 20, borderRadius: r.md,
+      padding: s.md, marginTop: s.sm, marginBottom: s.lg, marginHorizontal: 20, borderRadius: r.md,
       borderWidth: 1, borderStyle: 'dashed', borderColor: c.border,
     },
     moreSoonText: { fontSize: t.sm, color: c.text2, lineHeight: 19 },

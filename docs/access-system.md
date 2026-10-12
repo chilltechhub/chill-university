@@ -8,7 +8,7 @@ one owner. A later answer never overrides an earlier one.
 |---|----------|-----------------|-------|---------------------|
 | 1 | **Allowed?** | Age (birth date) and remote switches (`app_config`) | `src/logic/allowed.js` | Gone for this account: not in menus, search or links. SQL refuses it too. |
 | 2 | **Which door?** | The feature's gate: Open, Earn, Plus or Labs | `src/logic/featureAccess.js`, `src/data/featureCatalog.js` | The item still exists, marked as a closed door that lists the keys that open it. |
-| 3 | **Shown now?** | The stage on this account type's path | `src/logic/experienceStage.js`, `src/data/experienceStages.js` | "Not yet": left out of menus, but goal links still reach it. |
+| 3 | **Shown now?** | The track they picked (Just my picks / Level up / All in), their ticked features, and on Level up the stage on this account type's path | `src/logic/experienceStage.js`, `src/data/experienceStages.js` | "Not yet": left out of menus, but goal links still reach it. |
 | 4 | **Kept?** | The person's own hide switches | each surface (widget layout, hidden Library sections, hidden life areas) | Turned off, and can be turned back on in Settings any time. |
 
 `context/AccessContext.js` asks questions 1–3 once and every screen reads the
@@ -72,9 +72,35 @@ games, or a widget or two.
   the goal in flight opens.
 - Hiding never locks. A hidden tool is still reachable from a goal's "Open"
   button.
-- "Show everything" jumps to the last stage. It's saved on the account
-  (`profiles.show_everything`), with a copy on the device.
 - The stage is worked out from progress, not stored.
+
+### Three ways to start (added 2026-10-12)
+
+Testing showed the app felt like too much at once. So onboarding now asks
+**"How do you want to start?"**, then **"Pick your features"**:
+
+| Track | Key | What's on the map |
+|---|---|---|
+| **Just my picks** (default) | `picks` | Only what's ticked. No stages. A finished goal **suggests** one more thing and adds it only on a yes. |
+| **Level up** | `auto` | The stage path above, plus anything ticked, open from day one. |
+| **All in** | `full` | Everything, minus whatever is unticked. |
+
+- The list is every part of the app: `src/data/pickables.js` (27 items in
+  7 groups). `scripts/check-pickables.mjs` fails if a feature, staged screen,
+  Home card or + action isn't in it.
+- Recommended ticks = what a stage-1 account of that type and aim would get
+  (`recommendedFrom`).
+- A pick puts **at most one card on Home**. Its other cards wait in Home's
+  Edit tray (`extraWidgets`).
+- Picking a goal-locked tool opens it, like "Open it now". Labs is one item:
+  ticking it is the experimental opt-in. Plus items show only while Plus is on
+  sale.
+- Unticked beats earned. The one exception is the goal in flight: its steps'
+  tools show until it's done.
+- Saved on the account in `profiles.metadata` (`track`, `picks`,
+  `picks_declined`), no migration. `show_everything` follows All in for older
+  app versions.
+- Changed later in **Make it yours** (track) and **My features** (the list).
 
 ### What they came for comes first
 

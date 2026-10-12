@@ -7,7 +7,6 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, RefreshControl, Modal, KeyboardAvoidingView,
   Platform, FlatList, Alert, ActivityIndicator, Animated, Easing,
-  AccessibilityInfo,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
@@ -50,6 +49,7 @@ import { getWayfinderIntent } from '../api/wayfinderService';
 import { useAccess } from '../../context/AccessContext';
 import { useFabPosition, topFabClearance } from '../../context/FabPositionContext';
 import { starterWidgetLayout } from '../logic/experienceStage';
+import { useReducedMotion } from '../logic/a11yPrefs';
 import useCharacterLoadout from '../logic/useCharacterLoadout';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import { RANK_LABELS } from '../theme';
@@ -790,15 +790,9 @@ function DeskTicker({ items, onItemPress, onAdd, c, t, s, r }) {
   const { style: ui, accent } = useTheme();
   const translateX = useRef(new Animated.Value(0)).current;
   const [setWidth, setSetWidth] = useState(0);
-  // Reduce Motion: no endless drift. The chips become a plain row you
-  // swipe yourself.
-  const [reduceMotion, setReduceMotion] = useState(false);
-  useEffect(() => {
-    let live = true;
-    AccessibilityInfo.isReduceMotionEnabled?.().then(v => { if (live) setReduceMotion(!!v); }).catch(() => {});
-    const sub = AccessibilityInfo.addEventListener?.('reduceMotionChanged', v => setReduceMotion(!!v));
-    return () => { live = false; sub?.remove?.(); };
-  }, []);
+  // Reduce Motion (the phone's, or Settings → Accessibility): no endless
+  // drift. The chips become a plain row you swipe yourself.
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (!setWidth || reduceMotion || items.length < 3) return;
@@ -894,7 +888,9 @@ export default function HomeScreen() {
   // far, a couple at a time, with no editor. 'dashboard' brings this type's
   // own layout and an editor offering this type's widgets; 'doors' offers
   // all twenty.
-  const { can, opened, isScreenVisible, isGameVisible, signalAction, stageEvents, activeObjective, purposeKey } = useAccess();
+  const { can, opened, isScreenVisible, isGameVisible, isFeatureShown, signalAction, stageEvents, activeObjective, purposeKey } = useAccess();
+  // Training games unticked on "Pick your features": no Play button either.
+  const playShown = isFeatureShown('training');
   const { active: tourActive, startLesson } = useTour();
   const homeFocused = useIsFocused();
   const { background: playerBackground } = useCharacterLoadout({ level, points, rank, streakDays });
@@ -1122,7 +1118,7 @@ export default function HomeScreen() {
       ? (activeObjective.objective?.steps || []).map(st => st.widget).filter(Boolean)
       : []
   ), [activeObjective]);
-  const boardLayout = useMemo(() => {
+  const boardLayoutAll = useMemo(() => {
     // Before the 'dashboard' stage the board is the widgets this stage has
     // opened, and only those: that's the "limited choices" version of the
     // editor (the Hidden tray lists only what's open). Once someone has
@@ -1131,7 +1127,9 @@ export default function HomeScreen() {
       // homeWidgets, not widgets: Home takes on what the stages open a
       // couple at a time (homeWidgetsAt in src/logic/experienceStage.js).
       const home = [...new Set([...(opened?.homeWidgets || opened?.widgets || []), ...keptWidgets, ...goalWidgets])];
-      const allowed = new Set(home);
+      // "Just my picks": a pick's other cards wait in the Edit tray, not on
+      // Home (src/data/pickables.js extraWidgets).
+      const allowed = new Set(opened?.track === 'picks' ? [...home, ...(opened.widgets || [])] : home);
       const starter = starterWidgetLayout({ ...opened, homeWidgets: home }, WIDGET_KEYS).filter(l => allowed.has(l.key));
       if (!savedLayout) return starter;
       const kept = widgetLayout.filter(l => allowed.has(l.key));
@@ -1160,6 +1158,13 @@ export default function HomeScreen() {
     }
     return withKept;
   }, [can, opened, activeType, widgetLayout, savedLayout, keptWidgets, goalWidgets]);
+  // Cards that belong to something unticked on "Pick your features" leave
+  // the board entirely, editor tray included: re-adding the feature in Make
+  // it yours brings them back. A running goal's own card stays.
+  const boardLayout = useMemo(() => {
+    const gone = opened?.hidden?.widgets;
+    return gone?.size ? boardLayoutAll.filter(l => !gone.has(l.key) || goalWidgets.includes(l.key)) : boardLayoutAll;
+  }, [boardLayoutAll, opened, goalWidgets]);
   // "Your steps" repeats the list the Compass card now carries itself, so
   // while the Compass is on the board it steps aside. Only outside editing:
   // the editor still shows it, so it can be moved or hidden like any other,
@@ -2046,6 +2051,7 @@ export default function HomeScreen() {
                     c={c} t={t}
                     onPress={() => navigation.navigate('Profile')}
                   />
+                  {(studyDestinations.length > 0 || playShown) && (
                   <TourSpot id="home-study-play">
                   <View style={{ flexDirection: 'row', gap: 10, marginTop: s.md }}>
                     {studyDestinations.length > 0 && (
@@ -2056,14 +2062,17 @@ export default function HomeScreen() {
                       <Text style={{ fontSize: t.md, color: c.teal, ...ui.buttonLabel }}>Study</Text>
                     </TouchableOpacity>
                     )}
+                    {playShown && (
                     <TouchableOpacity
                       style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: c.gold, backgroundColor: c.goldLight, borderRadius: ui.buttonRadius, paddingVertical: s.md }}
                       onPress={goPlay} onLongPress={() => setShowPlayMenu(true)} delayLongPress={350}>
                       <Ionicons name="game-controller-outline" size={15} color={c.gold} />
                       <Text style={{ fontSize: t.md, color: c.gold, ...ui.buttonLabel }}>Play</Text>
                     </TouchableOpacity>
+                    )}
                   </View>
                   </TourSpot>
+                  )}
                 </View>
               ),
             },

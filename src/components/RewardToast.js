@@ -25,6 +25,7 @@ import { useUserProgress } from '../../context/UserProgressContext';
 import { onServerAward } from '../logic/gamificationService';
 import { readEquippedPet } from '../logic/useCharacterLoadout';
 import PetCompanion from './PetCompanion';
+import { useReducedMotion } from '../logic/a11yPrefs';
 
 const HOLD_MS = 2600;
 const TOP_BAR_CLEARANCE = 58; // sits just under the top bar
@@ -55,12 +56,9 @@ export default function RewardToast({ hideCoins }) {
   // the reward that had just arrived.
   const generation = useRef(0);
 
-  useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled?.()
-      .then(v => { reduceMotion.current = !!v; })
-      .catch(() => {});
-    return () => clearTimeout(holdTimer.current);
-  }, []);
+  // The phone's Reduce Motion or the app's (Settings → Accessibility).
+  reduceMotion.current = useReducedMotion();
+  useEffect(() => () => clearTimeout(holdTimer.current), []);
 
   useEffect(() => onServerAward((pts, xp, source, meta) => {
     let next;

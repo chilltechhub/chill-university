@@ -42,12 +42,15 @@ import { confirmAsync } from '../logic/confirm';
 import { signOutAndClear, clearLocalUserData } from '../logic/localUserData';
 import TwoFactorSheet from '../components/TwoFactorSheet';
 import { isAdultProfile } from '../logic/useGradeLevel';
+import AccessibilitySettings from '../components/AccessibilitySettings';
 
 // `alwaysShowSubtitle` is for the Show Emojis / Show Subtitles rows
 // themselves — hiding the explanation of what "show subtitles" does the
 // instant you turn it off would bury the very control you'd need to turn
 // it back on.
 // Thin adapter: the existing call sites pass `label`, and c/t/s/r (ignored).
+const TRACK_LABEL = { picks: 'Just my picks', auto: 'Level up', full: 'All in' };
+
 function SettingRow({ label, ...rest }) {
   return <ListRow title={label} {...rest} />;
 }
@@ -896,7 +899,7 @@ export default function SettingsScreen() {
 
         {/* Appearance */}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm, marginBottom: s.md }}>
-          {[['appearance', 'Appearance'], ['experience', 'Learning'], ['privacy', 'Privacy'], ['account', 'Account']].map(([key, label]) => (
+          {[['appearance', 'Appearance'], ['accessibility', 'Accessibility'], ['experience', 'Learning'], ['privacy', 'Privacy'], ['account', 'Account']].map(([key, label]) => (
             <TouchableOpacity
               key={key}
               onPress={() => jumpTo(key)}
@@ -978,10 +981,34 @@ export default function SettingsScreen() {
         />
         <FabPositionPicker value={fabPosition} onChange={setFabPosition} c={c} t={t} s={s} r={r} />
 
+        {/* Accessibility — text size, font, bold, contrast, motion. Same
+            card as Make it yours (src/components/AccessibilitySettings.js). */}
+        <View {...markSection('accessibility')}><SectionLabel label="Accessibility" c={c} t={t} s={s} /></View>
+        <AccessibilitySettings />
+
         {/* App experience — how much of the app is on show. First, because
             it's the answer to "where did X go?" for anyone not at the last
             stage. See src/data/experienceStages.js. */}
         <View {...markSection('experience')}><SectionLabel label="App experience" c={c} t={t} s={s} /></View>
+        <SettingRow
+          icon="apps-outline"
+          iconColor={c.teal}
+          label={`How you start: ${TRACK_LABEL[experienceMode] || 'Level up'}`}
+          subtitle="Pick what's in your app, and how it grows."
+          alwaysShowSubtitle
+          onPress={() => navigation.navigate('MakeItYours')}
+          c={c} t={t} s={s} r={r}
+        />
+        <SettingRow
+          icon="checkbox-outline"
+          iconColor={c.teal}
+          label="My features"
+          subtitle="Add or remove any part of the app."
+          alwaysShowSubtitle
+          onPress={() => navigation.navigate('MyFeatures')}
+          c={c} t={t} s={s} r={r}
+        />
+        {experienceMode === 'auto' && (<>
         <SettingRow
           icon="layers-outline"
           iconColor={c.teal}
@@ -1010,6 +1037,7 @@ export default function SettingsScreen() {
           }
           c={c} t={t} s={s} r={r}
         />
+        </>)}
 
         {/* Compass — the purpose/objective/gating layer. First under
             Personalization because it's the setting that changes most of

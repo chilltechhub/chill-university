@@ -64,7 +64,7 @@ import { useAccess } from '../../context/AccessContext';
 import { useFeatureFlag, useRemoteConfig } from '../../context/RemoteConfigContext';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import {
-  WelcomeStep, AimStep, PersonaStep, StartModeStep, NameStep, SectorsStep, LookStep, PERSONA_AREA_DEFAULTS, areasForAim, pickFocusHub, buildRecommendations,
+  WelcomeStep, AimStep, PersonaStep, StartModeStep, PickFeaturesStep, picksForData, NameStep, SectorsStep, LookStep, PERSONA_AREA_DEFAULTS, areasForAim, pickFocusHub, buildRecommendations,
 } from './onboarding/steps';
 
 const { width: SW } = Dimensions.get('window');
@@ -103,7 +103,8 @@ const STEPS = [
   // The question everything else is tailored to. See AimStep.
   { component: AimStep,        title: 'Aim',     subtitle: 'What you came for' },
   { component: PersonaStep,    title: 'Profile', subtitle: 'Your account type' },
-  { component: StartModeStep,  title: 'Start',   subtitle: 'How much to start with' },
+  { component: StartModeStep,  title: 'Start',   subtitle: 'How you want to start' },
+  { component: PickFeaturesStep, title: 'Features', subtitle: 'What goes in your app' },
   { component: NameStep,       title: 'Name',    subtitle: 'What to call you' },
   { component: SectorsStep,    title: 'Sectors', subtitle: 'Your focus areas' },
   { component: LookStep,       title: 'Look',    subtitle: 'How it looks' },
@@ -128,7 +129,7 @@ export default function MultiStepOnboarding() {
   // Started card on Home instead (and from Settings, as it always was).
   const { setPersonalization } = useTour();
   const { createMasterProfile } = useProfiles();
-  const { setExperienceMode, startFirstGoal, choosePurpose } = useAccess();
+  const { setExperienceMode, startFirstGoal, choosePurpose, plusOnSale } = useAccess();
   const { refreshProfile } = useUserProgress();
   // Written by the Look step. Device-local, same key Settings' own "Library
   // Sections" editor reads and writes.
@@ -196,9 +197,13 @@ export default function MultiStepOnboarding() {
     // persona step). Not a column — it rides in the
     // local draft and lands as the Wayfinder intent flag in finish().
     exploring:         false,
-    // 'auto' = start simple and grow; 'full' = show everything now. Not a
-    // column — device-local via AccessContext, like the Wayfinder intent.
-    experience_mode:   'auto',
+    // The track: 'picks' = just what they pick, 'auto' = level up as they
+    // go, 'full' = everything. Lands on profiles.metadata via AccessContext.
+    experience_mode:   'picks',
+    // The ticked list from "Pick your features". Null until touched: until
+    // then it follows the type and aim (picksForData in onboarding/steps.js).
+    picks:             null,
+    picks_touched:     false,
     persona_baseline:  {},
     display_name:      '',
     active_life_areas: PERSONA_AREA_DEFAULTS[DEFAULT_PERSONA],
@@ -289,7 +294,9 @@ export default function MultiStepOnboarding() {
         aim:              typeof draft.aim === 'string' ? draft.aim : prev.aim,
         persona_touched:  !!draft.persona_touched,
         exploring:        typeof draft.exploring === 'boolean' ? draft.exploring : prev.exploring,
-        experience_mode:  draft.experience_mode === 'full' ? 'full' : prev.experience_mode,
+        experience_mode:  ['picks', 'auto', 'full'].includes(draft.experience_mode) ? draft.experience_mode : prev.experience_mode,
+        picks:            Array.isArray(draft.picks) ? draft.picks : prev.picks,
+        picks_touched:    !!draft.picks_touched,
         persona_baseline: draft.persona_baseline || prev.persona_baseline,
         theme:            draft.theme || prev.theme,
         hidden_sections:  draft.hidden_sections || prev.hidden_sections,
@@ -502,6 +509,8 @@ export default function MultiStepOnboarding() {
       persona_touched: !!data.persona_touched,
       exploring: !!data.exploring,
       experience_mode: data.experience_mode,
+      picks: data.picks,
+      picks_touched: !!data.picks_touched,
       persona_baseline: data.persona_baseline,
       theme: data.theme,
       hidden_sections: data.hidden_sections,
@@ -512,13 +521,27 @@ export default function MultiStepOnboarding() {
     }).catch(e => console.warn('onboarding checkpoint', e?.message));
   };
 
+  // Steps that don't apply to this person's picks are passed over: asking
+  // which life areas matter is a question about nothing when Life Areas
+  // isn't in their app ("Just my picks" or "All in" with it unticked).
+  const stepApplies = (i) => {
+    if (STEPS[i]?.component !== SectorsStep) return true;
+    return data.experience_mode === 'auto' || picksForData(data, { plusOnSale }).includes('life-areas');
+  };
+  const stepFrom = (from, dirn) => {
+    let i = from + dirn;
+    while (i > 0 && i < STEPS.length - 1 && !stepApplies(i)) i += dirn;
+    return Math.min(Math.max(i, 0), STEPS.length - 1);
+  };
+
   const goNext = () => {
     if (advancing.current) return;
     if (step >= STEPS.length - 1) { finish(); return; }
     advancing.current = true;
     setDir(1);
-    checkpoint(step + 1);
-    animateSlide(1, () => setStep(s2 => Math.min(s2 + 1, STEPS.length - 1)));
+    const next = stepFrom(step, 1);
+    checkpoint(next);
+    animateSlide(1, () => setStep(next));
   };
 
   const goBack = () => {
@@ -526,7 +549,8 @@ export default function MultiStepOnboarding() {
     if (step === 0) return;
     advancing.current = true;
     setDir(-1);
-    animateSlide(-1, () => setStep(s2 => Math.max(s2 - 1, 0)));
+    const prev = stepFrom(step, -1);
+    animateSlide(-1, () => setStep(prev));
   };
 
   // Real escape hatch, not a per-step "next" in disguise. The old Skip
@@ -579,7 +603,7 @@ export default function MultiStepOnboarding() {
     await setWayfinderIntent(!!data.exploring);
     // Same reason: Home, the Library and Training all read the stage on
     // their first render.
-    await setExperienceMode(data.experience_mode);
+    await setExperienceMode(data.experience_mode, { picks: picksForData(data, { plusOnSale }) });
     // The persona's accent colour, once, and only if none is set yet —
     // Settings > Appearance owns it after that. Device-local; can't strand.
     await suggestAccentForPersona(data.active_persona || DEFAULT_PERSONA).catch(() => {});

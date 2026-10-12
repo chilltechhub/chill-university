@@ -26,6 +26,7 @@ const ROOT_SCREENS = new Set([
   'Profile', 'Settings', 'Play', 'PlayGame', 'Leaderboard', 'Family',
   'ChildProgress', 'Organization', 'CohortRoster', 'Help', 'Compass', 'Stats', 'Plus', 'WorkMode',
   'MakeItYours',
+  'MyFeatures',
 ]);
 
 // The Classes stack, two levels down (Library -> ClassesStack -> screen).

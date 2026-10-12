@@ -252,6 +252,24 @@ export async function setOpenedByChoice(userId, ids, prevMetadata = null) {
   return { error };
 }
 
+/**
+ * How someone starts and what they picked (src/data/pickables.js): the
+ * track, the ticked list and what they said no to after a goal. In
+ * profiles.metadata like opened_by_choice, so no migration. Reads the row
+ * first so two quick saves (a pick, then the track) don't undo each other.
+ * The old show_everything column follows "All in", for older app versions.
+ */
+export async function saveStartChoices(userId, patch = {}) {
+  if (!userId) return { error: null };
+  const { data: row } = await supabase.from('profiles').select('metadata').eq('id', userId).maybeSingle();
+  const prev = row?.metadata && typeof row.metadata === 'object' ? row.metadata : {};
+  const update = { metadata: { ...prev, ...patch } };
+  if (patch.track) update.show_everything = patch.track === 'full';
+  const { error } = await supabase.from('profiles').update(update).eq('id', userId);
+  warn('saveStartChoices', error);
+  return { error };
+}
+
 /** Drops the cached snapshot — used on sign-out so the next account starts clean. */
 export async function clearAccessCache(userId) {
   if (!userId) return;

@@ -173,6 +173,21 @@ export const THEMES = {
   },
 };
 
+// High contrast (Settings → Accessibility): the secondary text greys, the
+// faint "decoration" grey and the borders pushed toward the main text
+// colour, so hints, labels and card edges are easy to see. Applied over
+// THEMES in ThemeContext; everything else is unchanged.
+export const HIGH_CONTRAST = {
+  light: {
+    text2: '#232a3a', text3: '#343c50', text4: '#4f586e',
+    border: '#7c859b', borderStrong: '#5d667c', tabInactive: '#343c50',
+  },
+  dark: {
+    text2: '#dfe4ef', text3: '#c7cddc', text4: '#9aa2ba',
+    border: '#5b6788', borderStrong: '#7884a6', tabInactive: '#c7cddc',
+  },
+};
+
 // HUD fonts — Rajdhani for display/numbers, JetBrains Mono for readouts/labels.
 // Loaded via useFonts() in App.js; body text stays on the system font.
 export const FONTS = {

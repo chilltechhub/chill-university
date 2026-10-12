@@ -43,7 +43,10 @@ import CharacterWalker from '../../components/CharacterWalker';
 import PlayerCharacter from '../../components/PlayerCharacter';
 import { OUTFITS } from '../../data/characterOptions';
 import { personasFor, defaultPersonaFor, getPersona } from '../../data/personas';
-import { firstGoalFor } from '../../logic/experienceStage';
+import { firstGoalFor, openedAt } from '../../logic/experienceStage';
+import { PICKABLES, recommendedFrom } from '../../data/pickables';
+import FeaturePicker, { pickableAvailable } from '../../components/FeaturePicker';
+import { useAccess } from '../../../context/AccessContext';
 import { getObjective, getPurpose, ONBOARDING_AIMS, AIM_PERSONA } from '../../data/objectives';
 
 const { width: SW } = Dimensions.get('window');
@@ -478,35 +481,74 @@ export function PersonaStep({ data, set, theme, isMinor, ageBand }) {
   );
 }
 
-// ─── Card 2: how much of the app to start with ─────────────────────────────
-// src/data/experienceStages.js. Simple is the default and the recommendation;
-// "everything" is for people who know apps like this. One switch in Settings
-// later either way.
+// ─── Card 2: how to start ───────────────────────────────────────────────────
+// The track (src/data/pickables.js): only what you pick, level up as you go,
+// or everything. "Just my picks" is the default: the app starts basic and
+// grows by the person's own choice, not by unlocking. Changeable any time in
+// Make it yours.
+const TRACK_CHOICES = [
+  { key: 'picks', emoji: '🎯', title: 'Just my picks', tag: 'Recommended', body: 'Only what you pick next. Add more any time.' },
+  { key: 'auto',  emoji: '🌱', title: 'Level up',      body: 'Start small with a guide. Finish goals to open more.' },
+  { key: 'full',  emoji: '🗺️', title: 'All in',        body: 'Everything at once. Hide what you don’t want.' },
+];
+
 export function StartModeStep({ data, set, theme }) {
-  const { c } = theme;
   const st = stepStyles(theme);
   const chosen = data.active_persona ? getPersona(data.active_persona) : null;
   const first = chosen ? getObjective(firstGoalFor(data.active_persona, data.aim).objective) : null;
+  const mode = TRACK_CHOICES.some(o => o.key === data.experience_mode) ? data.experience_mode : 'picks';
   return (
     <View style={st.stepContent}>
-      <Text style={st.stepTitle}>How much do you want to see at first?</Text>
-      <Text style={st.stepSubtitle}>You can switch this any time in Settings.</Text>
-      <ExperienceChoice
-        selected={data.experience_mode !== 'full'}
-        emoji="🌱"
-        title="Start simple"
-        tag="Recommended"
-        body={`One goal to start${first ? ` (${first.label})` : ''}, with a guide. More opens as you finish goals.`}
-        onPress={() => set('experience_mode', 'auto')}
-        theme={theme}
-      />
-      <ExperienceChoice
-        selected={data.experience_mode === 'full'}
-        emoji="🗺️"
-        title="Show me everything"
-        body="Every tool, game and widget at once. For people who know apps like this."
-        onPress={() => set('experience_mode', 'full')}
-        theme={theme}
+      <Text style={st.stepTitle}>How do you want to start?</Text>
+      <Text style={st.stepSubtitle}>Switch any time in <Text style={{ fontWeight: '700' }}>Make it yours</Text>.</Text>
+      {TRACK_CHOICES.map(o => (
+        <ExperienceChoice
+          key={o.key}
+          selected={mode === o.key}
+          emoji={o.emoji}
+          title={o.title}
+          tag={o.tag}
+          body={o.key === 'auto' && first ? `${o.body} First goal: ${first.label}.` : o.body}
+          onPress={() => set('experience_mode', o.key)}
+          theme={theme}
+        />
+      ))}
+    </View>
+  );
+}
+
+// What the pick step starts ticked: the tools a first day on this account
+// type and aim would have (the same set "Level up" starts with), or all of
+// them for "All in". Once the person has touched the list, it's theirs.
+export function recommendedPicksFor(data) {
+  return recommendedFrom(openedAt(data.active_persona || 'PERSONAL', 1, { aim: data.aim, exploring: !!data.exploring }));
+}
+export function picksForData(data, { plusOnSale = false } = {}) {
+  if (data.picks_touched && Array.isArray(data.picks)) return data.picks;
+  if (data.experience_mode === 'full') {
+    return PICKABLES.filter(p => !p.labs && pickableAvailable(p, { plusOnSale })).map(p => p.id);
+  }
+  return recommendedPicksFor(data);
+}
+
+// ─── Card 3: pick your features ────────────────────────────────────────────
+// Every part of the app, recommended ones ticked. See FeaturePicker.
+export function PickFeaturesStep({ data, set, theme }) {
+  const st = stepStyles(theme);
+  const { plusOnSale } = useAccess();
+  const track = TRACK_CHOICES.some(o => o.key === data.experience_mode) ? data.experience_mode : 'picks';
+  const picks = picksForData(data, { plusOnSale });
+  const title = track === 'full' ? 'Hide anything?' : track === 'auto' ? 'Want anything now?' : 'Pick your features';
+  return (
+    <View style={st.stepContent}>
+      <Text style={st.stepTitle}>{title}</Text>
+      <Text style={st.stepSubtitle}>Change it any time in <Text style={{ fontWeight: '700' }}>Make it yours</Text>.</Text>
+      <FeaturePicker
+        track={track}
+        picks={picks}
+        recommended={recommendedPicksFor(data)}
+        plusOnSale={plusOnSale}
+        onChange={(list) => { set('picks', list); set('picks_touched', true); }}
       />
     </View>
   );
@@ -976,28 +1018,17 @@ export function GoalsStep({ data, set, theme }) {
   );
 }
 
+// Theme only. Which Library tools show used to be asked here too, for
+// "show me everything"; the pick step asks that for every track now.
 export function LookStep({ data, set, theme, onThemeChange }) {
   const { c } = theme;
   const st = stepStyles(theme);
-  const allSections = LIBRARY_HUBS.flatMap(hub => hub.items);
-  const toggleSection = (screen) => {
-    const cur = data.hidden_sections || [];
-    set('hidden_sections', cur.includes(screen) ? cur.filter(x => x !== screen) : [...cur, screen]);
-  };
   const pickTheme = (name) => { set('theme', name); onThemeChange(name); };
-  // Starting simple, the Library opens with a handful of tools picked for
-  // the profile type — asking which of twelve sections to hide, before
-  // any of them are on show, would be a question about nothing.
-  const simple = data.experience_mode !== 'full';
 
   return (
     <View style={st.stepContent}>
-      <Text style={st.stepTitle}>{simple ? 'Light or dark?' : 'Look & Layout'}</Text>
-      <Text style={st.stepSubtitle}>
-        {simple
-          ? 'Tap one to see it right away. You can change it any time in Settings.'
-          : 'Pick your theme, and choose which Library sections show up. Everything here is changeable any time from Settings.'}
-      </Text>
+      <Text style={st.stepTitle}>Light or dark?</Text>
+      <Text style={st.stepSubtitle}>Tap one to see it right away. You can change it any time in Settings.</Text>
 
       <SectionLabel label="Theme — tap to preview live" theme={theme} />
       <View style={{ gap: 12, marginBottom: 20 }}>
@@ -1038,30 +1069,6 @@ export function LookStep({ data, set, theme, onThemeChange }) {
         </Text>
       </View>
 
-      {simple ? (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: c.bg1, borderRadius: 12, padding: 14, marginBottom: 20, borderWidth: 0.5, borderColor: c.border }}>
-          <Ionicons name="leaf-outline" size={20} color={c.teal} />
-          <Text style={{ flex: 1, fontSize: 12, color: c.text3, lineHeight: 17 }}>
-            Your Library starts with the few tools that fit your profile, and grows as you finish goals.
-            Once it has more in it, Settings lets you hide any section you don't use.
-          </Text>
-        </View>
-      ) : (<>
-      <SectionLabel label="Library sections" theme={theme} />
-      <Text style={{ fontSize: 12, color: c.text3, marginTop: -6, marginBottom: 10 }}>Tap to <Text style={{ fontWeight: '700' }}>hide</Text> any you don't need.</Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
-        {allSections.map(item => {
-          const hidden = (data.hidden_sections || []).includes(item.screen);
-          return (
-            <TouchableOpacity key={item.screen} onPress={() => toggleSection(item.screen)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: hidden ? c.border : c.teal, backgroundColor: hidden ? c.bg0 : c.teal + '18', opacity: hidden ? 0.5 : 1 }}>
-              <Ionicons name={item.icon} size={13} color={hidden ? c.text4 : c.teal} />
-              <Text style={{ fontSize: 12, color: hidden ? c.text3 : c.teal, fontWeight: hidden ? '400' : '700' }}>{item.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-      </>)}
 
     </View>
   );

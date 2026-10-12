@@ -10,6 +10,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { useFonts, Rajdhani_600SemiBold, Rajdhani_700Bold } from '@expo-google-fonts/rajdhani';
 import { JetBrainsMono_500Medium, JetBrainsMono_600SemiBold } from '@expo-google-fonts/jetbrains-mono';
+import { AtkinsonHyperlegible_400Regular, AtkinsonHyperlegible_700Bold } from '@expo-google-fonts/atkinson-hyperlegible';
 
 import { UserProgressProvider } from './context/UserProgressContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
@@ -57,6 +58,7 @@ import FloatingActionButton from './src/components/FloatingActionButton';
 import CommandPalette from './src/components/CommandPalette';
 import HelpScreen       from './src/screens/HelpScreen';
 import MakeItYoursScreen from './src/screens/MakeItYoursScreen';
+import MyFeaturesScreen from './src/screens/MyFeaturesScreen';
 import CompassScreen  from './src/screens/CompassScreen';
 import PlusScreen     from './src/screens/PlusScreen';
 import StatsScreen      from './src/screens/StatsScreen';
@@ -82,6 +84,7 @@ import useGuidedFirstGoal from './src/logic/useGuidedFirstGoal';
 import useWelcomeTour from './src/logic/useWelcomeTour';
 import { goToScreen } from './src/logic/appRoutes';
 import { installWebAlertShim } from './src/logic/webAlertShim';
+import { loadA11yPrefs, useA11yPrefs, READABLE_FONTS } from './src/logic/a11yPrefs';
 
 installWebAlertShim(); // web only: Alert.alert → the browser's dialogs
 
@@ -144,6 +147,20 @@ const forShiftWeb = ({ current }) => ({
 
 function MainTabs() {
   const { colors: c } = useTheme();
+  // Untick Training games on "Pick your features" and its tab goes. The
+  // screen stays mounted (the pet on it finds coins while the app is open),
+  // and a goal step or Home's Play button can still get there.
+  const { isFeatureShown } = useAccess();
+  const trainingTab = isFeatureShown('training');
+  // The tab labels come from react-navigation's own Text, which the
+  // accessibility swap (src/components/AppText.js) doesn't reach. Capped at
+  // Larger so three labels still fit across.
+  const a11y = useA11yPrefs();
+  const tabLabelA11y = {
+    fontSize: Math.round(12 * Math.min(a11y.textScale, 1.3)),
+    ...(a11y.boldText ? { fontWeight: '800' } : null),
+    ...(a11y.font === 'readable' ? { fontFamily: READABLE_FONTS.bold } : null),
+  };
   return (
     <Tab.Navigator
       initialRouteName="Home"
@@ -173,7 +190,7 @@ function MainTabs() {
         },
         tabBarActiveTintColor:   c.tabActive,
         tabBarInactiveTintColor: c.tabInactive,
-        tabBarLabelStyle: { fontSize: 12, lineHeight: 16, fontWeight: '600', marginTop: 0 },
+        tabBarLabelStyle: { fontSize: 12, fontWeight: '600', marginTop: 0, ...tabLabelA11y, lineHeight: tabLabelA11y.fontSize + 4 },
         tabBarIcon: ({ focused, color, size }) => {
           const icons = TAB_ICONS[route.name];
           return <Ionicons name={focused ? icons.active : icons.inactive} size={size} color={color} />;
@@ -202,7 +219,7 @@ function MainTabs() {
       {/* Mounted at launch, not on first visit: the pet on this tab finds
           coins while the app is open on any screen (src/logic/useCoinRewards.js),
           so it has to be out from the start. */}
-      <Tab.Screen name="Training" component={GamesScreen} options={{ lazy: false }} />
+      <Tab.Screen name="Training" component={GamesScreen} options={{ lazy: false, ...(trainingTab ? null : { tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }) }} />
     </Tab.Navigator>
   );
 }
@@ -497,6 +514,7 @@ function AppInner() {
           <Stack.Screen name="CohortRoster"        component={CohortRosterScreen} />
           <Stack.Screen name="Help"                component={HelpScreen} />
           <Stack.Screen name="MakeItYours"         component={MakeItYoursScreen} options={{ title: 'Make it yours' }} />
+          <Stack.Screen name="MyFeatures"          component={MyFeaturesScreen} options={{ title: 'My features' }} />
           {/* The Compass — purpose, the one active objective, and the
               locked / experimental / Plus rosters. Reachable from Home's
               card, Settings, the Library header and every unlock sheet,
@@ -535,10 +553,16 @@ function AppInner() {
     </NavigationContainer>
   );
 }
+// Text size, bold text, easy-read font, high contrast (Settings →
+// Accessibility). Started at import so it's usually in before first paint.
+loadA11yPrefs();
+
 export default function App() {
   const [fontsLoaded] = useFonts({
     Rajdhani_600SemiBold, Rajdhani_700Bold,
     JetBrainsMono_500Medium, JetBrainsMono_600SemiBold,
+    // The "Easy read" font (Settings → Accessibility).
+    AtkinsonHyperlegible_400Regular, AtkinsonHyperlegible_700Bold,
   });
   if (!fontsLoaded) return null; // splash while the HUD fonts load
 
