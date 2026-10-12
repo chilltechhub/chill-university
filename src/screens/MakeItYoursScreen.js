@@ -25,6 +25,7 @@ import { getPersona } from '../data/personas';
 import { LIFE_AREAS } from './library/LifeAreaScreen';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import RichText from '../components/RichText';
+import AccessibilitySettings from '../components/AccessibilitySettings';
 
 const TRACK_VALUE = {
   picks: '**Just my picks.** Only what you chose. Goals suggest more.',
@@ -134,6 +135,9 @@ export default function MakeItYoursScreen() {
           <Row icon="library-outline" title="Library pages" value="**Hide** the tools you don't use"
             onPress={() => navigation.navigate('Settings', { section: 'personalization' })} last />
         </View>
+
+        <Head>Easier to read and use</Head>
+        <AccessibilitySettings />
 
         <Head>How it feels</Head>
         <View style={card}>

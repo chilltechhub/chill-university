@@ -521,13 +521,27 @@ export default function MultiStepOnboarding() {
     }).catch(e => console.warn('onboarding checkpoint', e?.message));
   };
 
+  // Steps that don't apply to this person's picks are passed over: asking
+  // which life areas matter is a question about nothing when Life Areas
+  // isn't in their app ("Just my picks" or "All in" with it unticked).
+  const stepApplies = (i) => {
+    if (STEPS[i]?.component !== SectorsStep) return true;
+    return data.experience_mode === 'auto' || picksForData(data, { plusOnSale }).includes('life-areas');
+  };
+  const stepFrom = (from, dirn) => {
+    let i = from + dirn;
+    while (i > 0 && i < STEPS.length - 1 && !stepApplies(i)) i += dirn;
+    return Math.min(Math.max(i, 0), STEPS.length - 1);
+  };
+
   const goNext = () => {
     if (advancing.current) return;
     if (step >= STEPS.length - 1) { finish(); return; }
     advancing.current = true;
     setDir(1);
-    checkpoint(step + 1);
-    animateSlide(1, () => setStep(s2 => Math.min(s2 + 1, STEPS.length - 1)));
+    const next = stepFrom(step, 1);
+    checkpoint(next);
+    animateSlide(1, () => setStep(next));
   };
 
   const goBack = () => {
@@ -535,7 +549,8 @@ export default function MultiStepOnboarding() {
     if (step === 0) return;
     advancing.current = true;
     setDir(-1);
-    animateSlide(-1, () => setStep(s2 => Math.max(s2 - 1, 0)));
+    const prev = stepFrom(step, -1);
+    animateSlide(-1, () => setStep(prev));
   };
 
   // Real escape hatch, not a per-step "next" in disguise. The old Skip

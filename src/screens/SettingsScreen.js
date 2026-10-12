@@ -42,6 +42,7 @@ import { confirmAsync } from '../logic/confirm';
 import { signOutAndClear, clearLocalUserData } from '../logic/localUserData';
 import TwoFactorSheet from '../components/TwoFactorSheet';
 import { isAdultProfile } from '../logic/useGradeLevel';
+import AccessibilitySettings from '../components/AccessibilitySettings';
 
 // `alwaysShowSubtitle` is for the Show Emojis / Show Subtitles rows
 // themselves — hiding the explanation of what "show subtitles" does the
@@ -898,7 +899,7 @@ export default function SettingsScreen() {
 
         {/* Appearance */}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm, marginBottom: s.md }}>
-          {[['appearance', 'Appearance'], ['experience', 'Learning'], ['privacy', 'Privacy'], ['account', 'Account']].map(([key, label]) => (
+          {[['appearance', 'Appearance'], ['accessibility', 'Accessibility'], ['experience', 'Learning'], ['privacy', 'Privacy'], ['account', 'Account']].map(([key, label]) => (
             <TouchableOpacity
               key={key}
               onPress={() => jumpTo(key)}
@@ -979,6 +980,11 @@ export default function SettingsScreen() {
           c={c} t={t} s={s} r={r}
         />
         <FabPositionPicker value={fabPosition} onChange={setFabPosition} c={c} t={t} s={s} r={r} />
+
+        {/* Accessibility — text size, font, bold, contrast, motion. Same
+            card as Make it yours (src/components/AccessibilitySettings.js). */}
+        <View {...markSection('accessibility')}><SectionLabel label="Accessibility" c={c} t={t} s={s} /></View>
+        <AccessibilitySettings />
 
         {/* App experience — how much of the app is on show. First, because
             it's the answer to "where did X go?" for anyone not at the last

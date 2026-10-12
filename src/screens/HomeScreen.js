@@ -7,7 +7,6 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, RefreshControl, Modal, KeyboardAvoidingView,
   Platform, FlatList, Alert, ActivityIndicator, Animated, Easing,
-  AccessibilityInfo,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
@@ -50,6 +49,7 @@ import { getWayfinderIntent } from '../api/wayfinderService';
 import { useAccess } from '../../context/AccessContext';
 import { useFabPosition, topFabClearance } from '../../context/FabPositionContext';
 import { starterWidgetLayout } from '../logic/experienceStage';
+import { useReducedMotion } from '../logic/a11yPrefs';
 import useCharacterLoadout from '../logic/useCharacterLoadout';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import { RANK_LABELS } from '../theme';
@@ -790,15 +790,9 @@ function DeskTicker({ items, onItemPress, onAdd, c, t, s, r }) {
   const { style: ui, accent } = useTheme();
   const translateX = useRef(new Animated.Value(0)).current;
   const [setWidth, setSetWidth] = useState(0);
-  // Reduce Motion: no endless drift. The chips become a plain row you
-  // swipe yourself.
-  const [reduceMotion, setReduceMotion] = useState(false);
-  useEffect(() => {
-    let live = true;
-    AccessibilityInfo.isReduceMotionEnabled?.().then(v => { if (live) setReduceMotion(!!v); }).catch(() => {});
-    const sub = AccessibilityInfo.addEventListener?.('reduceMotionChanged', v => setReduceMotion(!!v));
-    return () => { live = false; sub?.remove?.(); };
-  }, []);
+  // Reduce Motion (the phone's, or Settings → Accessibility): no endless
+  // drift. The chips become a plain row you swipe yourself.
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (!setWidth || reduceMotion || items.length < 3) return;
