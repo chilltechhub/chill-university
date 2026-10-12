@@ -469,8 +469,12 @@ export default function LibraryScreen() {
   // tourSteps.js's librarySubTab field) — only while it's actually active,
   // so it never fights a manual tap the rest of the time.
   useEffect(() => {
-    if (tourActive && currentStep?.librarySubTab) setActiveTab(currentStep.librarySubTab);
-  }, [tourActive, currentStep]);
+    // Never onto a page this person's app doesn't have (Life, when Life
+    // Areas isn't picked).
+    if (tourActive && currentStep?.librarySubTab && orderedTabs.some(tb => tb.key === currentStep.librarySubTab)) {
+      setActiveTab(currentStep.librarySubTab);
+    }
+  }, [tourActive, currentStep]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
