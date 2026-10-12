@@ -83,7 +83,13 @@ export function TourProvider({ children }) {
   // Screen tutorials are written for what the current stage shows — early
   // on, Home and the Library get short ones (see STARTER_FEATURES in
   // screenTutorials.js).
-  const { can, purpose, firstGoalId } = useAccess();
+  const { can, purpose, firstGoalId, isFeatureShown, experienceMode } = useAccess();
+  // Which tools a screen tutorial may talk about. Life Areas is the
+  // Library's Life page, which Level up always shows (LibraryScreen).
+  const showsTool = useCallback(
+    (feature) => (feature === 'life-areas' && experienceMode === 'auto') || isFeatureShown(feature),
+    [isFeatureShown, experienceMode],
+  );
   const [active, setActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [targets, setTargets] = useState({});
@@ -205,11 +211,11 @@ export function TourProvider({ children }) {
     // which is why real content steps silently fell back to an
     // unspotlighted card while only the synthetic Navigation step (which
     // doesn't read the registry at all) ever lit up.
-    setScopedSteps(buildScreenTutorial(routeName, personalization, { can, firstVisit: !!opts?.firstVisit }));
+    setScopedSteps(buildScreenTutorial(routeName, personalization, { can, firstVisit: !!opts?.firstVisit, shows: showsTool, track: experienceMode }));
     screenTourRouteRef.current = routeName;
     setActive(true);
     setStepIndex(0);
-  }, [personalization, can]);
+  }, [personalization, can, showsTool, experienceMode]);
 
   const finish = useCallback((reason = 'done') => {
     screenTourRouteRef.current = null;

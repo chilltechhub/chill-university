@@ -354,7 +354,7 @@ const STARTER_FEATURES = {
     },
     { title: 'Capture', body: "Tap **Capture** (top right) to save a thought now. **Sort it later.**", id: 'library-capture', librarySubTab: 'domains' },
     { title: 'Three pages', body: "**Life**, **Build** and **Knowledge**. Tap one under the title, or swipe.", id: 'library-views' },
-    { title: 'More on the way', body: "**More opens** as you finish goals and level up." },
+    { title: 'More on the way', body: "**More opens** as you finish goals and level up.", growth: true },
   ],
 };
 
@@ -417,10 +417,32 @@ const MORE_NOTE = ' Full tour: tap **your picture** (top left) → **Screen Tuto
 
 // `can` is AccessContext's stage check; omitted means the full walkthroughs.
 // `firstVisit` is the automatic first-visit version: the basics only.
-export function buildScreenTutorial(routeName, personalization, { can, firstVisit = false } = {}) {
+// Steps about a tool that might not be in someone's app ("Pick your
+// features" can leave out Life Areas or the Capture Inbox). `shows(id)`
+// answers for the tool; a step about a missing one is dropped, so the
+// guide never says "tap Capture" over nothing.
+const STEP_FEATURE = { 'library-life-areas': 'life-areas', 'library-capture': 'capture' };
+// `growth` steps say the app opens more over time, which is only how
+// Level up works; the other tracks grow by adding in My features.
+const ADD_MORE = { title: 'Want more?', body: 'Add any tool in **My features** (your picture → Make it yours).' };
+function forThisApp(steps, shows, track) {
+  if (!shows) return steps;
+  const lifeShown = shows('life-areas');
+  return steps
+    .filter(st => !STEP_FEATURE[st.id] || shows(STEP_FEATURE[st.id]))
+    .map(st => (st.growth && track && track !== 'auto' ? { ...st, ...ADD_MORE } : st))
+    .map(st => {
+      if (lifeShown) return st;
+      const next = st.librarySubTab === 'domains' ? { ...st, librarySubTab: undefined } : st;
+      // "Three pages: Life, Build, Knowledge" without a Life page.
+      return st.id === 'library-views' ? { ...next, body: 'Your pages sit **under the title**. Tap one to switch.' } : next;
+    });
+}
+
+export function buildScreenTutorial(routeName, personalization, { can, firstVisit = false, shows, track } = {}) {
   if (firstVisit) {
-    if (FIRST_VISIT[routeName]) return FIRST_VISIT[routeName];
-    const full = buildScreenTutorial(routeName, personalization, { can });
+    if (FIRST_VISIT[routeName]) return forThisApp(FIRST_VISIT[routeName], shows, track);
+    const full = buildScreenTutorial(routeName, personalization, { can, shows, track });
     if (full.length <= FIRST_VISIT_STEPS) return full;
     const short = full.slice(0, FIRST_VISIT_STEPS);
     const last = short[short.length - 1];
@@ -439,7 +461,7 @@ export function buildScreenTutorial(routeName, personalization, { can, firstVisi
     steps = [{ title: routeName || 'This screen', body: "No specific walkthrough for this screen yet — check Help for the general FAQ instead." }];
   }
 
-  steps = personalize(routeName, steps, personalization);
+  steps = forThisApp(personalize(routeName, steps, personalization), shows, track);
   // Home only — see NAV_STEP_TAB. Every other screen ends on its own last
   // feature rather than on a navigation lecture.
   return routeName === 'Home' ? [...steps, NAV_STEP_TAB] : steps;

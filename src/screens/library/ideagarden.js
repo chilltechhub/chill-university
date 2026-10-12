@@ -522,7 +522,7 @@ function NotePanel({ item, editing, cores, plantTypes, petalTypes, onClose, onSa
 
   const meta = isPetal
     ? `${item.petal_type} · ${item.parentTitle}`
-    : `${linkedProject ? 'Workshop Build · ' + (linkedProject.pct ?? 0) + '%'
+    : `${linkedProject ? 'Project · ' + (linkedProject.pct ?? 0) + '%'
         : item.is_project ? 'Project · ' + (item.project_progress || 0) + '%' : 'Idea'} · ${(item.garden_petals || []).length} petals`;
 
   // Linked plants — find vines where this core appears
@@ -736,9 +736,9 @@ export default function IdeaGardenScreen() {
       // goal's "start it as a project" step. Promoting from here is the
       // obvious way in, and it used to leave that step open.
       signalAction('project-started');
-      Alert.alert('🏗️ Sent to the Workshop', `"${core.title}" is now a real build. Open it now?`, [
+      Alert.alert('🏗️ Now a project', `"${core.title}" is in your projects. Open it now?`, [
         { text: 'Stay here', style: 'cancel' },
-        { text: 'Open Workshop', onPress: () => navigation.navigate('ProjectDetail', { project }) },
+        { text: 'Open project', onPress: () => navigation.navigate('ProjectDetail', { project }) },
       ]);
     } catch (e) {
       console.warn('promote error', e);

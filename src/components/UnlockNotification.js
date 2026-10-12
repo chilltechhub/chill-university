@@ -121,7 +121,7 @@ export default function UnlockNotification() {
     const add = () => {
       close();
       addPick(suggestion.id);
-      openAndTeach(screen, { title: suggestion.label, body: `**${suggestion.label}**: ${suggestion.blurb}` });
+      openAndTeach(screen, { title: suggestion.label, body: suggestion.blurb });
     };
     const no = () => { close(); declinePick(suggestion.id); };
     return (
