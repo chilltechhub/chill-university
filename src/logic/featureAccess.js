@@ -18,6 +18,7 @@
 import { getObjective, getPurpose } from '../data/objectives';
 import { getTest } from '../data/competencyTests';
 import { featureShownAtStage } from './experienceStage';
+import { getFeature, SOCIAL_SCREENS } from '../data/featureCatalog';
 
 // "Finish <goal>", without doubling a goal whose name already starts with
 // the word ("Finish Finish Your First Project" was on the Portfolio card).
@@ -140,6 +141,7 @@ export function objectiveProgress(objectiveId, record = null, stats = {}) {
 //                (a feature's `settingKey`)
 //   plusOnSale   whether Plus can actually be bought yet. Until it can, a
 //                Plus door is kept out of sight: there is no key for it.
+//   socialOn     app_config 'social_on'. Off hides every `social` feature.
 //   experience   { opened, goalUnlocks } — see src/logic/experienceStage.js.
 //                Only ever adds `hidden`; it never changes `available`.
 //                Omitted means "show everything".
@@ -148,11 +150,24 @@ export function objectiveProgress(objectiveId, record = null, stats = {}) {
 // questions.
 export function evaluateAccess(feature, ctx = {}) {
   const access = evaluateGate(feature, ctx);
+  // Social tools wait for people (app_config 'social_on'): a feed, mentors
+  // or a community page with nobody on it reads as a ghost town.
+  if (feature?.social && !ctx.socialOn) return { ...access, hidden: true };
   // A door with no key hides itself (Labs switched off, Plus not on sale),
   // whatever the stage says.
   if (!feature || !ctx.experience || access.hidden) return access;
   const shown = featureShownAtStage(feature, access, ctx.experience);
   return shown ? access : { ...access, hidden: true };
+}
+
+// Whether a "Pick your features" item can be offered at all: not a Plus
+// tool before Plus is on sale, and nothing social (or Labs, which is all
+// social) while 'social_on' is off.
+export function pickableAvailable(item, { plusOnSale = false, socialOn = false } = {}) {
+  const features = item.features || [];
+  if (!socialOn && (item.labs || features.some(f => getFeature(f)?.social)
+    || (item.screens || []).some(sc => SOCIAL_SCREENS.includes(sc)))) return false;
+  return !features.some(f => getFeature(f)?.gate === 'paid') || plusOnSale;
 }
 
 function evaluateGate(feature, ctx = {}) {

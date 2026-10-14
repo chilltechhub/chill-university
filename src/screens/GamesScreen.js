@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import { useUserProgress, SUBJECT_CONFIG } from '../../context/UserProgressContext';
 import { useTheme } from '../../context/ThemeContext';
+import { FAB_CLEARANCE } from '../../context/FabPositionContext';
 import { useUIPrefs } from '../../context/UIPrefsContext';
 import { RANK_LABELS, FONTS } from '../theme';
 import LevelRing from '../components/LevelRing';
@@ -99,15 +100,17 @@ export default function GamesScreen() {
   const heroWalkerRef = useRef(null);
   // Remote feature flag — flip app_config.show_leaderboard off in Supabase
   // to hide this for everyone with no app update. Defaults on if the row
-  // doesn't exist yet.
-  const showLeaderboard = useFeatureFlag('show_leaderboard', true);
+  // doesn't exist yet. Also waits for 'social_on' (isScreenVisible below):
+  // a leaderboard with nobody on it is a ghost town.
+  const leaderboardFlag = useFeatureFlag('show_leaderboard', true);
   // isGameVisible answers both questions that apply to a game: the remote
   // kill switch (app_config's 'disabled_games' row, question 1) and whether
   // this account's path has put it on the shelf yet (question 3). Games
   // opened so far are listed, three or so at a time; the rest aren't
   // locked, just not on the shelf yet. The 'all-games' stage lists every
   // one and adds the filters and the Progress tab.
-  const { can, isGameVisible } = useAccess();
+  const { can, isGameVisible, isScreenVisible } = useAccess();
+  const showLeaderboard = leaderboardFlag && isScreenVisible('Leaderboard');
   const starter = !can('all-games');
   const tabs = starter ? STARTER_TABS : TABS;
   const GAMES = useMemo(
@@ -598,7 +601,7 @@ const makeStyles = (c, t, s, r, sh) => StyleSheet.create({
   tabText: { fontSize: t.sm, color: c.text3, fontWeight: t.medium },
   tabTextActive: { color: c.text1, fontWeight: t.bold },
   tabDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: c.gold, marginTop: 3 },
-  scroll: { alignItems: 'center', paddingVertical: s.xl, paddingHorizontal: s.lg },
+  scroll: { alignItems: 'center', paddingTop: s.xl, paddingBottom: FAB_CLEARANCE, paddingHorizontal: s.lg },
   avatarWrap: {
     width: '100%', marginBottom: s.lg,
   },

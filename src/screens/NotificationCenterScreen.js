@@ -23,6 +23,7 @@ import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
+import { FAB_CLEARANCE } from '../../context/FabPositionContext';
 import { useUserProgress } from '../../context/UserProgressContext';
 import {
   useNoticeFeed, refreshAndSync, dismissNotice, snoozeNotice, markAllSeen, setPrefs, PHONE_CAPABLE,
@@ -407,7 +408,7 @@ export default function NotificationCenterScreen() {
         </View>
       </View>
 
-      <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 100 }}>
+      <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: FAB_CLEARANCE }}>
         {!userId && (
           <Text style={{ fontSize: 12, color: c.gold, marginBottom: s.md }}>Sign in to see reminders and plans. Guests only get app news here.</Text>
         )}

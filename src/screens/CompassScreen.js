@@ -24,6 +24,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
+import { FAB_CLEARANCE } from '../../context/FabPositionContext';
 import { useUIPrefs } from '../../context/UIPrefsContext';
 import { useAccess } from '../../context/AccessContext';
 import { useProfiles } from '../../context/ProfileAccountsContext';
@@ -604,7 +605,7 @@ function FeatureRow({ entry, onPress, c, t, sp, r, showSubtext }) {
 
 const makeStyles = (c, t, sp, r) => StyleSheet.create({
   container: { flex: 1, backgroundColor: c.bg0 },
-  scroll:    { paddingBottom: 96, paddingTop: sp.lg }, // clears the + button and the guide pill
+  scroll:    { paddingBottom: FAB_CLEARANCE, paddingTop: sp.lg },
 
   header:      { paddingHorizontal: sp.xl, marginBottom: sp.lg },
   back:        { alignSelf: 'flex-start', marginBottom: sp.xs, marginLeft: -4, padding: 2 },

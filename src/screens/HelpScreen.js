@@ -61,7 +61,7 @@ const FAQ = [
   {
     q: 'What’s free, and what’s in Plus?',
     plusOnly: true,
-    a: '**Free, and staying free**: learning, games, classes, the Planner, capture, projects and Fill with AI. **Plus** (optional subscription) adds the business and startup courses (the first lesson of each level is free), Deep Insights, AI Import, Custom Objectives and Organizations. The Plus screen shows the price before you buy.',
+    a: '**Free, and staying free**: learning, games, classes, the Planner, capture, projects and Fill with AI. **Plus** (optional subscription) adds the business and startup courses (the first lesson of each level is free), AI Import and Organizations. The Plus screen shows the price before you buy.',
   },
   {
     q: 'How do I cancel or restore Plus?',

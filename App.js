@@ -94,6 +94,8 @@ installWebAlertShim(); // web only: Alert.alert → the browser's dialogs
 // rebuild — nothing anywhere linked to it, the same state Discover was in —
 // so this is both its first route and its gate.
 const GatedStats        = gatedScreen('insights', StatsScreen);
+// Screens the + button stays off (see where it's rendered below).
+const NO_FAB_ROUTES = new Set(['Play', 'PlayGame', 'Profile', 'WorkMode', 'Plus']);
 // Work Mode from Home's Focus buttons. Inside the Library stack it had to be
 // reached by switching tabs first, which flashed the Library (setting off its
 // first-visit tutorial over the timer) and made closing land on whatever the
@@ -533,8 +535,10 @@ function AppInner() {
         <LevelUpNotification />
         <UnlockNotification />
         {/* Not over a game: it sat on top of Start and the answer rows, and
-            nothing in it is something you'd reach for mid-round. */}
-        {showTopBar && currentRouteName !== 'Play' && currentRouteName !== 'PlayGame' && (
+            nothing in it is something you'd reach for mid-round. Nor over
+            screens with their own bottom button (Profile's Save changes, the
+            Plus buy button) or Work Mode, where it's a distraction. */}
+        {showTopBar && !NO_FAB_ROUTES.has(currentRouteName) && (
           <FloatingActionButton currentScreen={currentRouteName} navigationRef={navigationRef} />
         )}
         {/* Global search (Cmd/Ctrl+K, or the FAB's Search action). Sits

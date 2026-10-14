@@ -373,7 +373,7 @@ export default function LoginScreen({ onSuccess, onClose }) {
               <Ionicons name="lock-closed-outline" size={16} color="rgba(255,255,255,0.3)" style={s.inputIcon} />
               <TextInput
                 style={[s.input, { flex: 1 }]}
-                placeholder={mode === 'signup' ? 'Password (6 or more characters)' : 'Password'}
+                placeholder={mode === 'signup' ? 'Password (6+ characters)' : 'Password'}
                 placeholderTextColor="rgba(255,255,255,0.25)"
                 value={password}
                 onChangeText={(v) => { setPassword(v); if (notice?.kind === 'error') setNotice(null); }}

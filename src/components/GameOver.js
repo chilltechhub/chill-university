@@ -14,7 +14,7 @@ import { useAccess } from '../../context/AccessContext';
 import { lastRoundSignalAt } from './RoundCompleteScreen';
 import { lessonsForGame, openLessonScreen } from '../data/skillLinks';
 import { recordRun, accuracyFor, SKILL_THRESHOLDS } from '../logic/skillStats';
-import { lastRunXp } from '../logic/useGame';
+import { lastRunXp, lastRunXpCapped } from '../logic/useGame';
 
 const RANKS = [
   { min: 95, label: 'Legendary', emoji: '🏆', icon: 'trophy', color: '#FFD700' },
@@ -52,6 +52,7 @@ export default function GameOver({
   const heading = !shortRun ? title : correct > 0 ? 'Good start' : 'Round over';
   // Games don't pass XP in; useGame keeps the last run's.
   const xp = xpEarned || lastRunXp();
+  const xpCapped = lastRunXpCapped();
   // No prize card picked yet: the XP is what this run earned, so it leads.
   const xpLeads = score === 0 && xp > 0;
 
@@ -136,6 +137,11 @@ export default function GameOver({
             <Text style={s.rewardText}>+{xp} XP</Text>
           </View>
         </View>
+      )}
+      {xpCapped && (
+        <Text style={s.scoreHint}>
+          Game XP is maxed for today. <Text style={{ fontWeight: '800' }}>Real work</Text> still earns XP.
+        </Text>
       )}
 
       {/* Linked lesson — the bridge from a game back into the Academy.

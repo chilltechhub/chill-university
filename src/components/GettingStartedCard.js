@@ -194,7 +194,7 @@ export default function GettingStartedCard() {
             accessibilityRole="button"
             accessibilityLabel="Dismiss getting started"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name="close" size={18} color={c.text4} />
+            <Ionicons name="close" size={18} color={c.text3} />
           </TouchableOpacity>
         </View>
 

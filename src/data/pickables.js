@@ -183,13 +183,8 @@ export const PICKABLES = [
   },
   {
     id: 'insights', group: 'more', icon: 'stats-chart-outline',
-    label: 'Deep Insights', blurb: 'Long-range trends in your progress.',
+    label: 'Game Stats', blurb: 'Accuracy, best times and levels from your games.',
     features: ['insights'],
-  },
-  {
-    id: 'custom-paths', group: 'more', icon: 'create-outline',
-    label: 'Custom Goals', blurb: 'Write your own goals and steps.',
-    features: ['custom-paths'],
   },
   {
     id: 'labs', group: 'more', icon: 'flask-outline',

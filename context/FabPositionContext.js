@@ -22,6 +22,9 @@ export const DEFAULT_FAB_POSITION = 'bottom-right';
 export const FAB_SIZE = 52;
 export const FAB_EDGE = 20;    // gap from the side of the screen
 export const FAB_TOP_GAP = 16; // gap under the top bar, in a top corner
+// Bottom padding for a scrolling screen's content, so its last row can
+// scroll clear of the button (and the guide pill) instead of ending under it.
+export const FAB_CLEARANCE = 96;
 
 // For a screen's first row: in a top corner the button sat over Home's date
 // and the top of the profile card. Pad that side and make the row as tall

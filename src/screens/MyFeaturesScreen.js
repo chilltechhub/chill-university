@@ -23,13 +23,13 @@ const TITLES = {
 export default function MyFeaturesScreen() {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s } = useTheme();
-  const { experienceMode, picks, setPicks, purposeKey, plusOnSale, experimentalOn } = useAccess();
+  const { experienceMode, picks, setPicks, purposeKey, plusOnSale, socialOn, experimentalOn } = useAccess();
   const { activeType } = useProfiles();
   const track = ['picks', 'auto', 'full'].includes(experienceMode) ? experienceMode : 'auto';
   const recommended = recommendedFrom(openedAt(activeType || 'PERSONAL', 1, { aim: purposeKey }));
   // "All in" with nothing unticked yet has no saved list: everything is on.
   const shown = picks || (track === 'full'
-    ? PICKABLES.filter(p => (!p.labs || experimentalOn) && pickableAvailable(p, { plusOnSale })).map(p => p.id)
+    ? PICKABLES.filter(p => (!p.labs || experimentalOn) && pickableAvailable(p, { plusOnSale, socialOn })).map(p => p.id)
     : []);
 
   return (
@@ -51,6 +51,7 @@ export default function MyFeaturesScreen() {
           picks={shown}
           recommended={recommended}
           plusOnSale={plusOnSale}
+          socialOn={socialOn}
           onChange={setPicks}
         />
       </ScrollView>

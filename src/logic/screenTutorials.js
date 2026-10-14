@@ -421,7 +421,8 @@ const MORE_NOTE = ' Full tour: tap **your picture** (top left) → **Screen Tuto
 // features" can leave out Life Areas or the Capture Inbox). `shows(id)`
 // answers for the tool; a step about a missing one is dropped, so the
 // guide never says "tap Capture" over nothing.
-const STEP_FEATURE = { 'library-life-areas': 'life-areas', 'library-capture': 'capture' };
+// 'home-quick-buttons' isn't a tool: it's Settings → "Study & Play buttons".
+const STEP_FEATURE = { 'library-life-areas': 'life-areas', 'library-capture': 'capture', 'home-study-play': 'home-quick-buttons' };
 // `growth` steps say the app opens more over time, which is only how
 // Level up works; the other tracks grow by adding in My features.
 const ADD_MORE = { title: 'Want more?', body: 'Add any tool in **My features** (your picture → Make it yours).' };

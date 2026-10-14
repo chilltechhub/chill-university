@@ -18,6 +18,9 @@ export const SETTING_KEYS = {
   HERO_TAP_TO_PROFILE: 'heroTapToProfile',
   LIBRARY_BACKGROUND: 'libraryBackground', // 'plain' | 'player'
   HOME_BACKGROUND: 'homeBackground',       // 'plain' | 'player'
+  // The Study and Play buttons on Home's profile card. On by default; off
+  // leaves the card as just your name and level.
+  HOME_QUICK_BUTTONS: 'homeQuickButtons',
   DAILY_REMINDERS_ENABLED: 'dailyRemindersEnabled',
   TOUR_SEEN: 'tourSeen',
   // Array of LIBRARY_HUBS item `screen` values the user has chosen to hide
@@ -56,6 +59,16 @@ export const SETTING_KEYS = {
   // there ('@cth_setting_fabPosition'), just not read through this hook.
 };
 
+// The last value any screen read or wrote, per key. Lets code outside a
+// screen (the tour, which can't use focus effects) ask without a round trip.
+const lastKnown = {};
+
+// Synchronous best guess: the cached value, or `fallback` if no screen has
+// read this key yet this session.
+export function peekSetting(key, fallback) {
+  return key in lastKnown ? lastKnown[key] : fallback;
+}
+
 export default function useSetting(key, defaultValue) {
   const [value, setValue] = useState(defaultValue);
   const [ready, setReady] = useState(false);
@@ -65,7 +78,9 @@ export default function useSetting(key, defaultValue) {
       let alive = true;
       AsyncStorage.getItem(PREFIX + key).then(raw => {
         if (!alive) return;
-        setValue(raw === null ? defaultValue : JSON.parse(raw));
+        const next = raw === null ? defaultValue : JSON.parse(raw);
+        lastKnown[key] = next;
+        setValue(next);
         setReady(true);
       });
       return () => { alive = false; };
@@ -74,6 +89,7 @@ export default function useSetting(key, defaultValue) {
   );
 
   const update = useCallback((next) => {
+    lastKnown[key] = next;
     setValue(next);
     AsyncStorage.setItem(PREFIX + key, JSON.stringify(next));
   }, [key]);

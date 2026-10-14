@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
+import { FAB_CLEARANCE } from '../../context/FabPositionContext';
 import SignInPrompt from '../components/SignInPrompt';
 import TimePickerField from '../components/TimePickerField';
 import { useUserProgress } from '../../context/UserProgressContext';
@@ -816,7 +817,7 @@ function TimeView({ instances, date, onUpdate, onOpen, onAddAt, c, t, s, r }) {
   const hh = (h, m) => `${String(h).padStart(2, '0')}:${m}`;
 
   return (
-    <ScrollView ref={scrollRef} automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
+    <ScrollView ref={scrollRef} automaticallyAdjustKeyboardInsets showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: FAB_CLEARANCE }}>
       {/* Untimed items at top */}
       {untimed.length > 0 && (
         <View style={{ padding: s.lg, paddingBottom: s.sm, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
@@ -958,7 +959,7 @@ function ListView({ instances, onUpdate, onOpen, onAdd, c, t, s, r }) {
   );
 
   return (
-    <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 80 }}>
+    <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: FAB_CLEARANCE }}>
       <Section label={showEmojis ? '⚠️ Missed' : 'Missed'} items={overdue} color="#e05858" />
       <Section label="Today" items={today} />
       <Section label="Skipped" items={skipped} />
@@ -1148,7 +1149,7 @@ function WeeklyView({ userId, anchor, activeAreas, onDayPress, refreshKey, showi
   );
 
   if (layout === 'grid') return (
-    <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.md, paddingBottom: 80 }}>
+    <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.md, paddingBottom: FAB_CLEARANCE }}>
       {Toggle}
       <View style={{ flexDirection: 'row', gap: 3 }}>
         {weekDays.map((day, i) => {
@@ -1201,7 +1202,7 @@ function WeeklyView({ userId, anchor, activeAreas, onDayPress, refreshKey, showi
   );
 
   return (
-    <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 80 }}>
+    <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: FAB_CLEARANCE }}>
       {Toggle}
       {weekDays.map((day, i) => {
         const iso     = toISO(day);
@@ -1295,7 +1296,7 @@ function MonthlyView({ userId, anchor, activeAreas, onDayPress, refreshKey, show
   const cells = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
 
   return (
-    <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 80 }}>
+    <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: FAB_CLEARANCE }}>
       <View style={{ flexDirection: 'row', marginBottom: s.sm }}>
         {['S','M','T','W','T','F','S'].map((d, i) => (
           <Text key={i} style={{ flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '700', color: c.text3 }}>{d}</Text>

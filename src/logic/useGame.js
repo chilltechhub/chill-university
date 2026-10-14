@@ -4,15 +4,20 @@ import { useUserProgress } from '../../context/UserProgressContext';
 import { handleGameEvent, claimRoundPrize } from './gamificationService';
 import { correctHaptic } from './haptics';
 import { noteAnswered } from './questionRotation';
+import { gameXpLeft } from './gameXpCap';
 
 export const DIFFICULTY = { easy: 1, medium: 2, hard: 3 };
 
 // The XP the last finished run earned, for GameOver: no game passed it in,
 // so the results screen never showed XP at all, and a run cut short before
 // its first prize card read as "0 points earned" for real work.
-let lastRun = { xpEarned: 0, at: 0 };
+let lastRun = { xpEarned: 0, xpCapped: false, at: 0 };
 export function lastRunXp() {
   return Date.now() - lastRun.at < 2 * 60 * 1000 ? lastRun.xpEarned : 0;
+}
+// True when today's game XP cap cut the last run's XP short.
+export function lastRunXpCapped() {
+  return Date.now() - lastRun.at < 2 * 60 * 1000 && lastRun.xpCapped;
 }
 
 export default function useGame({
@@ -44,6 +49,9 @@ export default function useGame({
   // XP the answers have earned so far, the same amounts the server adds
   // (gamificationService.calculateRewards), so the results screen shows it.
   const xpRef                     = useRef(0);
+  // Today's game XP allowance as this run began (gameXpCap.js): the results
+  // screen shows what the account really got, not more.
+  const xpLeftRef                 = useRef(null);
 
   const accuracy = attempted > 0 ? Math.round((correct / attempted) * 100) : 0;
 
@@ -75,6 +83,7 @@ export default function useGame({
     const elapsed = Date.now() - questionStart.current;
     questionTimes.current.push(elapsed);
     questionStart.current = Date.now();
+    if (xpLeftRef.current == null) xpLeftRef.current = gameXpLeft(user?.id);
     answeredRef.current = true;
     xpRef.current += isCorrect ? 10 * difficulty : 2;
     // A miss comes back for review in a day; a due review answered right
@@ -160,9 +169,12 @@ export default function useGame({
     // What the account actually got: the XP above plus the finished-game XP
     // (nothing for none right), and the prize cards picked — which is `score`.
     const share        = attempted > 0 ? Math.min(1, correct / attempted) : 1;
-    const xpEarned     = xpRef.current + (correct > 0 ? Math.max(1, Math.round(30 * difficulty * share)) : 0);
+    const xpFull       = xpRef.current + (correct > 0 ? Math.max(1, Math.round(30 * difficulty * share)) : 0);
+    const xpLeft       = user?.id ? (xpLeftRef.current ?? gameXpLeft(user.id)) : xpFull;
+    const xpEarned     = Math.min(xpFull, xpLeft);
+    const xpCapped     = xpEarned < xpFull;
     const pointsEarned = score;
-    lastRun = { xpEarned, at: Date.now() };
+    lastRun = { xpEarned, xpCapped, at: Date.now() };
 
     // Fire GAME_COMPLETED event with full metadata, then pull the fresh
     // profile — this is what lets a level-up/rank-up notification fire
@@ -194,7 +206,7 @@ export default function useGame({
       streak: bestStreak, timeSeconds: totalSec,
       avgTimeSeconds: Math.round(avgMs / 1000),
       fastestSeconds: Math.round(fastestMs / 1000),
-      xpEarned, pointsEarned, subject,
+      xpEarned, xpCapped, pointsEarned, subject,
     };
 
     if (onGameEnd) onGameEnd(result);
@@ -209,6 +221,7 @@ export default function useGame({
     questionStart.current = Date.now();
     questionTimes.current = [];
     xpRef.current         = 0;
+    xpLeftRef.current     = null;
   }, []);
 
   return {
