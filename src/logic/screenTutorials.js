@@ -49,6 +49,7 @@ const SCREEN_FEATURES = {
   Training: [
     { title: 'Where the points come from', body: "Points and your **streak**. The streak is the one that matters.", id: 'training-stats' },
     { title: 'Daily Drills & Challenges', body: "**Daily Drills**: three small targets, new each day. **Challenges**: the bigger weekly ones.", id: 'training-games' },
+    { title: 'Classes', body: "**Lessons** by subject, with quizzes and quests. The games test what they teach.", id: 'training-classes' },
     { title: 'Pick a subject', body: "Tap **Enter Training** to pick a subject and play.", id: 'training-enter' },
     { title: 'Try one now', body: "One round takes **two minutes**, and helps the app suggest the right things.", id: 'training-enter' },
   ],
@@ -61,7 +62,7 @@ const SCREEN_FEATURES = {
   LibraryScreen: [
     {
       title: 'Life Areas',
-      body: "Each circle is a **part of your life**. **Double-tap** to open it. One tap filters the list.",
+      body: "Each circle is a **part of your life**. **Tap** to open it. **Hold** one to list its items here.",
       id: 'library-life-areas',
       librarySubTab: 'domains',
     },
@@ -79,7 +80,7 @@ const SCREEN_FEATURES = {
     },
     {
       title: 'Knowledge',
-      body: "**Classes** to learn. **Idea Garden** for ideas. **Vault** for notes and links. **Planner** for your days.",
+      body: "**Idea Garden** for ideas. **Vault** for notes and links. **Planner** for your days. Classes are in **Training**.",
       id: 'hub-section-knowledge',
       librarySubTab: 'knowledge',
     },
@@ -98,7 +99,7 @@ const SCREEN_FEATURES = {
     { title: 'Capture', body: "Tap **Capture** (top right) to save a thought now. **Sort it later.**", id: 'library-capture', librarySubTab: 'domains' },
   ],
   PlannerScreen: [
-    { title: 'Three views', body: "**Daily**, **Weekly** or **Monthly** view. Tap a life area to filter.", id: 'planner-views' },
+    { title: 'Three views', body: "**Day**, **Week** or **Month**. The **funnel** filters by life area.", id: 'planner-views' },
     { title: 'Habits vs. one-offs', body: "**One-off**: happens once. **Habit**: repeats every day, week or month.", id: 'planner-add' },
     { title: 'Add', body: "Tap **Add** to plan something. **⋯ → Add from ideas** has ready-made habits.", id: 'planner-add' },
   ],
@@ -280,7 +281,7 @@ function personalize(routeName, steps, personalization) {
   if (routeName === 'LibraryScreen') {
     if (areaLabels?.length) {
       next = next.map(step => step.title === 'Life Areas'
-        ? { ...step, body: `**${areaLabels.join(', ')}**: the parts of life you picked. **Double-tap** one to open it.` }
+        ? { ...step, body: `**${areaLabels.join(', ')}**: the parts of life you picked. **Tap** one to open it.` }
         : step);
     }
     if (focusHub) {
@@ -348,12 +349,12 @@ const STARTER_FEATURES = {
   LibraryScreen: [
     {
       title: 'Life Areas',
-      body: "Each circle is a **part of your life**. **Double-tap** to open it and rate it.",
+      body: "Each circle is a **part of your life**. **Tap** to open it and rate it.",
       id: 'library-life-areas',
       librarySubTab: 'domains',
     },
     { title: 'Capture', body: "Tap **Capture** (top right) to save a thought now. **Sort it later.**", id: 'library-capture', librarySubTab: 'domains' },
-    { title: 'Three pages', body: "**Life**, **Build** and **Knowledge**. Tap one under the title, or swipe.", id: 'library-views' },
+    { title: 'Three pages', body: "**Life**, **Build** and **Knowledge**. Tap one, or swipe.", id: 'library-views' },
     { title: 'More on the way', body: "**More opens** as you finish goals and level up.", growth: true },
   ],
 };
@@ -371,8 +372,8 @@ const FULL_TUTORIAL_AT = { Home: 'dashboard', LibraryScreen: 'all-tools' };
 const FIRST_VISIT = {
   Compass: APP_NAV_STEPS,
   LibraryScreen: [
-    { title: 'Three pages', body: "Three pages: **Life**, **Build**, **Knowledge**. Tap one under the title.", id: 'library-views', librarySubTab: 'domains' },
-    { title: 'Your life areas', body: "Each circle is a **part of your life**. **Double-tap** to open it.", id: 'library-life-areas', librarySubTab: 'domains' },
+    { title: 'Three pages', body: "Three pages: **Life**, **Build**, **Knowledge**. Tap one to switch.", id: 'library-views', librarySubTab: 'domains' },
+    { title: 'Your life areas', body: "Each circle is a **part of your life**. **Tap** to open it.", id: 'library-life-areas', librarySubTab: 'domains' },
   ],
   LifeAreaScreen: [
     { title: 'Rate it', body: "Tap the **number** that fits right now. Only you see it.", id: 'lifearea-rating' },
@@ -422,7 +423,7 @@ const MORE_NOTE = ' Full tour: tap **your picture** (top left) → **Screen Tuto
 // answers for the tool; a step about a missing one is dropped, so the
 // guide never says "tap Capture" over nothing.
 // 'home-quick-buttons' isn't a tool: it's Settings → "Study & Play buttons".
-const STEP_FEATURE = { 'library-life-areas': 'life-areas', 'library-capture': 'capture', 'home-study-play': 'home-quick-buttons' };
+const STEP_FEATURE = { 'library-life-areas': 'life-areas', 'library-capture': 'capture', 'home-study-play': 'home-quick-buttons', 'training-classes': 'classes' };
 // `growth` steps say the app opens more over time, which is only how
 // Level up works; the other tracks grow by adding in My features.
 const ADD_MORE = { title: 'Want more?', body: 'Add any tool in **My features** (your picture → Make it yours).' };
@@ -436,7 +437,7 @@ function forThisApp(steps, shows, track) {
       if (lifeShown) return st;
       const next = st.librarySubTab === 'domains' ? { ...st, librarySubTab: undefined } : st;
       // "Three pages: Life, Build, Knowledge" without a Life page.
-      return st.id === 'library-views' ? { ...next, body: 'Your pages sit **under the title**. Tap one to switch.' } : next;
+      return st.id === 'library-views' ? { ...next, body: 'Your **pages** are the buttons at the top. Tap one to switch.' } : next;
     });
 }
 

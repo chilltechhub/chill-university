@@ -94,14 +94,23 @@ export function buildNotices(data, env) {
   // ── Plans & tasks ────────────────────────────────────────────────────────
   const planner = (data.planner || []).filter(i => !i.completed && !i.skipped);
   const overdue = planner.filter(i => i.date < today && i.date >= addDays(today, -7));
-  if (overdue.length) {
+  const lateTasks = (data.tasks || []).filter(t => !t.completed && t.due_date && t.due_date < today);
+  // Slipped plans and late tasks are one card: "2 plans slipped past" and
+  // "3 tasks overdue" stacked as two red alarms read like a telling-off
+  // (2026-10-14). One button takes you to the Planner's review, where each
+  // one gets Today / Tomorrow / Pick a day.
+  if (overdue.length || lateTasks.length) {
+    const parts = [
+      overdue.length ? `${plural(overdue.length, 'plan')} slipped` : null,
+      lateTasks.length ? `${plural(lateTasks.length, 'task')} overdue` : null,
+    ].filter(Boolean);
     add({
-      id: `plan-overdue:${today}`, cat: 'schedule', priority: 90, icon: 'time-outline', tone: 'error',
-      title: `${plural(overdue.length, 'plan')} slipped past`,
-      body: `${listTitles(overdue)} ${overdue.length === 1 ? 'is' : 'are'} still open from earlier days.`,
-      primary: { label: 'Move to today', action: 'reschedule-overdue', payload: overdue.map(i => i.id) },
-      secondary: { label: 'Open Planner', target: { kind: 'planner' } },
-      ai: { target: 'planner', idea: `These plans slipped past their day: ${overdue.map(i => i.title).join('; ')}. Help me reschedule them realistically over the next few days, with reminders.` },
+      id: `catch-up:${today}`, cat: 'schedule', priority: 90, icon: 'time-outline', tone: 'gold',
+      title: `${plural(overdue.length + lateTasks.length, 'thing')} from earlier`,
+      body: `${parts.join(' · ')}: ${listTitles([...overdue, ...lateTasks])}`,
+      primary: { label: 'Review & reschedule', target: { kind: 'screen', key: 'PlannerScreen', params: { review: true } } },
+      secondary: overdue.length ? { label: `Move ${overdue.length === 1 ? 'it' : `all ${overdue.length} plans`} to today`, action: 'reschedule-overdue', payload: overdue.map(i => i.id) } : null,
+      ai: { target: 'planner', idea: `These slipped past their day: ${[...overdue, ...lateTasks].map(i => i.title).join('; ')}. Help me reschedule them realistically over the next few days, with reminders.` },
     });
   }
   const upcomingToday = planner
@@ -116,16 +125,6 @@ export function buildNotices(data, env) {
       body: upcomingToday.length > 1 ? `Then ${listTitles(upcomingToday.slice(1))} later today.` : 'Last timed plan for today.',
       primary: tgt ? { label: 'Open it', target: tgt } : { label: 'Open Planner', target: { kind: 'planner' } },
       share: `⏰ ${next.title}\nToday at ${time12(next.start_time)}`,
-    });
-  }
-  const lateTasks = (data.tasks || []).filter(t => !t.completed && t.due_date && t.due_date < today);
-  if (lateTasks.length) {
-    add({
-      id: `tasks-overdue:${today}`, cat: 'schedule', priority: 80, icon: 'checkbox-outline', tone: 'error',
-      title: `${plural(lateTasks.length, 'task')} overdue`,
-      body: listTitles(lateTasks),
-      primary: { label: 'See them', target: { kind: 'home' } },
-      ai: { target: 'planner', idea: `These tasks are overdue: ${lateTasks.map(t => t.title).join('; ')}. Help me fit them into my week with times.` },
     });
   }
 

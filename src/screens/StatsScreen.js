@@ -1,12 +1,16 @@
 // src/screens/StatsScreen.js
+// Insights: your real life first (InsightsPanel: things done, habits, focus,
+// what you used), then the games. It used to be games only, while Plus sold
+// it as "Deep Insights" with trends that didn't exist (2026-10-14).
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { useUserProgress, SUBJECT_CONFIG } from '../../context/UserProgressContext';
 import { useTheme } from '../../context/ThemeContext';
 import { getRankLabel } from '../logic/rankUtils';
+import InsightsPanel from '../components/InsightsPanel';
 
 export default function StatsScreen() {
-  const { loading, profile, points, xp, level, rank, rankProgress, subjectProgress, dailyMissions, weeklyMissions, longtermMissions, gameplayStats } = useUserProgress();
+  const { loading, user, profile, points, xp, level, rank, rankProgress, subjectProgress, dailyMissions, weeklyMissions, longtermMissions, gameplayStats } = useUserProgress();
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   const styles = makeStyles(c, t, s, r);
 
@@ -22,6 +26,11 @@ export default function StatsScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.scroll}>
+      <Text style={styles.pageTitle} accessibilityRole="header">Insights</Text>
+      <Text style={styles.pageSub}>The last four weeks of real life. Games are further down.</Text>
+      <InsightsPanel userId={user?.id} />
+
+      <Text style={[styles.pageTitle, { fontSize: 20, marginTop: s.md }]} accessibilityRole="header">Games</Text>
       {/* Hero */}
       <View style={styles.hero}>
         <Text style={styles.heroGlyph}>✦ · ✦</Text>
@@ -133,6 +142,8 @@ function MissionSection({ title, missions = [], styles, c, t }) {
 
 const makeStyles = (c, t, s, r) => StyleSheet.create({
   scroll: { padding: s.lg, paddingBottom: 120, backgroundColor: c.bg0 },
+  pageTitle: { fontSize: t.xxl, fontWeight: t.bold, color: c.text1 },
+  pageSub: { fontSize: t.sm, color: c.text3, marginTop: 2, marginBottom: s.lg },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: c.bg0 },
   loadingText: { marginTop: s.md, color: c.text3, fontSize: t.sm },
   hero: {

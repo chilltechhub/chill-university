@@ -19,8 +19,8 @@ export const SCREEN_HELP = {
     body: 'Every stage of the app, where you are, and what is next. Pick the one thing you are here for, and one goal to finish. Everything the app shows you is ordered around that, and finishing a goal is how the deeper screens open. Where a feature has a competence check you can skip the goal by passing it — but only one attempt each, and falling short means doing the goal instead. Experimental features (unfinished work) and Plus features are both listed here too, with what each one actually is.',
   },
   Stats: {
-    title: 'Game Stats',
-    body: 'How your games are going: accuracy, fastest and average times, levels cleared and per-subject progress.',
+    title: 'Insights',
+    body: 'Your last four weeks: things done each day, habits kept, focus time from Work Mode, and how much of what you saved you used. Then your games: accuracy, times and subject progress.',
   },
   Training: {
     title: 'Training',

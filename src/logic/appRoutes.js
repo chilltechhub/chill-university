@@ -2,7 +2,8 @@
 // Turns a bare screen name into a navigate() call that actually lands.
 //
 // The app has three levels of navigator — the root stack, the bottom tabs,
-// and the Library tab's own stack (with Classes nested inside that again).
+// and the Library and Training tabs' own stacks (Classes nests inside
+// Training's).
 // A `navigation.navigate('ProjectsScreen')` from the root stack only works
 // if the Library tab happens to be mounted already, which is exactly the
 // footgun FloatingActionButton.js and searchIndex.js each have their own
@@ -29,11 +30,11 @@ const ROOT_SCREENS = new Set([
   'MyFeatures',
 ]);
 
-// The Classes stack, two levels down (Library -> ClassesStack -> screen).
+// The Classes stack, two levels down (Training -> ClassesStack -> screen).
 // Subject screens come from the class catalog so adding a subject needs no
-// edit here; the three that aren't subjects are listed out.
+// edit here; the ones that aren't subjects are listed out.
 const CLASS_SCREENS = new Set([
-  'ClassesMain', 'LessonBuilder', 'MyLessonPlans',
+  'ClassesMain', 'LessonBuilder', 'MyLessonPlans', 'Quest', 'TopicCatalog', 'CurriculumModule',
   ...Object.values(CLASS_SCREEN_MAP || {}),
 ]);
 
@@ -52,6 +53,18 @@ export function goToScreen(navigation, screen, params) {
   if (screen === 'Library') {
     return navigation.navigate('MainTabs', { screen, params: params || { screen: 'LibraryScreen' } }, { pop: true });
   }
+  // Training is a stack too: its games screen is 'TrainingHome', and params
+  // (openDrills) are that screen's, not the tab's.
+  if (screen === 'Training' || screen === 'TrainingHome') {
+    return navigation.navigate('MainTabs', { screen: 'Training', params: { screen: 'TrainingHome', params } }, { pop: true });
+  }
+  // `params` here is the Classes stack's own: { screen, params } inside it.
+  if (screen === 'ClassesStack') {
+    return navigation.navigate('MainTabs', {
+      screen: 'Training',
+      params: { screen: 'ClassesStack', initial: false, params: params || { screen: 'ClassesMain' } },
+    }, { pop: true });
+  }
   if (TAB_SCREENS.has(screen)) {
     return navigation.navigate('MainTabs', { screen, params }, { pop: true });
   }
@@ -60,7 +73,7 @@ export function goToScreen(navigation, screen, params) {
   }
   if (CLASS_SCREENS.has(screen)) {
     return navigation.navigate('MainTabs', {
-      screen: 'Library',
+      screen: 'Training',
       params: { screen: 'ClassesStack', initial: false, params: { screen, params } },
     }, { pop: true });
   }
@@ -72,7 +85,15 @@ export function goToScreen(navigation, screen, params) {
 
 /** True when `screen` is one this resolver knows how to reach. */
 export function isKnownScreen(screen) {
-  return TAB_SCREENS.has(screen) || ROOT_SCREENS.has(screen) || CLASS_SCREENS.has(screen);
+  return TAB_SCREENS.has(screen) || ROOT_SCREENS.has(screen) || CLASS_SCREENS.has(screen)
+    || screen === 'ClassesStack' || screen === 'TrainingHome';
+}
+
+// The name a route goes by for tutorials, the guide and the top bar. The
+// Training tab's first screen is 'TrainingHome' (src/screens/TrainingNav.js)
+// but everything else knows it as 'Training'.
+export function routeLabel(name) {
+  return name === 'TrainingHome' ? 'Training' : name;
 }
 
 /**

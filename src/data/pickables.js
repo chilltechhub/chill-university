@@ -183,7 +183,7 @@ export const PICKABLES = [
   },
   {
     id: 'insights', group: 'more', icon: 'stats-chart-outline',
-    label: 'Game Stats', blurb: 'Accuracy, best times and levels from your games.',
+    label: 'Insights', blurb: 'Your weeks in real life: done, habits, focus. Plus game stats.',
     features: ['insights'],
   },
   {

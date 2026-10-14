@@ -83,6 +83,37 @@ check('byTime: timed first, untimed last', show([{ t: 'b' }, { start_time: '09:0
 check('isSamePlan: untimed matches timed', L.isSamePlan({ title: 'Gym', date: 'd', start_time: '07:00' }, { title: 'gym', date: 'd' }));
 check('isSamePlan: different times differ', !L.isSamePlan({ title: 'Gym', date: 'd', start_time: '07:00' }, { title: 'Gym', date: 'd', start_time: '18:00:00' }));
 
+// ── Typed quick-add (src/logic/quickAdd.js) ─────────────────────────────────
+{
+  const qsrc = await readFile(new URL('../src/logic/quickAdd.js', import.meta.url), 'utf8');
+  const Q = await import('data:text/javascript,' + encodeURIComponent(qsrc));
+  const now = new Date(2026, 9, 14, 10, 0); // Wed Oct 14 2026, 10:00
+  const p = (text) => Q.parseQuickAdd(text, now);
+  const is = (name, text, want) => {
+    const got = p(text);
+    const ok = Object.entries(want).every(([k, v]) => got[k] === v);
+    check(`quick-add: ${name}`, ok, `${text} → ${show(got)}`);
+  };
+  is('weekday + pm time', 'dentist thu 4pm', { title: 'Dentist', date: '2026-10-15', time: '16:00', cadence: 'once' });
+  is('tomorrow + "at 4" is afternoon', 'call mom tomorrow at 4', { title: 'Call mom', date: '2026-10-15', time: '16:00' });
+  is('24h time today', 'standup today 09:30', { title: 'Standup', date: '2026-10-14', time: '09:30' });
+  is('same weekday means next week', 'gym wednesday', { date: '2026-10-21' });
+  is('next fri skips a week', 'review next fri', { title: 'Review', date: '2026-10-23' });
+  is('month name date', 'rent due oct 31', { title: 'Rent due', date: '2026-10-31' });
+  is('a passed date is next year', 'taxes apr 15', { date: '2027-04-15' });
+  is('slash date', 'party 11/2 at 7pm', { title: 'Party', date: '2026-11-02', time: '19:00' });
+  is('in N days', 'follow up in 3 days', { title: 'Follow up', date: '2026-10-17' });
+  is('every monday is weekly from next monday', 'team sync every monday 10am', { title: 'Team sync', date: '2026-10-19', time: '10:00', cadence: 'weekly' });
+  is('daily habit', 'stretch daily', { title: 'Stretch', cadence: 'daily', date: '2026-10-14' });
+  is('tonight sets an evening time', 'read tonight', { title: 'Read', time: '19:00' });
+  is('noon', 'lunch with sam noon', { title: 'Lunch with sam', time: '12:00' });
+  is('plain text stays today, untimed', 'buy milk', { title: 'Buy milk', date: '2026-10-14', time: null, found: false });
+  is('12am is midnight', 'launch 12am', { time: '00:00' });
+  is('numbers in a title are left alone', 'read 20 pages', { title: 'Read 20 pages', time: null });
+  check('quick-add: describe', Q.describeQuickAdd({ date: '2026-10-15', time: '16:00', cadence: 'weekly' }, now) === 'Tomorrow · 4:00 PM · every week',
+    Q.describeQuickAdd({ date: '2026-10-15', time: '16:00', cadence: 'weekly' }, now));
+}
+
 if (problems.length) {
   console.error(`check-planner: ${problems.length} problem(s), ${passed} passed\n`);
   for (const p of problems) console.error(`  ✗ ${p}`);

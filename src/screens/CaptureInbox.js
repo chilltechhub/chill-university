@@ -251,7 +251,7 @@ function noteBody(capture) {
 }
 
 // ─── Process Modal — where do you want to send this? ─────────────────────────
-function ProcessModal({ item, projects, userId, initialStep = 'choose', onClose, onProcessed, onUpdated, onDeleted, c, t, s, r }) {
+function ProcessModal({ item, projects, userId, initialStep = 'choose', initialDest = null, onClose, onProcessed, onUpdated, onDeleted, c, t, s, r }) {
   const navigation = useNavigation();
   const [step,          setStep]          = useState(initialStep); // choose | plan_ai | pick_project | pick_area | confirm
   // Plan it into a project: what the person wants from it, the text they
@@ -374,6 +374,12 @@ function ProcessModal({ item, projects, userId, initialStep = 'choose', onClose,
       at: Date.now(),
     });
   };
+
+  // Opened with a destination already picked: straight to its details.
+  useEffect(() => {
+    const dest = initialDest && DESTINATIONS.find(d => d.key === initialDest);
+    if (dest) handleDestination(dest);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDestination = (dest) => {
     setDestination(dest);
@@ -1323,8 +1329,13 @@ function CaptureCard({ item, onProcess, onPlan, onDone, selectMode, selected, on
 // never saved unless the user saves it.
 // mode 'plan' is the + button's "Plan from a link": the same capture, worded
 // for pasting a link, and the caller opens the plan step once it's saved.
-export function QuickCaptureModal({ visible, userId, onSaved, onClose, prefill, mode = 'capture', c, t, s, r }) {
+// `onUse(destKey, row)`: when given, a saved capture isn't the end. The card
+// turns into "Put it to use" (plan time, to-do, project, plan with AI) so
+// what you just saved becomes something to do before it sinks into the
+// Inbox. "Later" (or closing) is onSaved, the old ending.
+export function QuickCaptureModal({ visible, userId, onSaved, onUse, onClose, prefill, mode = 'capture', c, t, s, r }) {
   const planning = mode === 'plan';
+  const [justSaved, setJustSaved] = useState(null); // the row, while "Put it to use" shows
   // "Plan from a link" is always a link; it used to open on Note.
   const blankType = planning ? 'link' : 'note';
   const [draft,  setDraft]  = useState('');
@@ -1403,13 +1414,58 @@ export function QuickCaptureModal({ visible, userId, onSaved, onClose, prefill, 
       // typed behind a "Could not save". Capture is the one write that must
       // never ask the user to try again later.
       const data = await addCapture(userId, { ...fields, tags: tagList });
-      onSaved(data);
       reset();
+      // Offline it's queued with no id yet: nothing to open, so just done.
+      if (onUse && !planning && data?.id) setJustSaved(data);
+      else onSaved(data);
     } catch (e) {
       Alert.alert('Error', 'Could not save. Try again.');
     }
     setSaving(false);
   };
+
+  const finishLater = () => { const row = justSaved; setJustSaved(null); onSaved(row); };
+  const use = (key) => { const row = justSaved; setJustSaved(null); onUse(key, row); };
+
+  if (justSaved) {
+    return (
+      <FloatingCard visible={visible} onClose={finishLater} c={c} nudgeDown={48}>
+        <View style={{ padding: s.xl, paddingTop: s.sm }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: 4 }}>
+            <Ionicons name="checkmark-circle" size={20} color={c.success} />
+            <Text style={{ flex: 1, fontSize: t.lg, fontWeight: t.bold, color: c.text1 }}>Saved.</Text>
+            <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={finishLater}>
+              <Ionicons name="close" size={22} color={c.text3} />
+            </TouchableOpacity>
+          </View>
+          <Text style={{ fontSize: t.sm, color: c.text2, marginBottom: s.md }} numberOfLines={2}>
+            <Text style={{ fontWeight: t.bold, color: c.text1 }}>Put it to use</Text> while it's fresh?
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm }}>
+            {[
+              { key: 'planner',     icon: 'calendar-outline', label: 'Plan time',    sub: 'Put it on a day' },
+              { key: 'task',        icon: 'checkbox-outline', label: 'To-do',        sub: 'Add to your list' },
+              { key: 'new_project', icon: 'hammer-outline',   label: 'New project',  sub: 'Build on it' },
+              { key: 'plan_ai',     icon: 'sparkles-outline', label: 'Plan with AI', sub: 'Steps + deadlines' },
+            ].map(a => (
+              <TouchableOpacity key={a.key} onPress={() => use(a.key)} accessibilityRole="button" accessibilityLabel={`${a.label}: ${a.sub}`}
+                style={{ flexBasis: '47%', flexGrow: 1, flexDirection: 'row', alignItems: 'center', gap: s.sm, padding: s.md,
+                  borderRadius: r.md, borderWidth: 1, borderColor: c.teal + '55', backgroundColor: c.bg0 }}>
+                <Ionicons name={a.icon} size={18} color={c.teal} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.text1 }}>{a.label}</Text>
+                  <Text style={{ fontSize: 11, color: c.text3 }}>{a.sub}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TouchableOpacity onPress={finishLater} accessibilityRole="button" style={{ alignSelf: 'center', marginTop: s.md, padding: s.sm }}>
+            <Text style={{ fontSize: t.sm, color: c.text3 }}><Text style={{ fontWeight: t.bold, color: c.text2 }}>Later</Text>: keep it in the Inbox</Text>
+          </TouchableOpacity>
+        </View>
+      </FloatingCard>
+    );
+  }
 
   return (
     // A little below centre: it opened up under the top bar, over the
@@ -1471,7 +1527,7 @@ export function QuickCaptureModal({ visible, userId, onSaved, onClose, prefill, 
             <TouchableOpacity onPress={save} disabled={!draft.trim() || saving}
               style={{ flex: 2, backgroundColor: c.teal, borderRadius: r.md, padding: s.md, alignItems: 'center', opacity: (!draft.trim() || saving) ? 0.5 : 1 }}>
               {saving ? <ActivityIndicator color={c.onFill} size="small" />
-                : <Text style={{ color: c.onFill, fontWeight: t.bold }}>{planning ? 'Save & plan it →' : 'Capture → Process later'}</Text>}
+                : <Text style={{ color: c.onFill, fontWeight: t.bold }}>{planning ? 'Save & plan it →' : onUse ? 'Capture' : 'Capture → Process later'}</Text>}
             </TouchableOpacity>
           </View>
       </View>
@@ -1502,16 +1558,18 @@ export default function CaptureInbox() {
   const [pendingPrefill, setPendingPrefill] = useState(null);
   const [processing, setProcessing] = useState(null); // item being processed
   const [processStep, setProcessStep] = useState('choose'); // where its sheet opens
-  const openProcess = (item, stepKey = 'choose') => { setProcessStep(stepKey); setProcessing(item); };
+  const [processDest, setProcessDest] = useState(null); // a destination already picked (Put it to use)
+  const openProcess = (item, stepKey = 'choose', destKey = null) => { setProcessStep(stepKey); setProcessDest(destKey); setProcessing(item); };
   // Opened on one capture from elsewhere (a "you saved this" notice, or
   // something shared into the app that the person wants planned):
-  // { openCapture: id, plan: true, at }.
+  // { openCapture: id, plan: true, at }, or { openCapture, dest } for a
+  // destination picked on the capture card's "Put it to use".
   const route = useRoute();
   useEffect(() => {
     const id = route.params?.openCapture;
     if (!id) return;
     supabase.from('captures').select('*').eq('id', id).is('deleted_at', null).maybeSingle()
-      .then(({ data }) => { if (data) openProcess(data, route.params?.plan ? 'plan_ai' : 'choose'); });
+      .then(({ data }) => { if (data) openProcess(data, route.params?.plan ? 'plan_ai' : 'choose', route.params?.dest || null); });
   }, [route.params?.openCapture, route.params?.at]); // eslint-disable-line react-hooks/exhaustive-deps
   const [view,       setView]       = useState('inbox'); // inbox | later | done | trash
   const [deletedItems, setDeletedItems] = useState([]);
@@ -1851,7 +1909,7 @@ export default function CaptureInbox() {
 
       {processing && (
         <ProcessModal
-          key={`${processing.id}-${processStep}`} initialStep={processStep}
+          key={`${processing.id}-${processStep}-${processDest || ''}`} initialStep={processStep} initialDest={processDest}
           item={processing} projects={projects} userId={userId}
           onClose={() => setProcessing(null)}
           onProcessed={onProcessed}

@@ -29,6 +29,7 @@
 
 import { CLASS_SUBJECTS, CLASS_SCREEN_MAP } from './classCatalog';
 import { getGame, getEnabledGames } from '../services/gameRegistry';
+import { goToScreen } from '../logic/appRoutes';
 
 export const LINKS = [
   // ── Math ────────────────────────────────────────────────────────────
@@ -174,19 +175,12 @@ export function hasLessons(gameId) {
 }
 
 // Opening an Academy class screen from ANYWHERE in the app. The Classes
-// screens live three navigators deep (root stack -> MainTabs -> Library
-// tab -> ClassesStack), and which of those is already mounted depends on
-// where the call comes from — so this primes the tab first and pushes the
-// destination a tick later, the same two-step HomeScreen's
-// goToLibraryScreen already uses for Library destinations (see the comment
-// there for why one synchronous pair of navigate() calls isn't enough).
+// screens live three navigators deep (root stack -> MainTabs -> Training
+// tab -> ClassesStack); appRoutes.goToScreen names the whole path. The
+// Training tab is mounted at launch, so one navigate lands.
 export function openLessonScreen(navigation, screen) {
   if (!screen) return;
-  const target = { screen: 'ClassesStack', params: { screen } };
-  navigation.navigate('MainTabs', { screen: 'Library' });
-  setTimeout(() => {
-    navigation.navigate('MainTabs', { screen: 'Library', params: target });
-  }, 0);
+  goToScreen(navigation, screen);
 }
 
 /** Opening a game from anywhere — the Play route lives on the root stack. */

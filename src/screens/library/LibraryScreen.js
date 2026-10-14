@@ -93,7 +93,7 @@ export const LIBRARY_HUBS = [
     icon: 'bulb-outline',
     accentKey: 'gold',
     items: [
-      { label: 'Academy Classes', screen: 'ClassesStack', icon: 'ribbon-outline', desc: 'Lessons and quests by subject', featured: true },
+      // Academy Classes moved to the Training tab (src/screens/TrainingNav.js).
       { label: 'Idea Garden', screen: 'IdeaGardenScreen', icon: 'leaf-outline', desc: 'Grow ideas into projects' },
       // One entry, three former ones: Notes Desk, the Research Vault, and
       // Resources & Instruments were all reading and writing the same
@@ -140,8 +140,6 @@ function timeAgo(iso) {
 
 const PLANT_EMOJI = { tree: '🌳', flower: '🌸', plant: '🌿' };
 
-// How long a second tap on the same domain still counts as a double tap.
-const DOUBLE_TAP_MS = 260;
 
 // ─── Swiping between the three views ───────────────────────────────────────────
 // How sideways a drag has to be before it counts as "switch the view"
@@ -611,16 +609,8 @@ export default function LibraryScreen() {
   };
 
   // ── Domain filter (Domains tab) ──────────────────────────────────────────────
-  // Single tap toggles the in-place filter below the grid; double tap and
-  // long press both open the full Life Area check-in screen — same
-  // tap-vs-hold split HomeScreen's STUDY/PLAY buttons already use, plus a
-  // double tap because that's the more discoverable of the two.
-  //
-  // The single-tap action is deferred by DOUBLE_TAP_MS so a double tap
-  // doesn't also fire the filter on its way through; that delay is short
-  // enough not to read as lag on the single-tap path.
-  const tapRef = useRef({ id: null, timer: null });
-  useEffect(() => () => { if (tapRef.current.timer) clearTimeout(tapRef.current.timer); }, []);
+  // A tap opens the area; holding one toggles the in-place filter below the
+  // grid (selectDomain).
 
   const openLifeArea = (area, saved, rating) => {
     navigation.navigate('LifeAreaScreen', {
@@ -628,24 +618,8 @@ export default function LibraryScreen() {
       rating,
       lastCheck: saved?.last_check_date || null,
     });
-    // The welcome tour's "double-tap one now" step waits for exactly this.
+    // The welcome tour's "open one now" step waits for exactly this.
     completeTourAction();
-  };
-
-  const handleDomainPress = (area, saved, rating) => {
-    const pending = tapRef.current;
-    if (pending.id === area.id && pending.timer) {
-      clearTimeout(pending.timer);
-      tapRef.current = { id: null, timer: null };
-      openLifeArea(area, saved, rating);
-      return;
-    }
-    if (pending.timer) clearTimeout(pending.timer);
-    const timer = setTimeout(() => {
-      tapRef.current = { id: null, timer: null };
-      selectDomain(area.id);
-    }, DOUBLE_TAP_MS);
-    tapRef.current = { id: area.id, timer };
   };
 
   const selectDomain = async (domainId, { reload = false } = {}) => {
@@ -832,23 +806,16 @@ export default function LibraryScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.gold} />}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* ── Header — the title is the view switcher ── */}
+        {/* ── Header ── The title used to be a "Life ▾" dropdown sitting
+            right above buttons for the same three pages (2026-10-14: one
+            switcher is enough). With a single page there are no buttons, so
+            the title names it. */}
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
             <TourSpot id={orderedTabs.length > 1 ? 'library-title' : 'library-views'} style={{ alignSelf: 'flex-start' }}>
-            <TouchableOpacity
-              style={styles.titleBtn}
-              onPress={() => setTabMenuOpen(o => !o)}
-              activeOpacity={0.75}
-            >
-              <Text style={styles.headerTitle}>{TABS.find(tb => tb.key === activeTab)?.label || 'Library'}</Text>
-              <Ionicons
-                name={tabMenuOpen ? 'chevron-up' : 'chevron-down'}
-                size={19}
-                color={c.text3}
-                style={{ marginTop: 5 }}
-              />
-            </TouchableOpacity>
+              <Text style={styles.headerTitle} accessibilityRole="header">
+                {orderedTabs.length > 1 ? 'Library' : (TABS.find(tb => tb.key === activeTab)?.label || 'Library')}
+              </Text>
             </TourSpot>
             {/* The purpose, restated where the choosing happens. Tapping it
                 goes to the Compass, which is the only place that can change
@@ -898,6 +865,11 @@ export default function LibraryScreen() {
                 </TouchableOpacity>
               );
             })}
+            {/* Reorder the pages (the first one opens first). */}
+            <TouchableOpacity onPress={() => setTabMenuOpen(o => !o)} accessibilityRole="button"
+              accessibilityLabel="Reorder pages" hitSlop={6} style={{ paddingHorizontal: 8, justifyContent: 'center' }}>
+              <Ionicons name="swap-vertical-outline" size={17} color={c.text3} />
+            </TouchableOpacity>
           </View>
           </TourSpot>
         )}
@@ -918,8 +890,14 @@ export default function LibraryScreen() {
                     <TouchableOpacity
                       key={area.id}
                       style={styles.bubbleWrap}
-                      onPress={() => handleDomainPress(area, saved, rating)}
-                      onLongPress={() => openLifeArea(area, saved, rating)}
+                      // One tap opens it. Holding lists its tasks and notes
+                      // below (the filter). It used to be the other way:
+                      // a tap filtered and opening took a double-tap.
+                      onPress={() => openLifeArea(area, saved, rating)}
+                      onLongPress={() => selectDomain(area.id)}
+                      delayLongPress={350}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${area.label}. Hold to list its items here.`}
                       activeOpacity={0.85}
                     >
                       <LevelRing pct={(rating / 5) * 100} size={48} strokeWidth={3} color={areaColor} trackColor={c.bg2}>
@@ -945,9 +923,6 @@ export default function LibraryScreen() {
                   </TouchableOpacity>
                 )}
               </View>
-              {showSubtext && (
-                <Text style={styles.domainHint}>Double-tap or hold an area to open it · one tap filters the list</Text>
-              )}
             </View>
             </TourSpot>
 
@@ -1004,7 +979,7 @@ export default function LibraryScreen() {
                   <PreviewSection title="Check-in due" styles={styles}>
                     <TouchableOpacity onPress={() => openLifeArea(checkInDue[0].area, checkInDue[0].saved, checkInDue[0].rating)} accessibilityRole="button">
                       <Text style={styles.previewEmpty}>
-                        None of your areas are rated yet. Double-tap one above, or start with {checkInDue[0].area.label} →
+                        None of your areas are rated yet. Tap one above, or start with {checkInDue[0].area.label} →
                       </Text>
                     </TouchableOpacity>
                   </PreviewSection>
@@ -1265,7 +1240,6 @@ const makeStyles = (c, t, s, r, ui, accent) =>
       paddingHorizontal: 20,
       marginBottom: 20,
     },
-    titleBtn: { flexDirection: 'row', alignItems: 'center', gap: 7 },
     headerTitle: {
       fontSize: t.xxxl,
       fontFamily: ui.titleFont,

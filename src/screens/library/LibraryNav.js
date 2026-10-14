@@ -13,9 +13,6 @@ import AIBridgeScreen  from '../AIBridgeScreen';
 import WorkModeScreen   from '../WorkModeScreen';
 import WeeklyReviewScreen from '../WeeklyReviewScreen';
 
-// Classes
-import ClassesStack from '../ClassesStack';
-
 //planner
 import PlannerScreen from '../PlannerScreen';
 
@@ -88,7 +85,7 @@ const TOOL_SCREENS = new Set([
   ...LIBRARY_HUBS.flatMap(hub => hub.items.map(item => item.screen)),
   'LifeAreaScreen', 'PlannerScreen', 'CaptureInbox', 'KnowledgeScreen',
   'NotesScreen', 'ResearchScreen', 'ResourcesToolsScreen', 'IdeaGardenScreen',
-  'ClassesStack', 'WeeklyReviewScreen', 'ImportScreen', 'AIBridgeScreen', 'LabsScreen',
+  'WeeklyReviewScreen', 'ImportScreen', 'AIBridgeScreen', 'LabsScreen',
 ]);
 const libraryRouter = libraryStackRouter(TOOL_SCREENS);
 
@@ -176,8 +173,7 @@ export default function LibraryNavigator() {
       <Stack.Screen name="ResearchScreen"       component={KnowledgeScreen} options={{ title: 'Skills & Learning' }}   initialParams={{ initialType: 'all', initialArea: 'professional' }} />
       <Stack.Screen name="ResourcesToolsScreen" component={KnowledgeScreen} options={{ title: 'Resources & Tools' }}   initialParams={{ initialType: 'tool' }} />
         
-      {/* Classes */}
-      <Stack.Screen name="ClassesStack" component={ClassesStack} options={{ headerShown: false }} />
+      {/* Classes live in the Training tab now (src/screens/TrainingNav.js). */}
 
 {/* Sub-sections */}
 <Stack.Screen name="SleepRecoveryScreen"     component={AreaSectionScreen} options={{ title: 'Sleep & Recovery' }} />

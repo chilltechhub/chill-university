@@ -6,17 +6,24 @@
 //   to-do missed on Tuesday was gone from view on Wednesday unless someone
 //   paged back to look. (Missed habits don't carry over: tomorrow has its own.)
 //
+//   Past their day — open to-dos whose due date has gone by. The
+//   Notification Center's "from earlier" card counts them, so the review it
+//   opens has them too.
+//
 //   No day yet — open to-dos (the `tasks` table: Inbox "Create a Task",
 //   imports) with no due date. Nothing in the Planner showed them; Home's
 //   desk shows three. Giving one a day puts it in the Planner's Due list.
 //
-// Each list shows three and says how many more. One tap per decision.
+// Closed, it's one card: how many, plus Review & reschedule and Move all to
+// today. Twenty-four rows with three buttons each was a wall to face every
+// morning (2026-10-14). Open, each list shows three and says how many more.
+// One tap per decision.
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../api/profileScopedClient';
-import { completeInstance, skipInstance, AREAS } from '../api/plannerService';
+import { completeInstance, skipInstance, rescheduleInstance, AREAS } from '../api/plannerService';
 import { moveToToday } from '../api/reminderService';
 import { completeTask } from '../api/captureService';
 import { todayStr, addDays, dateStr } from '../logic/dateUtils';
@@ -31,17 +38,20 @@ function shortDay(iso) {
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-export default function PlannerBacklog({ userId, onChange, c, t, s, r }) {
+// `openAt` changes → open the review (Notification Center → Review & reschedule).
+export default function PlannerBacklog({ userId, onChange, openAt = 0, c, t, s, r }) {
   const [missed, setMissed] = useState([]);
   const [undated, setUndated] = useState([]);
-  const [open, setOpen] = useState({ missed: false, undated: false });
+  const [late, setLate] = useState([]);
+  const [open, setOpen] = useState({ missed: false, undated: false, late: false });
   const [busy, setBusy] = useState(null);
-  const [picking, setPicking] = useState(null); // task getting a day from the calendar
+  const [picking, setPicking] = useState(null); // { kind: 'task' | 'plan', item } getting a day from the calendar
+  const [reviewing, setReviewing] = useState(false);
 
   const load = useCallback(async () => {
     if (!userId) return;
     const today = todayStr();
-    const [m, u] = await Promise.all([
+    const [m, u, lt] = await Promise.all([
       supabase.from('agenda_instances')
         .select('id, title, date, area, start_time')
         .eq('user_id', userId).eq('cadence', 'once')
@@ -52,11 +62,17 @@ export default function PlannerBacklog({ userId, onChange, c, t, s, r }) {
         .select('id, title, created_at')
         .eq('user_id', userId).eq('completed', false).is('due_date', null)
         .order('created_at', { ascending: false }).limit(50),
+      supabase.from('tasks')
+        .select('id, title, due_date')
+        .eq('user_id', userId).eq('completed', false).lt('due_date', today)
+        .order('due_date', { ascending: false }).limit(50),
     ]);
     if (m.error) console.warn('[backlog] missed', m.error.message);
     if (u.error) console.warn('[backlog] undated', u.error.message);
     setMissed(m.data || []);
     setUndated(u.data || []);
+    if (lt.error) console.warn('[backlog] late', lt.error.message);
+    setLate(lt.data || []);
   }, [userId]);
 
   useEffect(() => { load(); }, [load]);
@@ -72,8 +88,11 @@ export default function PlannerBacklog({ userId, onChange, c, t, s, r }) {
     const { error } = await supabase.from('tasks').update({ due_date: iso }).eq('id', task.id);
     if (error) throw error;
   });
+  const setPlanDay = (plan, iso) => act(`m-${plan.id}`, () => rescheduleInstance(plan.id, iso));
 
-  if (!missed.length && !undated.length) return null;
+  useEffect(() => { if (openAt) setReviewing(true); }, [openAt]);
+
+  if (!missed.length && !undated.length && !late.length) return null;
 
   const chip = (label, onPress, { filled = false, color = c.teal, a11y } = {}) => (
     <TouchableOpacity onPress={onPress} accessibilityRole="button" accessibilityLabel={a11y || label}
@@ -108,9 +127,49 @@ export default function PlannerBacklog({ userId, onChange, c, t, s, r }) {
   const undatedShown = open.undated ? undated : undated.slice(0, SHOWN);
   const today = todayStr();
 
+  const moveAll = missed.length > 1 && (
+    <TouchableOpacity onPress={() => act('all', () => moveToToday(missed.map(m => m.id)))} accessibilityRole="button"
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6 }}>
+      {busy === 'all' ? <ActivityIndicator size="small" color={c.teal} /> : <Ionicons name="arrow-forward-circle-outline" size={16} color={c.teal} />}
+      <Text style={{ fontSize: 13, fontWeight: '700', color: c.teal }}>Move all {missed.length} to today</Text>
+    </TouchableOpacity>
+  );
+
+  const lateShown = open.late ? late : late.slice(0, SHOWN);
+  const fromEarlier = missed.length + late.length;
+  const summary = [
+    fromEarlier ? `**${fromEarlier} from earlier**` : null,
+    undated.length ? `**${undated.length}** with no day` : null,
+  ].filter(Boolean).join(' · ');
+
+  if (!reviewing) {
+    return (
+      <View style={{ marginHorizontal: s.lg, marginBottom: s.md, padding: s.md, borderRadius: r.lg,
+        backgroundColor: c.bg1, borderWidth: 0.5, borderColor: c.border, gap: s.sm }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm }}>
+          <Ionicons name="time-outline" size={18} color={c.gold} />
+          <RichText style={{ flex: 1, fontSize: t.sm, color: c.text2 }} boldStyle={{ color: c.text1 }}>{summary}</RichText>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: s.md }}>
+          <TouchableOpacity onPress={() => setReviewing(true)} accessibilityRole="button"
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: r.full, backgroundColor: c.teal }}>
+            <Ionicons name="list-outline" size={15} color={c.onFill} />
+            <Text style={{ fontSize: 13, fontWeight: '700', color: c.onFill }}>Review & reschedule</Text>
+          </TouchableOpacity>
+          {moveAll}
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={{ marginHorizontal: s.lg, marginBottom: s.md, padding: s.md, borderRadius: r.lg,
       backgroundColor: c.bg1, borderWidth: 0.5, borderColor: c.border, gap: s.md }}>
+      <TouchableOpacity onPress={() => setReviewing(false)} accessibilityRole="button" accessibilityLabel="Close the review"
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-end' }}>
+        <Text style={{ fontSize: 12, fontWeight: '700', color: c.text3 }}>Done reviewing</Text>
+        <Ionicons name="chevron-up" size={14} color={c.text3} />
+      </TouchableOpacity>
 
       {missed.length > 0 && (
         <View>
@@ -119,16 +178,25 @@ export default function PlannerBacklog({ userId, onChange, c, t, s, r }) {
             `${AREAS[m.area]?.label || 'Planner'} · ${shortDay(m.date)}`,
             <>
               {chip('Today', () => act(`m-${m.id}`, () => moveToToday([m.id])), { filled: true, a11y: `Move ${m.title} to today` })}
+              {chip('Tomorrow', () => setPlanDay(m, addDays(today, 1)), { a11y: `Move ${m.title} to tomorrow` })}
+              {chip('Pick a day', () => setPicking({ kind: 'plan', item: m }), { a11y: `Pick a day for ${m.title}` })}
               {chip('Done', () => act(`m-${m.id}`, () => completeInstance(m.id, true)), { a11y: `Mark ${m.title} done` })}
               {chip('Drop', () => act(`m-${m.id}`, () => skipInstance(m.id)), { color: c.text3, a11y: `Drop ${m.title}` })}
             </>))}
-          {missed.length > 1 && (
-            <TouchableOpacity onPress={() => act('all', () => moveToToday(missed.map(m => m.id)))} accessibilityRole="button"
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: s.sm }}>
-              {busy === 'all' ? <ActivityIndicator size="small" color={c.teal} /> : <Ionicons name="arrow-forward-circle-outline" size={16} color={c.teal} />}
-              <Text style={{ fontSize: 13, fontWeight: '700', color: c.teal }}>Move all {missed.length} to today</Text>
-            </TouchableOpacity>
-          )}
+          {moveAll}
+        </View>
+      )}
+
+      {late.length > 0 && (
+        <View>
+          {header(`**${late.length} to-do${late.length === 1 ? '' : 's'}** past their day`, late.length, 'late')}
+          {lateShown.map(task => row(`t-${task.id}`, task.title, `Was due ${shortDay(task.due_date)}`,
+            <>
+              {chip('Today', () => setTaskDay(task, today), { filled: true, a11y: `Do ${task.title} today` })}
+              {chip('Tomorrow', () => setTaskDay(task, addDays(today, 1)), { a11y: `Do ${task.title} tomorrow` })}
+              {chip('Pick a day', () => setPicking({ kind: 'task', item: task }), { a11y: `Pick a day for ${task.title}` })}
+              {chip('Done', () => act(`t-${task.id}`, () => completeTask(task.id, true)), { color: c.text3, a11y: `Mark ${task.title} done` })}
+            </>))}
         </View>
       )}
 
@@ -139,7 +207,7 @@ export default function PlannerBacklog({ userId, onChange, c, t, s, r }) {
             <>
               {chip('Today', () => setTaskDay(task, today), { filled: true, a11y: `Do ${task.title} today` })}
               {chip('Tomorrow', () => setTaskDay(task, addDays(today, 1)), { a11y: `Do ${task.title} tomorrow` })}
-              {chip('Pick a day', () => setPicking(task), { a11y: `Pick a day for ${task.title}` })}
+              {chip('Pick a day', () => setPicking({ kind: 'task', item: task }), { a11y: `Pick a day for ${task.title}` })}
               {chip('Done', () => act(`t-${task.id}`, () => completeTask(task.id, true)), { color: c.text3, a11y: `Mark ${task.title} done` })}
             </>))}
         </View>
@@ -150,12 +218,17 @@ export default function PlannerBacklog({ userId, onChange, c, t, s, r }) {
           style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: s.lg }}>
           <TouchableOpacity activeOpacity={1} style={{ backgroundColor: c.bg1, borderRadius: r.lg, padding: s.lg }}>
             <Text style={{ fontSize: t.md, fontWeight: '700', color: c.text1, marginBottom: s.sm }} numberOfLines={2}>
-              {picking?.title}
+              {picking?.item?.title}
             </Text>
             {picking && (
               <MiniCalendar value={new Date()} minIso={today} color={c.teal}
                 colors={{ bg: c.bg0, text: c.text1, muted: c.text3 }}
-                onChange={(d) => { const task = picking; setPicking(null); setTaskDay(task, dateStr(d)); }} />
+                onChange={(d) => {
+                  const { kind, item } = picking;
+                  setPicking(null);
+                  if (kind === 'plan') setPlanDay(item, dateStr(d));
+                  else setTaskDay(item, dateStr(d));
+                }} />
             )}
           </TouchableOpacity>
         </TouchableOpacity>

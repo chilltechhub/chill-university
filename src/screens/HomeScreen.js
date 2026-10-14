@@ -28,6 +28,7 @@ import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../api/offlineCac
 import { syncReminders, computeReminderState } from '../logic/notificationScheduler';
 import TourSpot from '../components/TourSpot';
 import RememberThis from '../components/RememberThis';
+import TodayReview from '../components/TodayReview';
 import CalendarModal from '../components/CalendarModal';
 import PlanDetailSheet from '../components/PlanDetailSheet';
 import WidgetBoard from '../components/WidgetBoard';
@@ -53,6 +54,7 @@ import { starterWidgetLayout } from '../logic/experienceStage';
 import { useReducedMotion } from '../logic/a11yPrefs';
 import useCharacterLoadout from '../logic/useCharacterLoadout';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
+import { goToScreen } from '../logic/appRoutes';
 import { RANK_LABELS } from '../theme';
 import { GAMES_MASTER } from './GamesScreen';
 import { LIFE_AREAS } from './library/LifeAreaScreen';
@@ -77,7 +79,7 @@ const CHECKIN_DUE_DAYS = 7;
 
 // The four "study" destinations the STUDY button picks randomly among (tap),
 // or lets you choose explicitly (hold). Screen names match the Stack.Screen
-// names registered in LibraryNav.js.
+// names registered in LibraryNav.js (Classes: TrainingNav.js).
 // Ordered: a tap on STUDY goes to the first one this stage shows (Classes
 // whenever it's open); a long press lists them all.
 const STUDY_DESTINATIONS = [
@@ -1712,6 +1714,8 @@ export default function HomeScreen() {
   // Every Library destination reachable this way also has its own back
   // button as a hard backstop in case this priming doesn't land in time.
   const goToLibraryScreen = (screen, params) => {
+    // Classes moved to the Training tab (src/screens/TrainingNav.js).
+    if (screen === 'ClassesStack') return goToScreen(navigation, 'ClassesStack', params);
     navigation.navigate('Library');
     setTimeout(() => navigation.navigate('Library', { screen, params }), 0);
   };
@@ -2354,8 +2358,8 @@ export default function HomeScreen() {
               key: 'dailyDrills', title: "Today's Drills",
               render: () => (
                 <DailyDrillsWidget
-                  onOpenTraining={() => navigation.navigate('Training')}
-                  onOpenDrills={() => navigation.navigate('Training', { openDrills: true })}
+                  onOpenTraining={() => goToScreen(navigation, 'Training')}
+                  onOpenDrills={() => goToScreen(navigation, 'Training', { openDrills: true })}
                   onPlay={(gameId) => navigation.navigate('Play', { gameId })}
                 />
               ),
@@ -2449,6 +2453,12 @@ export default function HomeScreen() {
             },
           ]}
         />
+        {/* About a minute of review, only when something is due. Under the
+            cards so it never competes with the goal. */}
+        {!editingWidgets && (
+          <TodayReview userId={userId} navigation={navigation} ui={ui}
+            skipTakeaway={shownBoardLayout.some(l => l.key === 'wisdom' && !l.hidden)} />
+        )}
       </ScrollView>
 
       {/* ── "New widget available" ──

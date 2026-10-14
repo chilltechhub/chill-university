@@ -26,6 +26,7 @@ import { catalogCounts } from '../data/topicCatalog';
 import { useQuestProgress } from '../logic/questProgress';
 import { useBandFraming, bandLabel } from '../logic/useGradeLevel';
 import { getLessonState } from '../logic/lessonProgress';
+import { goToScreen } from '../logic/appRoutes';
 
 const GRADE_BAND_KEY = '@cth_academy_grade_band';
 const BANDS = ['All', 'K-2', '3-5', '6-8', '9-12'];
@@ -113,7 +114,8 @@ export default function Classes() {
     }));
     return map;
   }, [myKnowledge]);
-  const openEntry = (entry) => navigation.navigate('KnowledgeScreen', { focusId: entry.id });
+  // The Vault is a Library screen; Classes sit in the Training tab.
+  const openEntry = (entry) => goToScreen(navigation, 'KnowledgeScreen', { focusId: entry.id });
 
   // The last lesson opened (lessonProgress.js), so coming back to Classes
   // is one tap back into it instead of finding the subject and topic again.
@@ -235,7 +237,7 @@ export default function Classes() {
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button"
-          onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('LibraryScreen'))}
+          onPress={() => (navigation.canGoBack() ? navigation.goBack() : goToScreen(navigation, 'Training'))}
           style={{ marginBottom: 10 }}
         >
           <Ionicons name="chevron-back" size={22} color={c.teal} />
@@ -349,7 +351,7 @@ export default function Classes() {
               <TouchableOpacity
                 key={'weak-' + i}
                 style={[styles.recCard, { borderTopColor: rec.subjectColor || c.gold }]}
-                onPress={() => navigation.navigate(rec.screen)}
+                onPress={() => goToScreen(navigation, rec.screen)}
                 activeOpacity={0.85}
               >
                 {showEmojis && rec.gameIcon
@@ -539,7 +541,7 @@ export default function Classes() {
             ))}
             <TouchableOpacity
               style={[styles.subItemContainer, { borderBottomWidth: 0 }]}
-              onPress={() => navigation.navigate('KnowledgeScreen', { initialType: 'note' })}
+              onPress={() => goToScreen(navigation, 'KnowledgeScreen', { initialType: 'note' })}
               activeOpacity={0.7}
             >
               <Ionicons name="library-outline" size={14} color={c.gold} style={{ marginRight: 8 }} />
@@ -557,7 +559,7 @@ export default function Classes() {
         subjects={mergedSubjects.map(subj => subj.title)}
         userId={user?.id}
         onSaved={loadMyKnowledge}
-        onOpenVault={(area) => navigation.navigate('KnowledgeScreen', { initialType: 'note', ...(area ? { initialArea: area } : {}) })}
+        onOpenVault={(area) => goToScreen(navigation, 'KnowledgeScreen', { initialType: 'note', ...(area ? { initialArea: area } : {}) })}
         c={c} t={t} r={r}
       />
 

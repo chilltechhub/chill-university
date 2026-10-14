@@ -31,7 +31,7 @@ export const FIRST_GOAL_GUIDE = {
   'first-steps': {
     area: {
       go: 'LifeAreaScreen', params: 'firstArea', spot: 'lifearea-rating', mode: 'tap',
-      path: "Library → double-tap a life area",
+      path: "Library → tap a life area",
       say: "Tap the **number** that fits this area right now. Only you see it.",
     },
     habit: {
@@ -44,12 +44,12 @@ export const FIRST_GOAL_GUIDE = {
   'first-look': {
     area: {
       go: 'LifeAreaScreen', params: 'firstArea', spot: 'lifearea-rating', mode: 'tap',
-      path: "Library → double-tap a life area",
+      path: "Library → tap a life area",
       say: "Tap the **number** that fits this area right now. Only you see it.",
     },
     log: {
       go: 'LifeAreaScreen', params: 'ratedArea', spot: 'lifearea-quicklog', mode: 'tap',
-      path: "Library → double-tap a life area",
+      path: "Library → tap a life area",
       say: "Tap one to **log** something you did today. Small counts.",
     },
     drill: DRILL("Tap here and play **one round**. It ticks itself when the round ends."),
@@ -57,7 +57,7 @@ export const FIRST_GOAL_GUIDE = {
   'first-study-session': {
     class: {
       go: 'ClassesMain', mode: 'point',
-      path: "Library → Knowledge → Academy Classes",
+      path: "Training → Classes",
       say: "Pick **any subject**, then open one topic.",
     },
     drill: DRILL("Tap here and play **one round**. It ticks itself when the round ends."),
@@ -147,11 +147,11 @@ export const FIRST_GOAL_GUIDE = {
     rate: {
       go: 'LibraryScreen', spot: 'library-life-areas', mode: 'point',
       path: "Library",
-      say: "Each circle is a **part of your life**. **Double-tap** the one to improve, then tap a **number**. Only you see it.",
+      say: "Each circle is a **part of your life**. **Tap** the one to improve, then tap a **number**. Only you see it.",
     },
     log: {
       go: 'LifeAreaScreen', params: 'ratedArea', spot: 'lifearea-quicklog', mode: 'tap',
-      path: "Library → double-tap a life area",
+      path: "Library → tap a life area",
       say: "Tap one to **log** something you did. Small counts.",
     },
     plan: {
@@ -164,9 +164,9 @@ export const FIRST_GOAL_GUIDE = {
     rate: {
       go: 'LibraryScreen', spot: 'library-life-areas', mode: 'point',
       path: "Library",
-      say: "**Double-tap** a circle, tap a **number**, come back. Do **three**.",
+      say: "**Tap** a circle, tap a **number**, come back. Do **three**.",
       // Said after each one that counts, by the "1 of 3" note.
-      more: "Tap the **arrow** (top left), then double-tap the next one.",
+      more: "Tap the **arrow** (top left), then tap the next one.",
     },
     weigh: {
       go: 'CaptureInbox', spot: 'inbox-capture', mode: 'tap',
@@ -216,7 +216,7 @@ export const FIRST_GOAL_GUIDE = {
   'first-money-look': {
     area: {
       go: 'LifeAreaScreen', params: { areaId: 'financial' }, spot: 'lifearea-rating', mode: 'tap',
-      path: "Library → double-tap Financial",
+      path: "Library → tap Financial",
       say: "Tap the **number** that fits your money **today**. Only you see it.",
     },
     capture: {

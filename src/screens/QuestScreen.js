@@ -28,6 +28,7 @@ import {
 import ReminderComposer from '../components/ReminderComposer';
 import { shareText, milestoneText } from '../logic/shareOut';
 import { optionOrder } from '../logic/optionOrder';
+import { goToScreen } from '../logic/appRoutes';
 
 // Pass mark for the check: four in five. Missed questions can be retried
 // straight away; the explanations are there to learn from, not to punish.
@@ -648,7 +649,7 @@ function DoneStep({ quest, progress, userId, navigation, from, ui }) {
 
       <PrimaryButton label="Done" onPress={() => leaveQuest(navigation, from)} ui={ui} />
       {userId && (progress.explanation || progress.source?.title) ? (
-        <SecondaryButton label="Open my Vault" icon="library-outline" onPress={() => navigation.navigate('KnowledgeScreen')} ui={ui} />
+        <SecondaryButton label="Open my Vault" icon="library-outline" onPress={() => goToScreen(navigation, 'KnowledgeScreen')} ui={ui} />
       ) : null}
       <SecondaryButton
         label={shareNote || 'Share that you finished it'}

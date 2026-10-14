@@ -46,6 +46,7 @@ import {
   PERSONALITY_ITEMS, LIFE_PATH_MAP, LIFE_RUNGS, QUALITY_MAP, findItem, findRung,
 } from '../../../data/wayfinderDeeper';
 import { SITUATION_MAP, MAX_SITUATIONS, situationsFor } from '../../../data/wayfinderSituations';
+import { goToScreen } from '../../../logic/appRoutes';
 import {
   personalityAnswered, personalityScores, fourLetter, suggestLifePaths, urgentSituations, formatsFromLearning,
 } from '../../../logic/wayfinderDeeper';
@@ -317,7 +318,8 @@ export default function WayfinderScreen() {
       return;
     }
     if (link.tab) { navigation.navigate(link.tab); return; }
-    if (link.screen) navigation.navigate(link.screen, link.params);
+    // goToScreen: some links (Academy classes) live outside the Library.
+    if (link.screen) goToScreen(navigation, link.screen, link.params);
   };
 
   const applyFormatsToRecs = async () => {

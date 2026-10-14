@@ -35,13 +35,15 @@ const build = (data, env = {}) => N.buildNotices(data, { ...ENV, ...env });
     { id: 'p5', title: 'Dinner', date: '2026-09-21', start_time: '19:00' },
   ];
   const out = build({ planner, tasks: [{ id: 't1', title: 'Essay', due_date: '2026-09-18', completed: false }] });
-  const overdue = out.find(n => n.id.startsWith('plan-overdue'));
-  check('overdue: only open, within a week', show(overdue?.primary.payload) === show(['p1']), show(overdue));
-  check('overdue: has AI help', overdue?.ai?.target === 'planner');
+  const overdue = out.find(n => n.id.startsWith('catch-up'));
+  check('catch-up: only open plans, within a week', show(overdue?.secondary?.payload) === show(['p1']), show(overdue));
+  check('catch-up: one button to the Planner review', overdue?.primary?.target?.params?.review === true, show(overdue?.primary));
+  check('catch-up: has AI help', overdue?.ai?.target === 'planner');
   const next = out.find(n => n.id.startsWith('plan-next'));
   check('next: the 3:30 plan', next?.id === 'plan-next:p4' && /3:30 PM/.test(next.title), show(next));
   check('next: mentions what follows', /Dinner/.test(next?.body || ''));
-  check('tasks overdue', out.some(n => n.id.startsWith('tasks-overdue')));
+  check('catch-up: late tasks join the same card', /1 task overdue/.test(overdue?.body || '') && /Essay/.test(overdue?.body || ''), overdue?.body);
+  check('catch-up: one card, not two', out.filter(n => n.cat === 'schedule' && /earlier|overdue|slipped/.test(n.title)).length === 1, show(ids(out)));
 
   const far = build({ planner: [{ id: 'p9', title: 'Late', date: '2026-09-21', start_time: '20:00' }] });
   check('next: nothing more than 3h out', !far.some(n => n.id.startsWith('plan-next')), show(ids(far)));
