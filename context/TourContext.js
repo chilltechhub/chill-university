@@ -29,6 +29,7 @@ import React, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TOUR_STEPS } from '../src/logic/tourSteps';
 import { buildScreenTutorial } from '../src/logic/screenTutorials';
+import { peekSetting, SETTING_KEYS } from '../src/logic/useSetting';
 import { useAccess } from './AccessContext';
 import { getObjective } from '../src/data/objectives';
 
@@ -86,8 +87,13 @@ export function TourProvider({ children }) {
   const { can, purpose, firstGoalId, isFeatureShown, experienceMode } = useAccess();
   // Which tools a screen tutorial may talk about. Life Areas is the
   // Library's Life page, which Level up always shows (LibraryScreen).
+  // Home's Study & Play buttons can be switched off in Settings; Home has
+  // read the setting by the time its tutorial runs, so the cache is warm.
   const showsTool = useCallback(
-    (feature) => (feature === 'life-areas' && experienceMode === 'auto') || isFeatureShown(feature),
+    (feature) => {
+      if (feature === 'home-quick-buttons') return peekSetting(SETTING_KEYS.HOME_QUICK_BUTTONS, true) !== false;
+      return (feature === 'life-areas' && experienceMode === 'auto') || isFeatureShown(feature);
+    },
     [isFeatureShown, experienceMode],
   );
   const [active, setActive] = useState(false);

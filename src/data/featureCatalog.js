@@ -40,6 +40,11 @@
 //               Mode for the Lesson Builder). One more way in, and the lock
 //               knows about it — not a side door around the lock.
 //   why         shown on the lock — what you get, in plain words.
+//   social      only worth showing once there are people on it. Hidden
+//               while app_config 'social_on' is off (featureAccess.js).
+
+// Social screens outside this catalog, hidden by the same switch.
+export const SOCIAL_SCREENS = ['Leaderboard'];
 
 export const FEATURES = [
   /* ── Always open ─────────────────────────────────────────────────────── */
@@ -218,6 +223,7 @@ export const FEATURES = [
   },
   {
     id: 'discover',
+    social: true,
     label: 'Community',
     screen: 'DiscoverScreen',
     icon: 'people-outline',
@@ -273,6 +279,7 @@ export const FEATURES = [
   /* ── Experimental — real, rough, opt-in ───────────────────────────────── */
   {
     id: 'labs',
+    social: true,
     label: 'Labs',
     screen: 'LabsScreen',
     icon: 'flask-outline',
@@ -284,6 +291,7 @@ export const FEATURES = [
   },
   {
     id: 'mentors',
+    social: true,
     label: 'Mentors & Experts',
     screen: 'MentorsScreen',
     icon: 'person-add-outline',
@@ -295,6 +303,7 @@ export const FEATURES = [
   },
   {
     id: 'community-feed',
+    social: true,
     label: 'Community Feed',
     screen: 'CommunityFeedScreen',
     icon: 'chatbubbles-outline',
@@ -306,6 +315,7 @@ export const FEATURES = [
   },
   {
     id: 'fellow-scholars',
+    social: true,
     label: 'Fellow Scholars',
     screen: 'FellowScholarsScreen',
     icon: 'people-circle-outline',
@@ -328,16 +338,19 @@ export const FEATURES = [
     blurb: 'Run a class, team or group: rosters, invites, assignments, progress.',
     why: 'Multi-seat tooling — invite codes, cohort rosters, assignment tracking across other people’s accounts.',
   },
+  // Was sold in Plus as "Deep Insights", but the screen only ever had game
+  // stats, no trends. Free and named for what it is until real insights
+  // (tasks, habits, focus, learned → used) are built.
   {
     id: 'insights',
-    label: 'Deep Insights',
+    label: 'Game Stats',
     screen: 'Stats',
     icon: 'analytics-outline',
-    gate: 'paid',
+    gate: 'open',
     depth: 'deep',
-    purposes: ['habits', 'learn', 'career'],
-    blurb: 'Long-range trends across subjects, streaks and sessions.',
-    why: 'Full history rather than the last fortnight, with per-subject breakdowns.',
+    purposes: ['learn'],
+    blurb: 'Accuracy, best times, levels and subject progress from your games.',
+    why: 'See how your games are going, subject by subject.',
   },
   {
     id: 'ai-import',
@@ -351,18 +364,8 @@ export const FEATURES = [
     blurb: 'Point it at messy text and it sorts what it found into real items.',
     why: 'Parsing runs against a paid model, so this one genuinely costs money per use.',
   },
-  {
-    id: 'custom-paths',
-    label: 'Custom Goals',
-    screen: null,
-    parent: 'compass',
-    icon: 'git-branch-outline',
-    gate: 'paid',
-    depth: 'deep',
-    purposes: ['habits', 'build', 'learn', 'wellbeing', 'money', 'career'],
-    blurb: 'Write your own goal and its steps instead of picking one of ours.',
-    why: 'For when none of the nine built-in goals is the thing you are actually trying to do.',
-  },
+  // 'custom-paths' (Custom Goals) was listed here and sold in Plus with no
+  // screen behind it. Removed until it's built.
 ];
 
 export const FEATURE_BY_ID = Object.fromEntries(FEATURES.map(f => [f.id, f]));

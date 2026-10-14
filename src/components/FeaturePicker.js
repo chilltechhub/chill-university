@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { PICK_GROUPS, PICKABLES } from '../data/pickables';
 import { getFeature } from '../data/featureCatalog';
+import { pickableAvailable } from '../logic/featureAccess';
 import RichText from './RichText';
 
 const HINT = {
@@ -23,18 +24,17 @@ const HINT = {
   full: 'Everything is on. **Untick** what you don’t want.',
 };
 
-// Plus items only while Plus can be bought; otherwise they're a lock
-// without a key (featureAccess hides them everywhere else too).
-export function pickableAvailable(item, { plusOnSale = false } = {}) {
-  return !(item.features || []).some(f => getFeature(f)?.gate === 'paid') || plusOnSale;
-}
+// Plus items only while Plus can be bought, social ones only while
+// 'social_on' is set; otherwise they're a lock without a key. Lives in
+// featureAccess.js so AccessContext can use it too.
+export { pickableAvailable };
 
-export default function FeaturePicker({ track = 'picks', picks = [], recommended = [], onChange, plusOnSale = false }) {
+export default function FeaturePicker({ track = 'picks', picks = [], recommended = [], onChange, plusOnSale = false, socialOn = false }) {
   const { colors: c, typography: t, spacing: s, radius: r, accent } = useTheme();
   const tint = accent?.primary || c.teal;
   const ticked = new Set(picks);
   const rec = new Set(recommended);
-  const items = PICKABLES.filter(p => pickableAvailable(p, { plusOnSale }));
+  const items = PICKABLES.filter(p => pickableAvailable(p, { plusOnSale, socialOn }));
   const included = (id) => track === 'auto' && rec.has(id);
 
   const toggle = (id) => {

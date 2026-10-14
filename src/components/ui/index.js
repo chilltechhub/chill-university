@@ -155,8 +155,10 @@ export function EmptyState({ icon, title, body, action, secondary, compact, styl
       )}
       {!!title && <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, textAlign: compact ? 'left' : 'center' }}>{title}</Text>}
       {!!body && <Text style={{ fontSize: t.sm, color: c.text2, lineHeight: 20, textAlign: compact ? 'left' : 'center', maxWidth: 320 }}>{body}</Text>}
-      {action && <Button {...action} size={compact ? 'sm' : 'md'} fullWidth={false} style={{ marginTop: s.sm }} />}
-      {secondary && <Button {...secondary} variant="ghost" size="sm" fullWidth={false} />}
+      {/* Button's own alignSelf is flex-start; centred here, it sat left of
+          a centred title and body. */}
+      {action && <Button {...action} size={compact ? 'sm' : 'md'} fullWidth={false} style={{ marginTop: s.sm, ...(compact ? null : { alignSelf: 'center' }) }} />}
+      {secondary && <Button {...secondary} variant="ghost" size="sm" fullWidth={false} style={compact ? undefined : { alignSelf: 'center' }} />}
     </View>
   );
 }

@@ -275,6 +275,7 @@ export default function ProjectDetailScreen() {
       setProject(p => ({ ...p, status }));
       if (status === 'completed') {
         signalAction('project-shipped');
+        recordAction('project_done', project.id);
         // It's in the Portfolio now too: finished projects are listed there
         // by themselves, so "see it in your Portfolio" is already true.
         signalAction('portfolio-added', { section: 'projects' });

@@ -32,18 +32,14 @@ import { FONTS } from '../theme';
 const PERKS = [
   { icon: 'briefcase-outline', title: 'Every business & startup course',
     body: 'All of Business Foundations, Acquisition & Ownership, Startup & Venture and Operations & Compliance. The first lesson of each level is free, and Plus opens the rest.' },
-  { icon: 'analytics-outline', title: 'Deep Insights',
-    body: 'Your full history, with trends for each subject, not just the last two weeks.' },
   { icon: 'sparkles-outline', title: 'AI Import',
     body: 'Paste messy notes and they get sorted into real tasks, ideas and links.' },
-  { icon: 'git-branch-outline', title: 'Custom Goals',
-    body: 'Write your own goal and its steps when none of ours fits.' },
   { icon: 'business-outline', title: 'Organizations & Cohorts',
     body: 'Run a class, team or group, with rosters, invites and assignments.' },
 ];
 
 // What they bumped into, said back to them. `feature` with a featureId
-// names the tool ("Deep Insights is part of Plus.").
+// names the tool ("AI Import is part of Plus.").
 const FROM_COPY = {
   business: 'The rest of this course is part of Plus.',
   feature: 'That one is part of Plus.',

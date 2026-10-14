@@ -523,10 +523,10 @@ export function StartModeStep({ data, set, theme }) {
 export function recommendedPicksFor(data) {
   return recommendedFrom(openedAt(data.active_persona || 'PERSONAL', 1, { aim: data.aim, exploring: !!data.exploring }));
 }
-export function picksForData(data, { plusOnSale = false } = {}) {
+export function picksForData(data, { plusOnSale = false, socialOn = false } = {}) {
   if (data.picks_touched && Array.isArray(data.picks)) return data.picks;
   if (data.experience_mode === 'full') {
-    return PICKABLES.filter(p => !p.labs && pickableAvailable(p, { plusOnSale })).map(p => p.id);
+    return PICKABLES.filter(p => !p.labs && pickableAvailable(p, { plusOnSale, socialOn })).map(p => p.id);
   }
   return recommendedPicksFor(data);
 }
@@ -535,9 +535,9 @@ export function picksForData(data, { plusOnSale = false } = {}) {
 // Every part of the app, recommended ones ticked. See FeaturePicker.
 export function PickFeaturesStep({ data, set, theme }) {
   const st = stepStyles(theme);
-  const { plusOnSale } = useAccess();
+  const { plusOnSale, socialOn } = useAccess();
   const track = TRACK_CHOICES.some(o => o.key === data.experience_mode) ? data.experience_mode : 'picks';
-  const picks = picksForData(data, { plusOnSale });
+  const picks = picksForData(data, { plusOnSale, socialOn });
   const title = track === 'full' ? 'Hide anything?' : track === 'auto' ? 'Want anything now?' : 'Pick your features';
   return (
     <View style={st.stepContent}>
@@ -548,6 +548,7 @@ export function PickFeaturesStep({ data, set, theme }) {
         picks={picks}
         recommended={recommendedPicksFor(data)}
         plusOnSale={plusOnSale}
+        socialOn={socialOn}
         onChange={(list) => { set('picks', list); set('picks_touched', true); }}
       />
     </View>

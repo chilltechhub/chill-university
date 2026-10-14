@@ -4,6 +4,10 @@ import { getRank } from './rankUtils';
 import { todayStr, addDays } from './dateUtils';
 import { QUEST_XP } from '../data/quests';
 import { drillCriteria, drillIsCounted, drillIsPlayable, drillCounts, pickDrills } from './drills';
+import { claimGameXp } from './gameXpCap';
+
+// Playing a game: these pay XP only up to the daily cap (gameXpCap.js).
+const GAME_XP_TYPES = new Set(['QUESTION_ANSWERED', 'LEVEL_COMPLETED', 'GAME_COMPLETED']);
 
 /* ─── Profile + missions loaders ─────────────────────────────────────────── */
 
@@ -248,6 +252,7 @@ async function handleGameEventNow(event) {
   if (type === 'QUESTION_ANSWERED' || type === 'GAME_COMPLETED' || type === 'LEVEL_COMPLETED') noteGamePlayed();
 
   const rewards = calculateRewards({ type, correct, difficulty, metadata });
+  if (GAME_XP_TYPES.has(type)) rewards.xp = await claimGameXp(userId, rewards.xp);
 
   const { error: logError } = await supabase.from('activity_log').insert({
     user_id:       userId,
@@ -510,10 +515,12 @@ export async function advanceTopicMission(userId, subjectKey) {
 
 /* ─── Real actions ──────────────────────────────────────────────────────────
  * The one call for "the person did something" (record_action(),
- * 20260930140000): it keeps the streak going, and real-life kinds earn a
- * little XP (5 each, 50 a day, the same item once a day).
- *   planner_done, task_done, project_step, area_action, goal_done, checkin  → XP + streak
- *   game, lesson, quest                                         → streak only
+ * 20260930140000, 20261014120000): it keeps the streak going, and real-life
+ * kinds earn XP, more than games (capped at 100 a day, gameXpCap.js):
+ *   planner_done, task_done, area_action, checkin  10   project_step 20
+ *   goal_done 50   project_done 100 (once per project)  → XP + streak, 300 a day
+ *   game, lesson, quest                                  → streak only
+ * The same item pays once a day.
  * Opening the app no longer counts as a day: something has to be done.
  * Fire and forget: callers never wait on it, and it never throws.
  */
@@ -521,6 +528,7 @@ export const REAL_ACTION_LABELS = {
   planner_done: 'Planner item done',
   task_done:    'Task done',
   project_step: 'Project step done',
+  project_done: 'Project shipped',
   area_action:  'Life area action',
   goal_done:    'Goal finished',
   checkin:      'Checked in',

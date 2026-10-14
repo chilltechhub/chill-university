@@ -49,10 +49,10 @@ import { alreadyHas } from '../src/api/existingWorkService';
 import { onPlanDone } from '../src/api/plannerService';
 import { ageStatus, contentAllowed, gameAllowed } from '../src/logic/allowed';
 import { cacheWrite } from '../src/api/offlineCache';
-import { FEATURES, getFeature, featureForScreen, featuresUnlockedBy } from '../src/data/featureCatalog';
+import { FEATURES, getFeature, featureForScreen, featuresUnlockedBy, SOCIAL_SCREENS } from '../src/data/featureCatalog';
 import { getObjective, getPurpose, suggestPurpose } from '../src/data/objectives';
 import { gradeTest } from '../src/data/competencyTests';
-import { evaluateAccess, objectiveProgress, planActive as planIsActive, rankForPurpose, signalTarget } from '../src/logic/featureAccess';
+import { evaluateAccess, objectiveProgress, planActive as planIsActive, rankForPurpose, signalTarget, pickableAvailable } from '../src/logic/featureAccess';
 import {
   stageFromProgress, resolveStage, openedAt, openedForTrack, screenShownAtStage, visibleGameIdsFor,
   fabActionsFor, nextStageNeeds, stagesBetween, reteachBetween, firstGoalFor, pathFor,
@@ -123,6 +123,9 @@ export function AccessProvider({ children }) {
      Plus can't be bought yet (no payment SDK), so its doors stay out of
      sight until the 'plus_on_sale' app_config row says otherwise. */
   const plusOnSale = useFeatureFlag('plus_on_sale', false);
+  // Social tools (Community, Labs, the Leaderboard) stay hidden until there
+  // are people to see: app_config 'social_on' turns them on.
+  const socialOn = useFeatureFlag('social_on', false);
   const [doorSettings, setDoorSettings] = useState({});
   useEffect(() => {
     let alive = true;
@@ -434,7 +437,7 @@ export function AccessProvider({ children }) {
         const pathFeatures = pathFor(persona).slice(seen).flatMap(st => [...(st.features || []), ...(st.screens || [])]);
         const suggest = nextSuggestion({
           picks: picks || [], declined: declinedPicks, earnedFeatures: earnedRef.current, pathFeatures,
-          allowed: (item) => !item.labs && !(item.features || []).some(f => getFeature(f)?.gate === 'paid' && !plusOnSale),
+          allowed: (item) => !item.labs && pickableAvailable(item, { plusOnSale, socialOn }),
         });
         earnedRef.current = [];
         if (suggest) setStageEvents(q => (q.some(e => e.suggest) ? q : [...q, { suggest, from: seen, to: derivedStage }]));
@@ -465,7 +468,7 @@ export function AccessProvider({ children }) {
       }
     })();
     return () => { alive = false; };
-  }, [userId, progressReady, prefsReady, derivedStage, experienceMode, persona, exploring, purposeKey, picks, declinedPicks, plusOnSale]);
+  }, [userId, progressReady, prefsReady, derivedStage, experienceMode, persona, exploring, purposeKey, picks, declinedPicks, plusOnSale, socialOn]);
 
   const dismissStageEvent = useCallback(() => setStageEvents(q => q.slice(1)), []);
 
@@ -546,8 +549,9 @@ export function AccessProvider({ children }) {
     settings: doorSettings,
     chosen: openChoices,
     plusOnSale,
+    socialOn,
     experience,
-  }), [profile, experimentalOn, purposeKey, state, stats, doorSettings, openChoices, plusOnSale, experience]);
+  }), [profile, experimentalOn, purposeKey, state, stats, doorSettings, openChoices, plusOnSale, socialOn, experience]);
 
   const accessFor = useCallback(
     (featureId) => evaluateAccess(getFeature(featureId), gateCtx),
@@ -586,10 +590,11 @@ export function AccessProvider({ children }) {
 
   const isScreenVisible = useCallback((screen) => {
     if (!screen) return true;
+    if (!socialOn && SOCIAL_SCREENS.includes(screen)) return false;
     const feature = featureForScreen(screen);
     if (feature) return !evaluateAccess(feature, gateCtx).hidden;
     return screenShownAtStage(screen, { opened, featureShown: isFeatureShown });
-  }, [gateCtx, opened, isFeatureShown]);
+  }, [gateCtx, opened, isFeatureShown, socialOn]);
 
   // Null = every game the remote switches allow. Before 'all-games' it's
   // the ones this path has opened.
@@ -957,6 +962,7 @@ export function AccessProvider({ children }) {
     setDoorSetting,
     openByChoice,
     plusOnSale,
+    socialOn,
 
     // 3. shown now
     stage,
@@ -992,7 +998,7 @@ export function AccessProvider({ children }) {
     activeObjective, activeObjectiveId, completedObjectiveIds, startObjective,
     toggleStep, completeActiveObjective, abandonActiveObjective, submitTest,
     claimPlanFeature, unlockEvents, dismissUnlockEvent, dismissAllUnlockEvents,
-    age, isContentAllowed, isGameAllowed, doorSettings, setDoorSetting, openByChoice, plusOnSale,
+    age, isContentAllowed, isGameAllowed, doorSettings, setDoorSetting, openByChoice, plusOnSale, socialOn,
     stage, derivedStage, nextStage, experienceMode, setExperienceMode, picks, setPicks, addPick, declinePick, opened, can,
     firstGoal, startFirstGoal, isFeatureShown, isScreenVisible, isGameVisible,
     isSubjectVisible, visibleGameIds, playableGames, visibleFabActions, stageEvents, dismissStageEvent,

@@ -129,7 +129,7 @@ export default function MultiStepOnboarding() {
   // Started card on Home instead (and from Settings, as it always was).
   const { setPersonalization } = useTour();
   const { createMasterProfile } = useProfiles();
-  const { setExperienceMode, startFirstGoal, choosePurpose, plusOnSale } = useAccess();
+  const { setExperienceMode, startFirstGoal, choosePurpose, plusOnSale, socialOn } = useAccess();
   const { refreshProfile } = useUserProgress();
   // Written by the Look step. Device-local, same key Settings' own "Library
   // Sections" editor reads and writes.
@@ -526,7 +526,7 @@ export default function MultiStepOnboarding() {
   // isn't in their app ("Just my picks" or "All in" with it unticked).
   const stepApplies = (i) => {
     if (STEPS[i]?.component !== SectorsStep) return true;
-    return data.experience_mode === 'auto' || picksForData(data, { plusOnSale }).includes('life-areas');
+    return data.experience_mode === 'auto' || picksForData(data, { plusOnSale, socialOn }).includes('life-areas');
   };
   const stepFrom = (from, dirn) => {
     let i = from + dirn;
@@ -603,7 +603,7 @@ export default function MultiStepOnboarding() {
     await setWayfinderIntent(!!data.exploring);
     // Same reason: Home, the Library and Training all read the stage on
     // their first render.
-    await setExperienceMode(data.experience_mode, { picks: picksForData(data, { plusOnSale }) });
+    await setExperienceMode(data.experience_mode, { picks: picksForData(data, { plusOnSale, socialOn }) });
     // The persona's accent colour, once, and only if none is set yet —
     // Settings > Appearance owns it after that. Device-local; can't strand.
     await suggestAccentForPersona(data.active_persona || DEFAULT_PERSONA).catch(() => {});

@@ -622,6 +622,7 @@ export default function SettingsScreen() {
   const [signingOut,setSigningOut] = useState(false);
   const [heroTapEnabled, setHeroTapEnabled] = useSetting(SETTING_KEYS.HERO_TAP_TO_PROFILE, true);
   const [homeBgMode, setHomeBgMode] = useSetting(SETTING_KEYS.HOME_BACKGROUND, 'plain');
+  const [quickButtons, setQuickButtons] = useSetting(SETTING_KEYS.HOME_QUICK_BUTTONS, true);
   const [libraryBgMode, setLibraryBgMode] = useSetting(SETTING_KEYS.LIBRARY_BACKGROUND, 'plain');
   const [remindersEnabled, setRemindersEnabled] = useSetting(SETTING_KEYS.DAILY_REMINDERS_ENABLED, false);
   const [screenTutorials, setScreenTutorials] = useSetting(SETTING_KEYS.SCREEN_TUTORIALS_ENABLED, true);
@@ -948,6 +949,22 @@ export default function SettingsScreen() {
         />
         </TourSpot>
         <SettingRow
+          icon="game-controller-outline"
+          iconColor={c.teal}
+          label="Study & Play buttons"
+          subtitle="The two buttons on your profile card on Home"
+          right={
+            <Switch
+              value={quickButtons !== false}
+              onValueChange={setQuickButtons}
+              accessibilityLabel="Study and Play buttons on Home"
+              trackColor={{ false: c.borderStrong, true: c.teal + '88' }}
+              thumbColor={quickButtons !== false ? c.teal : c.text3}
+            />
+          }
+          c={c} t={t} s={s} r={r}
+        />
+        <SettingRow
           icon="happy-outline"
           iconColor={c.gold}
           label="Show Emojis"
@@ -1080,8 +1097,8 @@ export default function SettingsScreen() {
           iconColor={c.gold}
           label={isPlus ? 'Plus' : 'Free plan'}
           subtitle={isPlus
-            ? 'Business courses, Deep Insights, AI Import, custom goals and Organizations are included. Manage your plan here.'
-            : 'Get Plus for the business courses, Deep Insights, AI Import, custom goals and Organizations. Everything else works the same on the free plan.'}
+            ? 'Business courses, AI Import and Organizations are included. Manage your plan here.'
+            : 'Get Plus for the business courses, AI Import and Organizations. Everything else works the same on the free plan.'}
           alwaysShowSubtitle
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
           onPress={() => navigation.navigate('Plus')}

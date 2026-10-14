@@ -234,10 +234,14 @@ export default function WorkModeScreen() {
               </View>
             </ScrollView>
 
+            {/* Waiting for a focus line: plain grey, not a half-faded teal
+                that read as broken. Ready: the fill, with onFill on the
+                theme teal (white is 2:1 on dark mode's bright teal). */}
             <TouchableOpacity onPress={startSession} disabled={!focusText.trim()}
-              style={{ backgroundColor: color, borderRadius: r.md, paddingVertical: 16, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8, opacity: focusText.trim() ? 1 : 0.5 }}>
-              <Ionicons name="play" size={18} color="#fff" />
-              <Text style={{ color: '#fff', fontWeight: t.bold, fontSize: t.md }}>Start Focus Session</Text>
+              accessibilityRole="button" accessibilityState={{ disabled: !focusText.trim() }}
+              style={{ backgroundColor: focusText.trim() ? color : c.bg2, borderRadius: r.md, paddingVertical: 16, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }}>
+              <Ionicons name="play" size={18} color={!focusText.trim() ? c.text3 : project?.color ? '#fff' : c.onFill} />
+              <Text style={{ color: !focusText.trim() ? c.text3 : project?.color ? '#fff' : c.onFill, fontWeight: t.bold, fontSize: t.md }}>Start Focus Session</Text>
             </TouchableOpacity>
           </View>
         )}

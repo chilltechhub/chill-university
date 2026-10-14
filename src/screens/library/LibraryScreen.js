@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../../context/ThemeContext';
+import { FAB_CLEARANCE } from '../../../context/FabPositionContext';
 import { useUIPrefs } from '../../../context/UIPrefsContext';
 import { useUserProgress } from '../../../context/UserProgressContext';
 import { useTour } from '../../../context/TourContext';
@@ -1256,7 +1257,7 @@ const makeStyles = (c, t, s, r, ui, accent) =>
     container: { flex: 1, backgroundColor: c.bg0 },
     loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.bg0 },
     // 12, not 54: the app's own top bar sits above this screen already.
-    scrollContent: { paddingBottom: 60, paddingTop: 12 },
+    scrollContent: { paddingBottom: FAB_CLEARANCE, paddingTop: 12 },
     header: {
       flexDirection: 'row',
       justifyContent: 'space-between',

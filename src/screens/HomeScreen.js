@@ -48,7 +48,7 @@ import GoalStepsWidget from '../components/GoalStepsWidget';
 import StageStepsWidget from '../components/StageStepsWidget';
 import { getWayfinderIntent } from '../api/wayfinderService';
 import { useAccess } from '../../context/AccessContext';
-import { useFabPosition, topFabClearance } from '../../context/FabPositionContext';
+import { useFabPosition, topFabClearance, FAB_CLEARANCE } from '../../context/FabPositionContext';
 import { starterWidgetLayout } from '../logic/experienceStage';
 import { useReducedMotion } from '../logic/a11yPrefs';
 import useCharacterLoadout from '../logic/useCharacterLoadout';
@@ -891,7 +891,9 @@ export default function HomeScreen() {
   // all twenty.
   const { can, opened, isScreenVisible, isGameVisible, isFeatureShown, signalAction, stageEvents, activeObjective, purposeKey } = useAccess();
   // Training games unticked on "Pick your features": no Play button either.
-  const playShown = isFeatureShown('training');
+  // Settings → "Study & Play buttons" can switch both off.
+  const [quickButtons] = useSetting(SETTING_KEYS.HOME_QUICK_BUTTONS, true);
+  const playShown = isFeatureShown('training') && quickButtons;
   const { active: tourActive, startLesson } = useTour();
   const homeFocused = useIsFocused();
   const { background: playerBackground } = useCharacterLoadout({ level, points, rank, streakDays });
@@ -1981,7 +1983,7 @@ export default function HomeScreen() {
       <ScrollView automaticallyAdjustKeyboardInsets
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.teal} />}
-        contentContainerStyle={{ paddingBottom: 96 /* clears the + button and the guide pill */ }}
+        contentContainerStyle={{ paddingBottom: FAB_CLEARANCE }}
       >
         {/* ── Date + streak + widget edit toggle ── */}
         <View style={[{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: s.lg, paddingTop: s.md, paddingBottom: s.sm }, topFabClearance(fabPosition)]}>
@@ -2052,10 +2054,10 @@ export default function HomeScreen() {
                     c={c} t={t}
                     onPress={() => navigation.navigate('Profile')}
                   />
-                  {(studyDestinations.length > 0 || playShown) && (
+                  {((quickButtons && studyDestinations.length > 0) || playShown) && (
                   <TourSpot id="home-study-play">
                   <View style={{ flexDirection: 'row', gap: 10, marginTop: s.md }}>
-                    {studyDestinations.length > 0 && (
+                    {quickButtons && studyDestinations.length > 0 && (
                     <TouchableOpacity
                       style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: c.teal, backgroundColor: c.tealLight, borderRadius: ui.buttonRadius, paddingVertical: s.md }}
                       onPress={goStudy} onLongPress={() => setShowStudyMenu(true)} delayLongPress={350}>

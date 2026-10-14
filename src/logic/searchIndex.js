@@ -35,7 +35,7 @@ export function navigateTo(navigation, route) {
 
 // ─── Screens with no list of their own ─────────────────────────────────────
 // Compass-gated screens (Work Mode, Weekly Review, Import Hub, Labs,
-// Mentors, Organization, Deep Insights...) stay listed here on purpose.
+// Mentors, Organization, Game Stats...) stay listed here on purpose.
 // Searching for something and being told it doesn't exist is worse than
 // searching for it and being told what opens it — the routes themselves are
 // gated at the navigator (see src/components/FeatureGate.js's gatedScreen),
@@ -58,7 +58,7 @@ const STANDALONE = [
   { title: 'Community Projects', subtitle: 'Projects from the community',      icon: 'git-network-outline',     route: library('CommunityProjectsScreen') },
   { title: 'Profile',         subtitle: 'Rank, points, streak & account',    icon: 'person-circle-outline',   route: root('Profile') },
   { title: 'App Nav',       subtitle: 'Every stage, your goal & what opens next',  icon: 'navigate-outline',        route: root('Compass') },
-  { title: 'Deep Insights',   subtitle: 'Long-range stats across subjects',   icon: 'analytics-outline',       route: root('Stats') },
+  { title: 'Game Stats',      subtitle: 'Accuracy, times & subject progress', icon: 'analytics-outline',       route: root('Stats') },
   { title: 'Settings',        subtitle: 'Theme, sections, notifications',    icon: 'settings-outline',        route: root('Settings') },
   { title: 'Help',            subtitle: 'What this screen is for',           icon: 'help-circle-outline',     route: root('Help') },
   { title: 'Leaderboard',     subtitle: 'Where you stand',                   icon: 'trophy-outline',          route: root('Leaderboard') },
