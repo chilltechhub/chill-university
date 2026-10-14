@@ -27,6 +27,7 @@ import { completeInstance, skipInstance, extendRepeatingPlans } from '../api/pla
 import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../api/offlineCache';
 import { syncReminders, computeReminderState } from '../logic/notificationScheduler';
 import TourSpot from '../components/TourSpot';
+import RememberThis from '../components/RememberThis';
 import CalendarModal from '../components/CalendarModal';
 import PlanDetailSheet from '../components/PlanDetailSheet';
 import WidgetBoard from '../components/WidgetBoard';
@@ -196,7 +197,7 @@ const WIDGET_KEYS = WIDGET_DEFS.map(w => w.key);
 // its own ("Systems Check") doesn't tell anyone whether they'd want it.
 const WIDGET_BLURBS = {
   hq:               'Your name, level and the Play button.',
-  wisdom:           'A daily quote, plus your own affirmation if you set one.',
+  wisdom:           'Your takeaways, brought back so they stick. A quote and your affirmation otherwise.',
   focus:            "Today's one focus and a jump into your calendar.",
   activities:       'Everything scheduled for today, in time order.',
   desk:             'The next thing to pick up from your projects, notes and ideas.',
@@ -2087,8 +2088,11 @@ export default function HomeScreen() {
                       <Ionicons name="add-circle-outline" size={20} color={c.gold} />
                     </TouchableOpacity>
                   </View>
-                  <Text style={{ fontSize: t.sm, color: c.text1, lineHeight: 20, fontStyle: 'italic', marginBottom: s.sm }}>"{todaysQuote.text}"</Text>
-                  <Text style={{ fontSize: t.xs, color: c.text3 }}>— {todaysQuote.author}</Text>
+                  {/* Your own takeaways first, when one is due; the quote otherwise. */}
+                  <RememberThis userId={userId} navigation={navigation} ui={ui}>
+                    <Text style={{ fontSize: t.sm, color: c.text1, lineHeight: 20, fontStyle: 'italic', marginBottom: s.sm }}>"{todaysQuote.text}"</Text>
+                    <Text style={{ fontSize: t.xs, color: c.text3 }}>— {todaysQuote.author}</Text>
+                  </RememberThis>
                   {todaysAffirmation && (
                     <TouchableOpacity onPress={() => setEditAffirm(true)}
                       style={{ marginTop: s.sm, borderTopWidth: 0.5, borderTopColor: c.border, paddingTop: s.sm }}>

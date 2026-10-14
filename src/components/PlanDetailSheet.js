@@ -13,7 +13,7 @@
 // (the calendar popup can be opened from outside the navigator).
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Alert } from 'react-native';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../api/profileScopedClient';
@@ -25,6 +25,8 @@ import { openTarget, targetFromInstance } from '../logic/openTarget';
 import { timeRange } from '../logic/plannerLayout';
 import { dateStr } from '../logic/dateUtils';
 import { textOn } from '../logic/contrast';
+import { setPlanUseNote, whyFromNotes } from '../api/knowledgeUse';
+import { successHaptic } from '../logic/haptics';
 
 function toISO(d) { return dateStr(d); }
 function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
@@ -66,11 +68,18 @@ export default function PlanDetailSheet({ instance, onClose, onChanged, onEdit, 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [series, setSeries] = useState(null); // this + later copies of a repeat
   const [shown, setShown] = useState(instance); // kept while the sheet slides out
+  // Done on a plan made from a Vault item: one optional line about how it
+  // went, kept on the item as its use (api/knowledgeUse.js).
+  const [askHow, setAskHow] = useState(false);
+  const [how, setHow] = useState('');
 
   useEffect(() => {
     if (instance) setShown(instance);
     setConfirmDelete(false); setSeries(null); setBusy(false);
   }, [instance]);
+  // By id: a caller that reloads after Done hands back a fresh row, and that
+  // mustn't close the "What happened?" question.
+  useEffect(() => { setAskHow(false); setHow(''); }, [instance?.id]);
 
   // Work sessions are written with "Next step: …" copied from the project
   // when they were scheduled (workSessions.buildSessionRows), so weeks later
@@ -120,6 +129,37 @@ export default function PlanDetailSheet({ instance, onClose, onChanged, onEdit, 
     const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 6000));
     try { setSeries(await Promise.race([getSeriesFrom(inst), timeout])); } catch { setSeries([]); }
   };
+  const why = whyFromNotes(notes);
+  // Plans made from a Vault item carry "Why: …" and "From: …" lines
+  // (knowledgeUse.planNotesFor); both go in the Why box, anything else below.
+  const fromLine = why ? (/^From: (.+)$/m.exec(notes) || [])[1] : null;
+  const otherNotes = why ? notes.split('\n').filter(l => !l.startsWith('Why: ') && !l.startsWith('From: ')).join('\n').trim() : notes;
+  const fromVault = inst.link_type === 'vault' && !!inst.link_id;
+
+  const markDone = async () => {
+    if (!fromVault) return run(() => completeInstance(inst.id, true));
+    setBusy(true);
+    try {
+      await completeInstance(inst.id, true);
+      successHaptic();
+      setShown({ ...inst, completed: true });
+      onChanged();
+      setAskHow(true);
+    } catch (e) {
+      console.warn('PlanDetailSheet', e);
+      Alert.alert("Couldn't update that", 'Something went wrong — try again.');
+    }
+    setBusy(false);
+  };
+  const saveHow = async () => {
+    const text = how.trim();
+    if (text) {
+      setBusy(true);
+      try { await setPlanUseNote(inst.link_id, inst.id, text); } catch (e) { console.warn('PlanDetailSheet how', e?.message); }
+    }
+    onClose();
+  };
+
   const moveTo = overdue ? todayIso : nextDay(inst.date);
   const laterCount = series ? series.filter(x => x.id !== inst.id).length : 0;
 
@@ -176,10 +216,17 @@ export default function PlanDetailSheet({ instance, onClose, onChanged, onEdit, 
               : `Any time${inst.duration_minutes ? `  ·  ${inst.duration_minutes} min` : ''}`)}
             {repeats && row('repeat-outline', `Repeats ${inst.cadence}`)}
 
-            {notes && (
+            {why && (
+              <View style={{ backgroundColor: area.color + '15', borderRadius: r.md, padding: s.md, marginTop: s.sm, borderLeftWidth: 3, borderLeftColor: area.color }}>
+                <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Why</Text>
+                <Text style={{ fontSize: t.md, color: c.text1, lineHeight: 22, fontWeight: t.bold }}>{why}</Text>
+                {!!fromLine && <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 4 }} numberOfLines={2}>From {fromLine}</Text>}
+              </View>
+            )}
+            {!!otherNotes && (
               <View style={{ backgroundColor: c.bg0, borderRadius: r.md, padding: s.md, marginTop: s.sm }}>
                 <Text style={{ fontSize: t.xs, color: c.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Notes</Text>
-                <Text style={{ fontSize: t.sm, color: c.text1, lineHeight: 20 }}>{notes}</Text>
+                <Text style={{ fontSize: t.sm, color: c.text1, lineHeight: 20 }}>{otherNotes}</Text>
               </View>
             )}
 
@@ -193,11 +240,22 @@ export default function PlanDetailSheet({ instance, onClose, onChanged, onEdit, 
             )}
 
             {/* Actions */}
-            {!confirmDelete ? (
+            {askHow ? (
+              <View style={{ marginTop: s.lg, padding: s.md, borderRadius: r.md, borderWidth: 1, borderColor: area.color + '88', gap: s.sm }}>
+                <Text style={{ fontSize: t.md, color: c.text1 }}><Text style={{ fontWeight: t.bold }}>Nice, you used it.</Text> What happened?</Text>
+                <TextInput value={how} onChangeText={setHow} autoFocus maxLength={200}
+                  placeholder="One line (optional)" placeholderTextColor={c.text4}
+                  onSubmitEditing={saveHow} returnKeyType="done" accessibilityLabel="What happened"
+                  style={{ backgroundColor: c.bg0, borderWidth: 1, borderColor: c.border, borderRadius: r.md, paddingHorizontal: s.md, paddingVertical: 10, color: c.text1, fontSize: t.sm }} />
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm }}>
+                  {btn({ label: how.trim() ? 'Save' : 'Skip', icon: how.trim() ? 'checkmark' : 'close-outline', color: area.color, filled: !!how.trim(), onPress: saveHow })}
+                </View>
+              </View>
+            ) : !confirmDelete ? (
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm, marginTop: s.lg }}>
                 {!skipped && (done
                   ? btn({ label: 'Not done', icon: 'arrow-undo-outline', color: c.text2, onPress: () => run(() => completeInstance(inst.id, false)) })
-                  : btn({ label: 'Done', icon: 'checkmark-circle', color: area.color, filled: true, onPress: () => run(() => completeInstance(inst.id, true)) }))}
+                  : btn({ label: 'Done', icon: 'checkmark-circle', color: area.color, filled: true, onPress: markDone }))}
                 {!done && (skipped
                   ? btn({ label: 'Unskip', icon: 'play-back-outline', color: c.text2, onPress: () => run(() => unskipInstance(inst.id)) })
                   : btn({ label: 'Skip', icon: 'play-skip-forward-outline', color: c.text2, onPress: () => run(() => skipInstance(inst.id)) }))}

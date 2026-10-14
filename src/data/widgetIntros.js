@@ -18,7 +18,7 @@ export const WIDGET_INTROS = {
   compass:          "Your **goal** and its next step. Tap **Open** to go straight to it.",
   goalSteps:        "Every step of your goal, **ticked or not**.",
   focus:            "Write **one line**: what today is for. Tap the date for your calendar.",
-  wisdom:           "A quote a day. Tap **+** to add your own.",
+  wisdom:           "Your own takeaways come back here so they **stick**. A quote on other days.",
   activities:       "Everything **scheduled today**, in time order.",
   desk:             "What to **pick up next**. Tap one to open it, or **+ Add** to pin your own.",
   ideas:            "Your **newest ideas**. Tap one to open it.",
