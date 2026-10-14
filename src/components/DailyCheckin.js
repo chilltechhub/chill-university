@@ -10,6 +10,18 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { getCheckin, upsertCheckin } from '../../src/api/plannerService';
+import { addCapture } from '../../src/api/captureService';
+import { supabase } from '../../src/api/profileScopedClient';
+import { successHaptic } from '../../src/logic/haptics';
+
+// The notes box is a short journal. A blank box is hard to start, so three
+// prompts start a line for you; a "Learned:" line can go straight to the
+// Vault as a takeaway, where Home's "Remember this?" brings it back later.
+const PROMPTS = ['Learned', 'Used', 'Tomorrow'];
+function learnedLine(text) {
+  const m = /^Learned:\s*(.+)$/im.exec(text || '');
+  return m ? m[1].trim() : '';
+}
 
 const FIELDS = [
   { key: 'sleep_quality', label: 'Sleep',  emoji: '😴', max: 5 },
@@ -47,6 +59,8 @@ export default function DailyCheckin({ userId, date, onSaved }) {
   const [saving,   setSaving]   = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [notes,    setNotes]    = useState('');
+  const [keptLine, setKeptLine] = useState(null); // the Learned line last sent to the Vault
+  const notesRef = React.useRef(null);
 
   useEffect(() => {
     if (userId && date) load();
@@ -57,6 +71,13 @@ export default function DailyCheckin({ userId, date, onSaved }) {
     try {
       const data = await getCheckin(userId, date);
       if (data) { setCheckin(data); setNotes(data.notes || ''); }
+      // Already kept? Then don't offer it again (it would save a second copy).
+      const line = learnedLine(data?.notes);
+      if (line) {
+        const { data: kept } = await supabase.from('captures').select('id')
+          .eq('user_id', userId).eq('body', line).is('deleted_at', null).limit(1);
+        setKeptLine(kept?.length ? line : null);
+      }
     } catch {}
     setLoading(false);
   };
@@ -75,6 +96,24 @@ export default function DailyCheckin({ userId, date, onSaved }) {
 
   const saveNotes = async () => {
     await updateField('notes', notes);
+  };
+
+  const startLine = (label) => {
+    const next = `${notes.trimEnd()}${notes.trim() ? '\n' : ''}${label}: `;
+    setNotes(next);
+    notesRef.current?.focus();
+  };
+
+  const learned = learnedLine(notes);
+  const keepInVault = async () => {
+    try {
+      await addCapture(userId, {
+        type: 'note', title: learned.slice(0, 120), body: learned, status: 'active',
+        url_meta: { takeaway: learned, from: 'journal' },
+      });
+      successHaptic();
+      setKeptLine(learned);
+    } catch (e) { console.warn('[DailyCheckin] vault', e?.message); }
   };
 
   const allFilled = FIELDS.every(f => checkin?.[f.key]);
@@ -101,7 +140,7 @@ export default function DailyCheckin({ userId, date, onSaved }) {
         onPress={() => setExpanded(e => !e)}
       >
         <View style={s_card.headerLeft}>
-          <Text style={[s_card.title, { color: c.text1 }]}>Daily Check-in</Text>
+          <Text style={[s_card.title, { color: c.text1 }]}>Check-in & Journal</Text>
           {allFilled && <Text style={[s_card.done, { color: c.teal }]}>✓ Done</Text>}
           {saving && <ActivityIndicator size="small" color={c.teal} style={{ marginLeft: 6 }} />}
         </View>
@@ -157,16 +196,33 @@ export default function DailyCheckin({ userId, date, onSaved }) {
             </View>
           </View>
 
-          {/* Notes */}
+          {/* Journal */}
+          <View style={{ flexDirection: 'row', gap: 6, marginTop: 4 }}>
+            {PROMPTS.map(p => (
+              <TouchableOpacity key={p} onPress={() => startLine(p)} accessibilityRole="button" accessibilityLabel={`Start a ${p} line`}
+                style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, borderWidth: 1, borderColor: c.teal + '88' }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: c.teal }}>+ {p}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
           <TextInput
+            ref={notesRef}
             style={[s_card.notes, { color: c.text1, borderColor: c.border, backgroundColor: c.bg0 }]}
             value={notes}
             onChangeText={setNotes}
             onBlur={saveNotes}
-            placeholder="Any notes for today..."
+            placeholder="What did you learn, use, or plan today?"
             placeholderTextColor={c.text4}
             multiline
           />
+          {!!learned && (keptLine === learned ? (
+            <Text style={{ fontSize: 12, color: c.teal, fontWeight: '700' }}>✓ In your Vault. It'll come back to you.</Text>
+          ) : (
+            <TouchableOpacity onPress={keepInVault} accessibilityRole="button" style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="archive-outline" size={14} color={c.teal} />
+              <Text style={{ fontSize: 12, color: c.teal, fontWeight: '700' }}>Keep what you learned in your Vault</Text>
+            </TouchableOpacity>
+          ))}
         </View>
       )}
     </View>

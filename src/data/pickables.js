@@ -173,7 +173,7 @@ export const PICKABLES = [
   // ── Extras ──
   {
     id: 'wisdom', group: 'more', icon: 'sunny-outline',
-    label: 'Daily Wisdom', blurb: 'A quote a day, plus your own affirmation.',
+    label: 'Daily Wisdom', blurb: 'What you learned, brought back so it sticks. Plus a daily quote.',
     widgets: ['wisdom'],
   },
   {

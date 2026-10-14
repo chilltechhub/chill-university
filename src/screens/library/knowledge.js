@@ -49,6 +49,8 @@ import TourSpot from '../../components/TourSpot';
 import ReminderComposer from '../../components/ReminderComposer';
 import { openTarget } from '../../logic/openTarget';
 import { todayStr } from '../../logic/dateUtils';
+import { successHaptic } from '../../logic/haptics';
+import { usesOf, planNotesFor, planTitleFor } from '../../api/knowledgeUse';
 
 // ─── Item kinds ────────────────────────────────────────────────────────────
 // Saving here files a thing: status 'active', the same as sorting it into
@@ -425,12 +427,116 @@ function AddItemModal({ visible, defaultKind, onClose, onSave, c, styles, showEm
   );
 }
 
+// ─── Make it stick ─────────────────────────────────────────────────────────
+// Saving something feels like learning it; using it is what counts. Two
+// one-line fields turn a saved item into something to do (the when/then
+// line is what plans made from it are called), and every use (a plan ticked
+// Done, or one logged here) shows underneath. Stored in url_meta, see
+// api/knowledgeUse.js.
+function shortDate(iso) {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function MakeItStick({ item, accent, onSaveMeta, onLogUse, c, styles, children }) {
+  const takeaway = item.url_meta?.takeaway || '';
+  const useWhen = item.url_meta?.use_when || '';
+  const uses = usesOf(item);
+  const [editing, setEditing] = useState(!takeaway && !useWhen);
+  const [tDraft, setTDraft] = useState(takeaway);
+  const [wDraft, setWDraft] = useState(useWhen);
+  const [logging, setLogging] = useState(false);
+  const [logDraft, setLogDraft] = useState('');
+
+  useEffect(() => {
+    setTDraft(takeaway); setWDraft(useWhen);
+    setEditing(!takeaway && !useWhen); setLogging(false); setLogDraft('');
+  }, [item.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const dirty = tDraft.trim() !== takeaway || wDraft.trim() !== useWhen;
+  const save = () => {
+    onSaveMeta({ takeaway: tDraft.trim() || undefined, use_when: wDraft.trim() || undefined });
+    successHaptic();
+    setEditing(false);
+  };
+  const log = () => {
+    onLogUse(logDraft);
+    successHaptic();
+    setLogging(false); setLogDraft('');
+  };
+
+  return (
+    <>
+      <View style={[styles.stickCard, { borderColor: `${accent}55` }]}>
+        {editing ? (
+          <>
+            <Text style={[styles.stickLabel, { color: accent }]}>The one thing</Text>
+            <TextInput style={styles.stickInput} value={tDraft} onChangeText={setTDraft}
+              placeholder="What's worth remembering?" placeholderTextColor={c.text4} maxLength={200}
+              accessibilityLabel="The one thing worth remembering" />
+            <Text style={[styles.stickLabel, { color: accent }]}>Use it when</Text>
+            <TextInput style={styles.stickInput} value={wDraft} onChangeText={setWDraft}
+              placeholder="When I ___, I'll ___" placeholderTextColor={c.text4} maxLength={200}
+              accessibilityLabel="When you'll use it" onSubmitEditing={dirty ? save : undefined} returnKeyType="done" />
+            {dirty && (
+              <TouchableOpacity onPress={save} accessibilityRole="button" style={[styles.stickSave, { backgroundColor: accent }]}>
+                <Text style={styles.stickSaveText}>Save</Text>
+              </TouchableOpacity>
+            )}
+          </>
+        ) : (
+          <TouchableOpacity onPress={() => setEditing(true)} accessibilityRole="button" accessibilityLabel="Edit the one thing and when you'll use it">
+            {!!takeaway && <Text style={styles.stickTakeaway}>{takeaway}</Text>}
+            {!!useWhen && (
+              <View style={styles.stickWhenRow}>
+                <Ionicons name="flash-outline" size={13} color={accent} />
+                <Text style={styles.stickWhen}>{useWhen}</Text>
+              </View>
+            )}
+            <Ionicons name="pencil" size={12} color={c.text4} style={{ position: 'absolute', right: 0, top: 2 }} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {children}
+
+      <View style={styles.usedRow}>
+        <Ionicons name={uses.length ? 'checkmark-done' : 'ellipse-outline'} size={15} color={uses.length ? c.success || accent : c.text4} />
+        <Text style={[styles.usedText, uses.length > 0 && { color: c.text1 }]}>
+          {uses.length ? <>Used <Text style={{ fontWeight: '800' }}>{uses.length}×</Text></> : <><Text style={{ fontWeight: '800' }}>Not used yet.</Text> Plan it, or log a use.</>}
+        </Text>
+        {!logging && (
+          <TouchableOpacity onPress={() => setLogging(true)} accessibilityRole="button" style={[styles.usedBtn, { borderColor: `${accent}88` }]}>
+            <Ionicons name="add" size={13} color={accent} />
+            <Text style={[styles.usedBtnText, { color: accent }]}>I used it</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      {logging && (
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+          <TextInput style={[styles.stickInput, { flex: 1, marginBottom: 0 }]} value={logDraft} onChangeText={setLogDraft} autoFocus
+            placeholder="What did you do? (optional)" placeholderTextColor={c.text4} maxLength={200}
+            onSubmitEditing={log} returnKeyType="done" />
+          <TouchableOpacity onPress={log} accessibilityRole="button" accessibilityLabel="Log this use" style={[styles.stickSave, { backgroundColor: accent, marginTop: 0, alignSelf: 'stretch', justifyContent: 'center' }]}>
+            <Text style={styles.stickSaveText}>Log</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      {uses.slice(-3).reverse().map((u, i) => (
+        <View key={`${u.at}-${i}`} style={styles.useLogRow}>
+          <Text style={styles.useLogDate}>{shortDate(u.at)}</Text>
+          <Text style={styles.useLogNote} numberOfLines={2}>{u.note || (u.plan_id ? 'Did the plan' : 'Used it')}</Text>
+        </View>
+      ))}
+    </>
+  );
+}
+
 // ─── Detail drawer ─────────────────────────────────────────────────────────
 // One sheet, four profiles: notes open straight into their body, links get a
 // URL banner and open/visit tracking, papers add citation fields, and every
 // kind gets tags, life area, folder, and cross-links.
 function DetailModal({ item, folders, onClose, onSave, onDelete, onAssignFolder, onLinksChange,
-  onToggleStar, onOpenLink, onShare, onAct, c, t, s, r, styles, showEmojis }) {
+  onToggleStar, onOpenLink, onShare, onAct, onSaveMeta, onLogUse, c, t, s, r, styles, showEmojis }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editKind, setEditKind] = useState('note');
@@ -582,6 +688,8 @@ function DetailModal({ item, folders, onClose, onSave, onDelete, onAssignFolder,
                 {/* Saving something is half of it. These turn it into time
                     on the calendar, a to-do, or a project, in one tap. */}
                 <Text style={[styles.linkedHeader, { color: accent, marginTop: 4 }]}>Put it to use</Text>
+                <MakeItStick item={item} accent={accent} c={c} styles={styles}
+                  onSaveMeta={(patch) => onSaveMeta(item, patch)} onLogUse={(note) => onLogUse(item, note)}>
                 <View style={styles.useGrid}>
                   {[
                     { key: 'plan',    icon: 'calendar-outline',  label: 'Plan time',     sub: 'Put it on a day' },
@@ -599,6 +707,7 @@ function DetailModal({ item, folders, onClose, onSave, onDelete, onAssignFolder,
                     </TouchableOpacity>
                   ))}
                 </View>
+                </MakeItStick>
 
                 <View style={styles.cardTagRow}>
                   <View style={[styles.pill, { borderColor: `${area.color}55`, backgroundColor: `${area.color}18` }]}>
@@ -961,6 +1070,16 @@ export default function KnowledgeScreen() {
     patchEntry(item.id, { url_meta: { ...(item.url_meta || {}), links } });
   };
 
+  // Make it stick: the one thing + when you'll use it, and uses logged by hand.
+  const saveStick = (item, { takeaway, use_when }) => {
+    patchEntry(item.id, { url_meta: { ...(item.url_meta || {}), takeaway, use_when } }, { silent: false });
+  };
+  const logUse = (item, note) => {
+    const text = (note || '').trim();
+    const uses = [...usesOf(item), { at: new Date().toISOString(), ...(text ? { note: text } : {}) }];
+    patchEntry(item.id, { url_meta: { ...(item.url_meta || {}), uses } }, { silent: false });
+  };
+
   // ── Put it to use ─────────────────────────────────────────────────────────
   // A saved link is something to read, a tool something to try, a note says
   // its own thing. Used as the title of the plan, to-do or project.
@@ -974,12 +1093,12 @@ export default function KnowledgeScreen() {
 
   const planTime = (item) => {
     setDetailItem(null);
-    setPlanFor({ title: actionTitle(item), target: { kind: 'vault', id: item.id }, targetLabel: item.title || 'Vault item', area: areaFor(item) });
+    setPlanFor({ title: planTitleFor(item, actionTitle(item)), notes: planNotesFor(item), target: { kind: 'vault', id: item.id }, targetLabel: item.title || 'Vault item', area: areaFor(item) });
   };
 
   const makeTodo = async (item) => {
     const { error } = await supabase.from('tasks').insert({
-      user_id: userId, title: actionTitle(item).slice(0, 200),
+      user_id: userId, title: planTitleFor(item, actionTitle(item)).slice(0, 200),
       category: 'personal', priority: 2, completed: false, created_at: new Date().toISOString(),
     });
     if (error) { Alert.alert("Couldn't add it", 'Something went wrong. Try again.'); return; }
@@ -988,7 +1107,8 @@ export default function KnowledgeScreen() {
 
   const startProject = async (item) => {
     const title = (item.title || deriveTitle(item.body) || 'New project').slice(0, 120);
-    const body = (item.body || '').trim();
+    // The takeaway is the reason the project exists, so it leads.
+    const body = (item.url_meta?.takeaway || item.body || '').trim();
     const { data: project, error } = await supabase.from('projects').insert({
       user_id: userId, title,
       objective: body && body !== title ? body.slice(0, 500) : null,
@@ -1242,7 +1362,11 @@ export default function KnowledgeScreen() {
     const visits = item.url_meta?.visits || 0;
     const starred = !!item.url_meta?.starred;
     const linkCount = item.url_meta?.links?.length || 0;
+    const usedCount = usesOf(item).length;
     const cite = citationLine(item.url_meta?.citation);
+    // A journal line saved to the Vault is its own takeaway; don't say it twice.
+    const takeaway = item.url_meta?.takeaway
+      && item.url_meta.takeaway.trim() !== (item.body || item.title || '').trim() ? item.url_meta.takeaway : null;
 
     return (
       <TouchableOpacity
@@ -1275,6 +1399,7 @@ export default function KnowledgeScreen() {
               </>
             )}
             {!!cite && <Text style={styles.citationInline} numberOfLines={1}>{cite}</Text>}
+            {!!takeaway && <Text style={[styles.cardTakeaway, { color: accent }]} numberOfLines={2}>{takeaway}</Text>}
           </View>
           <TouchableOpacity accessibilityRole="button" accessibilityLabel={starred ? 'Unstar' : 'Star'} onPress={() => toggleStar(item)} style={styles.iconBtn}>
             <Ionicons name={starred ? 'star' : 'star-outline'} size={16} color={starred ? c.gold : c.text4} />
@@ -1303,6 +1428,12 @@ export default function KnowledgeScreen() {
                 <Text style={styles.tagPillText}>#{tg}</Text>
               </View>
             ))}
+            {usedCount > 0 && (
+              <View style={[styles.visitsPill, { backgroundColor: `${c.success || c.teal}22` }]} accessibilityLabel={`Used ${usedCount} times`}>
+                <Ionicons name="checkmark-done" size={11} color={c.success || c.teal} />
+                <Text style={[styles.visitsPillText, { color: c.success || c.teal }]}>Used {usedCount}×</Text>
+              </View>
+            )}
             {linkCount > 0 && (
               <View style={styles.visitsPill}>
                 <Ionicons name="link" size={10} color={c.text4} />
@@ -1750,6 +1881,8 @@ export default function KnowledgeScreen() {
           onOpenLink={openLink}
           onShare={shareItem}
           onAct={actOn}
+          onSaveMeta={saveStick}
+          onLogUse={logUse}
           c={c} t={t} s={s} r={r}
           styles={styles} showEmojis={showEmojis}
         />
@@ -1841,6 +1974,7 @@ const makeStyles = (c) => StyleSheet.create({
   cardTitle: { color: c.text1, fontSize: 14, fontWeight: 'bold' },
   cardNoteBody: { color: c.text1, fontSize: 13, lineHeight: 19 },
   cardUrl: { color: c.teal, fontSize: 11, marginTop: 2 },
+  cardTakeaway: { fontSize: 13, fontWeight: '700', lineHeight: 18, marginTop: 6 },
   cardBody: { color: c.text2, fontSize: 12, lineHeight: 17, marginTop: 6 },
   discoverTagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
   discoverTag: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
@@ -1894,4 +2028,19 @@ const makeStyles = (c) => StyleSheet.create({
   citationText: { color: c.text2, fontSize: 12, fontStyle: 'italic' },
   citationDoi: { color: c.teal, fontSize: 11, marginTop: 4, fontWeight: '600' },
   linkedHeader: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: '800', marginTop: 18, marginBottom: 10 },
+  stickCard: { borderWidth: 1, borderRadius: 12, padding: 12, backgroundColor: c.bg0, marginBottom: 10 },
+  stickLabel: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 },
+  stickInput: { backgroundColor: c.bg2, borderWidth: 1, borderColor: c.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, color: c.text1, fontSize: 13, marginBottom: 10 },
+  stickSave: { alignSelf: 'flex-end', paddingHorizontal: 18, paddingVertical: 9, borderRadius: 10, marginTop: -2 },
+  stickSaveText: { color: c.onFill, fontSize: 13, fontWeight: '800' },
+  stickTakeaway: { color: c.text1, fontSize: 15, fontWeight: '800', lineHeight: 21, paddingRight: 18 },
+  stickWhenRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 6, paddingRight: 18 },
+  stickWhen: { flex: 1, color: c.text2, fontSize: 13, lineHeight: 19 },
+  usedRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, marginBottom: 8 },
+  usedText: { flex: 1, color: c.text3, fontSize: 13 },
+  usedBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
+  usedBtnText: { fontSize: 12, fontWeight: '800' },
+  useLogRow: { flexDirection: 'row', gap: 10, paddingVertical: 5, paddingLeft: 23 },
+  useLogDate: { color: c.text3, fontSize: 12, width: 48 },
+  useLogNote: { flex: 1, color: c.text2, fontSize: 12.5, lineHeight: 18 },
 });

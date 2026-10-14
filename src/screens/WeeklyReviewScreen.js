@@ -21,6 +21,7 @@ import { supabase } from '../api/profileScopedClient';
 import { AREAS, getCompletionRate, getInstances } from '../api/plannerService';
 import { getProjects, getCaptures, upsertTask } from '../api/captureService';
 import { CAPTURE_TYPES } from './CaptureInbox';
+import { getKnowledgeWeek, markReviewed } from '../api/knowledgeUse';
 import { FONTS } from '../theme';
 import { dateStr } from '../logic/dateUtils';
 
@@ -88,8 +89,21 @@ export default function WeeklyReviewScreen() {
   const [selectedWins, setSelectedWins] = useState([]);
   const [customWin, setCustomWin] = useState('');
 
+  // Knowledge: saved vs used this week, and takeaways waiting to be tried
+  const [knowledge, setKnowledge] = useState({ saved: 0, used: 0, toTry: [] });
+  const [triedIds, setTriedIds] = useState([]);
+
   // Next 3
   const [priorities, setPriorities] = useState(['', '', '']);
+
+  // A takeaway into the first empty priority (its when/then line if it has one).
+  const tryTakeaway = (row) => {
+    const text = (row.url_meta?.use_when || row.url_meta?.takeaway || '').trim();
+    const slot = priorities.findIndex(p => !p.trim());
+    if (!text || slot < 0 || triedIds.includes(row.id)) return;
+    setPriorities(prev => prev.map((p, i) => (i === slot ? text : p)));
+    setTriedIds(prev => [...prev, row.id]);
+  };
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -150,6 +164,8 @@ export default function WeeklyReviewScreen() {
         ...capList.filter(cp => cp.status !== 'inbox').map(cp => ({ id: 'cap_' + cp.id, title: cp.title || 'Untitled', source: 'Capture' })),
       ].slice(0, 20);
       setWinCandidates(candidates);
+
+      setKnowledge(await getKnowledgeWeek(uid));
     } catch (e) { console.warn('WeeklyReview: load', e.message || e); }
     setLoading(false);
   };
@@ -194,6 +210,9 @@ export default function WeeklyReviewScreen() {
         },
       });
       if (settingsError) console.warn('WeeklyReview: last_weekly_review not saved', settingsError.message);
+      // A takeaway picked for next week has been seen: Home's "Remember
+      // this?" waits its normal gap before asking about it again.
+      triedIds.forEach(id => markReviewed(id).catch(() => {}));
       navigation.goBack();
     } catch (e) {
       console.warn('WeeklyReview: finish', e.message || e);
@@ -228,6 +247,11 @@ export default function WeeklyReviewScreen() {
               <View style={{ flexDirection: 'row', gap: s.sm, marginBottom: s.sm }}>
                 <StatCard value={`${captureStats.processed}/${captureStats.added}`} label="CAPTURES PROCESSED" color="#8b4fc4" c={c} t={t} />
                 <StatCard value={`${projectStats.withNextAction}/${projectStats.active}`} label="PROJECTS WITH A NEXT STEP" color="#c9a84c" c={c} t={t} />
+              </View>
+              {/* Saving isn't learning; using is. Both, side by side. */}
+              <View style={{ flexDirection: 'row', gap: s.sm, marginBottom: s.sm }}>
+                <StatCard value={knowledge.saved} label="THINGS SAVED TO YOUR VAULT" color={c.purple || '#8b4fc4'} c={c} t={t} />
+                <StatCard value={knowledge.used} label="TIMES YOU USED WHAT YOU KNOW" color={c.success || c.teal} c={c} t={t} />
               </View>
 
               {/* Stale inbox items — the "this week" stat above can't see
@@ -336,6 +360,31 @@ export default function WeeklyReviewScreen() {
                   placeholder={`Priority ${i + 1}`} placeholderTextColor={c.text4}
                 />
               ))}
+
+              {knowledge.toTry.length > 0 && (
+                <View style={{ marginTop: s.md }}>
+                  <Text style={{ fontSize: t.sm, color: c.text2, marginBottom: s.sm }}>
+                    <Text style={{ fontWeight: t.bold, color: c.text1 }}>Use what you know.</Text> Tap one to make it a priority:
+                  </Text>
+                  {knowledge.toTry.map(row => {
+                    const picked = triedIds.includes(row.id);
+                    return (
+                      <TouchableOpacity key={row.id} onPress={() => tryTakeaway(row)} disabled={picked} accessibilityRole="button"
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: picked ? color + '18' : c.bg1, borderRadius: r.md, padding: s.md, marginBottom: s.sm, borderWidth: 1, borderColor: picked ? color : c.border }}>
+                        <Ionicons name={picked ? 'checkmark-circle' : 'bulb-outline'} size={18} color={picked ? color : c.gold} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.text1 }} numberOfLines={2}>{row.url_meta.use_when || row.url_meta.takeaway}</Text>
+                          {row.url_meta.from === 'journal' ? (
+                            <Text style={{ fontSize: t.xs, color: c.text3 }}>From your journal</Text>
+                          ) : row.title && row.title !== (row.url_meta.use_when || row.url_meta.takeaway) ? (
+                            <Text style={{ fontSize: t.xs, color: c.text3 }} numberOfLines={1}>From {row.title}</Text>
+                          ) : null}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
 
               <TouchableOpacity onPress={finish} disabled={saving}
                 style={{ backgroundColor: color, borderRadius: r.md, paddingVertical: 16, alignItems: 'center', marginTop: s.lg, opacity: saving ? 0.7 : 1 }}>

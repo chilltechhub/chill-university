@@ -6,6 +6,7 @@ import { cacheRead, cacheWrite, isOnline } from './offlineCache';
 import { todayStr, dateStr } from '../logic/dateUtils';
 import { AREA_COLORS } from '../data/areaColors';
 import { recordAction } from '../logic/gamificationService';
+import { recordUse, removePlanUse } from './knowledgeUse';
 import { addDaysIso, addMonthsIso } from '../logic/aiBridgeFormat';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -215,6 +216,11 @@ export async function completeInstance(instanceId, completed = true) {
   if (completed) {
     recordAction('planner_done', instanceId);
     planDoneListeners.forEach(fn => { try { fn(data); } catch { /* a listener's problem, not the save's */ } });
+  }
+  // A plan made from a Vault item: Done is that knowledge used (knowledgeUse.js).
+  if (data?.link_type === 'vault' && data.link_id) {
+    (completed ? recordUse(data.link_id, { planId: data.id }) : removePlanUse(data.link_id, data.id))
+      .catch(e => console.warn('[planner] vault use', e?.message));
   }
   return data;
 }

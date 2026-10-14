@@ -18,6 +18,7 @@ import { completeInstance, rescheduleInstance } from '../api/plannerService';
 import { cacheRead, cacheWrite } from '../api/offlineCache';
 import { dateStr } from './dateUtils';
 import { targetFromInstance } from './openTarget';
+import { whyFromNotes } from '../api/knowledgeUse';
 
 let Notifications = null;
 try { Notifications = require('expo-notifications'); } catch {}
@@ -72,10 +73,13 @@ export async function schedulePlanReminder(instance, minutesBefore = 15) {
     trigger.setMinutes(trigger.getMinutes() - minutesBefore);
     if (trigger <= new Date()) return null;
     const time = fmt12(instance.start_time);
+    // A plan made from a Vault item says why it matters, not just when.
+    const why = whyFromNotes(instance.notes);
+    const when = minutesBefore > 0 ? `In ${minutesBefore} min · ${time}` : `Now · ${time}`;
     const notifId = await Notifications.scheduleNotificationAsync({
       content: {
         title: '🗓️ ' + instance.title,
-        body: minutesBefore > 0 ? `In ${minutesBefore} min · ${time}` : `Now · ${time}`,
+        body: why ? `${when}\nWhy: ${why}` : when,
         sound: true,
         categoryIdentifier: CATEGORY,
         data: { instanceId: instance.id, kind: CATEGORY, target: targetFromInstance(instance) || { kind: 'planner' } },
