@@ -37,6 +37,7 @@ import { addCapture, linkCaptureFields } from '../api/captureService';
 import { shareText, reminderText, dayPlanText, fmtTime12, fmtDay } from '../logic/shareOut';
 import ReminderComposer from '../components/ReminderComposer';
 import MoreMenu from '../components/MoreMenu';
+import { SkeletonRows } from '../components/Skeleton';
 import { FONTS } from '../theme';
 import { todayStr } from '../logic/dateUtils';
 import { textOn } from '../logic/contrast';
@@ -301,7 +302,7 @@ export default function NotificationCenterScreen() {
         {pill('Plan my day with AI', 'sparkles', () => askAI({ target: 'planner', idea: planWithAIIdea(feed.visible) }), { tone: c.purple, filled: true })}
         {pill('New reminder', 'alarm-outline', () => setComposer({}), { tone: c.teal })}
       </View>
-      {loading && !feed.data ? <ActivityIndicator color={c.teal} style={{ marginTop: s.xl }} /> : nowNotices.length ? (
+      {loading && !feed.data ? <SkeletonRows count={3} /> : nowNotices.length ? (
         nowNotices.map(n => <NoticeCard key={n.id} n={n} />)
       ) : (
         <View style={{ alignItems: 'center', paddingVertical: s.xxl }}>

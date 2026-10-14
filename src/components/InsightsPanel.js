@@ -9,10 +9,11 @@
 // accessibility label that says the whole chart in words.
 
 import React, { useCallback, useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { getInsights, INSIGHT_DAYS } from '../api/insightsService';
+import { SkeletonTiles } from './Skeleton';
 
 const CHART_H = 96;
 
@@ -31,7 +32,7 @@ export default function InsightsPanel({ userId }) {
     return () => { live = false; };
   }, [userId]));
 
-  if (!data) return <ActivityIndicator color={c.teal} style={{ marginVertical: s.xl }} />;
+  if (!data) return <SkeletonTiles count={4} style={{ marginBottom: s.lg }} />;
 
   const total = data.days.reduce((n, d) => n + d.done, 0);
   const max = Math.max(1, ...data.days.map(d => d.done));

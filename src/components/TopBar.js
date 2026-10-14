@@ -17,6 +17,7 @@ import NotificationBell from './NotificationBell';
 import { RANK_LABELS } from '../theme';
 import LoginScreen from '../screens/LoginScreen';
 import { readableOn } from '../logic/contrast';
+import { useBlueprint, WORKSHOP_SCREENS } from '../screens/library/blueprint';
 
 // Profile / Help / Screen Tutorial / Settings / Search — one tap-menu off
 // the crest instead of five separate rows. These used to live on the FAB's
@@ -94,6 +95,10 @@ export default function TopBar({ currentScreen }) {
     }
   };
 
+  // In the Workshop the bar takes the blueprint paper (blueprint.js).
+  const bp = useBlueprint();
+  const onPaper = WORKSHOP_SCREENS.has(currentScreen);
+
   if (loading) {
     return (
       <View style={[s.container, { flexDirection: 'row', alignItems: 'center' }]}>
@@ -104,7 +109,7 @@ export default function TopBar({ currentScreen }) {
 
   return (
     <>
-      <View style={s.container}>
+      <View style={[s.container, onPaper && { backgroundColor: bp.paper, borderBottomColor: bp.border }]}>
         <View style={s.topRow}>
           {/* Crest — opens the Profile/Help/Tutorial/Settings/Search menu
               (Sign in instead of Profile for a guest). */}

@@ -8,7 +8,7 @@
 // fails `npm run check` if a hard-coded HUD font, uppercase label or raw hex
 // colour creeps back in. See docs/finishing-touches-plan.md (Phase 2).
 import React from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, Pressable, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
 import { useUIPrefs } from '../../../context/UIPrefsContext';
@@ -83,14 +83,15 @@ export function Button({ label, onPress, variant = 'primary', size = 'md', icon,
   const fg = disabled ? c.text4 : filled ? (color ? '#ffffff' : accent.onPrimary) : variant === 'ghost' ? c.text2 : tint; // style-ok: white label on a custom colour
   const height = size === 'sm' ? 36 : 48;
   return (
-    <TouchableOpacity
+    // Pressed, it gives a little: a slight shrink and dim, so a tap feels
+    // like it landed. No animation to switch off for Reduce motion.
+    <Pressable
       onPress={onPress}
       disabled={disabled || busy}
-      activeOpacity={0.85}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel || label}
       accessibilityState={{ disabled: !!(disabled || busy), busy: !!busy }}
-      style={[
+      style={({ pressed }) => [
         {
           height,
           borderRadius: st.buttonRadius,
@@ -101,6 +102,7 @@ export function Button({ label, onPress, variant = 'primary', size = 'md', icon,
           borderWidth: variant === 'secondary' ? 1.5 : 0,
           borderColor: disabled ? c.border : tint,
         },
+        pressed && !disabled && !busy && { transform: [{ scale: 0.97 }], opacity: 0.88 },
         style,
       ]}
     >
@@ -110,7 +112,7 @@ export function Button({ label, onPress, variant = 'primary', size = 'md', icon,
           <Text style={{ fontSize: size === 'sm' ? t.sm : t.md, color: fg, ...st.buttonLabel }}>{label}</Text>
         </>
       )}
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 

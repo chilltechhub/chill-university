@@ -29,6 +29,7 @@ import { completeTask } from '../api/captureService';
 import { todayStr, addDays, dateStr } from '../logic/dateUtils';
 import MiniCalendar from './MiniCalendar';
 import RichText from './RichText';
+import { tapHaptic } from '../logic/haptics';
 
 const LOOKBACK_DAYS = 14;
 const SHOWN = 3;
@@ -78,6 +79,7 @@ export default function PlannerBacklog({ userId, onChange, openAt = 0, c, t, s, 
   useEffect(() => { load(); }, [load]);
 
   const act = async (key, fn) => {
+    tapHaptic();
     setBusy(key);
     try { await fn(); await load(); onChange?.(); }
     catch (e) { console.warn('[backlog]', e?.message); }

@@ -42,6 +42,8 @@ import FillWithAIButton from '../components/FillWithAIButton';
 import MoreMenu from '../components/MoreMenu';
 import PlannerBacklog from '../components/PlannerBacklog';
 import PlannerQuickAdd from '../components/PlannerQuickAdd';
+import { SkeletonRows } from '../components/Skeleton';
+import { successHaptic } from '../logic/haptics';
 import { CLASS_SUBJECTS, CLASS_SCREEN_MAP } from '../data/classCatalog';
 import { getEnabledGames, getGame } from '../services/gameRegistry';
 import { dateStr } from '../logic/dateUtils';
@@ -696,7 +698,7 @@ function AgendaRow({ instance, onUpdate, onOpen, c, t, s, r }) {
         accessibilityRole="button" accessibilityLabel={`${instance.title}. Show details`}>
         {/* Check circle */}
         <TouchableOpacity
-          onPress={() => handle(() => completeInstance(instance.id, !done))}
+          onPress={() => { if (!done) successHaptic(); handle(() => completeInstance(instance.id, !done)); }}
           disabled={saving || skipped}
           accessibilityRole="checkbox" accessibilityState={{ checked: !!done }}
           accessibilityLabel={done ? `Mark ${instance.title} not done` : `Mark ${instance.title} done`}
@@ -750,7 +752,7 @@ function AgendaRow({ instance, onUpdate, onOpen, c, t, s, r }) {
       {overdue && !done && !skipped && (
         <View style={{ flexDirection: 'row', gap: s.sm, paddingHorizontal: s.md, paddingBottom: s.md, flexWrap: 'wrap' }}>
           <ActionBtn label="Do Now" icon="checkmark-circle-outline" color={area.color}
-            onPress={() => handle(() => completeInstance(instance.id, true))} />
+            onPress={() => { successHaptic(); handle(() => completeInstance(instance.id, true)); }} />
           <ActionBtn label="Move to today" icon="calendar-outline" color={c.text3}
             onPress={() => handle(() => rescheduleInstance(instance.id))} />
           <ActionBtn label="Drop" icon="close-circle-outline" color="#e05858"
@@ -1059,7 +1061,7 @@ function DailyPage({ userId, date, activeAreas, timeMode, onOpen, onAdd, onQuick
   const completed = instances.filter(i => i.completed).length;
   const total     = instances.filter(i => !i.skipped).length;
 
-  if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color={c.teal} />;
+  if (loading) return <SkeletonRows count={4} style={{ padding: s.lg }} />;
 
   const sharedProps = { instances, date, onUpdate: handleUpdate, onOpen, onAdd, onAddAt: (time) => onAdd(time), c, t, s, r };
 
@@ -1133,7 +1135,7 @@ function WeeklyView({ userId, anchor, activeAreas, onDayPress, refreshKey, showi
     setLoading(false);
   };
 
-  if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color={c.teal} />;
+  if (loading) return <SkeletonRows count={4} style={{ padding: s.lg }} />;
 
   const allItems = weekDays.flatMap(d => byDate[toISO(d)] || []);
   const allDue = weekDays.flatMap(d => dueByDate[toISO(d)] || []);
@@ -1299,7 +1301,7 @@ function MonthlyView({ userId, anchor, activeAreas, onDayPress, refreshKey, show
     setLoading(false);
   };
 
-  if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color={c.teal} />;
+  if (loading) return <SkeletonRows count={4} style={{ padding: s.lg }} />;
   const cells = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
 
   return (
@@ -1777,7 +1779,7 @@ export default function PlannerScreen() {
 
       {/* ── Content ── */}
       {loading ? (
-        <ActivityIndicator color={c.teal} style={{ marginTop: 40 }} />
+        <SkeletonRows count={4} style={{ padding: s.lg }} />
       ) : view === 'Daily' ? (
         <DailyPage
           key={`daily-${toISO(anchor)}-${showingAll ? 'all' : 'one'}`}

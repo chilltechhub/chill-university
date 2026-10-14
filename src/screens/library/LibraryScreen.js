@@ -36,6 +36,7 @@ import LockBadge from '../../components/LockBadge';
 import { useFeatureGate } from '../../components/FeatureGate';
 import { useAccess } from '../../../context/AccessContext';
 import { featureForScreen } from '../../data/featureCatalog';
+import { pathFor } from '../../logic/experienceStage';
 import { unlockHint } from '../../logic/featureAccess';
 import { todayStr, daysBetween } from '../../logic/dateUtils';
 import { Button } from '../../components/ui';
@@ -331,7 +332,7 @@ export default function LibraryScreen() {
   // isScreenVisible is the experience stage (src/data/experienceStages.js):
   // on a first day this Library is a handful of tools picked for the
   // profile type, and a view with none of them in it isn't offered at all.
-  const { purpose, isScreenVisible, isFeatureShown, experienceMode } = useAccess();
+  const { purpose, isScreenVisible, isFeatureShown, experienceMode, stage, persona, socialOn } = useAccess();
 
   const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -1044,6 +1045,52 @@ export default function LibraryScreen() {
           if (open === 0 && experienceMode !== 'picks') return null;
           // Just my picks: nothing opens by itself, so point at adding.
           const picks = experienceMode === 'picks';
+          // Level up: the tools this page gets later, as dimmed cards that
+          // say when. A dashed "more opens here" box over empty space read
+          // as a hollow app (2026-10-14).
+          if (!picks) {
+            const path = pathFor(persona);
+            const shown = new Set(LIBRARY_HUBS.filter(h => h.tab === activeTab).flatMap(h => visibleItemsFor(h).map(e => e.item.screen)));
+            const coming = LIBRARY_HUBS.filter(h => h.tab === activeTab).flatMap(h => h.items)
+              .filter(item => !shown.has(item.screen) && !hiddenSections.includes(item.screen))
+              .map(item => {
+                const feature = featureForScreen(item.screen);
+                // Not stage locks: Plus, Labs and social tools wait on other things.
+                if (feature && (feature.gate === 'paid' || feature.gate === 'experimental' || (feature.social && !socialOn))) return null;
+                const at = path.findIndex(st => (st.screens || []).includes(item.screen) || (feature && (st.features || []).includes(feature.id)));
+                return at >= 0 && at + 1 > stage ? { item, at: at + 1 } : null;
+              })
+              .filter(Boolean)
+              .sort((a, b) => a.at - b.at)
+              .slice(0, 3);
+            if (coming.length) {
+              return (
+                <View style={{ marginHorizontal: 20, marginTop: s.sm, marginBottom: s.lg, gap: s.sm }}>
+                  <Text style={styles.moreSoonText}>Coming to this page</Text>
+                  {coming.map(({ item, at }) => (
+                    <TouchableOpacity key={item.screen} onPress={() => navigation.navigate('Compass')} accessibilityRole="button"
+                      accessibilityLabel={`${item.label}, opens at stage ${at}. See all stages.`}
+                      style={[styles.comingCard]}>
+                      <View style={styles.comingIcon}>
+                        <Ionicons name={item.icon || 'apps-outline'} size={18} color={c.text3} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.comingLabel}>{item.label}</Text>
+                        {!!item.desc && <Text style={styles.comingDesc} numberOfLines={1}>{item.desc}</Text>}
+                      </View>
+                      <View style={styles.comingBadge}>
+                        <Ionicons name="lock-closed" size={11} color={c.text3} />
+                        <Text style={styles.comingBadgeText}>{at === stage + 1 ? 'Next stage' : `Stage ${at}`}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                  <TouchableOpacity onPress={() => navigation.navigate('Compass')} accessibilityRole="button">
+                    <Text style={[styles.moreSoonLink, { color: accent.primary }]}>See all stages →</Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            }
+          }
           return (
             <TouchableOpacity
               onPress={() => navigation.navigate(picks ? 'MyFeatures' : 'Compass')}
@@ -1281,6 +1328,16 @@ const makeStyles = (c, t, s, r, ui, accent) =>
       borderWidth: 1, borderStyle: 'dashed', borderColor: c.border,
     },
     moreSoonText: { fontSize: t.sm, color: c.text2, lineHeight: 19 },
+    // A tool that opens later: the card it will be, dimmed, with when.
+    comingCard: {
+      flexDirection: 'row', alignItems: 'center', gap: s.md, padding: s.md, borderRadius: r.md,
+      backgroundColor: c.bg1, borderWidth: 0.5, borderColor: c.border, opacity: 0.72,
+    },
+    comingIcon: { width: 34, height: 34, borderRadius: 17, backgroundColor: c.bg2, alignItems: 'center', justifyContent: 'center' },
+    comingLabel: { fontSize: t.sm, fontWeight: t.bold, color: c.text1 },
+    comingDesc: { fontSize: 12, color: c.text3, marginTop: 1 },
+    comingBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: c.bg2 },
+    comingBadgeText: { fontSize: 11, fontWeight: t.bold, color: c.text3 },
     moreSoonLink: { fontSize: t.sm, fontWeight: t.bold, marginTop: 2 },
     segRow: {
       flexDirection: 'row', gap: 4, padding: 4, marginBottom: s.md, marginHorizontal: 20,

@@ -966,6 +966,7 @@ export function AccessProvider({ children }) {
 
     // 3. shown now
     stage,
+    persona, // the account type, for the stage path (experienceStage.pathFor)
     derivedStage,
     nextStage,
     experienceMode,
@@ -999,7 +1000,7 @@ export function AccessProvider({ children }) {
     toggleStep, completeActiveObjective, abandonActiveObjective, submitTest,
     claimPlanFeature, unlockEvents, dismissUnlockEvent, dismissAllUnlockEvents,
     age, isContentAllowed, isGameAllowed, doorSettings, setDoorSetting, openByChoice, plusOnSale, socialOn,
-    stage, derivedStage, nextStage, experienceMode, setExperienceMode, picks, setPicks, addPick, declinePick, opened, can,
+    stage, derivedStage, nextStage, persona, experienceMode, setExperienceMode, picks, setPicks, addPick, declinePick, opened, can,
     firstGoal, startFirstGoal, isFeatureShown, isScreenVisible, isGameVisible,
     isSubjectVisible, visibleGameIds, playableGames, visibleFabActions, stageEvents, dismissStageEvent,
     signalAction,

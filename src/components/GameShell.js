@@ -42,9 +42,9 @@ const DARK_G = {
 // dropped into light mode looks like it belongs next to every other screen,
 // not like a dark panel bolted on.
 const LIGHT_G = {
-  bg:       '#eef1f6',
+  bg:       '#f5f4f0',
   card:     '#ffffff',
-  border:   '#c7cedd',
+  border:   '#d6d2c7',
   gold:     '#9a7228',
   goldL:    '#f5e8c8',
   teal:     '#1a8a7a',

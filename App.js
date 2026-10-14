@@ -43,6 +43,7 @@ import RewardToast from './src/components/RewardToast';
 import HomeScreen    from './src/screens/HomeScreen';
 import LibraryNav    from './src/screens/library/LibraryNav';
 import TrainingNav   from './src/screens/TrainingNav';
+import { WORKSHOP_SCREENS, blueprintPaper } from './src/screens/library/blueprint';
 
 import LoginScreen        from './src/screens/LoginScreen';
 import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
@@ -258,7 +259,7 @@ function webTitle(options, route) {
 }
 
 function AppInner() {
-  const { colors: c } = useTheme();
+  const { colors: c, isDark } = useTheme();
   const navigationRef = useRef(null);
   const [initialRoute, setInitialRoute] = React.useState(null);
   const [showTopBar, setShowTopBar] = React.useState(true);
@@ -500,7 +501,7 @@ function AppInner() {
         maybeTeachScreen(name);
       }}
     >
-      <SafeAreaView style={{ flex: 1, backgroundColor: c.headerBg }} edges={['top']}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: WORKSHOP_SCREENS.has(currentRouteName) ? blueprintPaper(isDark).paper : c.headerBg }} edges={['top']}>
         {showTopBar && <TopBar currentScreen={currentRouteName} />}
         {showTopBar && <AnnouncementBanner />}
         <Stack.Navigator

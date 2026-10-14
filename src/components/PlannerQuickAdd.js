@@ -12,6 +12,7 @@ import { parseQuickAdd, describeQuickAdd } from '../logic/quickAdd';
 import { repeatDates } from '../logic/aiBridgeFormat';
 import { isSamePlan } from '../logic/plannerLayout';
 import { dateStr } from '../logic/dateUtils';
+import { successHaptic } from '../logic/haptics';
 
 export default function PlannerQuickAdd({ userId, date, area = 'physical', onAdded, c, t, s, r }) {
   const [text, setText] = useState('');
@@ -47,6 +48,7 @@ export default function PlannerQuickAdd({ userId, date, area = 'physical', onAdd
       const { data, error } = await supabase.from('agenda_instances')
         .insert(free.map(d => ({ ...base, date: d }))).select();
       if (error) throw error;
+      successHaptic();
       setNote({ kind: 'ok', text: `Added: ${describeQuickAdd(parsed)}` });
       setText('');
       onAdded?.(data?.[0] || null);
