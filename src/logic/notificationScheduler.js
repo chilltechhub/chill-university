@@ -11,6 +11,8 @@
 
 import { Platform } from 'react-native';
 import { isToday } from './dateUtils';
+import { reminderAt } from './petHunger';
+import { readSetting, SETTING_KEYS } from './useSetting';
 
 let Notifications = null;
 try { Notifications = require('expo-notifications'); } catch {}
@@ -198,4 +200,54 @@ export async function scheduleActionReminder({ key, title, body, time, target })
   } catch {
     return null;
   }
+}
+
+// ─── The pet's "getting hungry" reminder ─────────────────────────────────────
+// One pending notification at most, for when the pet is down to its last
+// heart (petHunger.reminderAt: still time to feed it for double bond, never
+// at night). Re-synced whenever the bowl changes — loading, feeding, or the
+// switch — so a feed always pushes it back. The switch is the pet sheet's
+// "Remind me" and Settings → Pet reminders (SETTING_KEYS.PET_REMINDERS,
+// on by default).
+//
+// `ask`: may this show the phone's permission prompt? Only right after the
+// person did something with the pet (fed it, switched this on), never on
+// launch. Resolves true when it's set (or there's nothing to set), false when
+// notifications aren't allowed, null where there are none (web, Expo without
+// the module).
+const PET_ID = 'pet-hungry';
+
+export async function syncPetReminder({ fullUntil, name, enabled, ask = false }) {
+  if (!Notifications || Platform.OS === 'web') return null;
+  await cancel(PET_ID);
+  const on = enabled ?? await readSetting(SETTING_KEYS.PET_REMINDERS, true);
+  if (!on || !name) return true;
+  const at = reminderAt(fullUntil);
+  if (!at) return true;
+  let granted = false;
+  if (ask) granted = await ensureNotificationPermission();
+  else {
+    try { granted = (await Notifications.getPermissionsAsync()).status === 'granted'; } catch {}
+  }
+  if (!granted) return false;
+  await ensureAndroidChannel();
+  try {
+    await Notifications.scheduleNotificationAsync({
+      identifier: PET_ID,
+      content: {
+        title: `🍎 ${name} is getting hungry`,
+        body: 'Feed it now for double bond.',
+        sound: true,
+        data: { target: { kind: 'pet' } },
+      },
+      trigger: Notifications.SchedulableTriggerInputTypes
+        ? { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(at) }
+        : new Date(at),
+    });
+  } catch {}
+  return true;
+}
+
+export async function cancelPetReminder() {
+  await cancel(PET_ID);
 }

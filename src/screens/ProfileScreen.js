@@ -22,6 +22,9 @@ import { useUserProgress, SUBJECT_CONFIG } from '../../context/UserProgressConte
 import useCharacterLoadout from '../logic/useCharacterLoadout';
 import useBonusRewards from '../logic/useBonusRewards';
 import useCoinRewards from '../logic/useCoinRewards';
+import usePetCare, { useSpendablePoints } from '../logic/usePetCare';
+import { bondLevel } from '../logic/petBond';
+import PetCareSheet from '../components/PetCareSheet';
 import { OUTFITS, ACCESSORIES, unlockLabel } from '../data/characterOptions';
 import { PET_TIERS, petUnlockLabel } from '../data/petOptions';
 import { BACKGROUNDS, backgroundUnlockLabel } from '../data/backgroundOptions';
@@ -54,6 +57,9 @@ export default function ProfileScreen() {
   const { ready: loadoutReady, outfit, pet, accessory, background, equip } = useCharacterLoadout(stats);
   const bonusRewards = useBonusRewards(user?.id, refreshDailyMissions);
   const coinRewards = useCoinRewards(user?.id);
+  const petCare = usePetCare(user?.id, !!pet);
+  const wallet = useSpendablePoints(user?.id, points);
+  const [petSheetOpen, setPetSheetOpen] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -145,7 +151,8 @@ export default function ProfileScreen() {
     );
   }
 
-  const badgeCtx = { level, streakDays, points, subjectProgress, gameplayStats };
+  const petLevel = bondLevel(petCare.bond).level;
+  const badgeCtx = { level, streakDays, points, subjectProgress, gameplayStats, petLevel };
   const { earned: earnedBadges, locked: lockedBadges } = splitBadges(badgeCtx);
 
   const subjectRows = Object.entries(subjectProgress || {})
@@ -175,6 +182,10 @@ export default function ProfileScreen() {
             coinRewardPoints={coinRewards.points}
             showJumpArrow={heroTap !== false}
             tapToJump={heroTap === false}
+            petHearts={pet && petCare.ready ? petCare.hearts : undefined}
+            petName={petCare.nickname || pet?.name} petLevel={petLevel} petGiftReady={petCare.giftReady}
+            onPetPress={() => setPetSheetOpen(true)}
+            heartsPillStyle={{ top: 60, left: 12 }}
           />
           <View style={styles.heroLabel}>
             <Text style={styles.heroName} numberOfLines={1}>{displayName || 'Commander'}</Text>
@@ -191,7 +202,7 @@ export default function ProfileScreen() {
         <TourSpot id="profile-rank">
         <View style={styles.statsRow}>
           <StatChip label="Level" value={level} icon="trending-up-outline" c={c} t={t} s={s} r={r} />
-          <StatChip label="Points" value={points.toLocaleString()} icon="star-outline" c={c} t={t} s={s} r={r} />
+          <StatChip label="Points" value={wallet.toLocaleString()} icon="star-outline" c={c} t={t} s={s} r={r} />
           <StatChip label="Streak" value={`${streakDays}d`} icon="flame-outline" c={c} t={t} s={s} r={r} />
           <StatChip label="Tier" value={(RANK_LABELS[rank] || RANK_LABELS[20]).label} icon="ribbon-outline" c={c} t={t} s={s} r={r} />
         </View>
@@ -271,6 +282,7 @@ export default function ProfileScreen() {
         c={c}
         t={t}
       />
+      <PetCareSheet visible={petSheetOpen} onClose={() => setPetSheetOpen(false)} pet={pet} />
     </KeyboardAvoidingView>
   );
 }

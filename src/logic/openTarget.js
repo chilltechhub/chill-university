@@ -48,6 +48,8 @@ export async function openTarget(navigation, target) {
     case 'home': navigation.navigate('MainTabs', { screen: 'Home' }); return true;
     // Same param Home's Daily Drills widget uses (GamesScreen reads openDrills).
     case 'drills': goToScreen(navigation, 'Training', { openDrills: true }); return true;
+    // The pet's "getting hungry" reminder: Training, with its feed sheet open.
+    case 'pet': goToScreen(navigation, 'Training', { openPet: true }); return true;
     case 'root': navigation.navigate(target.key, target.params); return true;
     case 'class': goToScreen(navigation, target.key); return true;
     case 'game': navigation.navigate('Play', { gameId: target.key }); return true;

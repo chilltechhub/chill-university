@@ -23,6 +23,10 @@ export const BADGES = [
   { id: 'point_hoarder', name: 'Point Hoarder',      tier: 'silver', icon: '✦', desc: 'Earn 2,000 points.', check: (ctx) => (ctx.points || 0) >= 2000 },
   { id: 'point_legend',  name: 'Point Legend',       tier: 'gold',   icon: '✦', desc: 'Earn 10,000 points.', check: (ctx) => (ctx.points || 0) >= 10000 },
 
+  // The pet's bond (src/logic/petBond.js): Pal is level 2, Best buddy 5.
+  { id: 'pet_pal',       name: 'Pet Pal',            tier: 'bronze', icon: '🐾', desc: 'Reach Pal with your pet.', check: (ctx) => (ctx.petLevel || 0) >= 2 },
+  { id: 'best_buddy',    name: 'Best Buddy',         tier: 'gold',   icon: '🎗️', desc: 'Reach Best buddy with your pet.', check: (ctx) => (ctx.petLevel || 0) >= 5 },
+
   { id: 'well_rounded',  name: 'Well Rounded',       tier: 'silver', icon: '🧭', desc: 'Build progress in 5 different subjects.', check: (ctx) => Object.keys(ctx.subjectProgress || {}).length >= 5 },
   { id: 'subject_master', name: 'Subject Master',    tier: 'gold',   icon: '📚', desc: 'Reach Level 10 in any one subject.', check: (ctx) => Object.values(ctx.subjectProgress || {}).some(sp => (sp.level || 0) >= 10) },
 ];

@@ -21,7 +21,9 @@ import { getUserApiKey, setUserApiKey, clearUserApiKey, maskKey } from '../api/a
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import { resetSeenScreens } from '../logic/useFirstVisitTutorial';
 import { useFabPosition } from '../../context/FabPositionContext';
-import { syncReminders, cancelAllReminders, computeReminderState } from '../logic/notificationScheduler';
+import { syncReminders, cancelAllReminders, computeReminderState, syncPetReminder, cancelPetReminder } from '../logic/notificationScheduler';
+import usePetCare from '../logic/usePetCare';
+import { readEquippedPet } from '../logic/useCharacterLoadout';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { useTour } from '../../context/TourContext';
 import TourSpot from '../components/TourSpot';
@@ -626,6 +628,9 @@ export default function SettingsScreen() {
   const [hideDone, setHideDone] = useSetting(SETTING_KEYS.HIDE_DONE_WIDGETS, false);
   const [libraryBgMode, setLibraryBgMode] = useSetting(SETTING_KEYS.LIBRARY_BACKGROUND, 'plain');
   const [remindersEnabled, setRemindersEnabled] = useSetting(SETTING_KEYS.DAILY_REMINDERS_ENABLED, false);
+  // The pet's "getting hungry" reminder. On by default; same switch as the
+  // pet's feed sheet.
+  const [petRemindOn, setPetRemindOn] = useSetting(SETTING_KEYS.PET_REMINDERS, true);
   const [screenTutorials, setScreenTutorials] = useSetting(SETTING_KEYS.SCREEN_TUTORIALS_ENABLED, true);
   const [hiddenSections, setHiddenSections] = useSetting(SETTING_KEYS.HIDDEN_LIBRARY_SECTIONS, []);
   // Compass — purpose, the active objective, the experimental opt-in and
@@ -649,7 +654,8 @@ export default function SettingsScreen() {
   const [showCrestModal, setShowCrestModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
-  const { dailyMissions, profile: liveProfile, streakDays, refreshProfile } = useUserProgress();
+  const { dailyMissions, profile: liveProfile, streakDays, refreshProfile, user: progressUser } = useUserProgress();
+  const petCare = usePetCare(progressUser?.id);
   // Jump links at the top: this is one long page (~170 rows), and Sign out
   // sat five screens down. Section offsets are measured as they lay out.
   const scrollRef = useRef(null);
@@ -735,6 +741,17 @@ export default function SettingsScreen() {
       // OS permission was actually denied — don't leave the toggle showing
       // "on" while nothing is really scheduled.
       setRemindersEnabled(false);
+      Alert.alert('Notifications blocked', 'Enable notifications for this app in your device Settings to use reminders.');
+    }
+  };
+
+  const togglePetReminders = async (v) => {
+    setPetRemindOn(v);
+    if (!v) { cancelPetReminder(); return; }
+    const pet = await readEquippedPet({ level: liveProfile?.level || 1, played: 1 });
+    const ok = await syncPetReminder({ fullUntil: petCare.fullUntil, name: petCare.nickname || pet?.name, enabled: true, ask: true });
+    if (ok === false) {
+      setPetRemindOn(false);
       Alert.alert('Notifications blocked', 'Enable notifications for this app in your device Settings to use reminders.');
     }
   };
@@ -1200,6 +1217,16 @@ export default function SettingsScreen() {
               onValueChange={toggleReminders}
               trackColor={{ false: c.borderStrong, true: c.teal + '88' }}
               thumbColor={remindersEnabled ? c.teal : c.text3}
+            />
+          }
+          c={c} t={t} s={s} r={r} />
+        <SettingRow icon="paw-outline" iconColor={c.gold} label="Pet reminders" subtitle="A nudge when your pet is down to its last heart"
+          right={
+            <Switch
+              value={petRemindOn !== false}
+              onValueChange={togglePetReminders}
+              trackColor={{ false: c.borderStrong, true: c.teal + '88' }}
+              thumbColor={petRemindOn !== false ? c.teal : c.text3}
             />
           }
           c={c} t={t} s={s} r={r} />

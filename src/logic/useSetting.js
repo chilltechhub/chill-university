@@ -26,6 +26,9 @@ export const SETTING_KEYS = {
   // Drills) step aside once done, until tomorrow. Off by default.
   HIDE_DONE_WIDGETS: 'hideDoneWidgets',
   DAILY_REMINDERS_ENABLED: 'dailyRemindersEnabled',
+  // "Your pet is getting hungry" (notificationScheduler.syncPetReminder).
+  // On by default; the pet's feed sheet and Settings both switch it.
+  PET_REMINDERS: 'petReminders',
   TOUR_SEEN: 'tourSeen',
   // Array of LIBRARY_HUBS item `screen` values the user has chosen to hide
   // from the Library tab (src/screens/library/LibraryScreen.js). Set from
@@ -71,6 +74,18 @@ const lastKnown = {};
 // read this key yet this session.
 export function peekSetting(key, fallback) {
   return key in lastKnown ? lastKnown[key] : fallback;
+}
+
+// Read a setting once, outside a screen (no hook, no focus events).
+export async function readSetting(key, fallback) {
+  try {
+    const raw = await AsyncStorage.getItem(PREFIX + key);
+    const value = raw === null ? fallback : JSON.parse(raw);
+    lastKnown[key] = value;
+    return value;
+  } catch {
+    return fallback;
+  }
 }
 
 export default function useSetting(key, defaultValue) {
