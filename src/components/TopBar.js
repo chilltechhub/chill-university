@@ -163,7 +163,8 @@ export default function TopBar({ currentScreen }) {
 
           {/* A Work Mode session still going: its clock, one tap back to it.
               Leaving the screen used to lose the session. */}
-          {currentScreen !== 'WorkMode' && <WorkSessionPill navigation={navigation} c={colors} />}
+          {/* Work Mode has two routes: the root one and the Library's. */}
+          {currentScreen !== 'WorkMode' && currentScreen !== 'WorkModeScreen' && <WorkSessionPill navigation={navigation} c={colors} />}
 
           {/* Level + points — one compact readout instead of a separate
               rank-name/percent row plus its own points block. The full
