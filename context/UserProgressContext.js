@@ -8,6 +8,7 @@ import { cacheRead, cacheWrite, isOnline } from '../src/api/offlineCache';
 import { todayStr, daysBetween } from '../src/logic/dateUtils';
 import { drillCriteria, drillCounts } from '../src/logic/drills';
 import { sessionNeedsSecondStep } from '../src/logic/mfaSession';
+import { startPrefsSync, stopPrefsSync } from '../src/logic/prefsSync';
 
 /* ─── Subject config ───────────────────────────────────────────────────────── */
 export const SUBJECT_CONFIG = {
@@ -194,8 +195,11 @@ export function UserProgressProvider({ children }) {
         if (u) {
           if (loadedForUserRef.current === u.id && event !== 'USER_UPDATED') return;
           loadedForUserRef.current = u.id;
-          setTimeout(() => { loadUserData(u.id); }, 0);
+          // Their look and settings come back from the account on a device
+          // that was signed out (src/logic/prefsSync.js).
+          setTimeout(() => { startPrefsSync(u.id); loadUserData(u.id); }, 0);
         } else {
+          stopPrefsSync();
           loadedForUserRef.current = null;
           resetState();
           setLoading(false);

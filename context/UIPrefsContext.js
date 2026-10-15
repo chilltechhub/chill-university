@@ -10,6 +10,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from './ThemeContext';
+import { onPrefsRestored } from '../src/logic/prefsSync';
 
 const UIPrefsContext = createContext(null);
 const STORAGE_KEY = '@cth_ui_prefs';
@@ -20,6 +21,9 @@ export function UIPrefsProvider({ children }) {
   const [prefs, setPrefs] = useState({});
   const [loaded, setLoaded] = useState(false);
 
+  // Again when signing in brings them back from the account (prefsSync.js).
+  const [restoredAt, setRestoredAt] = useState(0);
+  useEffect(() => onPrefsRestored(() => setRestoredAt(Date.now())), []);
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then(saved => {
       if (saved) {
@@ -27,7 +31,7 @@ export function UIPrefsProvider({ children }) {
       }
       setLoaded(true);
     });
-  }, []);
+  }, [restoredAt]);
 
   const update = (patch) => {
     setPrefs(prev => {

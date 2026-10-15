@@ -70,6 +70,11 @@ const CharacterWalker = forwardRef(function CharacterWalker({
   // every coin the pet eats is a real one. Without it, coins keep popping up
   // every few seconds as decoration, like before.
   nextCoinAt,
+  // Profile → Customize → "Walk arrows". Off hides the three buttons.
+  showArrows = true,
+  // A tap anywhere on the stage jumps (for collecting gifts with the
+  // arrows off). Not on Training, where the stage's own tap opens Profile.
+  tapToJump = false,
 }, ref) {
   const [stageWidth, setStageWidth] = useState(0);
   const [x, setX] = useState(null); // null until the first layout centers it
@@ -329,18 +334,29 @@ const CharacterWalker = forwardRef(function CharacterWalker({
 
   return (
     <View style={StyleSheet.absoluteFill} onLayout={onLayout} pointerEvents="box-none">
+      {tapToJump && (
+        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={doJump}
+          accessibilityRole="button" accessibilityLabel="Make your character jump" />
+      )}
       {x != null && (
         <Animated.View
+          pointerEvents="none"
           style={{
             position: 'absolute',
             left: x,
             bottom: 10,
             width: characterSize,
             height: characterSize,
-            transform: [{ translateY: verticalOffset }, { scaleX: charFlip ? -1 : 1 }],
+            transform: [{ translateY: verticalOffset }],
           }}
         >
-          <PlayerCharacter outfit={outfit} accessory={accessory} walking={walking} size={characterSize} />
+          {/* The flip lives on its own plain View. On the same transform as
+              the native-driven bob/jump, a changed scaleX stopped reaching
+              the screen once those animations had run, so after a few runs
+              back and forth the character walked backwards (2026-10-15). */}
+          <View style={{ width: characterSize, height: characterSize, transform: [{ scaleX: charFlip ? -1 : 1 }] }}>
+            <PlayerCharacter outfit={outfit} accessory={accessory} walking={walking} size={characterSize} />
+          </View>
         </Animated.View>
       )}
 
@@ -454,6 +470,7 @@ const CharacterWalker = forwardRef(function CharacterWalker({
         </Animated.View>
       )}
 
+      {showArrows && (<>
       <TouchableOpacity
         style={[styles.arrow, styles.arrowLeft]}
         onPressIn={() => startMoving('left')}
@@ -480,6 +497,7 @@ const CharacterWalker = forwardRef(function CharacterWalker({
       >
         <Ionicons name="chevron-up" size={20} color="#fff" />
       </TouchableOpacity>
+      </>)}
     </View>
   );
 });

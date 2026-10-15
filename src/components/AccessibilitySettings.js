@@ -83,14 +83,14 @@ export default function AccessibilitySettings() {
         <Row icon="contrast-outline" title="High contrast" value="Darker greys and clearer edges."
           right={<Toggle value={p.highContrast} onChange={(v) => setA11yPrefs({ highContrast: v })} label="High contrast" />} />
         <Row icon="color-palette-outline" title="Button colour" value={`${ACCENTS[accentName]?.label || 'Teal'}. Used for buttons and highlights.`} />
-        <View style={{ flexDirection: 'row', gap: s.sm, paddingHorizontal: s.md, paddingBottom: s.md }} accessibilityRole="radiogroup" accessibilityLabel="Button colour">
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm, paddingHorizontal: s.md, paddingBottom: s.md }} accessibilityRole="radiogroup" accessibilityLabel="Button colour">
           {Object.entries(ACCENTS).map(([key, a]) => {
             const on = key === accentName;
             const swatch = a[isDark ? 'dark' : 'light'].primary;
             return (
               <TouchableOpacity key={key} onPress={() => setAccent(key)}
                 accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={a.label}
-                style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 40, borderRadius: r.md, borderWidth: on ? 2 : 1, borderColor: on ? swatch : c.border, backgroundColor: c.bg0 }}>
+                style={{ flexBasis: '30%', flexGrow: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 40, borderRadius: r.md, borderWidth: on ? 2 : 1, borderColor: on ? swatch : c.border, backgroundColor: c.bg0 }}>
                 <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: swatch }} />
                 <Text style={{ fontSize: t.xs, fontWeight: on ? '800' : '600', color: c.text1 }}>{a.label}</Text>
               </TouchableOpacity>

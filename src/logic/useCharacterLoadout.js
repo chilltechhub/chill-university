@@ -9,10 +9,11 @@
 // There's no separate skin/hair slot: 32rogues outfits are full character
 // sprites, so the outfit choice fully determines how the character looks.
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { cacheRead, cacheWrite } from '../api/offlineCache';
+import { onPrefsRestored } from './prefsSync';
 import { OUTFITS, ACCESSORIES, DEFAULT_OUTFIT_ID, DEFAULT_ACCESSORY_ID } from '../data/characterOptions';
 import { PET_TIERS, DEFAULT_PET_ID, petsOpen } from '../data/petOptions';
 import { BACKGROUNDS, DEFAULT_BACKGROUND_ID } from '../data/backgroundOptions';
@@ -67,6 +68,14 @@ export default function useCharacterLoadout(baseStats) {
       return () => { alive = false; };
     }, [])
   );
+
+  // Signing in brings the character back from the account (prefsSync.js),
+  // possibly after this screen read the phone's default: read again.
+  useEffect(() => onPrefsRestored(() => {
+    cacheRead(KEY).then(saved => {
+      if (saved && typeof saved === 'object') setLoadoutState({ ...DEFAULT_LOADOUT, ...saved });
+    });
+  }), []);
 
   const persist = useCallback((next) => {
     setLoadoutState(next);

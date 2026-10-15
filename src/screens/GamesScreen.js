@@ -97,6 +97,7 @@ export default function GamesScreen() {
   const bonusRewards = useBonusRewards(user?.id, refreshDailyMissions);
   const coinRewards = useCoinRewards(user?.id);
   const [heroTapEnabled] = useSetting(SETTING_KEYS.HERO_TAP_TO_PROFILE, true);
+  const [showArrows] = useSetting(SETTING_KEYS.SHOW_WALK_ARROWS, true);
   const heroWalkerRef = useRef(null);
   // Remote feature flag — flip app_config.show_leaderboard off in Supabase
   // to hide this for everyone with no app update. Defaults on if the row
@@ -223,6 +224,7 @@ export default function GamesScreen() {
                   coinRewardsRemaining={coinRewards.remaining}
                   nextCoinAt={coinRewards.ready ? coinRewards.nextAt : Infinity}
                   coinRewardPoints={coinRewards.points}
+                  showArrows={showArrows !== false}
                 />
               </LandscapeBackground>
             </TouchableOpacity>

@@ -29,6 +29,8 @@ import { syncReminders, computeReminderState } from '../logic/notificationSchedu
 import TourSpot from '../components/TourSpot';
 import RememberThis from '../components/RememberThis';
 import TodayReview from '../components/TodayReview';
+import RightNowCard from '../components/RightNowCard';
+import useDrillPlan from '../logic/useDrillPlan';
 import CalendarModal from '../components/CalendarModal';
 import PlanDetailSheet from '../components/PlanDetailSheet';
 import WidgetBoard from '../components/WidgetBoard';
@@ -895,6 +897,8 @@ export default function HomeScreen() {
   // Training games unticked on "Pick your features": no Play button either.
   // Settings → "Study & Play buttons" can switch both off.
   const [quickButtons] = useSetting(SETTING_KEYS.HOME_QUICK_BUTTONS, true);
+  const [hideDone] = useSetting(SETTING_KEYS.HIDE_DONE_WIDGETS, false);
+  const drillPlanHome = useDrillPlan();
   const playShown = isFeatureShown('training') && quickButtons;
   const { active: tourActive, startLesson } = useTour();
   const homeFocused = useIsFocused();
@@ -958,6 +962,9 @@ export default function HomeScreen() {
   // fetch of its own, it just reads level/points/streakDays above).
   const [activeBuilds,   setActiveBuilds]   = useState([]);
   const [checkInDue,     setCheckInDue]     = useState([]);
+  // True once today's desk data (cached or live) is in, so "hide once done"
+  // never hides a card just because it hasn't loaded yet.
+  const [deskLoaded, setDeskLoaded] = useState(false);
   const [lifeAreaStats,  setLifeAreaStats]  = useState([]); // every area + rating; see loadAll
   // loadAll is memoised on [userId] via useFocusEffect, so it closes over
   // whatever activeProfile/activeType were at that moment. Reading them
@@ -1367,6 +1374,7 @@ export default function HomeScreen() {
     if (snap.focusPresets)  setFocusPresets(snap.focusPresets);
     if (snap.activeBuilds) setActiveBuilds(snap.activeBuilds);
     if (snap.checkInDue)   setCheckInDue(snap.checkInDue);
+    setDeskLoaded(true);
   };
 
   const loadAll = async (uid) => {
@@ -1494,6 +1502,7 @@ export default function HomeScreen() {
         })),
       ].sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
       setTodayActivities(activities);
+      setDeskLoaded(true);
 
       // Active Builds
       setActiveBuilds(buildsRes.data || []);
@@ -2033,6 +2042,19 @@ export default function HomeScreen() {
             arrives with the 'dashboard' stage, when there's more to set up. */}
         {!editingWidgets && can('dashboard') && <GettingStartedCard />}
 
+        {/* Right now: the one thing that matters at this minute, from
+            today's schedule and quiet hours (RightNowCard.js). */}
+        {!editingWidgets && (
+          <RightNowCard
+            activities={todayList()}
+            desk={todos}
+            ui={ui}
+            onOpen={(ref, kind) => (kind === 'desk' ? setSelectedDeskItem(ref) : setSelectedActivity(ref))}
+            onDone={(ref) => (ref._src === 'task' ? completeActivityTask(ref) : completeActivityRoutine(ref))}
+            onFocus={(ref, kind) => (kind === 'desk' ? focusOnDeskItem(ref) : navigation.navigate('WorkMode', { presetTitle: ref.title }))}
+          />
+        )}
+
         {editingWidgets && (
           <RichText style={{ marginHorizontal: s.lg, marginBottom: s.md, fontSize: t.sm, color: c.text2 }} boldStyle={{ color: c.text1 }}>
             **Tap −** to hide a card. **Drag ≡** to move it. Hidden cards wait at the bottom. Tap **Done** when finished.
@@ -2042,7 +2064,14 @@ export default function HomeScreen() {
              handles + jiggle only live while editingWidgets. See
              WIDGET_DEFS above for what each key renders. ── */}
         <WidgetBoard
-          layout={shownBoardLayout}
+          // Settings → "Hide cards once they're done": finished cards step
+          // aside until tomorrow (never while editing the layout).
+          layout={hideDone && !editingWidgets
+            ? shownBoardLayout.filter(l => !(
+              (l.key === 'activities' && todayList().length === 0 && deskLoaded) ||
+              (l.key === 'checkins' && checkInDue.length === 0 && deskLoaded) ||
+              (l.key === 'dailyDrills' && drillPlanHome.total > 0 && drillPlanHome.doneCount >= drillPlanHome.total)))
+            : shownBoardLayout}
           editing={editingWidgets && canEditWidgets}
           onChangeLayout={changeBoardLayout}
           c={c} t={t} s={s} r={r}

@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase as rawClient } from '../api/supabaseClient';
 import { flushQueue, clearQueueFor } from '../api/offlineCache';
 import { clearUserApiKey } from '../api/aiKey';
+import { pushPrefs, stopPrefsSync } from './prefsSync';
 
 // Keys that hold one person's data without their id in the name.
 const PERSONAL_KEYS = [
@@ -51,6 +52,10 @@ const PERSONAL_PREFIXES = [
  */
 export async function clearLocalUserData(userId) {
   try { await flushQueue(rawClient); } catch { /* offline — dropped below */ }
+  // Look and settings go to the account first, so signing back in brings
+  // them back (prefsSync.js). Wiping the phone below doesn't touch that copy.
+  try { await pushPrefs(); } catch {}
+  stopPrefsSync();
   try { await clearQueueFor(userId); } catch {}
   try { await clearUserApiKey(); } catch {}
   try {

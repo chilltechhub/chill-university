@@ -14,6 +14,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { onPrefsRestored } from '../src/logic/prefsSync';
 
 const KEY = '@cth_setting_fabPosition';
 export const DEFAULT_FAB_POSITION = 'bottom-right';
@@ -44,12 +45,15 @@ const FabPositionContext = createContext(null);
 export function FabPositionProvider({ children }) {
   const [fabPosition, setFabPositionState] = useState(DEFAULT_FAB_POSITION);
 
+  // Again when signing in brings it back from the account (prefsSync.js).
+  const [restoredAt, setRestoredAt] = useState(0);
+  useEffect(() => onPrefsRestored(() => setRestoredAt(Date.now())), []);
   useEffect(() => {
     AsyncStorage.getItem(KEY).then(raw => {
       if (!raw) return;
       try { setFabPositionState(JSON.parse(raw)); } catch {}
     });
-  }, []);
+  }, [restoredAt]);
 
   const setFabPosition = useCallback((next) => {
     setFabPositionState(next);

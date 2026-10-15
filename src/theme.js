@@ -267,6 +267,49 @@ export const ACCENTS = {
     light: { primary: '#3d5a80', primaryMid: '#6a86ab', primaryLight: '#e6ecf4', onPrimary: '#ffffff' },
     dark:  { primary: '#9db4d3', primaryMid: '#bccde3', primaryLight: '#172238', onPrimary: '#0d1119' },
   },
+  // More to choose from (2026-10-15). Each checked: white on the light
+  // primary and the light primary on the page both ≥ 4.8:1; dark-mode text
+  // on the dark primary and the dark primary on cards both ≥ 6:1.
+  blue: {
+    label: 'Blue',
+    light: { primary: '#1f5fbf', primaryMid: '#5b8fdc', primaryLight: '#e3ecfa', onPrimary: '#ffffff' },
+    dark:  { primary: '#73a9ff', primaryMid: '#9cc2ff', primaryLight: '#0e1f3d', onPrimary: '#0d1119' },
+  },
+  ocean: {
+    label: 'Ocean',
+    light: { primary: '#0b6b86', primaryMid: '#3e9bb5', primaryLight: '#ddf0f5', onPrimary: '#ffffff' },
+    dark:  { primary: '#52c6e6', primaryMid: '#85d8ee', primaryLight: '#082a33', onPrimary: '#0d1119' },
+  },
+  green: {
+    label: 'Green',
+    light: { primary: '#2e7a33', primaryMid: '#5aa35e', primaryLight: '#e3f2e4', onPrimary: '#ffffff' },
+    dark:  { primary: '#7ad67c', primaryMid: '#a2e3a3', primaryLight: '#0f2a10', onPrimary: '#0d1119' },
+  },
+  purple: {
+    label: 'Purple',
+    light: { primary: '#6b3fa0', primaryMid: '#9670c6', primaryLight: '#efe7f8', onPrimary: '#ffffff' },
+    dark:  { primary: '#b896f2', primaryMid: '#cdb4f6', primaryLight: '#24163a', onPrimary: '#0d1119' },
+  },
+  rose: {
+    label: 'Rose',
+    light: { primary: '#b0305e', primaryMid: '#d1638b', primaryLight: '#f9e4ec', onPrimary: '#ffffff' },
+    dark:  { primary: '#f47ba4', primaryMid: '#f7a1bf', primaryLight: '#3a1121', onPrimary: '#0d1119' },
+  },
+  red: {
+    label: 'Red',
+    light: { primary: '#b02a2a', primaryMid: '#d35f5f', primaryLight: '#f9e3e3', onPrimary: '#ffffff' },
+    dark:  { primary: '#f47a7a', primaryMid: '#f7a0a0', primaryLight: '#3a1111', onPrimary: '#0d1119' },
+  },
+  orange: {
+    label: 'Orange',
+    light: { primary: '#a3461a', primaryMid: '#cf7546', primaryLight: '#f9e8de', onPrimary: '#ffffff' },
+    dark:  { primary: '#f59a5b', primaryMid: '#f8b788', primaryLight: '#3a1d0a', onPrimary: '#0d1119' },
+  },
+  graphite: {
+    label: 'Graphite',
+    light: { primary: '#44444c', primaryMid: '#77777f', primaryLight: '#ececee', onPrimary: '#ffffff' },
+    dark:  { primary: '#d0d0d8', primaryMid: '#e2e2e8', primaryLight: '#24242a', onPrimary: '#0d1119' },
+  },
 };
 export const DEFAULT_ACCENT = 'teal';
 
