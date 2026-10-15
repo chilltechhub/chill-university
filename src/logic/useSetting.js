@@ -17,10 +17,6 @@ const PREFIX = '@cth_setting_';
 // out of sync by typo-ing two different string literals.
 export const SETTING_KEYS = {
   HERO_TAP_TO_PROFILE: 'heroTapToProfile',
-  // The walk/jump arrows on your character's stage (CharacterWalker.js).
-  // On by default; off hides them, and tapping the character still jumps
-  // when "Tap your character" isn't set to open Profile.
-  SHOW_WALK_ARROWS: 'showWalkArrows',
   LIBRARY_BACKGROUND: 'libraryBackground', // 'plain' | 'player'
   HOME_BACKGROUND: 'homeBackground',       // 'plain' | 'player'
   // The Study and Play buttons on Home's profile card. On by default; off

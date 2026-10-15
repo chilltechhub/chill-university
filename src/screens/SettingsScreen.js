@@ -1157,7 +1157,7 @@ export default function SettingsScreen() {
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
           onPress={() => setShowCrestModal(true)}
           c={c} t={t} s={s} r={r} />
-        <SettingRow icon="hand-left-outline" iconColor={c.teal} label="Tap Avatar for Profile" subtitle="Tap your character on the Training screen to open your Profile. Off: the tap makes them jump instead"
+        <SettingRow icon="hand-left-outline" iconColor={c.teal} label="Tap Avatar for Profile" subtitle="Tap your character on the Training screen to open your Profile. Off: the tap makes them jump, and the jump arrow goes away"
           right={
             <Switch
               value={heroTapEnabled}

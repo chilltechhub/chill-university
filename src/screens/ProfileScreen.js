@@ -62,8 +62,10 @@ export default function ProfileScreen() {
   const [bio, setBio] = useState('');
   const [dirty, setDirty] = useState(false);
   const [wardrobeOpen, setWardrobeOpen] = useState(false);
-  // Shared with the Customize sheet so the stage here follows the switch.
-  const [showArrows, setShowArrows] = useSetting(SETTING_KEYS.SHOW_WALK_ARROWS, true);
+  // Shared with the Customize sheet so the stage here follows the switch:
+  // with "Tap your character to open Profile" off, a tap jumps and the
+  // jump arrow goes.
+  const [heroTap, setHeroTap] = useSetting(SETTING_KEYS.HERO_TAP_TO_PROFILE, true);
   const [wardrobeTab, setWardrobeTab] = useState('outfitId');
 
   useEffect(() => {
@@ -171,8 +173,8 @@ export default function ProfileScreen() {
             onCoinCollected={coinRewards.collect}
             coinRewardsRemaining={coinRewards.remaining}
             coinRewardPoints={coinRewards.points}
-            showArrows={showArrows !== false}
-            tapToJump={showArrows === false}
+            showJumpArrow={heroTap !== false}
+            tapToJump={heroTap === false}
           />
           <View style={styles.heroLabel}>
             <Text style={styles.heroName} numberOfLines={1}>{displayName || 'Commander'}</Text>
@@ -256,8 +258,8 @@ export default function ProfileScreen() {
       </View>
 
       <WardrobeModal
-        showArrows={showArrows !== false}
-        setShowArrows={setShowArrows}
+        heroTap={heroTap}
+        setHeroTap={setHeroTap}
         visible={wardrobeOpen}
         onClose={() => setWardrobeOpen(false)}
         tab={wardrobeTab}
@@ -286,12 +288,11 @@ function StatChip({ label, value, icon, c, t, s, r }) {
   );
 }
 
-function WardrobeModal({ visible, onClose, tab, setTab, loadout, stats, equip, styles, c, t, showArrows, setShowArrows }) {
+function WardrobeModal({ visible, onClose, tab, setTab, loadout, stats, equip, styles, c, t, heroTap, setHeroTap }) {
   // How the character behaves, under the looks: what tapping it does (off,
   // it jumps and Training shows a small Profile button instead) and the walk
   // arrows. Always shown since 2026-10-15 ("tap to jump should be in the
   // character settings"); it used to wait until something was picked.
-  const [heroTap, setHeroTap] = useSetting(SETTING_KEYS.HERO_TAP_TO_PROFILE, true);
   const pick = (category, id) => { equip(category, id); };
   const TABLES = { outfitId: OUTFITS, petId: PET_TIERS, accessoryId: ACCESSORIES, backgroundId: BACKGROUNDS };
   const LABELERS = {
@@ -361,17 +362,9 @@ function WardrobeModal({ visible, onClose, tab, setTab, loadout, stats, equip, s
                 <Switch value={heroTap !== false} onValueChange={setHeroTap} accessibilityLabel="Tap your character to open Profile" />
               </View>
               <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 4, marginLeft: 26 }}>
-                {heroTap !== false ? 'Off: a tap makes them jump.' : 'A tap makes them jump. A Profile button sits in the corner of Training.'}
+                {heroTap !== false ? 'Off: a tap makes them jump, and the jump arrow goes away.' : 'A tap makes them jump (no jump arrow). A Profile button sits in the corner of Training.'}
               </Text>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Ionicons name="swap-horizontal-outline" size={16} color={c.text3} />
-              <Text style={{ flex: 1, fontSize: t.sm, color: c.text1 }}>Show the <Text style={{ fontWeight: '700' }}>walk arrows</Text></Text>
-              <Switch value={showArrows !== false} onValueChange={setShowArrows} accessibilityLabel="Show the walk arrows" />
-            </View>
-            {showArrows === false && (
-              <Text style={{ fontSize: t.xs, color: c.text3, marginTop: -6, marginLeft: 26 }}>Off: tap the stage here to jump for gifts.</Text>
-            )}
           </View>
         </View>
       </View>

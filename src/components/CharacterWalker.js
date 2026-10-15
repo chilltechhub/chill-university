@@ -70,10 +70,12 @@ const CharacterWalker = forwardRef(function CharacterWalker({
   // every coin the pet eats is a real one. Without it, coins keep popping up
   // every few seconds as decoration, like before.
   nextCoinAt,
-  // Profile → Customize → "Walk arrows". Off hides the three buttons.
-  showArrows = true,
-  // A tap anywhere on the stage jumps (for collecting gifts with the
-  // arrows off). Not on Training, where the stage's own tap opens Profile.
+  // The up (jump) arrow. Hidden when a tap on the character already jumps
+  // (Customize → "Tap your character to open Profile" off): two ways to do
+  // one thing. Left and right always stay; they're the only way to walk.
+  showJumpArrow = true,
+  // A tap anywhere on the stage jumps. Profile turns this on with the jump
+  // arrow off; Training's stage has its own tap (Profile or jump).
   tapToJump = false,
 }, ref) {
   const [stageWidth, setStageWidth] = useState(0);
@@ -470,7 +472,6 @@ const CharacterWalker = forwardRef(function CharacterWalker({
         </Animated.View>
       )}
 
-      {showArrows && (<>
       <TouchableOpacity
         style={[styles.arrow, styles.arrowLeft]}
         onPressIn={() => startMoving('left')}
@@ -489,6 +490,7 @@ const CharacterWalker = forwardRef(function CharacterWalker({
       >
         <Ionicons name="chevron-forward" size={20} color="#fff" />
       </TouchableOpacity>
+      {showJumpArrow && (
       <TouchableOpacity
         style={[styles.arrow, styles.arrowUp]}
         onPress={doJump}
@@ -497,7 +499,7 @@ const CharacterWalker = forwardRef(function CharacterWalker({
       >
         <Ionicons name="chevron-up" size={20} color="#fff" />
       </TouchableOpacity>
-      </>)}
+      )}
     </View>
   );
 });
