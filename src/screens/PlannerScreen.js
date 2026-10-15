@@ -41,6 +41,9 @@ import TourSpot from '../components/TourSpot';
 import FillWithAIButton from '../components/FillWithAIButton';
 import MoreMenu from '../components/MoreMenu';
 import PlannerBacklog from '../components/PlannerBacklog';
+import PlannerQuickAdd from '../components/PlannerQuickAdd';
+import { SkeletonRows } from '../components/Skeleton';
+import { successHaptic } from '../logic/haptics';
 import { CLASS_SUBJECTS, CLASS_SCREEN_MAP } from '../data/classCatalog';
 import { getEnabledGames, getGame } from '../services/gameRegistry';
 import { dateStr } from '../logic/dateUtils';
@@ -53,6 +56,7 @@ import { openTarget } from '../logic/openTarget';
 const { width: SW } = Dimensions.get('window');
 const PANEL_W      = Math.min(SW * 0.82, 370);
 const VIEWS        = ['Daily', 'Weekly', 'Monthly'];
+const VIEW_SHORT   = { Daily: 'Day', Weekly: 'Week', Monthly: 'Month' };
 const HOUR_H       = 80; // px per hour in time view
 const DAY_START    = 6;  // 6am, unless something is planned earlier
 const DAY_END      = 22; // 10pm, unless something runs later
@@ -694,7 +698,7 @@ function AgendaRow({ instance, onUpdate, onOpen, c, t, s, r }) {
         accessibilityRole="button" accessibilityLabel={`${instance.title}. Show details`}>
         {/* Check circle */}
         <TouchableOpacity
-          onPress={() => handle(() => completeInstance(instance.id, !done))}
+          onPress={() => { if (!done) successHaptic(); handle(() => completeInstance(instance.id, !done)); }}
           disabled={saving || skipped}
           accessibilityRole="checkbox" accessibilityState={{ checked: !!done }}
           accessibilityLabel={done ? `Mark ${instance.title} not done` : `Mark ${instance.title} done`}
@@ -748,7 +752,7 @@ function AgendaRow({ instance, onUpdate, onOpen, c, t, s, r }) {
       {overdue && !done && !skipped && (
         <View style={{ flexDirection: 'row', gap: s.sm, paddingHorizontal: s.md, paddingBottom: s.md, flexWrap: 'wrap' }}>
           <ActionBtn label="Do Now" icon="checkmark-circle-outline" color={area.color}
-            onPress={() => handle(() => completeInstance(instance.id, true))} />
+            onPress={() => { successHaptic(); handle(() => completeInstance(instance.id, true)); }} />
           <ActionBtn label="Move to today" icon="calendar-outline" color={c.text3}
             onPress={() => handle(() => rescheduleInstance(instance.id))} />
           <ActionBtn label="Drop" icon="close-circle-outline" color="#e05858"
@@ -1018,7 +1022,7 @@ function DueList({ items, onChange, label = 'Due', c, t, s, r }) {
 }
 
 // ─── Daily page ───────────────────────────────────────────────────────────────
-function DailyPage({ userId, date, activeAreas, timeMode, onOpen, onAdd, refreshKey, showingAll, c, t, s, r }) {
+function DailyPage({ userId, date, activeAreas, timeMode, onOpen, onAdd, onQuickAdded, quickArea, reviewAt, refreshKey, showingAll, c, t, s, r }) {
   const [instances,  setInstances]  = useState([]);
   const [due,        setDue]        = useState([]);
   const [loading,    setLoading]    = useState(true);
@@ -1057,7 +1061,7 @@ function DailyPage({ userId, date, activeAreas, timeMode, onOpen, onAdd, refresh
   const completed = instances.filter(i => i.completed).length;
   const total     = instances.filter(i => !i.skipped).length;
 
-  if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color={c.teal} />;
+  if (loading) return <SkeletonRows count={4} style={{ padding: s.lg }} />;
 
   const sharedProps = { instances, date, onUpdate: handleUpdate, onOpen, onAdd, onAddAt: (time) => onAdd(time), c, t, s, r };
 
@@ -1075,9 +1079,14 @@ function DailyPage({ userId, date, activeAreas, timeMode, onOpen, onAdd, refresh
           </View>
         )}
       </View>
+      {/* Type a plan in one line ("dentist thu 4pm"). */}
+      {!showingAll && (
+        <PlannerQuickAdd userId={userId} date={date} area={quickArea}
+          onAdded={(row) => { load(); onQuickAdded?.(row); }} c={c} t={t} s={s} r={r} />
+      )}
       {/* Today only: what slipped from earlier days, and to-dos with no day. */}
       {toISO(date) === toISO(new Date()) && !showingAll && (
-        <PlannerBacklog userId={userId} onChange={load} c={c} t={t} s={s} r={r} />
+        <PlannerBacklog userId={userId} onChange={load} openAt={reviewAt} c={c} t={t} s={s} r={r} />
       )}
       <DueList items={due} onChange={load} label={toISO(date) === toISO(new Date()) ? 'Due today' : 'Due'} c={c} t={t} s={s} r={r} />
       {timeMode
@@ -1126,7 +1135,7 @@ function WeeklyView({ userId, anchor, activeAreas, onDayPress, refreshKey, showi
     setLoading(false);
   };
 
-  if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color={c.teal} />;
+  if (loading) return <SkeletonRows count={4} style={{ padding: s.lg }} />;
 
   const allItems = weekDays.flatMap(d => byDate[toISO(d)] || []);
   const allDue = weekDays.flatMap(d => dueByDate[toISO(d)] || []);
@@ -1292,7 +1301,7 @@ function MonthlyView({ userId, anchor, activeAreas, onDayPress, refreshKey, show
     setLoading(false);
   };
 
-  if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color={c.teal} />;
+  if (loading) return <SkeletonRows count={4} style={{ padding: s.lg }} />;
   const cells = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
 
   return (
@@ -1486,6 +1495,7 @@ export default function PlannerScreen() {
   const [anchor,      setAnchor]  = useState(new Date());
   const [activeAreas, setAreas]   = useState(new Set());
   const [panelOpen,   setPanel]   = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false); // the life-area sheet
   const [loading,     setLoading] = useState(true);
   const [refreshKey,  setRefresh] = useState(0);
   // By time of day unless the person switched to the list; the choice is
@@ -1566,6 +1576,18 @@ export default function PlannerScreen() {
     if (view === 'Weekly')  return `${weekDays[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — ${weekDays[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
     if (view === 'Monthly') return anchor.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   };
+  // The same, short enough to share a row with the view and the filter.
+  const shortPeriodLabel = () => {
+    if (view === 'Daily') return anchor.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    if (view === 'Weekly') {
+      const [first, last] = [weekDays[0], weekDays[6]];
+      const from = first.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return first.getMonth() === last.getMonth()
+        ? `${from} – ${last.getDate()}`
+        : `${from} – ${last.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+    }
+    return anchor.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  };
 
   // `time` comes from tapping an empty slot in the time-of-day view.
   const openAdd = (time = null) => { setEditInst(null); setModalDate(toISO(anchor)); setModalTime(typeof time === 'string' ? time : null); setShowModal(true); };
@@ -1582,6 +1604,18 @@ export default function PlannerScreen() {
     openEdit(editParam);
     navigation.setParams({ editInstance: undefined });
   }, [editParam]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // "Review & reschedule" from the Notification Center: today, with the
+  // from-earlier card already open.
+  const [reviewAt, setReviewAt] = useState(0);
+  const reviewParam = route.params?.review;
+  useEffect(() => {
+    if (!reviewParam) return;
+    setView('Daily');
+    setAnchor(new Date());
+    setReviewAt(Date.now());
+    navigation.setParams({ review: undefined });
+  }, [reviewParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Something just scheduled from elsewhere (the Capture Inbox) opens on its
   // own day, so it's on screen rather than on a day nobody is looking at.
@@ -1690,82 +1724,77 @@ export default function PlannerScreen() {
               { label: 'Add to my calendar', icon: 'calendar-outline', onPress: exportCalendar },
               { label: 'Remove duplicates', icon: 'copy-outline', onPress: removeDuplicates },
               { label: 'Weekly review', icon: 'stats-chart-outline', onPress: () => navigation.navigate('WeeklyReviewScreen') },
+              // Widen across profiles: only once there's more than one.
+              profiles.length > 1 && {
+                label: showingAll ? 'Show this profile only' : 'Show all profiles',
+                icon: showingAll ? 'person-outline' : 'layers-outline',
+                onPress: toggleScope,
+              },
             ]} />
           </View>
         </View>
 
-        {/* View switcher */}
-        <TourSpot id="planner-views">
-        <View style={{ flexDirection: 'row', paddingHorizontal: s.lg, gap: s.sm, paddingBottom: s.sm }}>
-          {VIEWS.map(v => (
-            <TouchableOpacity key={v} onPress={() => setView(v)}
-              style={{ paddingHorizontal: s.md, paddingVertical: 5, borderRadius: 20, backgroundColor: view === v ? c.teal : 'transparent', borderWidth: 1, borderColor: view === v ? c.teal : c.border }}>
-              <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: view === v ? c.onFill : c.text3 }}>{v}</Text>
-            </TouchableOpacity>
-          ))}
-
-          {/* Widen across profiles. Only worth showing once there's more than
-              one profile to widen across. */}
-          {profiles.length > 1 && (
-            <TouchableOpacity
-              onPress={toggleScope}
-              style={{ marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 4,
-                       paddingHorizontal: s.md, paddingVertical: 5, borderRadius: 20, borderWidth: 1,
-                       borderColor: showingAll ? c.gold : c.border,
-                       backgroundColor: showingAll ? c.gold + '22' : 'transparent' }}
-              accessibilityRole="button"
-              accessibilityLabel={showingAll ? 'Showing all profiles. Tap to show only this profile.' : 'Showing this profile only. Tap to show all profiles.'}
-            >
-              <Ionicons name={showingAll ? 'layers' : 'person'} size={12} color={showingAll ? c.gold : c.text3} />
-              <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: showingAll ? c.gold : c.text3 }}>
-                {showingAll ? 'All profiles' : 'This profile'}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-        </TourSpot>
-
-        {/* Period nav */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: s.lg, paddingBottom: s.sm }}>
-          <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={prevPeriod} style={{ padding: 6 }}>
-            <Ionicons name="chevron-back" size={18} color={c.text3} />
-          </TouchableOpacity>
-          <TouchableOpacity style={{ flex: 1, alignItems: 'center' }} onPress={() => setAnchor(new Date())}>
-            <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: isToday ? c.teal : c.text1 }}>{periodLabel()}</Text>
-            {!isToday && view === 'Daily' && <Text style={{ fontSize: 11, color: c.text3 }}>tap to return to today</Text>}
-          </TouchableOpacity>
-          <TouchableOpacity accessibilityLabel="Next" accessibilityRole="button" onPress={nextPeriod} style={{ padding: 6 }}>
-            <Ionicons name="chevron-forward" size={18} color={c.text3} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Area filter */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: s.lg, paddingVertical: s.sm, gap: s.sm }}>
-          <TouchableOpacity onPress={() => toggleArea('all')}
-            style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: activeAreas.size === 0 ? c.gold : c.border, backgroundColor: activeAreas.size === 0 ? c.gold + '22' : 'transparent' }}>
-            <Text style={{ fontSize: 11, fontWeight: '600', color: activeAreas.size === 0 ? c.gold : c.text3 }}>All</Text>
-          </TouchableOpacity>
-          {Object.entries(AREAS).map(([key, area]) => {
-            const active = activeAreas.has(key);
-            return (
-              <TouchableOpacity key={key} onPress={() => toggleArea(key)}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: active ? area.color : c.border, backgroundColor: active ? area.color + '22' : 'transparent' }}>
-                <Text style={{ fontSize: 12 }}>{area.emoji}</Text>
-                <Text style={{ fontSize: 11, fontWeight: '600', color: active ? area.color : c.text3 }}>{area.label}</Text>
+        {/* One row: the view, the day and the filter. They were three rows
+            (view chips, the date, a strip of eight life-area chips), so the
+            first task started 40% down the screen. */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, paddingHorizontal: s.lg, paddingBottom: s.sm }}>
+          <TourSpot id="planner-views">
+          <View style={{ flexDirection: 'row', borderWidth: 1, borderColor: c.border, borderRadius: 20, overflow: 'hidden' }}>
+            {VIEWS.map(v => (
+              <TouchableOpacity key={v} onPress={() => setView(v)}
+                accessibilityRole="button" accessibilityLabel={`${v} view`} accessibilityState={{ selected: view === v }}
+                style={{ paddingHorizontal: 10, paddingVertical: 5, backgroundColor: view === v ? c.teal : 'transparent' }}>
+                <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: view === v ? c.onFill : c.text3 }}>{VIEW_SHORT[v]}</Text>
               </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+            ))}
+          </View>
+          </TourSpot>
+
+          {/* Period nav. Tapping the date returns to today. */}
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', minWidth: 0 }}>
+            <TouchableOpacity accessibilityLabel="Back" accessibilityRole="button" onPress={prevPeriod} style={{ padding: 4 }}>
+              <Ionicons name="chevron-back" size={16} color={c.text3} />
+            </TouchableOpacity>
+            <TouchableOpacity style={{ flex: 1, alignItems: 'center', minWidth: 0 }} onPress={() => setAnchor(new Date())}
+              accessibilityRole="button" accessibilityLabel={isToday ? periodLabel() : `${periodLabel()}. Back to today`}>
+              <Text numberOfLines={1} style={{ fontSize: t.sm, fontWeight: t.semibold, color: isToday ? c.teal : c.text1 }}>{shortPeriodLabel()}</Text>
+              {!isToday && <Text style={{ fontSize: 11, fontWeight: t.bold, color: c.teal }}>Back to today</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity accessibilityLabel="Next" accessibilityRole="button" onPress={nextPeriod} style={{ padding: 4 }}>
+              <Ionicons name="chevron-forward" size={16} color={c.text3} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Life areas, in a sheet. The count says a filter is on. */}
+          <TouchableOpacity onPress={() => setFilterOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel={activeAreas.size ? `Filter: ${activeAreas.size} life area${activeAreas.size > 1 ? 's' : ''}` : 'Filter by life area'}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 20, borderWidth: 1,
+                     borderColor: activeAreas.size ? c.gold : c.border, backgroundColor: activeAreas.size ? c.gold + '22' : 'transparent' }}>
+            <Ionicons name="funnel-outline" size={14} color={activeAreas.size ? c.gold : c.text3} />
+            {activeAreas.size > 0 && <Text style={{ fontSize: 11, fontWeight: t.bold, color: c.gold }}>{activeAreas.size}</Text>}
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* ── Content ── */}
       {loading ? (
-        <ActivityIndicator color={c.teal} style={{ marginTop: 40 }} />
+        <SkeletonRows count={4} style={{ padding: s.lg }} />
       ) : view === 'Daily' ? (
         <DailyPage
           key={`daily-${toISO(anchor)}-${showingAll ? 'all' : 'one'}`}
           userId={userId} date={anchor} onAdd={openAdd}
+          reviewAt={reviewAt}
+          quickArea={activeAreas.size === 1 ? [...activeAreas][0] : (progressProfile?.active_life_areas?.[0] || 'physical')}
+          onQuickAdded={(saved) => {
+            // Same as a save from the Add sheet: counts for a goal step, and
+            // a new habit gets topped up as far as the others.
+            signalAction('planner-item-added', { area: saved?.area });
+            if (saved?.cadence && saved.cadence !== 'once' && userId) {
+              extendRepeatingPlans(userId, { force: true }).catch(e => console.warn('planner top-up', e?.message));
+            }
+            setRefresh(k => k + 1);
+          }}
           activeAreas={activeAreas} timeMode={timeMode}
           onOpen={setDetail}
           showingAll={showingAll}
@@ -1778,6 +1807,36 @@ export default function PlannerScreen() {
         <MonthlyView userId={userId} anchor={anchor} activeAreas={activeAreas}
           onDayPress={onDayPress} refreshKey={refreshKey} showingAll={showingAll} c={c} t={t} s={s} />
       )}
+
+      {/* ── Life-area filter ── */}
+      <Modal visible={filterOpen} transparent animationType="slide" onRequestClose={() => setFilterOpen(false)}>
+        <TouchableOpacity activeOpacity={1} onPress={() => setFilterOpen(false)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}>
+          <TouchableOpacity activeOpacity={1} style={{ backgroundColor: c.bg1, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: s.lg, paddingBottom: s.xxl }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: s.md }}>
+              <Text style={{ flex: 1, fontSize: t.lg, fontWeight: t.bold, color: c.text1 }}>Show life areas</Text>
+              <TouchableOpacity onPress={() => setFilterOpen(false)} accessibilityRole="button" accessibilityLabel="Done">
+                <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.teal }}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm }}>
+              <TouchableOpacity onPress={() => toggleArea('all')} accessibilityRole="button" accessibilityState={{ selected: activeAreas.size === 0 }}
+                style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: activeAreas.size === 0 ? c.gold : c.border, backgroundColor: activeAreas.size === 0 ? c.gold + '22' : 'transparent' }}>
+                <Text style={{ fontSize: t.sm, fontWeight: '600', color: activeAreas.size === 0 ? c.gold : c.text3 }}>All</Text>
+              </TouchableOpacity>
+              {Object.entries(AREAS).map(([key, area]) => {
+                const on = activeAreas.has(key);
+                return (
+                  <TouchableOpacity key={key} onPress={() => toggleArea(key)} accessibilityRole="button" accessibilityState={{ selected: on }}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: on ? area.color : c.border, backgroundColor: on ? area.color + '22' : 'transparent' }}>
+                    <Text style={{ fontSize: 13 }}>{area.emoji}</Text>
+                    <Text style={{ fontSize: t.sm, fontWeight: '600', color: on ? area.color : c.text3 }}>{area.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       {/* ── Side panel ── */}
       <SidePanel

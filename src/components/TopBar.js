@@ -17,6 +17,7 @@ import NotificationBell from './NotificationBell';
 import { RANK_LABELS } from '../theme';
 import LoginScreen from '../screens/LoginScreen';
 import { readableOn } from '../logic/contrast';
+import { useBlueprint, WORKSHOP_SCREENS } from '../screens/library/blueprint';
 
 // Profile / Help / Screen Tutorial / Settings / Search — one tap-menu off
 // the crest instead of five separate rows. These used to live on the FAB's
@@ -33,6 +34,8 @@ function CrestMenu({ visible, onClose, onSelect, signedIn, c, t, s }) {
     signedIn
       ? { key: 'profile', label: 'Profile', icon: 'person-circle-outline', colorKey: 'gold' }
       : { key: 'signin',  label: 'Sign in', icon: 'log-in-outline',        colorKey: 'teal' },
+    // Your weeks in real life (StatsScreen.js). Needs an account to count.
+    signedIn && { key: 'insights', label: 'Insights', icon: 'analytics-outline' },
     { key: 'help',     label: 'Help',           icon: 'help-circle-outline',   colorKey: 'purple' },
     { key: 'tutorial', label: 'Screen Tutorial', icon: 'school-outline',       colorKey: 'teal' },
     { key: 'yours',    label: 'Make it yours',  icon: 'options-outline',       colorKey: 'gold' },
@@ -46,8 +49,11 @@ function CrestMenu({ visible, onClose, onSelect, signedIn, c, t, s }) {
       <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={onClose}>
         <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: s.sm, paddingBottom: s.xxl }}>
           <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.sm }} />
-          {items.map(item => {
-            const color = item.colorKey ? c[item.colorKey] : item.color;
+          {items.filter(Boolean).map(item => {
+            // One tint for every row: a different colour per icon read as a
+            // rainbow with no meaning (2026-10-14). Colour stays for things
+            // that carry meaning, like life areas.
+            const color = c.text2;
             return (
               <TouchableOpacity key={item.key} onPress={() => onSelect(item.key)} activeOpacity={0.7}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, paddingHorizontal: s.xl, paddingVertical: 13 }}>
@@ -84,9 +90,14 @@ export default function TopBar({ currentScreen }) {
       case 'tutorial': startScreenTour(currentScreen); break;
       case 'yours':    navigation.navigate('MakeItYours'); break;
       case 'settings': navigation.navigate('Settings'); break;
+      case 'insights': navigation.navigate('Stats'); break;
       case 'search':   openPalette(); break;
     }
   };
+
+  // In the Workshop the bar takes the blueprint paper (blueprint.js).
+  const bp = useBlueprint();
+  const onPaper = WORKSHOP_SCREENS.has(currentScreen);
 
   if (loading) {
     return (
@@ -98,7 +109,7 @@ export default function TopBar({ currentScreen }) {
 
   return (
     <>
-      <View style={s.container}>
+      <View style={[s.container, onPaper && { backgroundColor: bp.paper, borderBottomColor: bp.border }]}>
         <View style={s.topRow}>
           {/* Crest — opens the Profile/Help/Tutorial/Settings/Search menu
               (Sign in instead of Profile for a guest). */}

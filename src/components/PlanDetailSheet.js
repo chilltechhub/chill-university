@@ -27,6 +27,7 @@ import { dateStr } from '../logic/dateUtils';
 import { textOn } from '../logic/contrast';
 import { setPlanUseNote, whyFromNotes } from '../api/knowledgeUse';
 import { successHaptic } from '../logic/haptics';
+import MiniCalendar from './MiniCalendar';
 
 function toISO(d) { return dateStr(d); }
 function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
@@ -72,10 +73,12 @@ export default function PlanDetailSheet({ instance, onClose, onChanged, onEdit, 
   // went, kept on the item as its use (api/knowledgeUse.js).
   const [askHow, setAskHow] = useState(false);
   const [how, setHow] = useState('');
+  // "Pick a day": a calendar inline in the sheet (not a second Modal).
+  const [picking, setPicking] = useState(false);
 
   useEffect(() => {
     if (instance) setShown(instance);
-    setConfirmDelete(false); setSeries(null); setBusy(false);
+    setConfirmDelete(false); setSeries(null); setBusy(false); setPicking(false);
   }, [instance]);
   // By id: a caller that reloads after Done hands back a fresh row, and that
   // mustn't close the "What happened?" question.
@@ -262,7 +265,15 @@ export default function PlanDetailSheet({ instance, onClose, onChanged, onEdit, 
                 {!!onEdit && btn({ label: 'Edit', icon: 'pencil-outline', color: c.teal, onPress: () => { onClose(); onEdit(inst); } })}
                 {!done && btn({ label: overdue ? 'Move to today' : 'Tomorrow', icon: 'arrow-forward-circle-outline', color: c.text2,
                   onPress: () => run(() => rescheduleInstance(inst.id, moveTo)) })}
+                {!done && btn({ label: 'Pick a day', icon: 'calendar-outline', color: c.text2, onPress: () => setPicking(p => !p) })}
                 {btn({ label: 'Delete', icon: 'trash-outline', color: danger, onPress: askDelete })}
+                {picking && (
+                  <View style={{ width: '100%', marginTop: s.sm }}>
+                    <MiniCalendar value={new Date(inst.date + 'T00:00:00')} minIso={todayIso} color={area.color}
+                      colors={{ bg: c.bg0, text: c.text1, muted: c.text3 }}
+                      onChange={(d) => { setPicking(false); run(() => rescheduleInstance(inst.id, dateStr(d))); }} />
+                  </View>
+                )}
               </View>
             ) : (
               <View style={{ marginTop: s.lg, padding: s.md, borderRadius: r.md, borderWidth: 1, borderColor: danger + '88', gap: s.sm }}>

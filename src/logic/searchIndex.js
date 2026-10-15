@@ -24,18 +24,22 @@ import { QUESTS } from '../data/quests';
 const root = (screen, params) => ({ type: 'root', screen, params });
 const tab = (tabName) => ({ type: 'tab', tab: tabName });
 const library = (screen, params) => ({ type: 'tab', tab: 'Library', screen, params });
-const classes = (screen) => ({ type: 'tab', tab: 'Library', screen: 'ClassesStack', params: { screen } });
+// Classes live in the Training tab (src/screens/TrainingNav.js), on top of
+// the games screen so back returns there.
+const classes = (screen, params) => ({ type: 'tab', tab: 'Training', screen: 'ClassesStack', params: { screen, params }, initial: false });
 
 export function navigateTo(navigation, route) {
   if (!route) return;
   if (route.type === 'root') return navigation.navigate(route.screen, route.params);
-  const inner = route.screen ? { screen: route.screen, params: route.params } : undefined;
+  const inner = route.screen
+    ? { screen: route.screen, params: route.params, ...(route.initial === false ? { initial: false } : null) }
+    : undefined;
   return navigation.navigate('MainTabs', { screen: route.tab, params: inner });
 }
 
 // ─── Screens with no list of their own ─────────────────────────────────────
 // Compass-gated screens (Work Mode, Weekly Review, Import Hub, Labs,
-// Mentors, Organization, Game Stats...) stay listed here on purpose.
+// Mentors, Organization, Insights...) stay listed here on purpose.
 // Searching for something and being told it doesn't exist is worse than
 // searching for it and being told what opens it — the routes themselves are
 // gated at the navigator (see src/components/FeatureGate.js's gatedScreen),
@@ -44,6 +48,7 @@ export function navigateTo(navigation, route) {
 const STANDALONE = [
   { title: 'Home',            subtitle: 'Today, focus & quick actions',      icon: 'home-outline',            route: tab('Home') },
   { title: 'Training',        subtitle: 'Games & daily drills',              icon: 'barbell-outline',         route: tab('Training') },
+  { title: 'Classes',         subtitle: 'Lessons and quests by subject',     icon: 'ribbon-outline',          route: classes('ClassesMain') },
   { title: 'Library',         subtitle: 'Every hub, life area & class',      icon: 'book-outline',            route: tab('Library') },
   { title: 'Capture Inbox',   subtitle: 'Process what you jotted down',      icon: 'file-tray-full-outline',  route: library('CaptureInbox') },
   { title: 'Import Hub',      subtitle: 'Bulk-import text, links or files',  icon: 'cloud-upload-outline',    route: library('ImportScreen') },
@@ -58,7 +63,7 @@ const STANDALONE = [
   { title: 'Community Projects', subtitle: 'Projects from the community',      icon: 'git-network-outline',     route: library('CommunityProjectsScreen') },
   { title: 'Profile',         subtitle: 'Rank, points, streak & account',    icon: 'person-circle-outline',   route: root('Profile') },
   { title: 'App Nav',       subtitle: 'Every stage, your goal & what opens next',  icon: 'navigate-outline',        route: root('Compass') },
-  { title: 'Game Stats',      subtitle: 'Accuracy, times & subject progress', icon: 'analytics-outline',       route: root('Stats') },
+  { title: 'Insights',        subtitle: 'Done, habits, focus & game stats',  icon: 'analytics-outline',       route: root('Stats') },
   { title: 'Settings',        subtitle: 'Theme, sections, notifications',    icon: 'settings-outline',        route: root('Settings') },
   { title: 'Help',            subtitle: 'What this screen is for',           icon: 'help-circle-outline',     route: root('Help') },
   { title: 'Leaderboard',     subtitle: 'Where you stand',                   icon: 'trophy-outline',          route: root('Leaderboard') },
@@ -90,7 +95,7 @@ export function getDestinations() {
       title: item.label,
       subtitle: item.desc,
       icon: item.icon,
-      route: item.screen === 'ClassesStack' ? classes('ClassesMain') : library(item.screen),
+      route: library(item.screen),
     }));
   });
 
@@ -151,7 +156,7 @@ export function getDestinations() {
     subtitle: `Quest · ${quest.subjectLabel} · ${quest.minutes} min`,
     icon: quest.icon,
     color: quest.color,
-    route: library('ClassesStack', { screen: 'Quest', params: { questId: quest.id } }),
+    route: classes('Quest', { questId: quest.id }),
   }));
 
   GAMES_MASTER.forEach((game) => push('Games', {
@@ -238,7 +243,7 @@ export function searchDestinations(query, limit = 8, visibility) {
 
 // What the palette shows before anything is typed.
 export function defaultDestinations(visibility) {
-  const wanted = ['Capture Inbox', 'Knowledge Vault', 'The Workshop', 'Planner', 'Academy Classes', 'Idea Garden'];
+  const wanted = ['Capture Inbox', 'Knowledge Vault', 'The Workshop', 'Planner', 'Classes', 'Idea Garden'];
   const all = getDestinations();
   return wanted
     .map((title) => all.find((row) => row.title === title))

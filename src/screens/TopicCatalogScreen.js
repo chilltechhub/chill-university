@@ -20,6 +20,7 @@ import { useAccess } from '../../context/AccessContext';
 import { CLASS_SUBJECTS } from '../data/classCatalog';
 import { TOPIC_CATALOG, catalogForSubject, catalogCounts, LEVEL_LABELS } from '../data/topicCatalog';
 import { getQuest } from '../data/quests';
+import { goToScreen } from '../logic/appRoutes';
 
 const FILTERS = [
   { key: 'all', label: 'All' },
@@ -44,7 +45,7 @@ export default function TopicCatalogScreen() {
     if (!link) return;
     signalAction('class-opened');
     if (link.quest) navigation.navigate('Quest', { questId: link.quest });
-    else navigation.navigate(link.screen);
+    else goToScreen(navigation, link.screen);
   };
 
   // ── Every subject ──────────────────────────────────────────────────────────

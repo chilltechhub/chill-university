@@ -20,12 +20,13 @@ export default function LandscapeBackground({ background, height = 180, style, c
   const { colors: c } = useTheme();
 
   // 'plain': the blank backdrop everyone starts on. A card-coloured panel
-  // with a hairline floor for the character to stand on; scenes are
-  // something to unlock and pick, not the default.
+  // with a floor for the character to stand on: a band, not a hairline,
+  // so they stand on something instead of floating on a white card
+  // (2026-10-14). Scenes are something to unlock and pick, not the default.
   if (!background || background.kind === 'plain') {
     return (
       <View style={[{ height, overflow: 'hidden', borderRadius: 16, backgroundColor: c.bg1, borderWidth: 0.5, borderColor: c.border }, style]}>
-        <View style={{ position: 'absolute', left: 0, right: 0, bottom: TILE, height: 1, backgroundColor: c.border }} />
+        <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: TILE, backgroundColor: c.bg2, borderTopWidth: 1, borderTopColor: c.borderStrong }} />
         {children}
       </View>
     );

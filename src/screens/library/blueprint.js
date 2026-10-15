@@ -54,6 +54,14 @@ export function useBlueprint() {
   return isDark ? DARK : LIGHT;
 }
 
+// The Workshop's screens. On these the app's top bar and status-bar strip
+// take the paper colour (TopBar.js, App.js), so the blueprint reads as a
+// room you've walked into, not a page with a grey bar stuck on top.
+export const WORKSHOP_SCREENS = new Set(['ProjectsScreen', 'ProjectDetail', 'ProjectOverview']);
+export function blueprintPaper(isDark) {
+  return isDark ? DARK : LIGHT;
+}
+
 // Fixed graph-paper backdrop — a minor grid every 17px, a heavier line
 // every 5th one (85px). Painted once behind the screen; content sits over it.
 //

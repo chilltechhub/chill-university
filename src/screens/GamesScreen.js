@@ -109,7 +109,7 @@ export default function GamesScreen() {
   // opened so far are listed, three or so at a time; the rest aren't
   // locked, just not on the shelf yet. The 'all-games' stage lists every
   // one and adds the filters and the Progress tab.
-  const { can, isGameVisible, isScreenVisible } = useAccess();
+  const { can, isGameVisible, isScreenVisible, isFeatureShown } = useAccess();
   const showLeaderboard = leaderboardFlag && isScreenVisible('Leaderboard');
   const starter = !can('all-games');
   const tabs = starter ? STARTER_TABS : TABS;
@@ -298,6 +298,24 @@ export default function GamesScreen() {
               </TouchableOpacity>
             </View>
             </TourSpot>
+
+            {/* Classes live in this tab (src/screens/TrainingNav.js): the
+                lessons behind the games, one tap from them. */}
+            {isFeatureShown('classes') && (
+              <TourSpot id="training-classes" style={{ width: '100%', alignItems: 'center', marginTop: s.sm }}>
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.actionBtnPurple]}
+                  onPress={() => navigation.navigate('ClassesStack')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Classes: lessons and quests by subject"
+                >
+                  {showEmojis ? <Text style={styles.actionEmoji}>📚</Text> : <Ionicons name="ribbon-outline" size={18} color={c.purple} />}
+                  <Text style={[styles.actionText, { color: c.purple }]}>Classes</Text>
+                </TouchableOpacity>
+              </View>
+              </TourSpot>
+            )}
             {reviewsDue > 0 && (
               <View style={styles.reviewNote} accessible>
                 <Ionicons name="refresh-circle-outline" size={18} color={c.teal} />
@@ -626,6 +644,7 @@ const makeStyles = (c, t, s, r, sh) => StyleSheet.create({
     borderRadius: r.lg, paddingVertical: s.md, paddingHorizontal: s.sm,
   },
   actionBtnTeal: { backgroundColor: c.tealLight, borderColor: c.teal },
+  actionBtnPurple: { backgroundColor: c.purpleLight, borderColor: c.purple },
   actionEmoji: { fontSize: t.lg },
   actionText: { fontSize: t.md, fontWeight: t.semibold, color: c.gold, flexShrink: 1 },
   sectionIntro: { width: '100%', fontSize: t.sm, color: c.text3, marginBottom: s.md, paddingHorizontal: s.sm, lineHeight: 18 },

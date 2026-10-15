@@ -36,6 +36,8 @@ import { addShared, getShared, removeShared, splitShared } from '../logic/shareI
 import { addCapture, linkCaptureFields } from '../api/captureService';
 import { shareText, reminderText, dayPlanText, fmtTime12, fmtDay } from '../logic/shareOut';
 import ReminderComposer from '../components/ReminderComposer';
+import MoreMenu from '../components/MoreMenu';
+import { SkeletonRows } from '../components/Skeleton';
 import { FONTS } from '../theme';
 import { todayStr } from '../logic/dateUtils';
 import { textOn } from '../logic/contrast';
@@ -275,13 +277,18 @@ export default function NotificationCenterScreen() {
           </View>
           {n.cat !== 'setup' && iconBtn('close', 'Dismiss', () => dismissNotice(n.id))}
         </View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: s.sm, marginTop: s.md, marginLeft: 46 }}>
+        {/* One button; everything else behind ⋯. Four or five pills on
+            every card made the list read like a to-do list of its own. */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginTop: s.md, marginLeft: 46 }}>
           {n.primary && pill(n.primary.label, null, () => runPrimary(n, n.primary), { tone, filled: true })}
-          {n.secondary && pill(n.secondary.label, null, () => runPrimary(n, n.secondary), { tone })}
-          {n.ai && pill('Ask AI', 'sparkles', () => askAI(n.ai), { tone: c.purple })}
-          {n.remind && pill('', 'alarm-outline', () => setComposer(n.remind), { tone: c.text3, key: 'remind' })}
-          {n.snooze && pill('Later', 'time-outline', () => setLater(n), { tone: c.text3 })}
-          {!!n.share && pill('', 'share-outline', () => shareOut(n.share, n.title), { tone: c.text3, key: 'share' })}
+          <View style={{ flex: 1 }} />
+          <MoreMenu label={`More for ${n.title}`} color={c.text3} items={[
+            n.secondary && { label: n.secondary.label, icon: 'arrow-forward-outline', onPress: () => runPrimary(n, n.secondary) },
+            n.ai && { label: 'Ask AI', icon: 'sparkles-outline', onPress: () => askAI(n.ai) },
+            n.remind && { label: 'Remind me', icon: 'alarm-outline', onPress: () => setComposer(n.remind) },
+            n.snooze && { label: 'Later', icon: 'time-outline', onPress: () => setLater(n) },
+            !!n.share && { label: 'Share', icon: 'share-outline', onPress: () => shareOut(n.share, n.title) },
+          ]} />
         </View>
       </View>
     );
@@ -295,7 +302,7 @@ export default function NotificationCenterScreen() {
         {pill('Plan my day with AI', 'sparkles', () => askAI({ target: 'planner', idea: planWithAIIdea(feed.visible) }), { tone: c.purple, filled: true })}
         {pill('New reminder', 'alarm-outline', () => setComposer({}), { tone: c.teal })}
       </View>
-      {loading && !feed.data ? <ActivityIndicator color={c.teal} style={{ marginTop: s.xl }} /> : nowNotices.length ? (
+      {loading && !feed.data ? <SkeletonRows count={3} /> : nowNotices.length ? (
         nowNotices.map(n => <NoticeCard key={n.id} n={n} />)
       ) : (
         <View style={{ alignItems: 'center', paddingVertical: s.xxl }}>

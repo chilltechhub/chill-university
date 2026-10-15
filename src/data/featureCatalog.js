@@ -338,19 +338,19 @@ export const FEATURES = [
     blurb: 'Run a class, team or group: rosters, invites, assignments, progress.',
     why: 'Multi-seat tooling — invite codes, cohort rosters, assignment tracking across other people’s accounts.',
   },
-  // Was sold in Plus as "Deep Insights", but the screen only ever had game
-  // stats, no trends. Free and named for what it is until real insights
-  // (tasks, habits, focus, learned → used) are built.
+  // Was sold in Plus as "Deep Insights" while the screen only had game
+  // stats. Now real life first (src/components/InsightsPanel.js), games
+  // below. Free for now; whether it moves into Plus is the founder's call.
   {
     id: 'insights',
-    label: 'Game Stats',
+    label: 'Insights',
     screen: 'Stats',
     icon: 'analytics-outline',
     gate: 'open',
     depth: 'deep',
-    purposes: ['learn'],
-    blurb: 'Accuracy, best times, levels and subject progress from your games.',
-    why: 'See how your games are going, subject by subject.',
+    purposes: ['habits', 'build', 'learn'],
+    blurb: 'Your last four weeks: things done, habits kept, focus time, what you used.',
+    why: 'See your real progress add up, then your game stats.',
   },
   {
     id: 'ai-import',

@@ -29,7 +29,7 @@
 //
 // Gestures described here are real, and worth re-checking if they change:
 // Library pages swipe left/right (LibraryScreen's PanResponder), a life
-// area opens on double-tap or long-press (handleDomainPress/onLongPress),
+// area opens on a tap and filters the list on long-press (onLongPress),
 // Play opens its game picker on long-press (HomeScreen), the game feed
 // swipes up/down with arrow buttons as well (GameFeed.js), and pushed
 // screens go back by the arrow or an edge swipe (App.js gestureEnabled).

@@ -19,7 +19,7 @@ import { View, Text, TouchableOpacity, Appearance, Platform } from 'react-native
 import { reportError } from '../logic/errorReporting';
 
 const PALETTE = {
-  light: { bg: '#eef1f6', card: '#ffffff', border: '#c7cedd', text1: '#161b28', text2: '#454f66', btn: '#167a6c', onBtn: '#ffffff' },
+  light: { bg: '#f5f4f0', card: '#ffffff', border: '#d6d2c7', text1: '#161b28', text2: '#454f66', btn: '#167a6c', onBtn: '#ffffff' },
   // Dark buttons take dark text: white on #3fcf9e is under 2:1.
   dark:  { bg: '#12161f', card: '#1a2030', border: '#2c3550', text1: '#eef1f8', text2: '#a7b0c6', btn: '#3fcf9e', onBtn: '#0d1119' },
 };

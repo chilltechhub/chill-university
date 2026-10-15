@@ -11,15 +11,17 @@ export const THEMES = {
     name: 'light',
     label: 'Daylight',
 
-    // Backgrounds — cool steel/paper, not warm parchment
-    bg0:        '#eef1f6',   // page canvas
+    // Backgrounds — a warm paper canvas under white cards (direction B,
+    // 2026-10-14). The old cool steel grey made cards look flat and the
+    // page washed out. Text contrast on it is slightly higher, not lower.
+    bg0:        '#f5f4f0',   // page canvas
     bg1:        '#ffffff',   // card / surface
-    bg2:        '#e3e8f0',   // inset / subtle
-    bg3:        '#dbe1ec',   // input bg
+    bg2:        '#ebe9e3',   // inset / subtle
+    bg3:        '#e4e1d9',   // input bg
 
-    // Borders
-    border:     '#c7cedd',
-    borderStrong:'#aab3c8',
+    // Borders — lighter hairlines; the soft shadow does the lifting
+    border:     '#d6d2c7',
+    borderStrong:'#b3ad9f',
 
     // Gold — rank, points, primary CTA
     gold:       '#8a6420',   // AA on bg0/bg1 (was #9a7228, ~3.9:1)
@@ -85,7 +87,7 @@ export const THEMES = {
     tabBar:     '#ffffff',
     tabActive:  '#9a7228',
     tabInactive:'#5f6880',   // = text3: inactive tab labels are text, and #a7b0c6 was 2.2:1
-    headerBg:   '#eef1f6',
+    headerBg:   '#f5f4f0',
     modalBg:    '#ffffff',
     inputBg:    '#dbe1ec',
     inputBorder:'#c7cedd',
@@ -305,11 +307,13 @@ export const radius = {
 
 // Shadows
 export const makeShadows = (dark) => ({
+  // Light: soft and wide rather than a tight dark edge, so a card sits on
+  // the page instead of being outlined on it.
   sm: {
-    shadowColor: dark ? '#000' : '#161b28',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: dark ? 0.3 : 0.06,
-    shadowRadius: 3,
+    shadowColor: dark ? '#000' : '#3a2f1e',
+    shadowOffset: { width: 0, height: dark ? 1 : 2 },
+    shadowOpacity: dark ? 0.3 : 0.07,
+    shadowRadius: dark ? 3 : 8,
     elevation: 2,
   },
   md: {

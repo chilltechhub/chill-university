@@ -41,8 +41,9 @@ import QuickToast from './src/components/QuickToast';
 import RewardToast from './src/components/RewardToast';
 
 import HomeScreen    from './src/screens/HomeScreen';
-import GamesScreen   from './src/screens/GamesScreen';
 import LibraryNav    from './src/screens/library/LibraryNav';
+import TrainingNav   from './src/screens/TrainingNav';
+import { WORKSHOP_SCREENS, blueprintPaper } from './src/screens/library/blueprint';
 
 import LoginScreen        from './src/screens/LoginScreen';
 import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
@@ -82,7 +83,7 @@ import { needsSecondStep } from './src/api/mfa';
 import useFirstVisitTutorial from './src/logic/useFirstVisitTutorial';
 import useGuidedFirstGoal from './src/logic/useGuidedFirstGoal';
 import useWelcomeTour from './src/logic/useWelcomeTour';
-import { goToScreen } from './src/logic/appRoutes';
+import { goToScreen, routeLabel } from './src/logic/appRoutes';
 import { installWebAlertShim } from './src/logic/webAlertShim';
 import { loadA11yPrefs, useA11yPrefs, READABLE_FONTS } from './src/logic/a11yPrefs';
 
@@ -149,11 +150,11 @@ const forShiftWeb = ({ current }) => ({
 
 function MainTabs() {
   const { colors: c } = useTheme();
-  // Untick Training games on "Pick your features" and its tab goes. The
-  // screen stays mounted (the pet on it finds coins while the app is open),
-  // and a goal step or Home's Play button can still get there.
+  // Untick Training games AND Classes on "Pick your features" and its tab
+  // goes. The screen stays mounted (the pet on it finds coins while the app
+  // is open), and a goal step or Home's Play button can still get there.
   const { isFeatureShown } = useAccess();
-  const trainingTab = isFeatureShown('training');
+  const trainingTab = isFeatureShown('training') || isFeatureShown('classes');
   // The tab labels come from react-navigation's own Text, which the
   // accessibility swap (src/components/AppText.js) doesn't reach. Capped at
   // Larger so three labels still fit across.
@@ -221,7 +222,22 @@ function MainTabs() {
       {/* Mounted at launch, not on first visit: the pet on this tab finds
           coins while the app is open on any screen (src/logic/useCoinRewards.js),
           so it has to be out from the start. */}
-      <Tab.Screen name="Training" component={GamesScreen} options={{ lazy: false, ...(trainingTab ? null : { tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }) }} />
+      {/* Classes sit inside it (src/screens/TrainingNav.js). Like the
+          Library, tapping the tab returns to its first screen. */}
+      <Tab.Screen
+        name="Training"
+        component={TrainingNav}
+        options={{ lazy: false, ...(trainingTab ? null : { tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }) }}
+        listeners={({ navigation, route }) => ({
+          tabPress: (e) => {
+            const inner = route.state;
+            if (inner && inner.index > 0) {
+              e.preventDefault();
+              navigation.navigate('Training', { screen: inner.routes[0].name });
+            }
+          },
+        })}
+      />
     </Tab.Navigator>
   );
 }
@@ -243,7 +259,7 @@ function webTitle(options, route) {
 }
 
 function AppInner() {
-  const { colors: c } = useTheme();
+  const { colors: c, isDark } = useTheme();
   const navigationRef = useRef(null);
   const [initialRoute, setInitialRoute] = React.useState(null);
   const [showTopBar, setShowTopBar] = React.useState(true);
@@ -459,26 +475,33 @@ function AppInner() {
         // onStateChange doesn't fire for the initial route — without this,
         // currentRouteName stays stuck on the coarse 'MainTabs'/etc value
         // set before the container mounted, instead of e.g. 'Home'.
-        const name = navigationRef.current?.getCurrentRoute()?.name;
+        const name = routeLabel(navigationRef.current?.getCurrentRoute()?.name);
         setShowTopBar(!NO_TOPBAR_ROUTES.has(name));
         setCurrentRouteName(name);
         registerNavigator(
           (routeName, params) => navigationRef.current?.navigate(routeName, params),
           (screen, params) => goToScreen(navigationRef.current, screen, params),
-          () => navigationRef.current?.getCurrentRoute()?.name,
+          () => routeLabel(navigationRef.current?.getCurrentRoute()?.name),
         );
         maybeTeachScreen(name);
         flushPendingTarget();
       }}
+      // A bare navigate('KnowledgeScreen') from a screen whose own navigator
+      // doesn't have it (Classes moved from the Library to Training) lands
+      // through the resolver instead of being dropped.
+      onUnhandledAction={(action) => {
+        const name = action?.type === 'NAVIGATE' ? action.payload?.name : null;
+        if (name && name !== 'MainTabs') goToScreen(navigationRef.current, name, action.payload?.params);
+      }}
       onStateChange={() => {
-        const name = navigationRef.current?.getCurrentRoute()?.name;
+        const name = routeLabel(navigationRef.current?.getCurrentRoute()?.name);
         setShowTopBar(!NO_TOPBAR_ROUTES.has(name));
         setCurrentRouteName(name);
         noteRoute(name); // a screen's own tutorial ends when you leave it
         maybeTeachScreen(name);
       }}
     >
-      <SafeAreaView style={{ flex: 1, backgroundColor: c.headerBg }} edges={['top']}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: WORKSHOP_SCREENS.has(currentRouteName) ? blueprintPaper(isDark).paper : c.headerBg }} edges={['top']}>
         {showTopBar && <TopBar currentScreen={currentRouteName} />}
         {showTopBar && <AnnouncementBanner />}
         <Stack.Navigator
@@ -522,7 +545,7 @@ function AppInner() {
               card, Settings, the Library header and every unlock sheet,
               so it lives on the root stack rather than inside a tab. */}
           <Stack.Screen name="Compass"           component={CompassScreen} options={{ title: 'App Nav' }} />
-          <Stack.Screen name="Stats"               component={GatedStats} />
+          <Stack.Screen name="Stats"               component={GatedStats} options={{ title: 'Insights' }} />
           <Stack.Screen name="WorkMode"            component={GatedWorkMode} />
           {/* The paywall / "your plan" page. Slides up rather than across,
               because it's a detour you close, not a place you go. */}

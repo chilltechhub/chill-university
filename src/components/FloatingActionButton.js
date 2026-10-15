@@ -509,6 +509,11 @@ export default function FloatingActionButton({ currentScreen, navigationRef }) {
         visible={captureOpen}
         userId={user?.id}
         onSaved={() => { setCaptureOpen(false); signalAction('inbox-captured'); showQuickToast('Captured. It is in your inbox.'); }}
+        onUse={(dest, row) => {
+          setCaptureOpen(false);
+          signalAction('inbox-captured');
+          openTarget(navigationRef?.current, { kind: 'inbox', params: { openCapture: row.id, ...(dest === 'plan_ai' ? { plan: true } : { dest }), at: Date.now() } });
+        }}
         onClose={() => setCaptureOpen(false)}
         c={c} t={t} s={s} r={r}
       />

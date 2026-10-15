@@ -22,6 +22,7 @@
 // translate between the two.
 
 import { supabase } from '../api/profileScopedClient';
+import { goToScreen } from './appRoutes';
 
 const lib = (navigation, screen, params) => navigation.navigate('MainTabs', { screen: 'Library', params: { screen, params } });
 
@@ -35,7 +36,8 @@ export async function openTarget(navigation, target) {
       lib(navigation, 'ProjectDetail', { project: data });
       return true;
     }
-    case 'quest': lib(navigation, 'ClassesStack', { screen: 'Quest', params: { questId: target.key } }); return true;
+    // Classes (and their quests) live in the Training tab.
+    case 'quest': goToScreen(navigation, 'Quest', { questId: target.key }); return true;
     case 'idea': lib(navigation, 'IdeaGardenScreen', { focusCoreId: target.id }); return true;
     case 'vault': lib(navigation, 'KnowledgeScreen', { focusId: target.id }); return true;
     case 'area': lib(navigation, 'LifeAreaScreen', { areaId: target.key }); return true;
@@ -45,9 +47,9 @@ export async function openTarget(navigation, target) {
     case 'screen': lib(navigation, target.key, target.params); return true;
     case 'home': navigation.navigate('MainTabs', { screen: 'Home' }); return true;
     // Same param Home's Daily Drills widget uses (GamesScreen reads openDrills).
-    case 'drills': navigation.navigate('MainTabs', { screen: 'Training', params: { openDrills: true } }); return true;
+    case 'drills': goToScreen(navigation, 'Training', { openDrills: true }); return true;
     case 'root': navigation.navigate(target.key, target.params); return true;
-    case 'class': navigation.navigate('MainTabs', { screen: 'Library', params: { screen: 'ClassesStack', params: { screen: target.key } } }); return true;
+    case 'class': goToScreen(navigation, target.key); return true;
     case 'game': navigation.navigate('Play', { gameId: target.key }); return true;
     default: return false;
   }
