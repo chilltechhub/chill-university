@@ -110,7 +110,8 @@ export const OUTFITS = [
   { id: 'bookworm',  name: 'Bookworm',      rig: RIGS.bookworm,              requirement: null },
   { id: 'pink',      name: 'Pink Monster',  rig: RIGS.pink,                  requirement: { stat: 'level', value: 2 } },
   { id: 'woodlandwarden', name: 'Woodland Warden', image: require('../../assets/Characters/curated/1.png'), imageAspect: 272/656, requirement: { stat: 'level', value: 2 } },
-  { id: 'mushroom',  name: 'Mushroom',      rig: RIGS.mushroom,              requirement: { stat: 'level', value: 3 } },
+  // Faces left: eyes on the left of the stem, trailing leg kicks right (checked 2026-10-15 after the user saw it walk backwards).
+  { id: 'mushroom',  name: 'Mushroom',      rig: RIGS.mushroom,              requirement: { stat: 'level', value: 3 }, facingRight: false },
   { id: 'farmer',    name: 'Farmer',        sheet: 'rogues', row: 5, col: 0, requirement: { stat: 'level', value: 4 }, facingRight: false },
   { id: 'tideconjurer', name: 'Tide Conjurer', image: require('../../assets/Characters/curated/50.png'), imageAspect: 336/744, requirement: { stat: 'level', value: 4 } },
   { id: 'gangster3', name: 'Gangster',      rig: RIGS.gangster3,             requirement: { stat: 'level', value: 5 } },
