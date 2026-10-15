@@ -95,6 +95,17 @@ export default function WeeklyReviewScreen() {
 
   // Next 3
   const [priorities, setPriorities] = useState(['', '', '']);
+  // Picks for the top 3 from the week's own data (2026-10-15): what
+  // slipped, each project's next step, late or undated to-dos, last
+  // review's priorities still open, habits that dropped off.
+  const [suggestions, setSuggestions] = useState([]);
+  const [usedSuggestions, setUsedSuggestions] = useState([]);
+  const useSuggestion = (sg) => {
+    const slot = priorities.findIndex(p => !p.trim());
+    if (slot < 0 || usedSuggestions.includes(sg.id)) return;
+    setPriorities(prev => prev.map((p, i) => (i === slot ? sg.title : p)));
+    setUsedSuggestions(prev => [...prev, sg.id]);
+  };
 
   // A takeaway into the first empty priority (its when/then line if it has one).
   const tryTakeaway = (row) => {
@@ -166,6 +177,43 @@ export default function WeeklyReviewScreen() {
       setWinCandidates(candidates);
 
       setKnowledge(await getKnowledgeWeek(uid));
+
+      // ── Suggestions for next week's top 3 ──
+      const out = [];
+      const add = (id, title, source, icon) => {
+        const tt = String(title || '').trim();
+        if (tt && !out.some(x => x.title.toLowerCase() === tt.toLowerCase())) out.push({ id, title: tt, source, icon });
+      };
+      // Last review's priorities that are still open tasks.
+      const [{ data: settingsRow }, { data: openTasks }] = await Promise.all([
+        supabase.from('user_settings').select('last_weekly_review').eq('user_id', uid).maybeSingle(),
+        supabase.from('tasks').select('id, title, due_date').eq('user_id', uid).eq('completed', false)
+          .order('due_date', { ascending: true, nullsFirst: false }).limit(40),
+      ]);
+      const open = openTasks || [];
+      (settingsRow?.last_weekly_review?.next_three || []).forEach(title => {
+        if (open.some(tk => tk.title?.trim().toLowerCase() === String(title).trim().toLowerCase())) add(`last_${title}`, title, 'Still open from last week', 'return-down-forward-outline');
+      });
+      // One-off plans that slipped this week.
+      instances.filter(i => !i.completed && !i.skipped && i.date < todayDate && (!i.cadence || i.cadence === 'once'))
+        .slice(0, 3).forEach(i => add(`slip_${i.id}`, i.title, 'Slipped this week', 'time-outline'));
+      // Each active project's next step, most recently touched first.
+      [...projects].filter(p => p.next_action)
+        .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))
+        .slice(0, 3).forEach(p => add(`proj_${p.id}`, p.next_action, `Next step · ${p.title}`, 'hammer-outline'));
+      // To-dos past their day, then ones with no day.
+      open.filter(tk => tk.due_date && tk.due_date < todayDate).slice(0, 2).forEach(tk => add(`late_${tk.id}`, tk.title, 'Past its day', 'alert-circle-outline'));
+      open.filter(tk => !tk.due_date).slice(0, 2).forEach(tk => add(`nod_${tk.id}`, tk.title, 'To-do with no day yet', 'checkbox-outline'));
+      // Daily habits kept less than half the time (3+ days on the books).
+      const byHabit = new Map();
+      instances.filter(i => i.cadence === 'daily' && !i.skipped && i.date <= todayDate).forEach(i => {
+        const h = byHabit.get(i.title) || { done: 0, total: 0 };
+        h.total += 1; if (i.completed) h.done += 1;
+        byHabit.set(i.title, h);
+      });
+      [...byHabit.entries()].filter(([, h]) => h.total >= 3 && h.done / h.total < 0.5).slice(0, 2)
+        .forEach(([title, h]) => add(`habit_${title}`, `Get back to: ${title}`, `Habit · ${h.done} of ${h.total} days`, 'repeat-outline'));
+      setSuggestions(out.slice(0, 7));
     } catch (e) { console.warn('WeeklyReview: load', e.message || e); }
     setLoading(false);
   };
@@ -360,6 +408,29 @@ export default function WeeklyReviewScreen() {
                   placeholder={`Priority ${i + 1}`} placeholderTextColor={c.text4}
                 />
               ))}
+
+              {suggestions.length > 0 && (
+                <View style={{ marginTop: s.md }}>
+                  <Text style={{ fontSize: t.sm, color: c.text2, marginBottom: s.sm }}>
+                    <Text style={{ fontWeight: t.bold, color: c.text1 }}>From your week.</Text> Tap one to make it a priority:
+                  </Text>
+                  {suggestions.map(sg => {
+                    const used = usedSuggestions.includes(sg.id);
+                    const full = !priorities.some(p => !p.trim());
+                    return (
+                      <TouchableOpacity key={sg.id} onPress={() => useSuggestion(sg)} disabled={used || full} accessibilityRole="button"
+                        accessibilityLabel={`${sg.title}. ${sg.source}. Make it a priority.`}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: used ? color + '18' : c.bg1, borderRadius: r.md, padding: s.md, marginBottom: s.sm, borderWidth: 1, borderColor: used ? color : c.border, opacity: full && !used ? 0.5 : 1 }}>
+                        <Ionicons name={used ? 'checkmark-circle' : sg.icon} size={18} color={used ? color : c.text2} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.text1 }} numberOfLines={2}>{sg.title}</Text>
+                          <Text style={{ fontSize: t.xs, color: c.text3 }} numberOfLines={1}>{sg.source}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
 
               {knowledge.toTry.length > 0 && (
                 <View style={{ marginTop: s.md }}>

@@ -223,6 +223,7 @@ export default function GamesScreen() {
                   coinRewardsRemaining={coinRewards.remaining}
                   nextCoinAt={coinRewards.ready ? coinRewards.nextAt : Infinity}
                   coinRewardPoints={coinRewards.points}
+                  showJumpArrow={heroTapEnabled !== false}
                 />
               </LandscapeBackground>
             </TouchableOpacity>

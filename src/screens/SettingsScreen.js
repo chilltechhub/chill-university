@@ -148,7 +148,7 @@ function AppearancePicker({ c, t, s }) {
       </View>
 
       <Text style={heading}>Accent</Text>
-      <View style={{ flexDirection: 'row', gap: s.lg }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.lg, rowGap: s.md }}>
         {Object.entries(ACCENTS).map(([key, a]) => {
           const on = accentName === key;
           const swatch = a[isDark ? 'dark' : 'light'].primary;
@@ -623,6 +623,7 @@ export default function SettingsScreen() {
   const [heroTapEnabled, setHeroTapEnabled] = useSetting(SETTING_KEYS.HERO_TAP_TO_PROFILE, true);
   const [homeBgMode, setHomeBgMode] = useSetting(SETTING_KEYS.HOME_BACKGROUND, 'plain');
   const [quickButtons, setQuickButtons] = useSetting(SETTING_KEYS.HOME_QUICK_BUTTONS, true);
+  const [hideDone, setHideDone] = useSetting(SETTING_KEYS.HIDE_DONE_WIDGETS, false);
   const [libraryBgMode, setLibraryBgMode] = useSetting(SETTING_KEYS.LIBRARY_BACKGROUND, 'plain');
   const [remindersEnabled, setRemindersEnabled] = useSetting(SETTING_KEYS.DAILY_REMINDERS_ENABLED, false);
   const [screenTutorials, setScreenTutorials] = useSetting(SETTING_KEYS.SCREEN_TUTORIALS_ENABLED, true);
@@ -965,6 +966,22 @@ export default function SettingsScreen() {
           c={c} t={t} s={s} r={r}
         />
         <SettingRow
+          icon="checkmark-done-outline"
+          iconColor={c.teal}
+          label="Hide cards once they're done"
+          subtitle="Today's Activities, Check-ins Due and Daily Drills step aside when finished, and come back tomorrow"
+          right={
+            <Switch
+              value={!!hideDone}
+              onValueChange={setHideDone}
+              accessibilityLabel="Hide Home cards once they're done"
+              trackColor={{ false: c.borderStrong, true: c.teal + '88' }}
+              thumbColor={hideDone ? c.teal : c.text3}
+            />
+          }
+          c={c} t={t} s={s} r={r}
+        />
+        <SettingRow
           icon="happy-outline"
           iconColor={c.gold}
           label="Show Emojis"
@@ -1140,7 +1157,7 @@ export default function SettingsScreen() {
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
           onPress={() => setShowCrestModal(true)}
           c={c} t={t} s={s} r={r} />
-        <SettingRow icon="hand-left-outline" iconColor={c.teal} label="Tap Avatar for Profile" subtitle="Tap your character on the Training screen to open your Profile. Off: the tap makes them jump instead"
+        <SettingRow icon="hand-left-outline" iconColor={c.teal} label="Tap Avatar for Profile" subtitle="Tap your character on the Training screen to open your Profile. Off: the tap makes them jump, and the jump arrow goes away"
           right={
             <Switch
               value={heroTapEnabled}

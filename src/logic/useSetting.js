@@ -6,9 +6,10 @@
 // Settings screen is picked up immediately by whatever else reads it —
 // no reload needed.
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { onPrefsRestored } from './prefsSync';
 
 const PREFIX = '@cth_setting_';
 
@@ -21,6 +22,9 @@ export const SETTING_KEYS = {
   // The Study and Play buttons on Home's profile card. On by default; off
   // leaves the card as just your name and level.
   HOME_QUICK_BUTTONS: 'homeQuickButtons',
+  // Home cards with a finish line (Today's Activities, Check-ins Due, Daily
+  // Drills) step aside once done, until tomorrow. Off by default.
+  HIDE_DONE_WIDGETS: 'hideDoneWidgets',
   DAILY_REMINDERS_ENABLED: 'dailyRemindersEnabled',
   TOUR_SEEN: 'tourSeen',
   // Array of LIBRARY_HUBS item `screen` values the user has chosen to hide
@@ -87,6 +91,16 @@ export default function useSetting(key, defaultValue) {
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [key])
   );
+
+  // Signing in can bring settings back from the account after this screen
+  // already read the phone's (prefsSync.js): read again then.
+  useEffect(() => onPrefsRestored(() => {
+    AsyncStorage.getItem(PREFIX + key).then(raw => {
+      const next = raw === null ? defaultValue : JSON.parse(raw);
+      lastKnown[key] = next;
+      setValue(next);
+    }).catch(() => {});
+  }), [key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const update = useCallback((next) => {
     lastKnown[key] = next;

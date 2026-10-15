@@ -138,6 +138,26 @@ check('isSamePlan: different times differ', !L.isSamePlan({ title: 'Gym', date: 
   check('payoff: avalanche clears the high rate first', av.order[0] === 'Card', show(av.order));
   check('payoff: interest outrunning the payment is "never"', D.payoffPlan([{ name: 'X', balance: 10000, apr: 30, min: 50 }], 0).months === null);
   check('savings: months to goal', D.monthsToGoal(1000, 400, 100) === 6 && D.monthsToGoal(1000, 1000, 0) === 0 && D.monthsToGoal(1000, 0, 0) === null);
+  // Right now (src/logic/rightNow.js)
+  const rsrc = await readFile(new URL('../src/logic/rightNow.js', import.meta.url), 'utf8');
+  const R = await import('data:text/javascript,' + encodeURIComponent(rsrc));
+  const at = (h, m = 0) => new Date(2026, 9, 15, h, m);
+  const items = [
+    { id: 'a', title: 'Gym', time: '07:00', duration: 60, src: 'planner' },
+    { id: 'b', title: 'Standup', time: '10:00:00', src: 'planner' },
+    { id: 'c', title: 'Stretch', time: null, src: 'planner' },
+    { id: 'd', title: 'Essay', late: true, src: 'due' },
+  ];
+  const quiet = { on: true, start: '21:30', end: '08:00' };
+  check('right now: inside quiet hours is rest', R.pickRightNow({ items, now: at(23), quiet }).kind === 'rest');
+  check('right now: quiet hours wrap past midnight', R.pickRightNow({ items, now: at(7, 30), quiet }).kind === 'rest');
+  check('right now: a plan happening now', R.pickRightNow({ items, now: at(7, 30) }).item?.id === 'a');
+  check('right now: next within 90 minutes', R.pickRightNow({ items, now: at(9, 0) }).item?.id === 'b');
+  check('right now: done items are skipped', R.pickRightNow({ items: items.map(i => (i.id === 'b' ? { ...i, done: true } : i)), now: at(9, 0) }).item?.id === 'd');
+  check('right now: late before untimed', R.pickRightNow({ items, now: at(14) }).kind === 'late');
+  check('right now: untimed plan in the evening', R.pickRightNow({ items: items.filter(i => i.id !== 'd'), now: at(18) }).label === 'Before the day ends');
+  check('right now: desk when nothing is scheduled', R.pickRightNow({ items: [], desk: [{ id: 'x', title: 'Draft' }], now: at(14) }).kind === 'desk');
+  check('right now: nothing at all is null', R.pickRightNow({ items: [], desk: [], now: at(14) }) === null);
   check('quick-add: describe', Q.describeQuickAdd({ date: '2026-10-15', time: '16:00', cadence: 'weekly' }, now) === 'Tomorrow · 4:00 PM · every week',
     Q.describeQuickAdd({ date: '2026-10-15', time: '16:00', cadence: 'weekly' }, now));
 }

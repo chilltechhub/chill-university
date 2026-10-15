@@ -17,7 +17,8 @@ import {
   THEMES, STYLES, ACCENTS, DEFAULT_STYLE, DEFAULT_ACCENT, PERSONA_ACCENT, HIGH_CONTRAST,
   makeShadows, typography, spacing, radius,
 } from '../src/theme';
-import { useA11yPrefs } from '../src/logic/a11yPrefs';
+import { useA11yPrefs, loadA11yPrefs } from '../src/logic/a11yPrefs';
+import { onPrefsRestored } from '../src/logic/prefsSync';
 
 const ThemeContext = createContext(null);
 const STORAGE_KEY = '@cth_theme';
@@ -34,7 +35,10 @@ export function ThemeProvider({ children }) {
   // suggestion leaves it alone.
   const [accentSet, setAccentSet] = useState(false);
 
-  // Load saved preferences
+  // Load saved preferences, and again when signing in brings them back
+  // from the account (src/logic/prefsSync.js).
+  const [restoredAt, setRestoredAt] = useState(0);
+  useEffect(() => onPrefsRestored(() => { setRestoredAt(Date.now()); loadA11yPrefs(); }), []);
   useEffect(() => {
     AsyncStorage.multiGet([STORAGE_KEY, STYLE_KEY, ACCENT_KEY]).then(pairs => {
       const saved = Object.fromEntries(pairs);
@@ -46,7 +50,7 @@ export function ThemeProvider({ children }) {
         setAccentSet(true);
       }
     }).catch(() => {});
-  }, []);
+  }, [restoredAt]);
 
   // Resolve active theme
   const activeName = themeName ?? (systemScheme === 'dark' ? 'dark' : 'light');
