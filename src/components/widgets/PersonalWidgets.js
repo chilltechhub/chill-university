@@ -22,16 +22,18 @@ import useDrillPlan from '../../logic/useDrillPlan';
 import { AREAS } from '../../api/plannerService';
 import { supabase } from '../../api/profileScopedClient';
 import { todayStr, addDays } from '../../logic/dateUtils';
+import { habitStreak } from '../../logic/habitStreak';
 import WidgetCard, { StatRow, Bar } from './WidgetCard';
 
 // ─── Habit Rings ─────────────────────────────────────────────────────────────
-// The last seven days of every daily habit, templates and ones added by
-// hand alike (both are agenda_instances rows). A habit with no counted day
-// yet (added today, not ticked) reads "starts today", not "0 of 0".
-// One row per habit, by its own name: "Walk 20 minutes a day · 3 of 5
-// days". It used to be one row per life area ("Physical 0%"), which said
-// neither which habit nor how many days. Daily habits only; today counts once
-// it's ticked, so an untouched today never drags the number down.
+// Every daily and weekly habit (templates and ones added by hand alike;
+// both are agenda_instances rows), one row each by its own name, with:
+//   · its streak: days in a row for a daily habit, weeks for a weekly one.
+//     Today (or this week) counts once it's ticked, so an untouched today
+//     never breaks it; a skipped day is a rest, not a break.
+//   · daily: the last seven days as dots (done, missed, today, none), the
+//     streak calendar the 2026-10-14 review found missing.
+// A habit with no counted day yet reads "starts today".
 export function HabitRingsWidget({ userId, onOpenPlanner }) {
   const { colors: c, typography: t, spacing: s } = useTheme();
   const [rows, setRows] = useState(null);
@@ -43,21 +45,36 @@ export function HabitRingsWidget({ userId, onOpenPlanner }) {
       try {
         const today = todayStr();
         const { data, error } = await supabase.from('agenda_instances')
-          .select('title, area, date, completed, skipped')
-          .eq('user_id', userId).eq('cadence', 'daily')
-          .gte('date', addDays(today, -6)).lte('date', today)
-          .limit(400);
+          .select('title, area, date, cadence, completed, skipped')
+          .eq('user_id', userId).in('cadence', ['daily', 'weekly'])
+          .gte('date', addDays(today, -60)).lte('date', today)
+          .limit(1500);
         if (error) throw error;
         const byHabit = new Map();
         (data || []).forEach((r) => {
-          const key = (r.title || '').trim().toLowerCase();
-          if (!byHabit.has(key)) byHabit.set(key, { title: r.title, area: r.area, done: 0, days: 0 });
-          const h = byHabit.get(key);
-          if (r.skipped) return;
-          if (r.date < today || r.completed) h.days += 1;
-          if (r.completed) h.done += 1;
+          const key = `${(r.title || '').trim().toLowerCase()}|${r.cadence}`;
+          if (!byHabit.has(key)) byHabit.set(key, { key, title: r.title, area: r.area, cadence: r.cadence, rows: [] });
+          byHabit.get(key).rows.push(r);
         });
-        if (alive) setRows([...byHabit.values()].slice(0, 6));
+        const weekFrom = addDays(today, -6);
+        const out = [...byHabit.values()].map(h => {
+          const recent = h.rows.filter(r => r.date >= weekFrom && !r.skipped);
+          const byDate = new Map(h.rows.map(r => [r.date, r]));
+          return {
+            ...h,
+            done: recent.filter(r => r.completed).length,
+            days: recent.filter(r => r.date < today || r.completed).length,
+            streak: habitStreak(h.rows, h.cadence, today),
+            dots: h.cadence === 'daily'
+              ? Array.from({ length: 7 }, (_, i) => {
+                const d = addDays(today, i - 6);
+                const r = byDate.get(d);
+                return { d, state: !r ? 'none' : r.completed ? 'done' : r.skipped ? 'rest' : d === today ? 'today' : 'missed' };
+              })
+              : null,
+          };
+        }).sort((a, b) => b.streak - a.streak);
+        if (alive) setRows(out.slice(0, 6));
       } catch (e) {
         console.warn('habitRings', e?.message);
         if (alive) setRows([]);
@@ -68,25 +85,49 @@ export function HabitRingsWidget({ userId, onOpenPlanner }) {
 
   return (
     <WidgetCard
-      title="Habits · last 7 days" icon="repeat-outline" accent={c.success}
+      title="Habits" icon="repeat-outline" accent={c.success}
       action="Planner →" onAction={onOpenPlanner}
       loading={rows === null}
       empty={rows?.length === 0 ? {
-        text: "No daily habits yet. Add one in the Planner.",
+        text: "No habits yet. Add one in the Planner and set it to repeat.",
         cta: 'Open Planner', onPress: onOpenPlanner,
       } : null}
     >
-      {rows?.map(({ title, area, done, days }) => {
+      {rows?.map(({ key, title, area, cadence, done, days, streak, dots }) => {
         const def = AREAS[area] || { color: c.teal, emoji: '•' };
+        const unit = cadence === 'weekly' ? 'week' : 'day';
         return (
-          <View key={title} style={{ marginBottom: s.sm }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
-              <Text style={{ fontSize: t.sm, color: c.text2, flex: 1 }} numberOfLines={1}>{def.emoji} {title}</Text>
-              {days === 0
-                ? <Text style={{ fontSize: t.xs, color: c.text3 }}>starts today</Text>
-                : <Text style={{ fontSize: t.sm, color: def.color, fontWeight: t.bold }}>{done} of {days} {days === 1 ? 'day' : 'days'}</Text>}
+          <View key={key} style={{ marginBottom: s.md }}
+            accessible accessibilityLabel={`${title}. ${streak ? `${streak} ${unit}${streak === 1 ? '' : 's'} in a row` : 'No streak yet'}${dots ? `. ${done} of ${days} days this week` : ''}.`}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ fontSize: t.sm, color: c.text1, flex: 1 }} numberOfLines={1}>{def.emoji} {title}</Text>
+              {streak > 0
+                ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                    <Ionicons name="flame" size={14} color={c.gold} />
+                    <Text style={{ fontSize: t.sm, color: c.text1, fontWeight: t.bold }}>{streak} {unit}{streak === 1 ? '' : 's'}</Text>
+                  </View>
+                )
+                : days === 0
+                  ? <Text style={{ fontSize: t.xs, color: c.text3 }}>starts today</Text>
+                  : <Text style={{ fontSize: t.xs, color: c.text3 }}>no streak yet</Text>}
             </View>
-            <Bar pct={days ? Math.round((done / days) * 100) : 0} color={def.color} />
+            {dots ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                {dots.map(({ d, state }) => (
+                  <View key={d} style={{
+                    width: 14, height: 14, borderRadius: 7,
+                    backgroundColor: state === 'done' ? def.color : 'transparent',
+                    borderWidth: state === 'done' ? 0 : 1.5,
+                    borderColor: state === 'missed' ? c.text3 : state === 'today' ? def.color : c.border,
+                    borderStyle: state === 'rest' ? 'dashed' : 'solid',
+                  }} />
+                ))}
+                <Text style={{ fontSize: t.xs, color: c.text3, marginLeft: 4 }}>{done} of {days || 0} this week</Text>
+              </View>
+            ) : (
+              <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>Weekly{done ? ' · done this week' : ''}</Text>
+            )}
           </View>
         );
       })}

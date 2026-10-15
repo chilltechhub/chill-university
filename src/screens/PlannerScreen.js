@@ -44,6 +44,8 @@ import PlannerBacklog from '../components/PlannerBacklog';
 import PlannerQuickAdd from '../components/PlannerQuickAdd';
 import { SkeletonRows } from '../components/Skeleton';
 import { successHaptic } from '../logic/haptics';
+import { PhoneCalendarSheet, PhoneEventsList } from '../components/PhoneCalendar';
+import { syncPlansToPhone } from '../api/phoneCalendar';
 import { CLASS_SUBJECTS, CLASS_SCREEN_MAP } from '../data/classCatalog';
 import { getEnabledGames, getGame } from '../services/gameRegistry';
 import { dateStr } from '../logic/dateUtils';
@@ -1089,6 +1091,8 @@ function DailyPage({ userId, date, activeAreas, timeMode, onOpen, onAdd, onQuick
         <PlannerBacklog userId={userId} onChange={load} openAt={reviewAt} c={c} t={t} s={s} r={r} />
       )}
       <DueList items={due} onChange={load} label={toISO(date) === toISO(new Date()) ? 'Due today' : 'Due'} c={c} t={t} s={s} r={r} />
+      {/* Events from the phone's calendars, when connected (⋯ → Phone calendar). */}
+      {!showingAll && <PhoneEventsList date={toISO(date)} c={c} t={t} s={s} r={r} />}
       {timeMode
         ? <TimeView {...sharedProps} />
         : <ListView {...sharedProps} />
@@ -1496,8 +1500,14 @@ export default function PlannerScreen() {
   const [activeAreas, setAreas]   = useState(new Set());
   const [panelOpen,   setPanel]   = useState(false);
   const [filterOpen, setFilterOpen] = useState(false); // the life-area sheet
+  const [phoneCalOpen, setPhoneCalOpen] = useState(false); // Phone calendar sheet
   const [loading,     setLoading] = useState(true);
   const [refreshKey,  setRefresh] = useState(0);
+  // Plans copied to the phone's "Deskartes" calendar stay in step: on open
+  // and after every change here. A no-op unless turned on (phoneCalendar.js).
+  useEffect(() => {
+    if (userId) syncPlansToPhone(userId).catch(e => console.warn('phone calendar sync', e?.message));
+  }, [userId, refreshKey]);
   // By time of day unless the person switched to the list; the choice is
   // remembered on this device.
   const [timeMode,    setTimeModeState] = useState(true);
@@ -1721,6 +1731,7 @@ export default function PlannerScreen() {
                 icon: timeMode ? 'list' : 'time-outline',
                 onPress: () => setTimeMode(m => !m),
               },
+              { label: 'Phone calendar', icon: 'phone-portrait-outline', onPress: () => setPhoneCalOpen(true) },
               { label: 'Add to my calendar', icon: 'calendar-outline', onPress: exportCalendar },
               { label: 'Remove duplicates', icon: 'copy-outline', onPress: removeDuplicates },
               { label: 'Weekly review', icon: 'stats-chart-outline', onPress: () => navigation.navigate('WeeklyReviewScreen') },
@@ -1807,6 +1818,9 @@ export default function PlannerScreen() {
         <MonthlyView userId={userId} anchor={anchor} activeAreas={activeAreas}
           onDayPress={onDayPress} refreshKey={refreshKey} showingAll={showingAll} c={c} t={t} s={s} />
       )}
+
+      <PhoneCalendarSheet visible={phoneCalOpen} onClose={() => { setPhoneCalOpen(false); setRefresh(k => k + 1); }}
+        userId={userId} c={c} t={t} s={s} r={r} />
 
       {/* ── Life-area filter ── */}
       <Modal visible={filterOpen} transparent animationType="slide" onRequestClose={() => setFilterOpen(false)}>

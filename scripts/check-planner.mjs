@@ -110,6 +110,34 @@ check('isSamePlan: different times differ', !L.isSamePlan({ title: 'Gym', date: 
   is('plain text stays today, untimed', 'buy milk', { title: 'Buy milk', date: '2026-10-14', time: null, found: false });
   is('12am is midnight', 'launch 12am', { time: '00:00' });
   is('numbers in a title are left alone', 'read 20 pages', { title: 'Read 20 pages', time: null });
+  // Habit streaks (src/logic/habitStreak.js)
+  const hsrc = await readFile(new URL('../src/logic/habitStreak.js', import.meta.url), 'utf8');
+  const H = await import('data:text/javascript,' + encodeURIComponent(hsrc));
+  const day = (d, completed, skipped = false) => ({ date: d, completed, skipped });
+  const T = '2026-10-14';
+  check('streak: today untouched still counts the run to yesterday',
+    H.habitStreak([day('2026-10-11', true), day('2026-10-12', true), day('2026-10-13', true), day(T, false)], 'daily', T) === 3);
+  check('streak: today ticked adds one',
+    H.habitStreak([day('2026-10-12', true), day('2026-10-13', true), day(T, true)], 'daily', T) === 3);
+  check('streak: a missed day breaks it',
+    H.habitStreak([day('2026-10-11', true), day('2026-10-12', false), day('2026-10-13', true), day(T, true)], 'daily', T) === 2);
+  check('streak: a skipped day is a rest',
+    H.habitStreak([day('2026-10-11', true), day('2026-10-12', false, true), day('2026-10-13', true), day(T, true)], 'daily', T) === 3);
+  check('streak: weekly counts weeks',
+    H.habitStreak([day('2026-09-30', true), day('2026-10-07', true), day(T, false)], 'weekly', T) === 2);
+  // Debt payoff + savings goal (src/logic/debtPayoff.js)
+  const dsrc = await readFile(new URL('../src/logic/debtPayoff.js', import.meta.url), 'utf8');
+  const D = await import('data:text/javascript,' + encodeURIComponent(dsrc));
+  const one = D.payoffPlan([{ name: 'Card', balance: 1200, apr: 0, min: 100 }], 0);
+  check('payoff: no interest, 1200 at 100/month is 12 months', one.months === 12 && one.interest === 0, show(one));
+  const debts = [{ name: 'Card', balance: 3000, apr: 24, min: 90 }, { name: 'Car', balance: 1000, apr: 6, min: 50 }];
+  const av = D.payoffPlan(debts, 200, 'avalanche');
+  const sb = D.payoffPlan(debts, 200, 'snowball');
+  check('payoff: avalanche pays less interest than snowball', av.interest <= sb.interest, `${av.interest} vs ${sb.interest}`);
+  check('payoff: snowball clears the small balance first', sb.order[0] === 'Car', show(sb.order));
+  check('payoff: avalanche clears the high rate first', av.order[0] === 'Card', show(av.order));
+  check('payoff: interest outrunning the payment is "never"', D.payoffPlan([{ name: 'X', balance: 10000, apr: 30, min: 50 }], 0).months === null);
+  check('savings: months to goal', D.monthsToGoal(1000, 400, 100) === 6 && D.monthsToGoal(1000, 1000, 0) === 0 && D.monthsToGoal(1000, 0, 0) === null);
   check('quick-add: describe', Q.describeQuickAdd({ date: '2026-10-15', time: '16:00', cadence: 'weekly' }, now) === 'Tomorrow · 4:00 PM · every week',
     Q.describeQuickAdd({ date: '2026-10-15', time: '16:00', cadence: 'weekly' }, now));
 }

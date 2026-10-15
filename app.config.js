@@ -14,6 +14,17 @@ export default ({ config }) => {
       'expo-asset',
       'expo-font',
       'expo-status-bar',
+      // Phone calendar sync (src/api/phoneCalendar.js): reads the phone's
+      // calendars (Apple, and Google accounts on the phone) into the Planner,
+      // and can copy plans into a "Deskartes" calendar. Off until the person
+      // turns it on in the Planner; reminders aren't touched.
+      [
+        'expo-calendar',
+        {
+          calendarPermission: 'Deskartes shows your calendar events in your Planner, and can add your plans to your calendar if you turn that on.',
+          remindersPermission: false,
+        },
+      ],
       // Share INTO the app: "Deskartes" shows in the phone's share sheet for
       // links and text, which land in the Notification Center to be filed
       // (src/components/ShareIntentListener.js). Needs a dev/store build —

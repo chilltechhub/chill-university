@@ -49,7 +49,7 @@ export default function InsightsPanel({ userId }) {
     </View>
   );
 
-  if (total === 0 && !data.habits.total && !data.focus.week && !data.knowledge.saved) {
+  if (total === 0 && !data.habits.total && !data.focus.week && !data.knowledge.saved && !data.feelings.count) {
     return (
       <View style={{ backgroundColor: c.bg1, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border, padding: s.lg, marginBottom: s.lg }}>
         <Text style={{ fontSize: t.md, fontWeight: '700', color: c.text1 }}>Nothing to show yet</Text>
@@ -106,6 +106,36 @@ export default function InsightsPanel({ userId }) {
           <Text style={{ fontSize: 11, color: c.text3 }}>Today</Text>
         </View>
       </View>
+
+      {/* ── How you've felt: the daily check-in, one small chart per
+          measure (small multiples, not four colours on one chart). ── */}
+      {data.feelings.count > 0 && (
+        <View style={{ backgroundColor: c.bg1, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border, padding: s.md, marginBottom: s.lg }}>
+          <Text style={{ fontSize: t.sm, fontWeight: '700', color: c.text1 }}>How you've felt</Text>
+          <Text style={{ fontSize: 12, color: c.text3, marginBottom: s.sm }}>
+            From your check-ins · {data.feelings.count} day{data.feelings.count === 1 ? '' : 's'} in the last {INSIGHT_DAYS / 7} weeks
+          </Text>
+          {data.feelings.series.map(f => (
+            <View key={f.key} style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: 8 }}
+              accessible accessibilityLabel={`${f.label}: average ${f.avg != null ? f.avg.toFixed(1) : 'none'} out of 5${f.lowerIsBetter ? ', lower is better' : ''}.`}>
+              <View style={{ width: 64 }}>
+                <Text style={{ fontSize: 12, color: c.text2 }}>{f.label}</Text>
+                {f.lowerIsBetter && <Text style={{ fontSize: 11, color: c.text3 }}>lower is better</Text>}
+              </View>
+              <View style={{ flex: 1, height: 28, flexDirection: 'row', alignItems: 'flex-end', gap: 2, borderBottomWidth: 1, borderBottomColor: c.border }}>
+                {f.points.map(p => (
+                  <View key={p.date} style={{ flex: 1, maxWidth: 24, height: p.value ? Math.max(3, (p.value / 5) * 28) : 0,
+                    backgroundColor: c.teal, opacity: 0.85, borderTopLeftRadius: 2, borderTopRightRadius: 2 }} />
+                ))}
+              </View>
+              <Text style={{ width: 34, textAlign: 'right', fontSize: 12, fontWeight: '700', color: c.text1 }}>
+                {f.avg != null ? f.avg.toFixed(1) : '—'}
+              </Text>
+            </View>
+          ))}
+          <Text style={{ fontSize: 11, color: c.text3 }}>Right-hand number: your average, out of 5</Text>
+        </View>
+      )}
 
       {/* ── By life area ── */}
       {data.areas.length > 0 && (

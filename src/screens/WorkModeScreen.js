@@ -24,6 +24,7 @@ import { saveTimerSession } from '../api/commandCenterService';
 import { AREAS } from '../api/plannerService';
 import { FONTS } from '../theme';
 import { advanceNextAction } from '../api/nextActionService';
+import { getWorkSession, saveWorkSession, clearWorkSession } from '../logic/workSession';
 
 const STEPS = [
   { key: 'start',      label: 'START' },
@@ -75,26 +76,44 @@ export default function WorkModeScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
-  const project = route.params?.project || null;
+  // A session left running (src/logic/workSession.js) comes back as it was,
+  // unless this open is for a different project.
+  // Read once, on open: after that this screen is the one writing it.
+  const [resumed] = useState(() => {
+    const w = getWorkSession();
+    if (!w || w.phase === 'start') return null;
+    const askedFor = route.params?.project?.id || null;
+    return !askedFor || askedFor === w.project?.id ? w : null;
+  });
+  const project = resumed ? resumed.project : (route.params?.project || null);
 
   const [userId, setUserId] = useState(null);
-  const [phase,  setPhase]  = useState('start'); // start | active | finish
+  const [phase,  setPhase]  = useState(resumed?.phase || 'start'); // start | active | finish
 
-  const [focusText,  setFocusText]  = useState(project?.next_action || route.params?.presetTitle || '');
-  const [areaKey,    setAreaKey]    = useState(route.params?.lifeAreaId || null);
-  const [scratchpad, setScratchpad] = useState('');
+  const [focusText,  setFocusText]  = useState(resumed?.focusText ?? (project?.next_action || route.params?.presetTitle || ''));
+  const [areaKey,    setAreaKey]    = useState(resumed?.areaKey ?? (route.params?.lifeAreaId || null));
+  const [scratchpad, setScratchpad] = useState(resumed?.scratchpad || '');
   const [saving,     setSaving]     = useState(false);
 
   // Duration is tracked from real timestamps (accumulated + a running-since
   // marker), not by counting 1s ticks — a backgrounded/throttled tab or app
   // would otherwise under-count. `tick` just forces a re-render once a
   // second so the displayed clock keeps moving; it never feeds the math.
-  const [accumulatedSeconds, setAccumulatedSeconds] = useState(0);
+  const [accumulatedSeconds, setAccumulatedSeconds] = useState(resumed?.accumulatedSeconds || 0);
   // Finish screen: was the project's next step done, and what's after it?
   // Without this the step never moved, so Home kept offering the same one.
-  const [stepDone, setStepDone] = useState(false);
-  const [nextStep, setNextStep] = useState('');
-  const [runningSince, setRunningSince] = useState(null);
+  const [stepDone, setStepDone] = useState(!!resumed?.stepDone);
+  const [nextStep, setNextStep] = useState(resumed?.nextStep || '');
+  const [runningSince, setRunningSince] = useState(resumed?.runningSince || null);
+
+  // Kept on the device while it's going, so leaving doesn't lose it.
+  useEffect(() => {
+    if (phase === 'start') return;
+    saveWorkSession({
+      phase, focusText, areaKey, scratchpad, accumulatedSeconds, runningSince, stepDone, nextStep,
+      project: project ? { id: project.id, title: project.title, next_action: project.next_action, color: project.color } : null,
+    });
+  }, [phase, focusText, areaKey, scratchpad, accumulatedSeconds, runningSince, stepDone, nextStep, project]);
   const [, setTick] = useState(0);
   const intervalRef = useRef(null);
 
@@ -137,12 +156,12 @@ export default function WorkModeScreen() {
   const discard = useCallback(() => {
     Alert.alert('Discard this session?', "The time won't be logged and your notes won't be saved.", [
       { text: 'Keep going', style: 'cancel' },
-      { text: 'Discard', style: 'destructive', onPress: () => navigation.goBack() },
+      { text: 'Discard', style: 'destructive', onPress: () => { clearWorkSession(); navigation.goBack(); } },
     ]);
   }, [navigation]);
 
   const saveAndClose = async () => {
-    if (!userId) { navigation.goBack(); return; }
+    if (!userId) { clearWorkSession(); navigation.goBack(); return; }
     setSaving(true);
     try {
       // saveTimerSession's third arg is a FK into the (separate, user-defined)
@@ -170,6 +189,7 @@ export default function WorkModeScreen() {
           });
         }
       }
+      clearWorkSession();
       navigation.goBack();
     } catch (e) {
       console.warn('WorkMode: save session', e.message || e);
