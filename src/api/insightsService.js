@@ -36,7 +36,7 @@ export async function getInsights(userId) {
   const empty = emptyInsights(today);
   if (!userId) return empty;
 
-  const [plans, tasks, timers, saved] = await Promise.all([
+  const [plans, tasks, timers, saved, checkins] = await Promise.all([
     supabase.from('agenda_instances').select('date, completed, skipped, cadence, area')
       .eq('user_id', userId).gte('date', from).lte('date', today).limit(2000).then(quiet('plans'), () => []),
     supabase.from('tasks').select('completed_at')
@@ -46,6 +46,8 @@ export async function getInsights(userId) {
     supabase.from('captures').select('id, created_at, url_meta')
       .eq('user_id', userId).in('type', ['note', 'link', 'resource']).neq('status', 'inbox')
       .is('deleted_at', null).gte('created_at', fromIso).limit(1000).then(quiet('vault'), () => []),
+    supabase.from('daily_checkins').select('date, sleep_quality, energy, mood, stress')
+      .eq('user_id', userId).gte('date', from).lte('date', today).limit(100).then(quiet('checkins'), () => []),
   ]);
 
   // ── Done per day ──
@@ -83,6 +85,26 @@ export async function getInsights(userId) {
       .map(([key, done]) => ({ key, label: AREAS[key].label, color: AREAS[key].color, done }))
       .sort((a, b) => b.done - a.done),
     knowledge: { saved: saved.length, used: saved.filter(row => usesOf(row).length > 0).length },
+    feelings: feelingsFrom(days.map(d => d.date), checkins),
+  };
+}
+
+// The daily check-in (DailyCheckin.js), one series per measure, 1–5.
+export const FEELINGS = [
+  { key: 'mood', label: 'Mood' },
+  { key: 'energy', label: 'Energy' },
+  { key: 'sleep_quality', label: 'Sleep' },
+  { key: 'stress', label: 'Stress', lowerIsBetter: true },
+];
+function feelingsFrom(dates, rows) {
+  const byDate = Object.fromEntries((rows || []).map(r => [r.date, r]));
+  return {
+    count: (rows || []).length,
+    series: FEELINGS.map(f => {
+      const points = dates.map(date => ({ date, value: byDate[date]?.[f.key] ?? null }));
+      const vals = points.map(p => p.value).filter(v => v != null);
+      return { ...f, points, avg: vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null, last: vals.length ? vals[vals.length - 1] : null };
+    }),
   };
 }
 
@@ -92,5 +114,6 @@ function emptyInsights(today) {
     days, doneWeek: 0, donePrevWeek: 0,
     habits: { kept: 0, total: 0 }, focus: { week: 0, prevWeek: 0 },
     areas: [], knowledge: { saved: 0, used: 0 },
+    feelings: { count: 0, series: [] },
   };
 }

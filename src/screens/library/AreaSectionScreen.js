@@ -25,6 +25,7 @@ import ActionEditSheet from '../../components/lifeareas/ActionEditSheet';
 import DetailsDrawer from '../../components/lifeareas/DetailsDrawer';
 import GoDeeperList from '../../components/lifeareas/GoDeeperList';
 import { textOn } from '../../logic/contrast';
+import { DebtPayoffCard, SavingsGoalCard } from '../../components/MoneyTools';
 
 // ─── Section configs — all 18 missing sub-sections ───────────────────────────
 export const SECTION_CONFIGS = {
@@ -614,6 +615,9 @@ export default function AreaSectionScreen() {
 
       <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 60, gap: s.xl }} showsVerticalScrollIndicator={false}>
         <ActionPanel aa={aa} color={color} onEdit={() => setEditOpen(true)} />
+        {/* Money sections get numbers that add up (MoneyTools.js). */}
+        {screenName === 'DebtCreditScreen' && userId && <DebtPayoffCard userId={userId} color={color} />}
+        {screenName === 'SavingsInvestingScreen' && userId && <SavingsGoalCard userId={userId} color={color} />}
         <DetailsDrawer
           color={color}
           summary="Links for going deeper, tips, your log and habits"

@@ -9,6 +9,7 @@
 // search with no edit here. Only the handful of screens that belong to no
 // such list are written out below.
 
+import { matchScore } from './fuzzyMatch';
 import { LIBRARY_HUBS } from '../screens/library/LibraryScreen';
 import { LIFE_AREAS } from '../screens/library/LifeAreaScreen';
 import { CLASS_SUBJECTS, CLASS_SCREEN_MAP } from '../data/classCatalog';
@@ -218,7 +219,7 @@ export function isRowShown(row, { isScreenVisible, isGameVisible, isSubjectVisib
 }
 
 // Rank: a title that starts with the query beats one that merely contains
-// it, which beats a subtitle-only match. Without this, typing "math" buries
+// it, which beats a subtitle-only match, which beats a near-miss. Without this, typing "math" buries
 // the Math subject under every topic whose subtitle says "Math".
 export function searchDestinations(query, limit = 8, visibility) {
   const q = query.trim().toLowerCase();
@@ -226,13 +227,9 @@ export function searchDestinations(query, limit = 8, visibility) {
   const scored = [];
   getDestinations().forEach((row) => {
     if (!isRowShown(row, visibility)) return;
-    const title = row.title.toLowerCase();
-    const subtitle = (row.subtitle || '').toLowerCase();
-    let score = 0;
-    if (title === q) score = 100;
-    else if (title.startsWith(q)) score = 80;
-    else if (title.includes(q)) score = 60;
-    else if (subtitle.includes(q)) score = 30;
+    // Exact text first, then words in any order, then one typo per longer
+    // word (src/logic/fuzzyMatch.js, tested in scripts/check-search.mjs).
+    const score = matchScore(q, row.title, row.subtitle);
     if (score) scored.push({ row, score });
   });
   return scored

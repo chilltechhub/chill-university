@@ -22,54 +22,53 @@ export async function searchContent(userId, rawQuery, { limit = 8 } = {}) {
   const q = sanitize(rawQuery || '');
   if (!userId || q.length < 2) return EMPTY;
 
-  const like = `%${q}%`;
+  // Every word has to be there, in any order ("bills rent" finds "Rent and
+  // bills"). Each word is its own filter; PostgREST ANDs them together.
+  const terms = q.split(/\s+/).filter(Boolean).slice(0, 4);
+  const each = (query, cols) => terms.reduce((acc, w) => acc.or(cols.map(col => `${col}.ilike.%${w}%`).join(',')), query);
+  const eachTitle = (query) => terms.reduce((acc, w) => acc.ilike('title', `%${w}%`), query);
 
   const today = todayStr();
   const [capturesRes, projectsRes, ideasRes, plansRes, tasksRes] = await Promise.all([
-    supabase
+    each(supabase
       .from('captures')
       .select('*')
       .eq('user_id', userId)
       .is('deleted_at', null)
-      .neq('status', 'archived')
-      .or(`title.ilike.${like},body.ilike.${like},url.ilike.${like}`)
+      .neq('status', 'archived'), ['title', 'body', 'url'])
       .order('created_at', { ascending: false })
       .limit(limit),
-    supabase
+    each(supabase
       .from('projects')
       .select('*')
       .eq('user_id', userId)
-      .is('deleted_at', null)
-      .or(`title.ilike.${like},objective.ilike.${like}`)
+      .is('deleted_at', null), ['title', 'objective'])
       .order('updated_at', { ascending: false })
       .limit(limit),
     // Ideas in the Idea Garden.
-    supabase
+    each(supabase
       .from('garden_cores')
       .select('id, title, description')
       .eq('user_id', userId)
-      .is('deleted_at', null)
-      .or(`title.ilike.${like},description.ilike.${like}`)
+      .is('deleted_at', null), ['title', 'description'])
       .order('created_at', { ascending: false })
       .limit(limit),
     // Planner items from a month back to two months ahead. A daily habit is
     // a row per day, so this reads more and keeps one per title below.
-    supabase
+    eachTitle(supabase
       .from('agenda_instances')
       .select('id, title, date, cadence, area, start_time')
-      .eq('user_id', userId)
-      .ilike('title', like)
+      .eq('user_id', userId))
       .gte('date', addDays(today, -30))
       .lte('date', addDays(today, 60))
       .order('date', { ascending: true })
       .limit(60),
     // Open to-dos.
-    supabase
+    eachTitle(supabase
       .from('tasks')
       .select('id, title, due_date')
       .eq('user_id', userId)
-      .eq('completed', false)
-      .ilike('title', like)
+      .eq('completed', false))
       .order('created_at', { ascending: false })
       .limit(limit),
   ]);

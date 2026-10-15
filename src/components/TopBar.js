@@ -1,5 +1,5 @@
 // src/components/TopBar.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   ActivityIndicator, Modal,
@@ -18,6 +18,7 @@ import { RANK_LABELS } from '../theme';
 import LoginScreen from '../screens/LoginScreen';
 import { readableOn } from '../logic/contrast';
 import { useBlueprint, WORKSHOP_SCREENS } from '../screens/library/blueprint';
+import { onWorkSessionChange, sessionSeconds } from '../logic/workSession';
 
 // Profile / Help / Screen Tutorial / Settings / Search — one tap-menu off
 // the crest instead of five separate rows. These used to live on the FAB's
@@ -65,6 +66,31 @@ function CrestMenu({ visible, onClose, onSelect, signedIn, c, t, s }) {
         </View>
       </TouchableOpacity>
     </Modal>
+  );
+}
+
+function WorkSessionPill({ navigation, c }) {
+  const [session, setSession] = useState(null);
+  const [, setTick] = useState(0);
+  useEffect(() => onWorkSessionChange(setSession), []);
+  const running = !!session?.runningSince;
+  useEffect(() => {
+    if (!running) return undefined;
+    const id = setInterval(() => setTick(x => x + 1), 1000);
+    return () => clearInterval(id);
+  }, [running]);
+  if (!session || session.phase === 'start') return null;
+  const secs = sessionSeconds(session);
+  const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60), sec = secs % 60;
+  const clock = h ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}` : `${m}:${String(sec).padStart(2, '0')}`;
+  return (
+    <TouchableOpacity onPress={() => navigation.navigate('WorkMode')} hitSlop={6} accessibilityRole="button"
+      accessibilityLabel={`Focus session ${running ? 'running' : 'paused'}, ${clock}. Open Work Mode`}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, marginRight: 6,
+        borderRadius: 999, borderWidth: 1, borderColor: c.teal, backgroundColor: c.teal + '1f' }}>
+      <Ionicons name={running ? 'timer-outline' : 'pause'} size={13} color={c.teal} />
+      <Text style={{ fontSize: 12, fontWeight: '700', color: c.teal, fontVariant: ['tabular-nums'] }}>{clock}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -134,6 +160,11 @@ export default function TopBar({ currentScreen }) {
           </TourSpot>
 
           <View style={{ flex: 1 }} />
+
+          {/* A Work Mode session still going: its clock, one tap back to it.
+              Leaving the screen used to lose the session. */}
+          {/* Work Mode has two routes: the root one and the Library's. */}
+          {currentScreen !== 'WorkMode' && currentScreen !== 'WorkModeScreen' && <WorkSessionPill navigation={navigation} c={colors} />}
 
           {/* Level + points — one compact readout instead of a separate
               rank-name/percent row plus its own points block. The full
