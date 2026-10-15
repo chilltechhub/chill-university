@@ -31,12 +31,13 @@ const build = (data, env = {}) => N.buildNotices(data, { ...ENV, ...env });
     { id: 'p1', title: 'Gym', date: '2026-09-19' },
     { id: 'p2', title: 'Read', date: '2026-09-20', completed: true },
     { id: 'p3', title: 'Old thing', date: '2026-09-01' },
+    { id: 'p6', title: 'Daily stretch', date: '2026-09-20', cadence: 'daily' },
     { id: 'p4', title: 'Call Sam', date: '2026-09-21', start_time: '15:30' },
     { id: 'p5', title: 'Dinner', date: '2026-09-21', start_time: '19:00' },
   ];
   const out = build({ planner, tasks: [{ id: 't1', title: 'Essay', due_date: '2026-09-18', completed: false }] });
   const overdue = out.find(n => n.id.startsWith('catch-up'));
-  check('catch-up: only open plans, within a week', show(overdue?.secondary?.payload) === show(['p1']), show(overdue));
+  check('catch-up: only open one-off plans, within two weeks', show(overdue?.secondary?.payload) === show(['p1']), show(overdue));
   check('catch-up: one button to the Planner review', overdue?.primary?.target?.params?.review === true, show(overdue?.primary));
   check('catch-up: has AI help', overdue?.ai?.target === 'planner');
   const next = out.find(n => n.id.startsWith('plan-next'));

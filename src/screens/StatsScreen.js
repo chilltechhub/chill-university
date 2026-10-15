@@ -3,7 +3,9 @@
 // what you used), then the games. It used to be games only, while Plus sold
 // it as "Deep Insights" with trends that didn't exist (2026-10-14).
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useUserProgress, SUBJECT_CONFIG } from '../../context/UserProgressContext';
 import { useTheme } from '../../context/ThemeContext';
 import { getRankLabel } from '../logic/rankUtils';
@@ -12,6 +14,7 @@ import InsightsPanel from '../components/InsightsPanel';
 export default function StatsScreen() {
   const { loading, user, profile, points, xp, level, rank, rankProgress, subjectProgress, dailyMissions, weeklyMissions, longtermMissions, gameplayStats } = useUserProgress();
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
+  const navigation = useNavigation();
   const styles = makeStyles(c, t, s, r);
 
   if (loading) return (
@@ -26,7 +29,17 @@ export default function StatsScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.scroll}>
-      <Text style={styles.pageTitle} accessibilityRole="header">Insights</Text>
+      {/* A root-stack screen: no tab bar under it, so this is the way out. */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <TouchableOpacity
+          onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('MainTabs'))}
+          accessibilityRole="button" accessibilityLabel="Back"
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="chevron-back" size={24} color={c.teal} />
+        </TouchableOpacity>
+        <Text style={styles.pageTitle} accessibilityRole="header">Insights</Text>
+      </View>
       <Text style={styles.pageSub}>The last four weeks of real life. Games are further down.</Text>
       <InsightsPanel userId={user?.id} />
 

@@ -93,7 +93,10 @@ export function buildNotices(data, env) {
 
   // ── Plans & tasks ────────────────────────────────────────────────────────
   const planner = (data.planner || []).filter(i => !i.completed && !i.skipped);
-  const overdue = planner.filter(i => i.date < today && i.date >= addDays(today, -7));
+  // The Planner's own from-earlier card's rule (PlannerBacklog.js): one-off
+  // plans from the last two weeks. Missed habits don't carry over, and the
+  // two counts used to disagree (9 here, 31 there).
+  const overdue = planner.filter(i => i.date < today && i.date >= addDays(today, -14) && (!i.cadence || i.cadence === 'once'));
   const lateTasks = (data.tasks || []).filter(t => !t.completed && t.due_date && t.due_date < today);
   // Slipped plans and late tasks are one card: "2 plans slipped past" and
   // "3 tasks overdue" stacked as two red alarms read like a telling-off

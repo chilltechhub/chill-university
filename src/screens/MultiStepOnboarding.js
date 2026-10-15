@@ -61,6 +61,7 @@ import { DEFAULT_PERSONA, personasFor, defaultPersonaFor, getPersona } from '../
 import { ageCategoryFromDob, isMinorBand } from '../logic/profileResolver';
 import { useProfiles } from '../../context/ProfileAccountsContext';
 import { useAccess } from '../../context/AccessContext';
+import { cardApplies, shownCards } from '../logic/onboardingCards';
 import { useFeatureFlag, useRemoteConfig } from '../../context/RemoteConfigContext';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import {
@@ -99,14 +100,14 @@ const STEPS = [
   // Asks nothing. Somebody who just signed up knows the name and nothing
   // else, and four questions about a thing you cannot picture yet is how an
   // app gets closed on day one. See WelcomeStep in ./onboarding/steps.js.
-  { component: WelcomeStep,    title: 'Welcome', subtitle: 'What this app is' },
+  { key: 'welcome', component: WelcomeStep,    title: 'Welcome', subtitle: 'What this app is' },
   // The question everything else is tailored to. See AimStep.
-  { component: AimStep,        title: 'Aim',     subtitle: 'What you came for' },
-  { component: PersonaStep,    title: 'Profile', subtitle: 'Your account type' },
-  { component: StartModeStep,  title: 'Start',   subtitle: 'How you want to start' },
-  { component: PickFeaturesStep, title: 'Features', subtitle: 'What goes in your app' },
-  { component: NameStep,       title: 'Name',    subtitle: 'What to call you' },
-  { component: SectorsStep,    title: 'Sectors', subtitle: 'Your focus areas' },
+  { key: 'aim',      component: AimStep,        title: 'Aim',     subtitle: 'What you came for' },
+  { key: 'persona',  component: PersonaStep,    title: 'Profile', subtitle: 'Your account type' },
+  { key: 'start',    component: StartModeStep,  title: 'Start',   subtitle: 'How you want to start' },
+  { key: 'features', component: PickFeaturesStep, title: 'Features', subtitle: 'What goes in your app' },
+  { key: 'name',     component: NameStep,       title: 'Name',    subtitle: 'What to call you' },
+  { key: 'sectors',  component: SectorsStep,    title: 'Sectors', subtitle: 'Your focus areas' },
   // Light or dark used to be a card here too. It's in Settings (and the
   // phone's own setting is the default), so it no longer stands between a
   // new account and its first goal (2026-10-14: fewer cards before the
@@ -527,13 +528,14 @@ export default function MultiStepOnboarding() {
   // Steps that don't apply to this person's picks are passed over: asking
   // which life areas matter is a question about nothing when Life Areas
   // isn't in their app ("Just my picks" or "All in" with it unticked).
-  const stepApplies = (i) => {
-    // Level up opens tools by stage, so there's nothing to pick up front;
-    // My features is there any time (2026-10-14: fewer cards first).
-    if (STEPS[i]?.component === PickFeaturesStep) return data.experience_mode !== 'auto';
-    if (STEPS[i]?.component !== SectorsStep) return true;
-    return data.experience_mode === 'auto' || picksForData(data, { plusOnSale, socialOn }).includes('life-areas');
+  // Which cards apply: src/logic/onboardingCards.js (tested in
+  // scripts/check-pickables.mjs). Level up skips picking features; Sectors
+  // needs Life Areas in the app.
+  const cardCtx = {
+    mode: data.experience_mode,
+    hasLifeAreas: picksForData(data, { plusOnSale, socialOn }).includes('life-areas'),
   };
+  const stepApplies = (i) => !STEPS[i] || cardApplies(STEPS[i].key, cardCtx);
   const stepFrom = (from, dirn) => {
     let i = from + dirn;
     while (i > 0 && i < STEPS.length - 1 && !stepApplies(i)) i += dirn;
@@ -542,7 +544,7 @@ export default function MultiStepOnboarding() {
   // The cards this person will actually see, for "3 of 6" and the bar.
   // The last card can be one that doesn't apply (Sectors without Life
   // Areas), so "is this the last one?" asks what's left, not the index.
-  const shownSteps = STEPS.map((_, i) => i).filter(i => i === 0 || stepApplies(i));
+  const shownSteps = shownCards(STEPS.map(st => st.key), cardCtx);
   const lastShown = shownSteps[shownSteps.length - 1];
 
   const goNext = () => {

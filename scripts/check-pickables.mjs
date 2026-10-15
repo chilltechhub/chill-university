@@ -83,6 +83,20 @@ actionKeys.forEach(k => { if (!fabOwners.has(k)) fail(`+ button action "${k}" is
 const { FAB_ACTIONS } = { FAB_ACTIONS: (await text('src/logic/experienceStage.js')).match(/FAB_ACTIONS = \[([^\]]+)\]/)?.[1].match(/'([a-z]+)'/g).map(s => s.slice(1, -1)) || [] };
 actionKeys.forEach(k => { if (!FAB_ACTIONS.includes(k)) fail(`+ button action "${k}" is missing from FAB_ACTIONS in experienceStage.js`); });
 
+// Onboarding cards (src/logic/onboardingCards.js): which ones each start
+// track sees, and that the rule names the cards MultiStepOnboarding has.
+{
+  const { ONBOARDING_CARDS, shownCards } = await load('src/logic/onboardingCards.js');
+  const stepKeys = [...(await text('src/screens/MultiStepOnboarding.js')).matchAll(/\{ key: '([a-z]+)',\s+component:/g)].map(m => m[1]);
+  if (stepKeys.join() !== ONBOARDING_CARDS.join()) fail(`onboarding: STEPS keys [${stepKeys}] don't match ONBOARDING_CARDS [${ONBOARDING_CARDS}]`);
+  const seen = (ctx) => shownCards(ONBOARDING_CARDS, ctx).map(i => ONBOARDING_CARDS[i]).join(' ');
+  const want = (name, ctx, expected) => { const got = seen(ctx); if (got !== expected) fail(`onboarding ${name}: got "${got}", want "${expected}"`); };
+  want('Level up', { mode: 'auto', hasLifeAreas: false }, 'welcome aim persona start name sectors');
+  want('Just my picks + Life Areas', { mode: 'picks', hasLifeAreas: true }, 'welcome aim persona start features name sectors');
+  want('Just my picks, no Life Areas', { mode: 'picks', hasLifeAreas: false }, 'welcome aim persona start features name');
+  want('All in, Life Areas unticked', { mode: 'full', hasLifeAreas: false }, 'welcome aim persona start features name');
+}
+
 if (problems.length) {
   console.error(`check-pickables: ${problems.length} problem(s)`);
   problems.forEach(p => console.error('  - ' + p));

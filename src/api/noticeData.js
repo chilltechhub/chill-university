@@ -24,8 +24,8 @@ export async function loadNoticeData(userId) {
   const today = todayStr();
   const [planner, tasks, projects, ideas, inboxCount, areas, quests, news, shared, oldSaves] = await Promise.all([
     userId ? safe(async () => rows(await supabase.from('agenda_instances')
-      .select('id,title,date,start_time,duration_minutes,area,notes,completed,skipped,link_type,link_id,link_screen')
-      .eq('user_id', userId).gte('date', addDays(today, -7)).lte('date', addDays(today, 7))
+      .select('id,title,date,start_time,duration_minutes,area,notes,completed,skipped,link_type,link_id,link_screen,cadence')
+      .eq('user_id', userId).gte('date', addDays(today, -14)).lte('date', addDays(today, 7))
       .order('date').order('start_time').limit(300)), []) : [],
 
     userId ? safe(async () => rows(await supabase.from('tasks')
