@@ -205,6 +205,9 @@ function announceAward(points, xp = 0, source, meta) {
   if (!points && !xp) return;
   awardListeners.forEach(fn => { try { fn(points || 0, xp || 0, source, meta); } catch {} });
 }
+// For awards a server function confirmed outside this file (the pet's daily
+// gift, src/logic/usePetCare.js).
+export const announceServerAward = announceAward;
 
 // Streak changes made away from UserProgressContext (an action anywhere in
 // the app keeps the streak going) reach it here, so the badge updates at once.
@@ -488,7 +491,9 @@ export async function collectPetCoin(userId) {
   const { data, error } = await supabase.rpc('collect_pet_coin');
   if (!error) {
     const points = data?.points ?? 0;
-    announceAward(points, points, 'pet-coin');
+    // A coin is always 1 XP; its points grow with the pet's bond (1-3,
+    // 20261015130000). Older databases don't send xp, and pay 1 and 1.
+    announceAward(points, data?.xp ?? (points ? 1 : 0), 'pet-coin');
     // next_in: seconds until the next coin can pay (20260930130000). Older
     // databases don't send it.
     return { points, remaining: data?.remaining ?? null, nextIn: data?.next_in ?? null };

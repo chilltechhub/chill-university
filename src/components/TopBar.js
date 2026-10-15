@@ -19,6 +19,7 @@ import LoginScreen from '../screens/LoginScreen';
 import { readableOn } from '../logic/contrast';
 import { useBlueprint, WORKSHOP_SCREENS } from '../screens/library/blueprint';
 import { onWorkSessionChange, sessionSeconds } from '../logic/workSession';
+import { useSpendablePoints } from '../logic/usePetCare';
 
 // Profile / Help / Screen Tutorial / Settings / Search — one tap-menu off
 // the crest instead of five separate rows. These used to live on the FAB's
@@ -95,7 +96,9 @@ function WorkSessionPill({ navigation, c }) {
 }
 
 export default function TopBar({ currentScreen }) {
-  const { user, points, rank, level, progress, loading, pendingRewards } = useUserProgress();
+  const { user, points: earned, rank, level, progress, loading, pendingRewards } = useUserProgress();
+  // What's left to spend (pet food comes off it). Rank still counts everything earned.
+  const points = useSpendablePoints(user?.id, earned);
   const { colors, typography, spacing, shadows, accent, style: ui } = useTheme();
   const { showEmojis } = useUIPrefs();
   const navigation = useNavigation();

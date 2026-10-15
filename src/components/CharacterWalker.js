@@ -27,6 +27,17 @@
 // once the cap's hit for the cycle, the pet keeps eating for the ambience
 // but stops implying it's still earning.
 //
+// Pass `petHearts` (usePetCare's hearts, 0-4) and the pet gets hungry: at 2
+// or fewer a food bubble bobs over its head; at 0 it ambles slower, the bubble
+// gets a red ring and bobs faster, and it stops finding coins (any already
+// down wait for it) until it's fed. A small hearts pill sits in the stage's
+// corner, and when the
+// hearts go up the pet hops and a heart floats off it. Pass `onPetPress` and
+// the pet, its bubble and the pill all open the feeding sheet
+// (PetCareSheet.js). Omit `petHearts` and there's no hunger at all. Like the
+// arrows, these carry no button role: on Training the whole stage sits inside
+// one tappable hero, and a button inside a button is invalid on web.
+//
 // Meant to sit as a LandscapeBackground's child: it fills the stage
 // (absoluteFill) and lets taps outside the arrows pass through to
 // whatever's behind it (pointerEvents="box-none").
@@ -42,6 +53,8 @@ import { Ionicons } from '@expo/vector-icons';
 import PlayerCharacter from './PlayerCharacter';
 import PetCompanion from './PetCompanion';
 import useAppActive from '../logic/useAppActive';
+import { MAX_HEARTS } from '../logic/petHunger';
+import { petScale, MAX_BOND_LEVEL } from '../logic/petBond';
 
 const STEP = 4;           // px moved per tick while holding an arrow
 const TICK_MS = 24;       // ms per movement tick (~40 ticks/sec)
@@ -51,6 +64,7 @@ const REWARD_SIZE = 34;
 const COLLECT_RANGE = 46; // how close the character's center must be to a reward's center, in px
 
 const PET_STEP = 2;              // px moved per tick — slower than the player, feels like ambling
+const HUNGRY_PET_STEP = 1;       // a hungry pet drags its feet
 const PET_TICK_MS = 40;
 const PET_WANDER_MIN_MS = 2500;  // how often the pet picks a new place to wander to
 const PET_WANDER_MAX_MS = 5500;
@@ -62,7 +76,7 @@ const MAX_COINS = 3;             // keep the ground from getting cluttered
 const FIRST_COIN_MS = 8000;      // with nextCoinAt: the soonest a coin appears after the stage does
 
 const CharacterWalker = forwardRef(function CharacterWalker({
-  outfit, accessory, pet, characterSize = 100, petSize = 42,
+  outfit, accessory, pet, characterSize = 100, petSize: basePetSize = 42,
   rewards, onClaimReward, rewardPoints = 15,
   onCoinCollected, coinRewardsRemaining, coinRewardPoints = 1,
   // From useCoinRewards: when the next coin can pay. With it, one coin is
@@ -77,7 +91,14 @@ const CharacterWalker = forwardRef(function CharacterWalker({
   // A tap anywhere on the stage jumps. Profile turns this on with the jump
   // arrow off; Training's stage has its own tap (Profile or jump).
   tapToJump = false,
+  petHearts, onPetPress, heartsPillStyle,
+  // From usePetCare: its name (the one you gave it, or the species), its bond
+  // level (it grows a little each one, and wears a ribbon as a Best buddy),
+  // and whether its daily gift is waiting (a gift shows on the hearts pill).
+  petName, petLevel = 1, petGiftReady = false,
 }, ref) {
+  const petSize = Math.round(basePetSize * petScale(petLevel));
+  const petLabel = petName || pet?.name;
   const [stageWidth, setStageWidth] = useState(0);
   const [x, setX] = useState(null); // null until the first layout centers it
   const [facing, setFacing] = useState('right');
@@ -101,6 +122,11 @@ const CharacterWalker = forwardRef(function CharacterWalker({
   const coinSpin = useRef(new Animated.Value(0)).current;
   const coinPopScale = useRef(new Animated.Value(1)).current;
   const coinPopupAnim = useRef(new Animated.Value(0)).current;
+  const bubbleBob = useRef(new Animated.Value(0)).current;
+  const petHop = useRef(new Animated.Value(0)).current;
+  const fedFloat = useRef(new Animated.Value(0)).current;
+  const [fedHeart, setFedHeart] = useState(false); // a heart floating off the pet after it eats
+  const prevHearts = useRef(petHearts);
   const isStatic = !outfit.rig; // no walk-cycle art — use the hop instead
   // Everything that runs on its own (bobbing rewards, spinning coins, the
   // pet's wandering and coin finding) keeps going on every screen: being in
@@ -108,6 +134,8 @@ const CharacterWalker = forwardRef(function CharacterWalker({
   // the background (src/logic/useAppActive.js).
   const appOpen = useAppActive();
 
+  const hungry = petHearts === 0;
+  const wantsFood = petHearts != null && petHearts <= 2;
   const hasUnclaimed = !!rewards?.some(r => !r.claimed);
   const maxX = Math.max(0, stageWidth - characterSize);
   const petMaxX = Math.max(0, stageWidth - petSize);
@@ -161,7 +189,7 @@ const CharacterWalker = forwardRef(function CharacterWalker({
     let cancelled = false;
     let timeoutId;
     const pickNext = () => {
-      const delay = PET_WANDER_MIN_MS + Math.random() * (PET_WANDER_MAX_MS - PET_WANDER_MIN_MS);
+      const delay = (PET_WANDER_MIN_MS + Math.random() * (PET_WANDER_MAX_MS - PET_WANDER_MIN_MS)) * (hungry ? 2 : 1);
       timeoutId = setTimeout(() => {
         if (cancelled) return;
         setPetTargetX(Math.random() * petMaxX);
@@ -171,7 +199,7 @@ const CharacterWalker = forwardRef(function CharacterWalker({
     setPetTargetX(Math.random() * petMaxX);
     pickNext();
     return () => { cancelled = true; clearTimeout(timeoutId); };
-  }, [stageWidth, petMaxX, appOpen]);
+  }, [stageWidth, petMaxX, appOpen, hungry]);
 
   // Step the pet toward wherever it's currently wandering to, and check
   // whether it's close enough to a coin to eat it along the way.
@@ -180,15 +208,16 @@ const CharacterWalker = forwardRef(function CharacterWalker({
     const id = setInterval(() => {
       setPetX(prev => {
         if (prev == null) return prev;
+        const step = hungry ? HUNGRY_PET_STEP : PET_STEP;
         const diff = petTargetX - prev;
-        if (Math.abs(diff) <= PET_STEP) return prev;
+        if (Math.abs(diff) <= step) return prev;
         const dir = diff > 0 ? 1 : -1;
         setPetFacing(dir > 0 ? 'right' : 'left');
-        return Math.max(0, Math.min(petMaxX, prev + dir * PET_STEP));
+        return Math.max(0, Math.min(petMaxX, prev + dir * step));
       });
     }, PET_TICK_MS);
     return () => clearInterval(id);
-  }, [petTargetX, petMaxX, appOpen]);
+  }, [petTargetX, petMaxX, appOpen, hungry]);
 
   // A coin appears on the ground every so often, up to a small cap.
   // Paced by the reward rules: one coin, put down when it can pay.
@@ -196,7 +225,8 @@ const CharacterWalker = forwardRef(function CharacterWalker({
     // Infinity = the saved timing hasn't loaded yet. (setTimeout treats an
     // endless delay as zero, so it has to be skipped here, not scheduled.)
     // No pet yet (before the first game, see petsOpen): nothing to find coins.
-    if (!pet || nextCoinAt === undefined || !Number.isFinite(nextCoinAt) || stageWidth <= 0 || !appOpen || coins.length) return undefined;
+    // A hungry pet finds nothing until it's fed.
+    if (!pet || hungry || nextCoinAt === undefined || !Number.isFinite(nextCoinAt) || stageWidth <= 0 || !appOpen || coins.length) return undefined;
     // Past the day's 50, nextCoinAt is when the 24-hour window frees one up,
     // so this simply waits until then.
     const delay = Math.max(FIRST_COIN_MS, nextCoinAt - Date.now());
@@ -204,10 +234,10 @@ const CharacterWalker = forwardRef(function CharacterWalker({
       setCoins(prev => (prev.length ? prev : [{ id: coinIdRef.current++, xFraction: 0.1 + Math.random() * 0.8 }]));
     }, delay);
     return () => clearTimeout(timeoutId);
-  }, [nextCoinAt, stageWidth, appOpen, coins.length, pet]);
+  }, [nextCoinAt, stageWidth, appOpen, coins.length, pet, hungry]);
 
   useEffect(() => {
-    if (!pet || nextCoinAt !== undefined || stageWidth <= 0 || !appOpen) return;
+    if (!pet || hungry || nextCoinAt !== undefined || stageWidth <= 0 || !appOpen) return;
     let cancelled = false;
     let timeoutId;
     const scheduleNext = () => {
@@ -220,12 +250,12 @@ const CharacterWalker = forwardRef(function CharacterWalker({
     };
     scheduleNext();
     return () => { cancelled = true; clearTimeout(timeoutId); };
-  }, [stageWidth, appOpen, nextCoinAt, pet]);
+  }, [stageWidth, appOpen, nextCoinAt, pet, hungry]);
 
   // When the pet's wandering brings it close enough to a coin, eat it —
   // and, if there's still allowance left this cycle, credit it for real.
   useEffect(() => {
-    if (petX == null || !coins.length || stageWidth <= 0) return;
+    if (petX == null || !coins.length || stageWidth <= 0 || hungry) return;
     const petCenterX = petX + petSize / 2;
     const target = coins.find(c => Math.abs(petCenterX - stageWidth * c.xFraction) < PET_EAT_RANGE);
     if (!target) return;
@@ -250,7 +280,39 @@ const CharacterWalker = forwardRef(function CharacterWalker({
           .start(() => setCoinPopup(null));
       }).catch(() => {});
     }
-  }, [petX, coins, stageWidth, petSize, coinPopScale, onCoinCollected, coinRewardsRemaining, coinPopupAnim]);
+  }, [petX, coins, stageWidth, petSize, coinPopScale, onCoinCollected, coinRewardsRemaining, coinPopupAnim, hungry]);
+
+  // The food bubble bobs over a pet that wants feeding.
+  useEffect(() => {
+    if (!wantsFood || !appOpen) return undefined;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(bubbleBob, { toValue: -4, duration: hungry ? 380 : 800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(bubbleBob, { toValue: 0, duration: hungry ? 380 : 800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [wantsFood, hungry, appOpen, bubbleBob]);
+
+  // Just fed: two happy hops and a heart floating off the pet.
+  useEffect(() => {
+    const before = prevHearts.current;
+    prevHearts.current = petHearts;
+    if (before == null || petHearts == null || petHearts <= before) return;
+    petHop.setValue(0);
+    fedFloat.setValue(0);
+    setFedHeart(true);
+    Animated.parallel([
+      Animated.sequence([
+        Animated.timing(petHop, { toValue: -12, duration: 140, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(petHop, { toValue: 0, duration: 140, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+        Animated.timing(petHop, { toValue: -8, duration: 120, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(petHop, { toValue: 0, duration: 120, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+      ]),
+      Animated.timing(fedFloat, { toValue: 1, duration: 900, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+    ]).start(() => setFedHeart(false));
+  }, [petHearts, petHop, fedFloat]);
 
   const startBob = useCallback(() => {
     if (!isStatic) return;
@@ -363,16 +425,79 @@ const CharacterWalker = forwardRef(function CharacterWalker({
       )}
 
       {!!pet && petX != null && (
-        <View
+        <Animated.View
           style={{
             position: 'absolute', left: petX, bottom: 6,
             width: petSize, height: petSize,
-            transform: [{ scaleX: petFlip ? -1 : 1 }],
+            transform: [{ translateY: petHop }],
           }}
-          pointerEvents="none"
+          pointerEvents={onPetPress ? 'auto' : 'none'}
         >
-          <PetCompanion pet={pet} size={petSize} />
-        </View>
+          <TouchableOpacity
+            onPress={onPetPress}
+            disabled={!onPetPress}
+            activeOpacity={0.8}
+            hitSlop={8}
+            accessibilityLabel={petHearts != null ? `${petLabel}, ${petHearts} of ${MAX_HEARTS} hearts. Feed` : petLabel}
+          >
+            {/* Flip on its own plain View, not beside the native-driven hop:
+                same reason as the character's above. */}
+            <View style={{ width: petSize, height: petSize, transform: [{ scaleX: petFlip ? -1 : 1 }] }}>
+              <PetCompanion pet={pet} size={petSize} />
+            </View>
+            {petLevel >= MAX_BOND_LEVEL && (
+              <View style={styles.petRibbon} pointerEvents="none">
+                <Ionicons name="ribbon" size={13} color="#e8b34a" />
+              </View>
+            )}
+          </TouchableOpacity>
+        </Animated.View>
+      )}
+
+      {!!pet && petX != null && wantsFood && (
+        <Animated.View
+          style={{
+            position: 'absolute', left: petX + petSize / 2 - 13, bottom: 6 + petSize + 2,
+            transform: [{ translateY: bubbleBob }],
+          }}
+          pointerEvents={onPetPress ? 'auto' : 'none'}
+        >
+          <TouchableOpacity onPress={onPetPress} disabled={!onPetPress} hitSlop={8} activeOpacity={0.8}
+            accessibilityLabel={`${petLabel} is ${hungry ? 'hungry' : 'getting hungry'}. Feed`}>
+            <View style={[styles.bubble, hungry && styles.bubbleHungry]}>
+              <Ionicons name="nutrition" size={13} color={hungry ? '#c43030' : '#8a6420'} />
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
+
+      {!!pet && petX != null && fedHeart && (
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: 'absolute', left: petX + petSize / 2 - 8, bottom: 6 + petSize,
+            opacity: fedFloat.interpolate({ inputRange: [0, 0.15, 0.75, 1], outputRange: [0, 1, 1, 0] }),
+            transform: [{ translateY: fedFloat.interpolate({ inputRange: [0, 1], outputRange: [0, -30] }) }],
+          }}
+        >
+          <Ionicons name="heart" size={16} color="#ff6b6b" />
+        </Animated.View>
+      )}
+
+      {!!pet && petHearts != null && (
+        <TouchableOpacity
+          style={[styles.heartsPill, heartsPillStyle]}
+          onPress={onPetPress}
+          disabled={!onPetPress}
+          hitSlop={6}
+          activeOpacity={0.8}
+          accessibilityLabel={`${petLabel}: ${petHearts} of ${MAX_HEARTS} hearts.${petGiftReady ? ' A gift is waiting.' : ''} Feed`}
+        >
+          {Array.from({ length: MAX_HEARTS }, (_, i) => (
+            <Ionicons key={i} name={i < petHearts ? 'heart' : 'heart-outline'} size={10} color={i < petHearts ? '#ff6b6b' : 'rgba(255,255,255,0.75)'} />
+          ))}
+          {petGiftReady && <Ionicons name="gift" size={10} color="#e8b34a" style={{ marginLeft: 3 }} />}
+        </TouchableOpacity>
       )}
 
       {stageWidth > 0 && coins.map(item => (
@@ -515,6 +640,17 @@ const styles = StyleSheet.create({
   arrowLeft: { top: '50%', marginTop: -17, left: 8 },
   arrowRight: { top: '50%', marginTop: -17, right: 8 },
   arrowUp: { bottom: 8, left: '50%', marginLeft: -17 },
+  heartsPill: {
+    position: 'absolute', top: 8, left: 8, flexDirection: 'row', gap: 2,
+    paddingHorizontal: 6, paddingVertical: 4, borderRadius: 999, backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  bubble: {
+    width: 26, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#fff8e8', borderWidth: 1.5, borderColor: '#e8b34a',
+  },
+  // White with a red ring, not a filled red dot: that read as an error badge.
+  petRibbon: { position: 'absolute', bottom: -2, right: -6 },
+  bubbleHungry: { backgroundColor: '#ffffff', borderColor: '#c43030', borderWidth: 2 },
   rewardOrb: {
     width: '100%', height: '100%', borderRadius: 17,
     backgroundColor: '#e8b34a', alignItems: 'center', justifyContent: 'center',

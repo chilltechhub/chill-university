@@ -21,6 +21,10 @@ import { getAllGradeLevels, useBandFraming } from '../logic/useGradeLevel';
 import useCharacterLoadout from '../logic/useCharacterLoadout';
 import useBonusRewards from '../logic/useBonusRewards';
 import useCoinRewards from '../logic/useCoinRewards';
+import usePetCare, { useSpendablePoints } from '../logic/usePetCare';
+import { bondLevel } from '../logic/petBond';
+import { syncPetReminder, cancelPetReminder } from '../logic/notificationScheduler';
+import PetCareSheet from '../components/PetCareSheet';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import { useFeatureFlag } from '../../context/RemoteConfigContext';
 import TourSpot from '../components/TourSpot';
@@ -96,6 +100,20 @@ export default function GamesScreen() {
   const { outfit, pet, accessory, background } = useCharacterLoadout({ level, points, rank, streakDays });
   const bonusRewards = useBonusRewards(user?.id, refreshDailyMissions);
   const coinRewards = useCoinRewards(user?.id);
+  // The pet's hunger (tap it to feed), and the points left to spend on food.
+  const petCare = usePetCare(user?.id, !!pet);
+  const wallet = useSpendablePoints(user?.id, points);
+  const [petSheetOpen, setPetSheetOpen] = useState(false);
+  const petName = petCare.nickname || pet?.name;
+  const petLevel = bondLevel(petCare.bond).level;
+  // The "getting hungry" reminder follows the bowl: every load or feed (on
+  // any device) moves it. Training is mounted from launch, so this always
+  // runs. Never asks for permission here; the feed sheet does, on a tap.
+  useEffect(() => {
+    if (!petCare.ready) return;
+    if (!pet) { cancelPetReminder(); return; }
+    syncPetReminder({ fullUntil: petCare.fullUntil, name: petName });
+  }, [petCare.ready, petCare.fullUntil, petName, pet]);
   const [heroTapEnabled] = useSetting(SETTING_KEYS.HERO_TAP_TO_PROFILE, true);
   const heroWalkerRef = useRef(null);
   // Remote feature flag — flip app_config.show_leaderboard off in Supabase
@@ -146,6 +164,13 @@ export default function GamesScreen() {
       navigation.setParams({ openDrills: undefined });
     }
   }, [route.params?.openDrills, navigation]);
+  // `openPet`: the pet's "getting hungry" notification lands on its sheet.
+  useEffect(() => {
+    if (route.params?.openPet) {
+      if (pet) setPetSheetOpen(true);
+      navigation.setParams({ openPet: undefined });
+    }
+  }, [route.params?.openPet, navigation, pet]);
   const [gameFilter, setGameFilter] = useState('All');
   const [mechanicFilter, setMechanicFilter] = useState('All');
   const [skillLevels, setSkillLevels] = useState({});
@@ -224,6 +249,9 @@ export default function GamesScreen() {
                   nextCoinAt={coinRewards.ready ? coinRewards.nextAt : Infinity}
                   coinRewardPoints={coinRewards.points}
                   showJumpArrow={heroTapEnabled !== false}
+                  petHearts={pet && petCare.ready ? petCare.hearts : undefined}
+                  petName={petName} petLevel={petLevel} petGiftReady={petCare.giftReady}
+                  onPetPress={() => setPetSheetOpen(true)}
                 />
               </LandscapeBackground>
             </TouchableOpacity>
@@ -249,7 +277,7 @@ export default function GamesScreen() {
                 two buttons below out of their borders. */}
             <TourSpot id="training-stats" style={{ width: '100%' }}>
             <View style={styles.chipRow}>
-              <QuickChip icon="✦" iconName="sparkles-outline" value={points?.toLocaleString() || '0'} label="Points" c={c} t={t} s={s} r={r} />
+              <QuickChip icon="✦" iconName="sparkles-outline" value={wallet.toLocaleString()} label="Points" c={c} t={t} s={s} r={r} />
               <QuickChip icon="🔥" iconName="flame-outline" value={streakDays || 0} label="Streak" c={c} t={t} s={s} r={r} />
               {/* This is the character's title tier (RANK_LABELS, 1=best..20=starter),
                   not a leaderboard placement — a real leaderboard position is shown
@@ -458,7 +486,7 @@ export default function GamesScreen() {
             )}
 
             <View style={styles.statsGrid}>
-              <StatCard label="Points" value={points?.toLocaleString() || '0'} emoji="✦" iconName="sparkles-outline" c={c} t={t} s={s} r={r} />
+              <StatCard label="Points" value={wallet.toLocaleString()} emoji="✦" iconName="sparkles-outline" c={c} t={t} s={s} r={r} />
               <StatCard label="Accuracy" value={accuracy != null ? `${accuracy}%` : '—'} emoji="🎯" iconName="locate-outline" c={c} t={t} s={s} r={r} />
               <StatCard label="Sessions" value={gameplayStats?.levelsCompleted || 0} emoji="🏁" iconName="flag-outline" c={c} t={t} s={s} r={r} />
               <StatCard label="Day Streak" value={streakDays || 0} emoji="🔥" iconName="flame-outline" c={c} t={t} s={s} r={r} />
@@ -549,6 +577,7 @@ export default function GamesScreen() {
           />
         </View>
       </Modal>
+      <PetCareSheet visible={petSheetOpen} onClose={() => setPetSheetOpen(false)} pet={pet} />
     </SafeAreaView>
   );
 }

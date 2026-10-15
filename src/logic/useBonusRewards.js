@@ -15,8 +15,10 @@ export const BONUS_REWARD_POINTS = 15;
 const CYCLE_MS = 6 * 60 * 60 * 1000; // 6 hours
 // Possible x-positions along the stage (as a fraction of its width) —
 // a cycle's count picks the first N of these, so they're always spread
-// out left-to-right rather than clustered.
-const SLOT_FRACTIONS = [0.22, 0.42, 0.62, 0.82];
+// out left-to-right rather than clustered. The first starts at 30%, not
+// 22%, to keep the top-left corner clear for the pet's hearts pill
+// (CharacterWalker.js) — on a phone a gift at 22% sat right on it.
+const SLOT_FRACTIONS = [0.3, 0.47, 0.64, 0.81];
 
 function currentCycleId() {
   return Math.floor(Date.now() / CYCLE_MS);
