@@ -41,7 +41,9 @@ const MOOD = {
   hungry:  { label: 'Hungry',  line: ['', 'No coins', ' until it eats.'] },
 };
 
-const hoursUntil = (t) => Math.max(0, Math.ceil((t - Date.now()) / (60 * 60 * 1000)));
+// Whole hours left, rounded up, less a minute: a phone clock a few seconds
+// behind the server's showed a gift just opened as "Next gift in 21h".
+const hoursUntil = (t) => Math.max(0, Math.ceil((t - Date.now() - 60 * 1000) / (60 * 60 * 1000)));
 
 export default function PetCareSheet({ visible, onClose, pet }) {
   const { colors: c, typography: t, spacing: sp, radius: r } = useTheme();
@@ -201,7 +203,7 @@ export default function PetCareSheet({ visible, onClose, pet }) {
                 grows a little with every level. */}
             <View style={[s.stage, { height: petSize + 40 }]}>
               <Animated.View style={{ transform: [{ scale: chomp }] }}>
-                <PetCompanion pet={pet} size={petSize} />
+                <PetCompanion pet={pet} size={petSize} lying={mood === 'hungry'} />
                 {level >= MAX_BOND_LEVEL && (
                   <View style={s.ribbon} pointerEvents="none">
                     <Ionicons name="ribbon" size={20} color={c.gold} />
