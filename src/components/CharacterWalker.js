@@ -28,11 +28,12 @@
 // but stops implying it's still earning.
 //
 // Pass `petHearts` (usePetCare's hearts, 0-4) and the pet gets hungry: at 2
-// or fewer a food bubble bobs over its head; at 0 it ambles slower, the bubble
-// gets a red ring and bobs faster, and it stops finding coins (any already
-// down wait for it) until it's fed. A small hearts pill sits in the stage's
-// corner, and when the
-// hearts go up the pet hops and a heart floats off it. Pass `onPetPress` and
+// or fewer a food bubble bobs over its head; at 0 it stops and lies down on
+// the spot (PetCompanion's `lying`), the bubble gets a red ring and bobs
+// faster, and it finds no coins (any already down wait for it) until it's
+// fed. Coins show what they pay at the pet's bond level (petBond.js). A
+// small hearts pill sits in the stage's corner, and when the hearts go up
+// the pet hops and a heart floats off it. Pass `onPetPress` and
 // the pet, its bubble and the pill all open the feeding sheet
 // (PetCareSheet.js). Omit `petHearts` and there's no hunger at all. Like the
 // arrows, these carry no button role: on Training the whole stage sits inside
@@ -54,7 +55,7 @@ import PlayerCharacter from './PlayerCharacter';
 import PetCompanion from './PetCompanion';
 import useAppActive from '../logic/useAppActive';
 import { MAX_HEARTS } from '../logic/petHunger';
-import { petScale, MAX_BOND_LEVEL } from '../logic/petBond';
+import { petScale, coinValue, MAX_BOND_LEVEL } from '../logic/petBond';
 
 const STEP = 4;           // px moved per tick while holding an arrow
 const TICK_MS = 24;       // ms per movement tick (~40 ticks/sec)
@@ -64,7 +65,6 @@ const REWARD_SIZE = 34;
 const COLLECT_RANGE = 46; // how close the character's center must be to a reward's center, in px
 
 const PET_STEP = 2;              // px moved per tick — slower than the player, feels like ambling
-const HUNGRY_PET_STEP = 1;       // a hungry pet drags its feet
 const PET_TICK_MS = 40;
 const PET_WANDER_MIN_MS = 2500;  // how often the pet picks a new place to wander to
 const PET_WANDER_MAX_MS = 5500;
@@ -183,13 +183,15 @@ const CharacterWalker = forwardRef(function CharacterWalker({
   }, [coins.length, coinSpin, appOpen]);
 
   // The pet wanders on its own — pick a new random spot every few
-  // seconds and amble toward it, no controls involved.
+  // seconds and amble toward it, no controls involved. A hungry pet lies
+  // where it is until it's fed.
   useEffect(() => {
+    if (hungry) { setPetTargetX(null); return; }
     if (stageWidth <= 0 || !appOpen) return;
     let cancelled = false;
     let timeoutId;
     const pickNext = () => {
-      const delay = (PET_WANDER_MIN_MS + Math.random() * (PET_WANDER_MAX_MS - PET_WANDER_MIN_MS)) * (hungry ? 2 : 1);
+      const delay = PET_WANDER_MIN_MS + Math.random() * (PET_WANDER_MAX_MS - PET_WANDER_MIN_MS);
       timeoutId = setTimeout(() => {
         if (cancelled) return;
         setPetTargetX(Math.random() * petMaxX);
@@ -204,16 +206,15 @@ const CharacterWalker = forwardRef(function CharacterWalker({
   // Step the pet toward wherever it's currently wandering to, and check
   // whether it's close enough to a coin to eat it along the way.
   useEffect(() => {
-    if (petTargetX == null || !appOpen) return;
+    if (petTargetX == null || !appOpen || hungry) return;
     const id = setInterval(() => {
       setPetX(prev => {
         if (prev == null) return prev;
-        const step = hungry ? HUNGRY_PET_STEP : PET_STEP;
         const diff = petTargetX - prev;
-        if (Math.abs(diff) <= step) return prev;
+        if (Math.abs(diff) <= PET_STEP) return prev;
         const dir = diff > 0 ? 1 : -1;
         setPetFacing(dir > 0 ? 'right' : 'left');
-        return Math.max(0, Math.min(petMaxX, prev + dir * step));
+        return Math.max(0, Math.min(petMaxX, prev + dir * PET_STEP));
       });
     }, PET_TICK_MS);
     return () => clearInterval(id);
@@ -387,6 +388,9 @@ const CharacterWalker = forwardRef(function CharacterWalker({
   useImperativeHandle(ref, () => ({ jump: doJump }));
 
   const coinScaleX = coinSpin.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, -1, 1] });
+  // What a coin pays at the pet's bond level (Buddy 2, Best buddy 3), so the
+  // coin's face matches the "+N" when it's eaten.
+  const coinLabel = `${coinValue(petLevel)}¢`;
 
   // Not every sprite pack's art faces the same way by default — verified
   // per-item (see the `facingRight` comments in characterOptions.js /
@@ -443,7 +447,7 @@ const CharacterWalker = forwardRef(function CharacterWalker({
             {/* Flip on its own plain View, not beside the native-driven hop:
                 same reason as the character's above. */}
             <View style={{ width: petSize, height: petSize, transform: [{ scaleX: petFlip ? -1 : 1 }] }}>
-              <PetCompanion pet={pet} size={petSize} />
+              <PetCompanion pet={pet} size={petSize} lying={hungry} />
             </View>
             {petLevel >= MAX_BOND_LEVEL && (
               <View style={styles.petRibbon} pointerEvents="none">
@@ -513,7 +517,7 @@ const CharacterWalker = forwardRef(function CharacterWalker({
           pointerEvents="none"
         >
           <View style={styles.coin}>
-            <Text style={styles.coinText}>1¢</Text>
+            <Text style={styles.coinText}>{coinLabel}</Text>
           </View>
         </Animated.View>
       ))}
@@ -530,7 +534,7 @@ const CharacterWalker = forwardRef(function CharacterWalker({
           pointerEvents="none"
         >
           <View style={styles.coin}>
-            <Text style={styles.coinText}>1¢</Text>
+            <Text style={styles.coinText}>{coinLabel}</Text>
           </View>
         </Animated.View>
       )}

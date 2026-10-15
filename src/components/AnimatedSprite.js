@@ -5,6 +5,7 @@
 // so swapping animations never starts mid-stride. `size` sets the frame's
 // rendered HEIGHT; width follows the frame's own aspect ratio (most rigs
 // are square, but not all — Mushroom's frames are wider than tall).
+// `paused` holds it still on the first frame (a hungry pet lying down).
 
 import React, { useState, useEffect } from 'react';
 import { View, Image } from 'react-native';
@@ -12,21 +13,21 @@ import useAppActive from '../logic/useAppActive';
 
 const FPS = 8;
 
-export default function AnimatedSprite({ sheet, size = 64, style }) {
+export default function AnimatedSprite({ sheet, size = 64, style, paused = false }) {
   const [frame, setFrame] = useState(0);
   // Keeps playing on every screen; only holds its frame while the app is in
   // the background, and picks up from there.
   const appOpen = useAppActive();
 
-  useEffect(() => { setFrame(0); }, [sheet.source]);
+  useEffect(() => { setFrame(0); }, [sheet.source, paused]);
 
   useEffect(() => {
-    if (!appOpen) return undefined;
+    if (!appOpen || paused) return undefined;
     const id = setInterval(() => {
       setFrame(f => (f + 1) % sheet.frames);
     }, 1000 / FPS);
     return () => clearInterval(id);
-  }, [sheet.source, sheet.frames, appOpen]);
+  }, [sheet.source, sheet.frames, appOpen, paused]);
 
   const scale = size / sheet.frameHeight;
   const frameW = sheet.frameWidth * scale;
