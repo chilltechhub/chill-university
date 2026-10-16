@@ -97,7 +97,7 @@ export default function GamesScreen() {
   // Adults see saved bands as Starter … Advanced, not school grades.
   const { bands, adult } = useBandFraming();
   const LEVEL_META = useMemo(() => Object.fromEntries(bands.map(l => [l.key, l])), [bands]);
-  const { outfit, pet, accessory, background } = useCharacterLoadout({ level, points, rank, streakDays });
+  const { outfit, pet, accessory, background, decor } = useCharacterLoadout({ level, points, rank, streakDays });
   const bonusRewards = useBonusRewards(user?.id, refreshDailyMissions);
   const coinRewards = useCoinRewards(user?.id);
   // The pet's hunger (tap it to feed), and the points left to spend on food.
@@ -237,7 +237,7 @@ export default function GamesScreen() {
               accessibilityRole="button"
               accessibilityLabel={heroTapEnabled ? 'Your character. Open your profile' : 'Your character. Make them jump'}
             >
-              <LandscapeBackground background={background} height={150} style={{ width: '100%' }}>
+              <LandscapeBackground background={background} height={150} level={level} decor={decor} style={{ width: '100%' }}>
                 <CharacterWalker
                   ref={heroWalkerRef}
                   outfit={outfit} accessory={accessory} pet={pet} characterSize={100} petSize={42}
@@ -249,6 +249,7 @@ export default function GamesScreen() {
                   nextCoinAt={coinRewards.ready ? coinRewards.nextAt : Infinity}
                   coinRewardPoints={coinRewards.points}
                   showJumpArrow={heroTapEnabled !== false}
+                  bowlX={decor?.bowlX}
                   petHearts={pet && petCare.ready ? petCare.hearts : undefined}
                   petName={petName} petLevel={petLevel} petGiftReady={petCare.giftReady}
                   onPetPress={() => setPetSheetOpen(true)}

@@ -25,9 +25,10 @@ export const HEART_HOURS = 6;
 export const HEART_MS = HEART_HOURS * 60 * 60 * 1000;
 export const FULL_MS = MAX_HEARTS * HEART_MS;
 
+// `art` names the pixel picture drawn for it (src/data/sceneArt.js).
 export const FOODS = [
-  { id: 'snack', label: 'Snack', icon: 'nutrition', cost: 5, hearts: 1 },
-  { id: 'meal', label: 'Meal', icon: 'restaurant', cost: 15, hearts: MAX_HEARTS },
+  { id: 'snack', label: 'Snack', icon: 'nutrition', art: 'drumstick', cost: 5, hearts: 1 },
+  { id: 'meal', label: 'Meal', icon: 'restaurant', art: 'bowlBlue', cost: 15, hearts: MAX_HEARTS },
 ];
 
 export const foodById = (id) => FOODS.find(f => f.id === id) || null;

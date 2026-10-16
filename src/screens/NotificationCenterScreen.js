@@ -41,6 +41,7 @@ import { SkeletonRows } from '../components/Skeleton';
 import { FONTS } from '../theme';
 import { todayStr } from '../logic/dateUtils';
 import { textOn } from '../logic/contrast';
+import SleepyCat from '../components/SleepyCat';
 
 const LEADS = [['off', 'Off'], [0, 'At the time'], [5, '5 min'], [15, '15 min'], [30, '30 min']];
 const NUDGE_TIMES = [['08:00', '8 AM'], ['12:00', 'Noon'], ['17:00', '5 PM'], ['20:00', '8 PM']];
@@ -306,8 +307,8 @@ export default function NotificationCenterScreen() {
         nowNotices.map(n => <NoticeCard key={n.id} n={n} />)
       ) : (
         <View style={{ alignItems: 'center', paddingVertical: s.xxl }}>
-          <Text style={{ fontSize: 36 }}>✨</Text>
-          <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1, marginTop: s.sm }}>You’re all caught up</Text>
+          <SleepyCat variant={1} size={80} />
+          <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>You’re all caught up</Text>
           <Text style={{ fontSize: 12, color: c.text3, marginTop: 4, textAlign: 'center' }}>Nothing needs you right now. Set a reminder, or plan ahead with AI.</Text>
         </View>
       )}

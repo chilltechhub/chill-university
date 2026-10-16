@@ -7,6 +7,13 @@
 //     for idle/walk frame sets — just the one loop):
 //       - Fairy (papoycore.itch.io/fairy — commercial/modification OK, no resale)
 //       - Street Animal pack (CraftPix, free license): Dog/Dog2/Cat/Cat2/Rat/Rat2/Bird/Bird2
+//       - ToffeeCraft cats (2026-10-15): "Cat Pixel Mega Pack" free demo
+//         (toffeecraft.itch.io/cat-pixel-mega-pack — its free pack is
+//         licensed for commercial use) for the eleven coat colours, and the
+//         "MEGA BUNDLE" free pack (personal + commercial) for Mochi and the
+//         cat in a box. All idle loops, 32x32; every cell checked for content.
+//       - "Panda Character" free file (toffeecraft.itch.io/panda-anim —
+//         commercial OK, no resale): the waving panda, 64x64.
 //       - "Animal Mega Pack" (toffeecraft.itch.io/animal-mega-pack —
 //         commercial/modification OK, no resale/redistribution): Garden
 //         Bird, Tree Frog, Golden Retriever, Playful Kitten, Jackrabbit,
@@ -85,6 +92,14 @@ function withUnlock(option) {
 export const PET_TIERS = [
   { id: 'rabbit',    name: 'Rabbit',          kind: 'sprite',   sheet: 'animals', row: 6, col: 6, requiredLevel: 1, facingRight: false },
   {
+    id: 'housecat', name: 'House Cat', kind: 'animated', requiredLevel: 1,
+    sheet: { source: require('../../assets/AllCatsDemo/Classical/IdleCat.png'), frameWidth: 32, frameHeight: 32, frames: 7 },
+  },
+  {
+    id: 'mochi', name: 'Mochi', kind: 'animated', requiredLevel: 1,
+    sheet: { source: require('../../assets/MegaPackFree/CatMegaFree/MochiFree/Idle.png'), frameWidth: 32, frameHeight: 32, frames: 10 },
+  },
+  {
     id: 'dog', name: 'Dog', kind: 'animated', requiredLevel: 2,
     sheet: { source: require('../../assets/Free Street Animal Pixel Art/1 Dog/Idle.png'), frameWidth: 48, frameHeight: 48, frames: 4 },
   },
@@ -92,10 +107,18 @@ export const PET_TIERS = [
     id: 'gardenbird', name: 'Garden Bird', kind: 'animated', requiredLevel: 2, facingRight: false,
     sheet: { source: require('../../assets/FreeAnimalPack/FreeAnimalPack/BirdFly.png'), frameWidth: 16, frameHeight: 16, frames: 8 },
   },
+  {
+    id: 'cocoacat', name: 'Cocoa Cat', kind: 'animated', requiredLevel: 2,
+    sheet: { source: require('../../assets/AllCatsDemo/Brown/IdleCattt.png'), frameWidth: 32, frameHeight: 32, frames: 7 },
+  },
   { id: 'fox',       name: 'Fox',             kind: 'sprite',   sheet: 'animals', row: 4, col: 3, requiredLevel: 3, facingRight: false },
   {
     id: 'kitten', name: 'Playful Kitten', kind: 'animated', requiredLevel: 3,
     sheet: { source: require('../../assets/FreeAnimalPack/FreeAnimalPack/JumpCattt.png'), frameWidth: 32, frameHeight: 32, frames: 13 },
+  },
+  {
+    id: 'snowcat', name: 'Snow Cat', kind: 'animated', requiredLevel: 3,
+    sheet: { source: require('../../assets/AllCatsDemo/White/IdleCatttt.png'), frameWidth: 32, frameHeight: 32, frames: 7 },
   },
   {
     id: 'cat', name: 'Cat', kind: 'animated', requiredLevel: 4,
@@ -106,8 +129,16 @@ export const PET_TIERS = [
     sheet: { source: require('../../assets/FreeAnimalPack/FreeAnimalPack/Jumping.png'), frameWidth: 32, frameHeight: 32, frames: 11 },
   },
   {
+    id: 'blackcat', name: 'Black Cat', kind: 'animated', requiredLevel: 4,
+    sheet: { source: require('../../assets/AllCatsDemo/BlackCat/IdleCatb.png'), frameWidth: 32, frameHeight: 32, frames: 7 },
+  },
+  {
     id: 'fairy', name: 'Fairy', kind: 'animated', requiredLevel: 5,
     sheet: { source: require('../../assets/Fairy/Fairy 1.png'), frameWidth: 32, frameHeight: 32, frames: 8 },
+  },
+  {
+    id: 'calico', name: 'Calico', kind: 'animated', requiredLevel: 5,
+    sheet: { source: require('../../assets/AllCatsDemo/ThreeColorFree/IdleCatt.png'), frameWidth: 32, frameHeight: 32, frames: 7 },
   },
   {
     id: 'rat', name: 'Rat', kind: 'animated', requiredLevel: 6, facingRight: false,
@@ -117,19 +148,35 @@ export const PET_TIERS = [
     id: 'treefrog', name: 'Tree Frog', kind: 'animated', requiredLevel: 6, facingRight: false,
     sheet: { source: require('../../assets/FreeAnimalPack/FreeAnimalPack/FrogIdle.png'), frameWidth: 32, frameHeight: 32, frames: 4 },
   },
+  {
+    id: 'siamese', name: 'Siamese', kind: 'animated', requiredLevel: 6,
+    sheet: { source: require('../../assets/AllCatsDemo/Siamese/IdleCattt.png'), frameWidth: 32, frameHeight: 32, frames: 7 },
+  },
   { id: 'wolf',      name: 'Wolf',            kind: 'sprite',   sheet: 'animals', row: 4, col: 6, requiredLevel: 7, facingRight: false },
   {
     id: 'goldenretriever', name: 'Golden Retriever', kind: 'animated', requiredLevel: 7,
     sheet: { source: require('../../assets/FreeAnimalPack/FreeAnimalPack/GoldenBarking.png'), frameWidth: 64, frameHeight: 64, frames: 11 },
   },
   {
+    id: 'boxcat', name: 'Box Cat', kind: 'animated', requiredLevel: 7,
+    sheet: { source: require('../../assets/MegaPackFree/CatMegaFree/MochiFree/Box3.png'), frameWidth: 32, frameHeight: 32, frames: 4 },
+  },
+  {
     id: 'bird', name: 'Bird', kind: 'animated', requiredLevel: 8,
     sheet: { source: require('../../assets/Free Street Animal Pixel Art/7 Bird/Idle.png'), frameWidth: 32, frameHeight: 32, frames: 4 },
+  },
+  {
+    id: 'bengal', name: 'Bengal Cat', kind: 'animated', requiredLevel: 8,
+    sheet: { source: require('../../assets/AllCatsDemo/TigerCatFree/IdleCatt.png'), frameWidth: 32, frameHeight: 32, frames: 7 },
   },
   { id: 'jellyfish', name: 'Jellyfish Spirit',kind: 'image',    source: require('../../assets/Free Mythic Monsters/Free Mythic Monsters/Transparent/3x Size/010_1.png'), requiredLevel: 9 },
   {
     id: 'nappingpup', name: 'Napping Pup', kind: 'animated', requiredLevel: 9, facingRight: false,
     sheet: { source: require('../../assets/FreeAnimalPack/FreeAnimalPack/SleepDog.png'), frameWidth: 64, frameHeight: 64, frames: 8 },
+  },
+  {
+    id: 'panda', name: 'Panda', kind: 'animated', requiredLevel: 9,
+    sheet: { source: require('../../assets/PandaFree/PandaWave.png'), frameWidth: 64, frameHeight: 64, frames: 12 },
   },
   {
     id: 'dog2', name: 'Alley Dog', kind: 'animated', requiredLevel: 10,
@@ -140,8 +187,16 @@ export const PET_TIERS = [
     sheet: { source: require('../../assets/FreeAnimalPack/FreeAnimalPack/PigIdle.png'), frameWidth: 64, frameHeight: 64, frames: 4 },
   },
   {
+    id: 'sphinxcat', name: 'Sphinx Cat', kind: 'animated', requiredLevel: 10,
+    sheet: { source: require('../../assets/AllCatsDemo/EgyptCatFree/IdleCatb.png'), frameWidth: 32, frameHeight: 32, frames: 7 },
+  },
+  {
     id: 'cat2', name: 'Tabby Cat', kind: 'animated', requiredLevel: 11,
     sheet: { source: require('../../assets/Free Street Animal Pixel Art/4 Cat 2/Idle.png'), frameWidth: 48, frameHeight: 48, frames: 4 },
+  },
+  {
+    id: 'maskedcat', name: 'Masked Cat', kind: 'animated', requiredLevel: 11,
+    sheet: { source: require('../../assets/AllCatsDemo/BatmanCatFree/IdleCatt.png'), frameWidth: 32, frameHeight: 32, frames: 7 },
   },
   { id: 'windbeak',   name: 'Windbeak',   kind: 'image', source: require('../../assets/Pelican/Pelican 00.png'), requiredLevel: 11, facingRight: false },
   { id: 'lion',      name: 'Lion',            kind: 'sprite',   sheet: 'animals', row: 3, col: 6, requiredLevel: 12, facingRight: false },
@@ -150,9 +205,17 @@ export const PET_TIERS = [
     id: 'rat2', name: 'Sewer Rat', kind: 'animated', requiredLevel: 13,
     sheet: { source: require('../../assets/Free Street Animal Pixel Art/6 Rat 2/Idle.png'), frameWidth: 32, frameHeight: 32, frames: 4 },
   },
+  {
+    id: 'holidaycat', name: 'Holiday Cat', kind: 'animated', requiredLevel: 13,
+    sheet: { source: require('../../assets/AllCatsDemo/Xmas/Idle2Cattt.png'), frameWidth: 32, frameHeight: 32, frames: 14 },
+  },
   { id: 'shellguard', name: 'Shellguard', kind: 'image', source: require('../../assets/Tortoise/Tortoise 00.png'), requiredLevel: 13 },
   { id: 'stingwing',  name: 'Stingwing',  kind: 'image', source: require('../../assets/Roach/Roach 00.png'), requiredLevel: 14 },
   { id: 'naga',      name: 'Naga',            kind: 'image',    source: require('../../assets/Free Mythic Monsters/Free Mythic Monsters/Transparent/3x Size/031_1.png'), requiredLevel: 15 },
+  {
+    id: 'shadowcat', name: 'Shadow Cat', kind: 'animated', requiredLevel: 15,
+    sheet: { source: require('../../assets/AllCatsDemo/DemonicFree/IdleCatd.png'), frameWidth: 32, frameHeight: 32, frames: 7 },
+  },
   { id: 'skyraider',  name: 'Sky Raider', kind: 'image', source: require('../../assets/Macaw/Macaw 00.png'), requiredLevel: 15 },
   { id: 'bloomfang',  name: 'Bloomfang',  kind: 'image', source: require('../../assets/Nepenthes/Nepenthes 00.png'), requiredLevel: 16 },
   {

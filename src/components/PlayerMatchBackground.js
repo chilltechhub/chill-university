@@ -14,8 +14,9 @@ import SpriteIcon from './SpriteIcon';
 const TILE = 32;
 
 export default function PlayerMatchBackground({ background, style }) {
-  // Blank (the default) has nothing to show behind a whole screen.
-  if (!background || background.kind === 'plain') return null;
+  // Blank and the room (a wall and floor, not a landscape) have nothing to
+  // show behind a whole screen.
+  if (!background || background.kind === 'plain' || background.kind === 'room') return null;
 
   if (background.kind === 'image') {
     // Explicit width/height (not StyleSheet.absoluteFill) — on web, an

@@ -4,6 +4,10 @@
 //   - 'image': one full illustrated scene, filling the frame
 //   - 'tile' (or anything else, for backward compat): the original SVG sky
 //     gradient behind a tiled strip of pixel-art ground + an optional prop
+//   - 'room': the blank card's wall and floor, furnished (the default stage)
+// Any of them can carry scenery (`props`, `npc`), drawn by StageProps.js
+// behind the character; pass `level` so the room's furniture fills in as
+// you level up, and `decor` for the player's own layout of this scene.
 // Sized by its container — pass `height` and let width come from the
 // parent (a card or the full screen).
 
@@ -11,22 +15,25 @@ import React from 'react';
 import { View, Image, StyleSheet } from 'react-native';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import SpriteIcon from './SpriteIcon';
+import StageProps from './StageProps';
 import { useTheme } from '../../context/ThemeContext';
 
 const TILE = 32;
 
-export default function LandscapeBackground({ background, height = 180, style, children }) {
-  const cols = 12; // enough 32px tiles to cover any realistic card width
+export default function LandscapeBackground({ background, height = 180, level, decor, hideItems, style, children }) {
+  const cols = 24; // enough 32px tiles to cover any realistic card width (12 stopped short on tablets and web)
   const { colors: c } = useTheme();
 
-  // 'plain': the blank backdrop everyone starts on. A card-coloured panel
-  // with a floor for the character to stand on: a band, not a hairline,
-  // so they stand on something instead of floating on a white card
-  // (2026-10-14). Scenes are something to unlock and pick, not the default.
-  if (!background || background.kind === 'plain') {
+  // 'plain' ("Blank"): a card-coloured panel with a floor for the character
+  // to stand on: a band, not a hairline, so they stand on something instead
+  // of floating on a white card (2026-10-14). 'room' (the default since
+  // 2026-10-15) is the same wall and floor, furnished; the furniture moves in
+  // as you level, and the scenes are still something to unlock and pick.
+  if (!background || background.kind === 'plain' || background.kind === 'room') {
     return (
       <View style={[{ height, overflow: 'hidden', borderRadius: 16, backgroundColor: c.bg1, borderWidth: 0.5, borderColor: c.border }, style]}>
         <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: TILE, backgroundColor: c.bg2, borderTopWidth: 1, borderTopColor: c.borderStrong }} />
+        <StageProps background={background} level={level} decor={decor} hideItems={hideItems} />
         {children}
       </View>
     );
@@ -49,6 +56,7 @@ export default function LandscapeBackground({ background, height = 180, style, c
           style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
           resizeMode="cover"
         />
+        <StageProps background={background} level={level} decor={decor} hideItems={hideItems} />
         {children}
       </View>
     );
@@ -84,15 +92,18 @@ export default function LandscapeBackground({ background, height = 180, style, c
         ))}
       </View>
 
+      <StageProps background={background} level={level} decor={decor} hideItems={hideItems} />
       {children}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // One row, clipped by the stage: wrapping stacked a second row of tiles
+  // whenever the stage was narrower than all of them.
   groundRow: {
     position: 'absolute', left: 0, right: 0, bottom: 0,
-    flexDirection: 'row', flexWrap: 'wrap',
+    flexDirection: 'row', overflow: 'hidden',
   },
   prop: { position: 'absolute', right: 14, bottom: TILE + 6 },
 });

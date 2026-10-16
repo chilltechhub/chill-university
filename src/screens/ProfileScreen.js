@@ -25,12 +25,14 @@ import useCoinRewards from '../logic/useCoinRewards';
 import usePetCare, { useSpendablePoints } from '../logic/usePetCare';
 import { bondLevel } from '../logic/petBond';
 import PetCareSheet from '../components/PetCareSheet';
+import DecorateSheet from '../components/DecorateSheet';
 import { OUTFITS, ACCESSORIES, unlockLabel } from '../data/characterOptions';
 import { PET_TIERS, petUnlockLabel } from '../data/petOptions';
 import { BACKGROUNDS, backgroundUnlockLabel } from '../data/backgroundOptions';
 import { splitBadges } from '../data/badgeDefinitions';
 import PlayerCharacter from '../components/PlayerCharacter';
 import PetCompanion from '../components/PetCompanion';
+import PixelArt from '../components/PixelArt';
 import LandscapeBackground from '../components/LandscapeBackground';
 import CharacterWalker from '../components/CharacterWalker';
 import BadgeMedal from '../components/BadgeMedal';
@@ -54,12 +56,13 @@ export default function ProfileScreen() {
   const { user, level, points, rank, streakDays, subjectProgress, gameplayStats, refreshDailyMissions } = progress;
 
   const stats = { level, points, rank, streakDays, played: gameplayStats?.totalProblemsAttempted || 0 };
-  const { ready: loadoutReady, outfit, pet, accessory, background, equip } = useCharacterLoadout(stats);
+  const { ready: loadoutReady, outfit, pet, accessory, background, equip, decor, saveDecor } = useCharacterLoadout(stats);
   const bonusRewards = useBonusRewards(user?.id, refreshDailyMissions);
   const coinRewards = useCoinRewards(user?.id);
   const petCare = usePetCare(user?.id, !!pet);
   const wallet = useSpendablePoints(user?.id, points);
   const [petSheetOpen, setPetSheetOpen] = useState(false);
+  const [decorOpen, setDecorOpen] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -171,7 +174,7 @@ export default function ProfileScreen() {
 
       <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         {/* ── Hero: character + pet on a landscape backdrop ─────────────── */}
-        <LandscapeBackground background={background} height={200} style={styles.hero}>
+        <LandscapeBackground background={background} height={200} level={level} decor={decor} style={styles.hero}>
           <CharacterWalker
             outfit={outfit} accessory={accessory} pet={pet} characterSize={110} petSize={48}
             rewards={bonusRewards.slots}
@@ -186,6 +189,7 @@ export default function ProfileScreen() {
             petName={petCare.nickname || pet?.name} petLevel={petLevel} petGiftReady={petCare.giftReady}
             onPetPress={() => setPetSheetOpen(true)}
             heartsPillStyle={{ top: 60, left: 12 }}
+            bowlX={decor?.bowlX}
           />
           <View style={styles.heroLabel}>
             <Text style={styles.heroName} numberOfLines={1}>{displayName || 'Commander'}</Text>
@@ -195,6 +199,10 @@ export default function ProfileScreen() {
           <TouchableOpacity style={styles.customizeBtn} onPress={() => setWardrobeOpen(true)}>
             <Ionicons name="color-palette-outline" size={15} color="#fff" />
             <Text style={styles.customizeBtnText}>Customize</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.customizeBtn, { top: 44 }]} onPress={() => setDecorOpen(true)} accessibilityRole="button" accessibilityLabel="Decorate your scene">
+            <Ionicons name="brush-outline" size={15} color="#fff" />
+            <Text style={styles.customizeBtnText}>Decorate</Text>
           </TouchableOpacity>
         </LandscapeBackground>
 
@@ -283,6 +291,11 @@ export default function ProfileScreen() {
         t={t}
       />
       <PetCareSheet visible={petSheetOpen} onClose={() => setPetSheetOpen(false)} pet={pet} />
+      <DecorateSheet
+        visible={decorOpen} onClose={() => setDecorOpen(false)}
+        background={background} level={level} decor={decor} pet={pet}
+        onSave={(layout) => saveDecor(background.id, layout)}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -412,10 +425,26 @@ function WardrobePreview({ tab, item }) {
   if (item.kind === 'plain') {
     return <View style={{ width: 56, height: 32, borderRadius: 6, borderWidth: 1, borderStyle: 'dashed', borderColor: '#9aa3b5' /* style-ok: neutral outline for "no backdrop" in both modes */ }} />;
   }
+  if (item.kind === 'room') {
+    // A tiny room: wall, floor, and its window.
+    return (
+      <View style={{ width: 56, height: 32, borderRadius: 6, overflow: 'hidden', backgroundColor: '#e8dccb' /* style-ok: fixed room-wall swatch */, alignItems: 'center' }}>
+        <PixelArt art="windowCream" height={18} style={{ marginTop: 3 }} />
+        <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 8, backgroundColor: '#b8977a' /* style-ok: fixed room-floor swatch */ }} />
+      </View>
+    );
+  }
+  // Tile scenes: the two-tone sky, with their tallest prop standing in it.
+  const hero = (item.props || []).reduce((best, p) => (!best || (p.scale || 1) > (best.scale || 1) ? p : best), null);
   return (
     <View style={{ width: 56, height: 32, borderRadius: 6, overflow: 'hidden', flexDirection: 'row' }}>
       <View style={{ flex: 1, backgroundColor: item.sky[0] }} />
       <View style={{ flex: 1, backgroundColor: item.sky[1] }} />
+      {hero && (
+        <View style={{ position: 'absolute', left: 0, right: 0, bottom: 1, alignItems: 'center' }}>
+          <PixelArt art={hero.art} height={26} />
+        </View>
+      )}
     </View>
   );
 }

@@ -23,6 +23,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useUserProgress } from '../../context/UserProgressContext';
 import PetCompanion from './PetCompanion';
+import PixelArt from './PixelArt';
 import usePetCare, { useSpendablePoints } from '../logic/usePetCare';
 import { FOODS, MAX_HEARTS, cantFeed } from '../logic/petHunger';
 import {
@@ -212,7 +213,7 @@ export default function PetCareSheet({ visible, onClose, pet }) {
               </Animated.View>
               {eating && (
                 <Animated.View pointerEvents="none" style={[s.food, { bottom: petSize * 0.45, transform: [{ translateY: dropY }, { scale: foodScale }] }]}>
-                  <Ionicons name={eating.icon} size={28} color={c.gold} />
+                  <PixelArt art={eating.art} height={28} />
                 </Animated.View>
               )}
               {eating && (
@@ -253,7 +254,7 @@ export default function PetCareSheet({ visible, onClose, pet }) {
                     accessibilityState={{ disabled: off }}
                     accessibilityLabel={`${food.label}, ${food.cost} points, ${food.hearts >= MAX_HEARTS ? 'fills every heart' : `adds ${food.hearts} heart`}`}
                   >
-                    <Ionicons name={food.icon} size={20} color={off ? c.text3 : c.gold} />
+                    <PixelArt art={food.art} height={22} style={off && { opacity: 0.45 }} />
                     <Text style={[s.foodName, off && { color: c.text3 }]}>{food.label}</Text>
                     <Text style={s.foodWhat}>{food.hearts >= MAX_HEARTS ? 'Fills up' : `+${food.hearts} heart`}</Text>
                     <View style={[s.costPill, off && { backgroundColor: c.bg3 }]}>

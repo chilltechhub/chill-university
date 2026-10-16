@@ -54,6 +54,7 @@ import { shareFile } from '../logic/shareFile';
 import { textOn } from '../logic/contrast';
 import { getDueItems, setDueItemDone } from '../api/deadlinesService';
 import { openTarget } from '../logic/openTarget';
+import SleepyCat from '../components/SleepyCat';
 
 const { width: SW } = Dimensions.get('window');
 const PANEL_W      = Math.min(SW * 0.82, 370);
@@ -944,7 +945,7 @@ function ListView({ instances, onUpdate, onOpen, onAdd, c, t, s, r }) {
 
   if (instances.length === 0) return (
     <View style={{ alignItems: 'center', paddingTop: 60 }}>
-      {showEmojis ? <Text style={{ fontSize: 44, marginBottom: s.lg }}>📋</Text> : <Ionicons name="clipboard-outline" size={40} color={c.text3} style={{ marginBottom: s.lg }} />}
+      <SleepyCat variant={2} size={88} style={{ marginBottom: s.xs }} />
       <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginBottom: s.sm }}>Nothing scheduled</Text>
       {/* "Tap + to add something" — with two + buttons on screen, which? And
           no reason to. A why, and the button itself. */}
