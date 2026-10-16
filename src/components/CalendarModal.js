@@ -260,8 +260,8 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
   const weekStart = toISO(weekDays[0]);
   const weekEnd   = toISO(weekDays[6]);
 
-  const paperBg = isDark ? '#1a1508' : '#fffef8';
-  const lineClr = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
+  const paperBg = isDark ? '#1a1814' : '#fffef8';
+  const lineClr = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
   const redLine = isDark ? '#e0585833' : '#e0585820';
 
   const loadWeek = useCallback(async () => {
