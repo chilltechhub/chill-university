@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as Clipboard from 'expo-clipboard';
 import { supabase } from '../../api/profileScopedClient';
-import { cacheRead, cacheWrite, isOnline } from '../../api/offlineCache';
+import { cacheRead, cacheWrite, fetchFailed, isOnline } from '../../api/offlineCache';
 import { useTheme } from '../../../context/ThemeContext';
 import { useUIPrefs } from '../../../context/UIPrefsContext';
 import { useAccess } from '../../../context/AccessContext';
@@ -278,6 +278,8 @@ export default function PortfolioScreen() {
         supabase.from('project_research').select('id,title,type,url,notes').eq('user_id', uid).order('created_at', { ascending: false }).limit(20),
         supabase.from('portfolio_entries').select('id,section,title,description,link,tag,created_at').eq('user_id', uid).order('created_at', { ascending: false }),
       ]);
+      // Never reached the server: keep the cached portfolio.
+      if (fetchFailed(profileRes, projectsRes, researchRes, entriesRes)) throw profileRes.error || projectsRes.error || researchRes.error || entriesRes.error;
 
       const raw = { prof: profileRes.data || {}, projects: projectsRes.data || [], research: researchRes.data || [], entries: entriesRes.data || [] };
       applyRaw(raw);

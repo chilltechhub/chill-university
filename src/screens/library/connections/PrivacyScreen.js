@@ -6,7 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../../context/ThemeContext';
 import { useUIPrefs } from '../../../../context/UIPrefsContext';
 import { supabase } from '../../../api/profileScopedClient';
-import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../../api/offlineCache';
+import { cacheRead, cacheWrite, fetchFailed, isOnline, offlineWrite } from '../../../api/offlineCache';
 import { AREA_COLORS } from '../../../data/areaColors';
 import useAreaActions from '../../../logic/useAreaActions';
 import ActionPanel from '../../../components/lifeareas/ActionPanel';
@@ -65,6 +65,8 @@ export default function PrivacyScreen() {
         supabase.from('area_notes').select('*').eq('user_id', uid).eq('area_id', 'digital')
           .ilike('content', `%${SCREEN_TAG}%`).order('created_at', { ascending: false }).limit(30),
       ]);
+      // Never reached the server: keep the cached checklist and log.
+      if (fetchFailed(checklistRes, logRes)) { setLoading(false); return; }
       let nextChecked = checked;
       if (checklistRes.data) {
         try { nextChecked = JSON.parse(checklistRes.data.content.slice(CHECKLIST_TAG.length)); setChecked(nextChecked); } catch {}

@@ -1,7 +1,7 @@
 // src/screens/LoginScreen.js
 // Clean auth screen — space traveler theme, handles both login and signup
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform, Animated, Linking, Image } from 'react-native';
 // Bright-teal variant of the icon mark: these screens are always dark.
 const BRAND_MARK = require('../../assets/splash-icon-dark.png');
@@ -64,6 +64,8 @@ export default function LoginScreen({ onSuccess, onClose }) {
   const [loading,     setLoading]     = useState(false);
   const [mode,        setMode]        = useState('login'); // login | signup | reset
   const [showPass,    setShowPass]    = useState(false);
+  // The keyboard's Next on the email moves here; Go on the password submits.
+  const passwordRef = useRef(null);
   const [agreed,      setAgreed]      = useState(false); // signup: Terms + Privacy ticked
   // Two-step sign-in (src/api/mfa.js): set once the password step passes on
   // an account with an authenticator, or on arrival with a session that
@@ -364,6 +366,10 @@ export default function LoginScreen({ onSuccess, onClose }) {
               autoCapitalize="none"
               keyboardType="email-address"
               autoCorrect={false}
+              autoComplete="email"
+              textContentType="emailAddress"
+              returnKeyType={mode === 'reset' ? 'send' : 'next'}
+              onSubmitEditing={() => (mode === 'reset' ? handleSubmit() : passwordRef.current?.focus())}
             />
           </View>
 
@@ -372,12 +378,17 @@ export default function LoginScreen({ onSuccess, onClose }) {
             <View style={s.inputWrap}>
               <Ionicons name="lock-closed-outline" size={16} color="rgba(255,255,255,0.3)" style={s.inputIcon} />
               <TextInput
+                ref={passwordRef}
                 style={[s.input, { flex: 1 }]}
                 placeholder={mode === 'signup' ? 'Password (6+ characters)' : 'Password'}
                 placeholderTextColor="rgba(255,255,255,0.25)"
                 value={password}
                 onChangeText={(v) => { setPassword(v); if (notice?.kind === 'error') setNotice(null); }}
                 secureTextEntry={!showPass}
+                autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                textContentType={mode === 'signup' ? 'newPassword' : 'password'}
+                returnKeyType="go"
+                onSubmitEditing={() => { if (!loading) handleSubmit(); }}
               />
               <TouchableOpacity accessibilityRole="button" accessibilityLabel={showPass ? 'Hide password' : 'Show password'} onPress={() => setShowPass(v => !v)} style={{ padding: 4 }}>
                 <Ionicons name={showPass ? 'eye-off-outline' : 'eye-outline'} size={16} color="rgba(255,255,255,0.3)" />
@@ -475,6 +486,7 @@ export default function LoginScreen({ onSuccess, onClose }) {
           <TouchableOpacity
             style={[s.btn, mode === 'signup' && !agreed && { opacity: 0.5 }]}
             onPress={handleSubmit}
+            accessibilityRole="button"
             // Dimmed until the box is ticked, but still pressable: a disabled
             // button gave no reason, and a tap now says what's missing.
             disabled={loading}
@@ -493,13 +505,13 @@ export default function LoginScreen({ onSuccess, onClose }) {
 
           {/* Switch mode */}
           {mode === 'reset' ? (
-            <TouchableOpacity style={s.switchRow} onPress={() => switchMode('login')}>
+            <TouchableOpacity style={s.switchRow} onPress={() => switchMode('login')} accessibilityRole="button">
               <Text style={s.switchText}>
                 <Text style={s.switchLink}>← Back to sign in</Text>
               </Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={s.switchRow} onPress={() => switchMode(mode === 'login' ? 'signup' : 'login')}>
+            <TouchableOpacity style={s.switchRow} onPress={() => switchMode(mode === 'login' ? 'signup' : 'login')} accessibilityRole="button">
               <Text style={s.switchText}>
                 {mode === 'login' ? 'New here? ' : 'Have an account? '}
                 <Text style={s.switchLink}>{mode === 'login' ? 'Create account' : 'Sign in'}</Text>

@@ -55,7 +55,7 @@ import {
 import { LIFE_AREAS } from './library/LifeAreaScreen';
 import { isMinorRequiringConsent } from '../logic/ageOfConsent';
 import { clearLocalUserData } from '../logic/localUserData';
-import { dobFromParts } from '../logic/dateUtils';
+import { dobFromParts, dobProblem } from '../logic/dateUtils';
 import { startParentVerification, getVerificationStatus } from '../api/kwsVerification';
 import { DEFAULT_PERSONA, personasFor, defaultPersonaFor, getPersona } from '../data/personas';
 import { ageCategoryFromDob, isMinorBand } from '../logic/profileResolver';
@@ -328,7 +328,7 @@ export default function MultiStepOnboarding() {
     // Month + year required, day optional — see dobFromParts.
     const dateOfBirth = dobFromParts(birthMonth, birthDay, birthYear);
     if (!dateOfBirth) {
-      setGateError('Enter your birth **month** and **year**. The day is optional.');
+      setGateError(dobProblem(birthMonth, birthDay, birthYear));
       return;
     }
     setGateError(null);
@@ -908,10 +908,11 @@ export default function MultiStepOnboarding() {
           <Animated.View style={[cs.progressFill, { width: `${progress}%` }]} />
         </View>
 
-        {/* Step dots */}
+        {/* Step dots: one per step this person will see, the same count as
+            "N of M" above (it drew every step, skipped ones too). */}
         <View style={cs.dots}>
-          {STEPS.map((_, i) => (
-            <View key={i} style={[cs.dot, i === step && cs.dotActive, i < step && cs.dotDone]} />
+          {shownSteps.map((i, pos) => (
+            <View key={i} style={[cs.dot, i === step && cs.dotActive, pos < stepPos - 1 && cs.dotDone]} />
           ))}
         </View>
 

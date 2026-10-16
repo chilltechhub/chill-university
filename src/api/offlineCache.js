@@ -236,6 +236,19 @@ export async function isOnline() {
   } catch { return true; } // assume online if can't check
 }
 
+// ─── Did a read fail to reach the server? ─────────────────────────────────────
+// supabase-js doesn't throw when a request never lands (signal dropped, a
+// captive portal, isOnline() said yes a moment too soon): it resolves with
+// { data: null, error, status: 0 }. Read as "nothing there", that showed an
+// empty Projects list / Vault AND wrote the emptiness over the offline cache,
+// so the next time the phone really was offline the saved copy was gone too.
+// Pass every result a load awaited; true means keep what's on screen and
+// leave the cache alone. A server answer with an error code (a missing
+// column, RLS) fails the same way every time and is the caller's to handle.
+export function fetchFailed(...results) {
+  return results.some(res => res?.error && (!res.status || res.status >= 500 || !res.error.code));
+}
+
 // ─── Smart fetch — cache first, then network ──────────────────────────────────
 // Use this for reads: returns cached data immediately,
 // then fetches fresh data and updates cache in background

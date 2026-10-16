@@ -22,7 +22,7 @@ import { useTour } from '../../../context/TourContext';
 import { supabase } from '../../api/profileScopedClient';
 import { getDueItems } from '../../api/deadlinesService';
 import { openTarget } from '../../logic/openTarget';
-import { cacheRead, cacheWrite, isOnline } from '../../api/offlineCache';
+import { cacheRead, cacheWrite, fetchFailed, isOnline } from '../../api/offlineCache';
 import { getProjects, getDomainContent, getVaultPreview, completeTask } from '../../api/captureService';
 import { CAPTURE_TYPES } from '../CaptureInbox';
 import { CAREERS } from './careerexplore';
@@ -539,6 +539,8 @@ export default function LibraryScreen() {
         // "Today" said "your planner's clear" over a task due that day.
         getDueItems(uid, '2000-01-01', today).catch(() => []),
       ]);
+      // Never reached the server: keep the cached hub rather than blank it.
+      if (fetchFailed(areasRes, trophyRes, agendaRes, profileRes, careerNoteRes, ideasRes)) return;
       if (areasRes.data) setLifeAreas(areasRes.data);
       if (trophyRes.data) setTrophies(trophyRes.data);
       setActiveProjects(activeProjRes || []);

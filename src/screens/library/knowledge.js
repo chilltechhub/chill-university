@@ -50,6 +50,7 @@ import ReminderComposer from '../../components/ReminderComposer';
 import { openTarget } from '../../logic/openTarget';
 import { todayStr } from '../../logic/dateUtils';
 import { successHaptic } from '../../logic/haptics';
+import { parseTags } from '../../logic/tags';
 import { usesOf, planNotesFor, planTitleFor } from '../../api/knowledgeUse';
 
 // ─── Item kinds ────────────────────────────────────────────────────────────
@@ -136,7 +137,6 @@ const deriveTitle = (body) => {
   return trimmed.length > 80 ? `${trimmed.slice(0, 77)}...` : trimmed;
 };
 
-const parseTags = (raw) => (raw || '').split(',').map((tg) => tg.trim().toLowerCase()).filter(Boolean);
 
 // A saved item's life area is whichever area-id it carries as a tag — the
 // convention Resources & Instruments established, now used by every kind.

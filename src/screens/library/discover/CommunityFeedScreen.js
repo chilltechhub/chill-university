@@ -30,6 +30,7 @@ import {
   COMMUNITY_NOT_CONFIGURED, MINORS_CANNOT_PUBLISH, CONTENT_BLOCKED, LINK_NOT_ALLOWED,
 } from '../../../api/communityService';
 import { communityAccess, restrictionMessage } from '../../../logic/allowed';
+import { parseTags } from '../../../logic/tags';
 
 const isWebLink = (url) => /^https?:\/\//i.test(String(url || '').trim());
 
@@ -156,7 +157,7 @@ export default function CommunityFeedScreen() {
         title: titleText,
         body: draft.body.trim() || null,
         link,
-        tags: draft.tags.split(',').map(x => x.trim().toLowerCase()).filter(Boolean),
+        tags: parseTags(draft.tags),
       });
       setShow(false);
       await load(tab);

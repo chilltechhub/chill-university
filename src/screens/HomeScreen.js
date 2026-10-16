@@ -24,7 +24,7 @@ import { supabase } from '../api/profileScopedClient';
 import { fetchContentPool } from '../api/remoteConfigService';
 import { getMyOpenAssignments, updateAssignmentStatus } from '../api/organizationService';
 import { completeInstance, skipInstance, extendRepeatingPlans } from '../api/plannerService';
-import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../api/offlineCache';
+import { cacheRead, cacheWrite, fetchFailed, isOnline, offlineWrite } from '../api/offlineCache';
 import { syncReminders, computeReminderState } from '../logic/notificationScheduler';
 import TourSpot from '../components/TourSpot';
 import RememberThis from '../components/RememberThis';
@@ -1445,6 +1445,9 @@ export default function HomeScreen() {
         supabase.from('agenda_instances').select('id, completed, skipped, cadence, area').eq('user_id', uid).eq('date', todayStr),
         supabase.from('tasks').select('id, completed').eq('user_id', uid).eq('due_date', todayStr),
       ]);
+      // Never reached the server: keep the cached desk rather than empty it.
+      if (fetchFailed(focusRes, tasksRes, projRes, capturesRes, ideasRes, settingsRes, eventsRes,
+        todayTasksRes, agendaRes, buildsRes, lifeAreaRowsRes, planRowsRes, planTasksRes)) return;
 
       // Focus
       if (focusRes.data) { setTodayFocus(focusRes.data.focus_text || ''); setFocusDraft(focusRes.data.focus_text || ''); }

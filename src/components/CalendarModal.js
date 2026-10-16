@@ -17,7 +17,7 @@ import { unscoped } from '../api/profileScopedClient';
 import { useProfiles } from '../../context/ProfileAccountsContext';
 import { buildProfileLookup } from '../data/personas';
 import useViewScope, { SCOPE_ALL } from '../logic/useViewScope';
-import { cacheRead, cacheWrite, isOnline } from '../api/offlineCache';
+import { cacheRead, cacheWrite, fetchFailed, isOnline } from '../api/offlineCache';
 import { dateStr } from '../logic/dateUtils';
 import TimePickerField from './TimePickerField';
 import PlanDetailSheet from './PlanDetailSheet';
@@ -288,6 +288,8 @@ export default function CalendarModal({ visible, onClose, userId, initialDate, a
         db.from('captures').select('id,title,created_at,profile_id').eq('user_id', userId).eq('status','inbox').gte('created_at', weekStart).lte('created_at', weekEnd+'T23:59:59'),
         db.from('agenda_instances').select('*').eq('user_id', userId).gte('date', weekStart).lte('date', weekEnd).eq('completed', false).eq('skipped', false),
       ]);
+      // Never reached the server: keep the cached week.
+      if (fetchFailed(evtRes, taskRes, focusRes, noteRes, plannerRes)) throw evtRes.error || taskRes.error || focusRes.error || noteRes.error || plannerRes.error;
       const map = {};
       const push = (date, item) => { if (!map[date]) map[date]=[]; map[date].push(item); };
       (evtRes.data  ||[]).forEach(e  => push(e.date, {...e, _src:'calendar', _profile:e.profile_id}));

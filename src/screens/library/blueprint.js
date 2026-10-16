@@ -5,7 +5,7 @@
 // respects the user's light/dark preference via useTheme().isDark.
 
 import React from 'react';
-import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { useTheme } from '../../../context/ThemeContext';
 import { FONTS } from '../../theme';
 
@@ -176,6 +176,22 @@ export function RulerBar({ pct, color, bp, height = 10 }) {
           <View key={p} style={{ position: 'absolute', left: `${p}%`, top: 0, bottom: 0, width: 1, backgroundColor: bp.border }} />
         ))}
       </View>
+    </View>
+  );
+}
+
+// ProjectDetail / ProjectOverview opened without a project (an old link, a
+// project deleted on another device): say so and offer the way back. They
+// rendered nothing at all before, a blank paper with no back button.
+export function ProjectMissing({ navigation }) {
+  const bp = useBlueprint();
+  return (
+    <View style={{ flex: 1, backgroundColor: bp.paper, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 14 }}>
+      <Text style={{ color: bp.ink2, fontSize: 15, textAlign: 'center' }}>That project isn't here any more.</Text>
+      <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate('ProjectsScreen')}
+        style={{ borderWidth: 1, borderColor: bp.accent, borderRadius: 4, paddingHorizontal: 16, paddingVertical: 10 }}>
+        <Text style={{ color: bp.accent, fontFamily: FONTS.mono, fontWeight: '700', letterSpacing: 1 }}>ALL PROJECTS</Text>
+      </TouchableOpacity>
     </View>
   );
 }

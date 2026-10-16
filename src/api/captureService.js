@@ -8,6 +8,24 @@ import { todayStr, dateStr, addDays } from '../logic/dateUtils';
 import { detectSource, isGenericTitle, fallbackTitle, CAPTURE_TYPE_FOR_KIND } from '../logic/linkSources';
 import { recordAction } from '../logic/gamificationService';
 
+// Fetch, cache, return. When the request never reaches the server (no error
+// code: a dropped signal, isOnline() a moment out of date) the cached copy
+// comes back instead of an error, the way plannerService's reads already do,
+// so the screen keeps what it showed rather than blanking.
+async function freshOrCached(cacheKey, fetchFn) {
+  try {
+    const data = await fetchFn();
+    await cacheWrite(cacheKey, data);
+    return data;
+  } catch (e) {
+    if (!e?.code) {
+      const cached = await cacheRead(cacheKey);
+      if (cached) return cached;
+    }
+    throw e;
+  }
+}
+
 // ─── CAPTURES ─────────────────────────────────────────────────────────────────
 
 export async function getCaptures(userId, { status = 'inbox', type = null } = {}) {
@@ -30,9 +48,7 @@ export async function getCaptures(userId, { status = 'inbox', type = null } = {}
   const online = await isOnline();
   if (!online) return (await cacheRead(cacheKey)) || [];
 
-  const data = await fetchFn();
-  await cacheWrite(cacheKey, data);
-  return data;
+  return freshOrCached(cacheKey, fetchFn);
 }
 
 // ─── What the Knowledge Vault shows ──────────────────────────────────────────
@@ -226,9 +242,7 @@ export async function getSaveForLater(userId, type = null) {
 
   const online = await isOnline();
   if (!online) return (await cacheRead(cacheKey)) || [];
-  const data = await fetchFn();
-  await cacheWrite(cacheKey, data);
-  return data;
+  return freshOrCached(cacheKey, fetchFn);
 }
 
 export async function addCapture(userId, capture) {
@@ -386,9 +400,7 @@ export async function getProjects(userId, status = null) {
 
   const online = await isOnline();
   if (!online) return (await cacheRead(cacheKey)) || [];
-  const data = await fetchFn();
-  await cacheWrite(cacheKey, data);
-  return data;
+  return freshOrCached(cacheKey, fetchFn);
 }
 
 export async function upsertProject(userId, project) {
@@ -440,9 +452,7 @@ export async function getTasks(userId, { date = null, completed = null, category
 
   const online = await isOnline();
   if (!online) return (await cacheRead(cacheKey)) || [];
-  const data = await fetchFn();
-  await cacheWrite(cacheKey, data);
-  return data;
+  return freshOrCached(cacheKey, fetchFn);
 }
 
 export async function upsertTask(userId, task) {

@@ -12,7 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../api/profileScopedClient';
-import { cacheRead, cacheWrite, isOnline } from '../api/offlineCache';
+import { cacheRead, cacheWrite, fetchFailed, isOnline } from '../api/offlineCache';
 import { addCapture, linkCaptureFields } from '../api/captureService';
 import { detectSource, fallbackTitle, CAPTURE_TYPE_FOR_KIND, sourceByKey } from '../logic/linkSources';
 import { WEEKDAY_KEYS, daysLabel } from '../logic/aiBridgeFormat';
@@ -24,6 +24,7 @@ import FloatingCard from '../components/FloatingCard';
 import { useTour } from '../../context/TourContext';
 import { useAccess } from '../../context/AccessContext';
 import { todayStr, dateStr } from '../logic/dateUtils';
+import { parseTags } from '../logic/tags';
 import { useFabPosition } from '../../context/FabPositionContext';
 
 // supabase-js resolves { data, error } instead of throwing on a failed
@@ -313,7 +314,7 @@ function ProcessModal({ item, projects, userId, initialStep = 'choose', initialD
         title: editTitle.trim(),
         url:   editUrl.trim() || null,
         body:  editBody.trim() || null,
-        tags:  editTags.split(',').map(tg => tg.trim().toLowerCase()).filter(Boolean),
+        tags:  parseTags(editTags),
       };
       await supabase.from('captures').update(patch).eq('id', item.id);
       // Keep the task-title field in sync too, unless the user already typed
@@ -1396,7 +1397,7 @@ export function QuickCaptureModal({ visible, userId, onSaved, onUse, onClose, pr
     if (!draft.trim()) return;
     setSaving(true);
     try {
-      const tagList = tags.split(',').map(t => t.trim()).filter(Boolean);
+      const tagList = parseTags(tags);
       let fields = { type, title: draft.length > 80 ? draft.slice(0, 77) + '...' : draft, body: draft, url };
       if (url) {
         // Wait a moment for the lookup if it's still going, never longer:
@@ -1613,6 +1614,8 @@ export default function CaptureInbox() {
             query,
             supabase.from('projects').select('id,title,emoji,color,objective').eq('user_id', uid).eq('status', 'active').is('deleted_at', null).limit(10),
           ]);
+          // Never reached the server: keep the cached inbox.
+          if (fetchFailed(capRes, projRes)) throw capRes.error || projRes.error;
           if (capRes.data)  setCaptures(capRes.data);
           if (projRes.data) setProjects(projRes.data);
           await cacheWrite(cacheKey, { captures: capRes.data || [], projects: projRes.data || [] });

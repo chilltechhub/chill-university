@@ -13,7 +13,7 @@ import { goBackTo } from '../../logic/appRoutes';
 import { useTheme } from '../../../context/ThemeContext';
 import { useUIPrefs } from '../../../context/UIPrefsContext';
 import { supabase } from '../../api/profileScopedClient';
-import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../api/offlineCache';
+import { cacheRead, cacheWrite, fetchFailed, isOnline, offlineWrite } from '../../api/offlineCache';
 import RelatedLinks, { EXCLUDE_LINK_FILTER } from './RelatedLinks';
 import TourSpot from '../../components/TourSpot';
 import AreaPlanCalendar from '../../components/AreaPlanCalendar';
@@ -314,7 +314,33 @@ export default function LifeAreaScreen() {
     setTimeout(() => setHubNote(null), 4000);
   };
 
-  if (!area) return null;
+  // Opened without an area (Calm Library's Check-ins tile once nothing is
+  // due, an old link): a pick list, not a blank screen. replace(), not
+  // setParams: this return sits above the screen's effects, so one mount
+  // can't go from no area to an area.
+  if (!area) {
+    return (
+      <ScrollView style={{ flex: 1, backgroundColor: c.bg0 }} contentContainerStyle={{ padding: s.lg, gap: s.sm }}>
+        <TouchableOpacity onPress={() => goBackTo(navigation, 'LibraryScreen')} accessibilityRole="button"
+          accessibilityLabel="Back to the Library" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ alignSelf: 'flex-start' }}>
+          <Ionicons name="chevron-back" size={22} color={c.text2} />
+        </TouchableOpacity>
+        <Text style={{ fontSize: t.xl, fontWeight: t.bold, color: c.text1, marginVertical: s.sm }}>Pick a life area</Text>
+        {LIFE_AREAS.map(a => (
+          <TouchableOpacity key={a.id} onPress={() => navigation.replace('LifeAreaScreen', { areaId: a.id })}
+            accessibilityRole="button" accessibilityLabel={a.label}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, padding: s.md, borderRadius: r.md, backgroundColor: c.bg1, borderWidth: 0.5, borderColor: c.border }}>
+            {showEmojis ? <Text style={{ fontSize: 18 }}>{a.emoji}</Text> : <Ionicons name={a.icon} size={18} color={readableOn(a.color, c.bg1)} />}
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: t.md, fontWeight: t.semibold, color: c.text1 }}>{a.label}</Text>
+              {showSubtext && <Text style={{ fontSize: t.xs, color: c.text3 }} numberOfLines={1}>{a.subtitle}</Text>}
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={c.text3} />
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    );
+  }
   // The area's colour, darkened (light theme) or lightened (dark) just enough
   // to read as text: Mental's pale blue was 2:1 on the light background.
   const color = readableOn(area.color, c.bg0);
@@ -343,6 +369,8 @@ export default function LifeAreaScreen() {
         EXCLUDE_LINK_FILTER(supabase.from('area_notes').select('*').eq('user_id', uid).eq('area_id', area.id)).order('created_at', { ascending: false }).limit(20),
         supabase.from('life_areas').select('progress').eq('user_id', uid).eq('label', area.label).maybeSingle(),
       ]);
+      // Never reached the server: keep the cached notes and rating.
+      if (fetchFailed(notesRes, areaRes)) throw notesRes.error || areaRes.error;
       if (notesRes.data) setNotes(notesRes.data);
       if (areaRes.data?.progress) setRating(areaRes.data.progress);
       await cacheWrite(cacheKey, { notes: notesRes.data || [], rating: areaRes.data?.progress || null });
