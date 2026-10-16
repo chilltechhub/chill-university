@@ -165,7 +165,8 @@ export function LifeAreasWidget({ areas, onOpenArea, onOpenLibrary }) {
               {days === null ? 'not rated yet' : days === 0 ? 'today' : `${days}d ago`}
             </Text>
           </View>
-          <Bar pct={rating} color={area.color} />
+          {/* Ratings are 1-5 (LifeAreaScreen). */}
+          <Bar pct={rating * 20} color={area.color} />
         </TouchableOpacity>
       ))}
     </WidgetCard>

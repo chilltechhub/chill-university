@@ -15,8 +15,9 @@ import useAppActive from '../logic/useAppActive';
 
 const ICON = { rest: 'moon-outline', now: 'radio-button-on', soon: 'alarm-outline', late: 'alert-circle-outline', today: 'today-outline', desk: 'albums-outline' };
 
-export default function RightNowCard({ activities = [], desk = [], onOpen, onDone, onFocus, ui = {} }) {
-  const { colors: c, typography: t, spacing: s } = useTheme();
+// The pick itself, shared with Home's Calm view (CalmHome.js), which shows
+// the same thing as its headline.
+export function useRightNow(activities = [], desk = []) {
   const [now, setNow] = useState(() => new Date());
   const [quiet, setQuiet] = useState(null);
   const active = useAppActive();
@@ -29,7 +30,7 @@ export default function RightNowCard({ activities = [], desk = [], onOpen, onDon
     return () => clearInterval(id);
   }, [active]);
 
-  const pick = useMemo(() => pickRightNow({
+  return useMemo(() => pickRightNow({
     items: activities.map(a => ({
       id: a.id, title: a.title, time: a.time || null, duration: a.raw?.duration_minutes || null,
       late: a._src === 'due' && /late/i.test(a.notes || ''), due: a._src === 'due' || a._src === 'task',
@@ -38,6 +39,11 @@ export default function RightNowCard({ activities = [], desk = [], onOpen, onDon
     desk: desk.map(d => ({ id: d.id, title: d.title, ref: d })),
     now, quiet,
   }), [activities, desk, now, quiet]);
+}
+
+export default function RightNowCard({ activities = [], desk = [], onOpen, onDone, onFocus, ui = {} }) {
+  const { colors: c, typography: t, spacing: s } = useTheme();
+  const pick = useRightNow(activities, desk);
 
   if (!pick) return null;
   const tone = pick.kind === 'late' ? c.error : pick.kind === 'rest' ? c.purple : c.teal;

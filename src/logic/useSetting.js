@@ -19,6 +19,12 @@ export const SETTING_KEYS = {
   HERO_TAP_TO_PROFILE: 'heroTapToProfile',
   LIBRARY_BACKGROUND: 'libraryBackground', // 'plain' | 'player'
   HOME_BACKGROUND: 'homeBackground',       // 'plain' | 'player'
+  // 'full' (every card) | 'calm' (one next step, today's focus and two
+  // cards for your account type: src/components/CalmHome.js).
+  HOME_VIEW: 'homeView',
+  // Same choice for the Library, kept apart from Home's on purpose
+  // (src/components/CalmLibrary.js).
+  LIBRARY_VIEW: 'libraryView',
   // The Study and Play buttons on Home's profile card. On by default; off
   // leaves the card as just your name and level.
   HOME_QUICK_BUTTONS: 'homeQuickButtons',

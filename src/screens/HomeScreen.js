@@ -30,6 +30,7 @@ import TourSpot from '../components/TourSpot';
 import RememberThis from '../components/RememberThis';
 import TodayReview from '../components/TodayReview';
 import RightNowCard from '../components/RightNowCard';
+import CalmHome from '../components/CalmHome';
 import useDrillPlan from '../logic/useDrillPlan';
 import CalendarModal from '../components/CalendarModal';
 import PlanDetailSheet from '../components/PlanDetailSheet';
@@ -901,11 +902,15 @@ export default function HomeScreen() {
   const [hideDone] = useSetting(SETTING_KEYS.HIDE_DONE_WIDGETS, false);
   const drillPlanHome = useDrillPlan();
   const playShown = isFeatureShown('training') && quickButtons;
-  const { active: tourActive, startLesson } = useTour();
+  const { active: tourActive, startLesson, currentStep: tourStep } = useTour();
   const homeFocused = useIsFocused();
   const { background: playerBackground } = useCharacterLoadout({ level, points, rank, streakDays });
   // Set from Settings → Appearance, not on this screen itself.
   const [bgMode] = useSetting(SETTING_KEYS.HOME_BACKGROUND, 'plain');
+  // Calm: one next step, today's focus and two cards for this account type
+  // (CalmHome.js). Full: every card. Switched here, in Settings or Make it
+  // yours; synced to the account like every '@cth_setting_' key.
+  const [homeView, setHomeView] = useSetting(SETTING_KEYS.HOME_VIEW, 'full');
   // The remote kill switch and the stage, both — see isGameVisible.
   const GAMES = useMemo(
     () => GAMES_MASTER.filter(g => isGameVisible(g.key)),
@@ -953,6 +958,11 @@ export default function HomeScreen() {
   // as opposed to "On the Desk" above which is a ranked NEXT-ACTION pick
   // regardless of date. See loadAll for the merge.
   const [todayActivities, setTodayActivities] = useState([]);
+  // Today's Planner items and tasks due today, done or not: the Calm view's
+  // "2 of 5 planned today done". todayActivities above only holds what's
+  // still open, so it can't give the total.
+  const [todayPlan, setTodayPlan] = useState([]);
+  const markPlan = (src, rawId, patch) => setTodayPlan(prev => prev.map(p => (p.src === src && String(p.id) === String(rawId) ? { ...p, ...patch } : p)));
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [openPlan, setOpenPlan] = useState(null); // a planner row, tapped open
 
@@ -981,6 +991,9 @@ export default function HomeScreen() {
   // the whole layout is written to Supabase once, on "Done" (exitWidgetEdit).
   const [widgetLayout,   setWidgetLayout]   = useState(() => layoutForPersona(activeType));
   const [editingWidgets, setEditingWidgets] = useState(false);
+  // Not while a walkthrough step is pointing at something: its highlights
+  // are on the full board. The small "Next: …" chip between steps is fine.
+  const calm = homeView === 'calm' && !editingWidgets && !(tourActive && !tourStep?.compact);
   // True once this profile has a saved arrangement (loaded, or saved from
   // Edit). Before the 'dashboard' stage it decides whether the board follows
   // the stage's starter order or the person's own.
@@ -1304,7 +1317,7 @@ export default function HomeScreen() {
   }, [introKey]);
 
   useEffect(() => {
-    if (!introReady || !introducedRef.current || !homeFocused || tourActive || editingWidgets) return undefined;
+    if (!introReady || !introducedRef.current || !homeFocused || tourActive || editingWidgets || calm) return undefined;
     if (stageEvents?.length || progressEvents?.length || widgetOffer.length) return undefined;
     const shown = shownBoardLayout.filter(l => !l.hidden).map(l => l.key);
     const persist = (set) => {
@@ -1337,7 +1350,7 @@ export default function HomeScreen() {
       });
     }, 1400);
     return () => clearTimeout(timer);
-  }, [introReady, homeFocused, tourActive, editingWidgets, stageEvents, progressEvents, widgetOffer.length, shownBoardLayout, introKey, startLesson, goalWidgets]);
+  }, [introReady, homeFocused, tourActive, editingWidgets, calm, stageEvents, progressEvents, widgetOffer.length, shownBoardLayout, introKey, startLesson, goalWidgets]);
 
   const closeWidgetOffer = (add) => {
     const keys = widgetOffer.map(w => w.key);
@@ -1375,6 +1388,7 @@ export default function HomeScreen() {
     if (snap.focusPresets)  setFocusPresets(snap.focusPresets);
     if (snap.activeBuilds) setActiveBuilds(snap.activeBuilds);
     if (snap.checkInDue)   setCheckInDue(snap.checkInDue);
+    if (snap.todayPlan)    setTodayPlan(snap.todayPlan);
     setDeskLoaded(true);
   };
 
@@ -1396,6 +1410,7 @@ export default function HomeScreen() {
         ideasRes, settingsRes, assignmentsRes,
         eventsRes, todayTasksRes, agendaRes,
         buildsRes, lifeAreaRowsRes, dueRows,
+        planRowsRes, planTasksRes,
       ] = await Promise.all([
         supabase.from('daily_focus').select('focus_text').eq('user_id', uid).eq('focus_date', todayStr).maybeSingle(),
         supabase.from('tasks').select('id, title').eq('user_id', uid).eq('completed', false).order('priority').limit(3),
@@ -1425,6 +1440,10 @@ export default function HomeScreen() {
         // Project tasks and project finish dates due today or already late
         // (deadlinesService.js). Today's plain tasks come in above.
         getDueItems(uid, '2000-01-01', todayStr).catch(() => []),
+        // Calm view's plan bar and Habits / Study cards: all of today's
+        // Planner items and tasks due today, done ones included.
+        supabase.from('agenda_instances').select('id, completed, skipped, cadence, area').eq('user_id', uid).eq('date', todayStr),
+        supabase.from('tasks').select('id, completed').eq('user_id', uid).eq('due_date', todayStr),
       ]);
 
       // Focus
@@ -1503,6 +1522,11 @@ export default function HomeScreen() {
         })),
       ].sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
       setTodayActivities(activities);
+      const plan = [
+        ...(planRowsRes.data || []).map(p => ({ id: p.id, src: 'planner', completed: !!p.completed, skipped: !!p.skipped, cadence: p.cadence, area: p.area })),
+        ...(planTasksRes.data || []).map(tk => ({ id: tk.id, src: 'task', completed: !!tk.completed, skipped: false })),
+      ];
+      setTodayPlan(plan);
       setDeskLoaded(true);
 
       // Active Builds
@@ -1578,6 +1602,7 @@ export default function HomeScreen() {
         focusPresets: nextFocusPresets ?? focusPresets,
         activeBuilds: buildsRes.data || [],
         checkInDue: dueAreas,
+        todayPlan: plan,
       });
     } catch (e) { console.warn('HomeScreen loadAll', e); }
   };
@@ -1892,6 +1917,7 @@ export default function HomeScreen() {
     closeActivitySheet();
     const rawId = item.raw.id;
     dismissActivity(item.id);
+    markPlan('task', rawId, { completed: true });
     try { await supabase.from('tasks').update({ completed: true, completed_at: new Date().toISOString() }).eq('id', rawId); recordAction('task_done', rawId); }
     catch (e) { console.warn('HomeScreen: complete activity task', e.message); }
   };
@@ -1900,6 +1926,7 @@ export default function HomeScreen() {
     closeActivitySheet();
     const rawId = item.raw.id;
     dismissActivity(item.id);
+    setTodayPlan(prev => prev.filter(p => !(p.src === 'task' && String(p.id) === String(rawId))));
     try { await supabase.from('tasks').delete().eq('id', rawId); }
     catch (e) { console.warn('HomeScreen: delete activity task', e.message); }
   };
@@ -1914,6 +1941,7 @@ export default function HomeScreen() {
   const completeActivityRoutine = async (item) => {
     closeActivitySheet();
     dismissActivity(item.id);
+    markPlan('planner', item.raw.id, { completed: true });
     try { await completeInstance(item.raw.id, true); }
     catch (e) { console.warn('HomeScreen: complete routine', e.message); }
   };
@@ -1921,6 +1949,7 @@ export default function HomeScreen() {
   const skipActivityRoutine = async (item) => {
     closeActivitySheet();
     dismissActivity(item.id);
+    markPlan('planner', item.raw.id, { skipped: true });
     try { await skipInstance(item.raw.id); }
     catch (e) { console.warn('HomeScreen: skip routine', e.message); }
   };
@@ -1993,12 +2022,42 @@ export default function HomeScreen() {
     // visible, unlike the two edit modals further down which already wrap
     // their own inputs this way.
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg0 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      {bgMode === 'player' && <PlayerMatchBackground background={playerBackground} />}
+      {bgMode === 'player' && !calm && <PlayerMatchBackground background={playerBackground} />}
       <ScrollView automaticallyAdjustKeyboardInsets
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.teal} />}
         contentContainerStyle={{ paddingBottom: FAB_CLEARANCE }}
       >
+        {/* ── Calm view: one next step, today's focus, two cards for this
+             account type. "Show all cards" switches back. ── */}
+        {calm && (
+          <CalmHome
+            personaKey={activeType}
+            userId={userId}
+            profileId={activeProfile?.id}
+            weekday={today.toLocaleDateString('en-US', { weekday: 'long' })}
+            streakDays={streakDays}
+            activities={todayList()} desk={todos}
+            focus={todayFocus}
+            plan={todayPlan}
+            checkInDue={checkInDue} lifeAreaStats={lifeAreaStats} activeBuilds={activeBuilds}
+            canOpen={isScreenVisible}
+            onOpenPick={(ref, kind) => (kind === 'desk' ? setSelectedDeskItem(ref) : setSelectedActivity(ref))}
+            onDonePick={(ref) => (ref._src === 'task' ? completeActivityTask(ref) : completeActivityRoutine(ref))}
+            onOpenGoal={() => {
+              const step = activeObjective?.nextStep;
+              if (step?.screen) goToScreen(navigation, step.screen, step.params);
+              else navigation.navigate('Compass');
+            }}
+            onEditFocus={() => { setFocusDraft(todayFocus || ''); setEditFocus(true); }}
+            onOpenDay={(date) => goToLibraryScreen('PlannerScreen', { date })}
+            onOpenScreen={(screen, params) => (screen === 'Library' ? navigation.navigate('Library') : goToLibraryScreen(screen, params))}
+            onOpenProfile={() => navigation.navigate('Profile')}
+            onShowAll={() => setHomeView('full')}
+            headerStyle={String(fabPosition || '').startsWith('top') ? { ...topFabClearance(fabPosition), minHeight: undefined } : null}
+          />
+        )}
+        {!calm && (<>
         {/* ── Date + streak + widget edit toggle ── */}
         <View style={[{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: s.lg, paddingTop: s.md, paddingBottom: s.sm }, topFabClearance(fabPosition)]}>
           {/* Over a scenic background these sit on the landscape itself (grey on
@@ -2019,6 +2078,14 @@ export default function HomeScreen() {
                   {showEmojis ? '🔥 ' : ''}{streakDays} day streak{streakState === 'rest-day' ? ' · rest day' : ''}
                 </Text>
               </View>
+            )}
+            {!editingWidgets && (
+              <TouchableOpacity onPress={() => setHomeView('calm')} hitSlop={10}
+                accessibilityRole="button" accessibilityLabel="Calm view: one next step and two cards"
+                style={[{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: s.sm, paddingVertical: 3 }, bgMode === 'player' && sceneChip]}>
+                <Ionicons name="leaf-outline" size={12} color={c.text3} />
+                <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: c.text3 }}>Calm</Text>
+              </TouchableOpacity>
             )}
             {canEditWidgets && (
             <TouchableOpacity onPress={() => (editingWidgets ? exitWidgetEdit() : startWidgetEdit())}
@@ -2489,6 +2556,7 @@ export default function HomeScreen() {
           <TodayReview userId={userId} navigation={navigation} ui={ui}
             skipTakeaway={shownBoardLayout.some(l => l.key === 'wisdom' && !l.hidden)} />
         )}
+        </>)}
       </ScrollView>
 
       {/* ── "New widget available" ──
@@ -2498,7 +2566,7 @@ export default function HomeScreen() {
       {/* Only on Home itself, and not over a walkthrough: Home stays mounted
           behind other screens, and this used to pop up over the Academy
           mid-guide when a goal elsewhere opened a widget. */}
-      <Modal visible={widgetOffer.length > 0 && homeFocused && !tourActive} transparent animationType="fade" onRequestClose={() => closeWidgetOffer(false)}>
+      <Modal visible={widgetOffer.length > 0 && homeFocused && !tourActive && !calm} transparent animationType="fade" onRequestClose={() => closeWidgetOffer(false)}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center', padding: s.xl }}>
           <View style={{ width: '100%', maxWidth: 380, backgroundColor: c.bg1, borderRadius: 20, padding: s.xl, borderWidth: ui.borderWidth, borderColor: c.border }}>
             <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: c.teal + '22', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: s.md }}>

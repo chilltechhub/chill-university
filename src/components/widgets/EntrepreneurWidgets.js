@@ -23,7 +23,7 @@ import WidgetCard, { StatRow, Bar } from './WidgetCard';
 
 // One fetch of the user's vault documents serves all three widgets below;
 // each grabs what it needs from the same rows rather than querying again.
-function useVaultDocs(userId, profileId) {
+export function useVaultDocs(userId, profileId) {
   const [docs, setDocs] = useState(null);
   useFocusEffect(useCallback(() => {
     let alive = true;
