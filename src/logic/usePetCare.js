@@ -65,8 +65,10 @@ async function load(owner, hasPet) {
   const saved = await cacheRead(cacheKey(owner));
   if (stale()) return;
   if (saved && !store.ready) {
+    // Saved under the old 32-hour bowl (before 2026-10-15): no more than a day.
+    const fullUntil = saved.fullUntil == null ? null : Math.min(saved.fullUntil, Date.now() + FULL_MS);
     setStore({
-      fullUntil: saved.fullUntil ?? null, spent: saved.spent || 0, clockOn: saved.fullUntil != null,
+      fullUntil, spent: saved.spent || 0, clockOn: fullUntil != null,
       bond: saved.bond || 0, nickname: saved.nickname || null, giftAt: saved.giftAt ?? null,
     });
   }
