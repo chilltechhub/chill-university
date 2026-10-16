@@ -13,7 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import { supabase } from '../../api/profileScopedClient';
-import { cacheRead, cacheWrite, isOnline } from '../../api/offlineCache';
+import { cacheRead, cacheWrite, fetchFailed, isOnline } from '../../api/offlineCache';
 import { FONTS } from '../../theme';
 import { useUIPrefs } from '../../../context/UIPrefsContext';
 import { useBlueprint, CornerTicks, Stamp, RulerBar } from './blueprint';
@@ -328,10 +328,10 @@ function NewBuildModal({ visible, userId, bp, buildColors, onCreated, onClose, i
             </ScrollView>
 
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
-              <TouchableOpacity onPress={() => { reset(); onClose(); }} style={s.cancelBtn}>
+              <TouchableOpacity onPress={() => { reset(); onClose(); }} style={s.cancelBtn} accessibilityRole="button">
                 <Text style={{ color: bp.ink2, fontWeight: '700', fontFamily: FONTS.mono, fontSize: 12 }}>CANCEL</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={start} disabled={!title.trim() || saving}
+              <TouchableOpacity onPress={start} disabled={!title.trim() || saving} accessibilityRole="button" accessibilityLabel="Start building"
                 style={[s.startBtn, { backgroundColor: color, opacity: (!title.trim() || saving) ? 0.5 : 1 }]}>
                 {saving ? <ActivityIndicator color={bp.onStamp} size="small" />
                   : <Text style={{ color: bp.onStamp, fontWeight: '800', fontFamily: FONTS.mono, fontSize: 13, letterSpacing: 0.5 }}>{showEmojis ? '🏗️ ' : ''}START BUILDING</Text>}
@@ -575,17 +575,20 @@ export default function ProjectsScreen() {
 
       if (!(await isOnline())) { setLoading(false); return; }
 
-      const { data } = await supabase
+      const res = await supabase
         .from('projects').select('*').eq('user_id', uid).is('deleted_at', null)
         .order('updated_at', { ascending: false });
-      const list = data || [];
+      // Never reached the server: keep the cached list, not "No projects yet".
+      if (fetchFailed(res)) throw res.error;
+      const list = res.data || [];
       let withTasks = [];
       if (list.length) {
         const ids = list.map(p => p.id);
-        const { data: taskRows } = await supabase
+        const taskRes = await supabase
           .from('project_tasks').select('project_id, completed').in('project_id', ids);
+        if (fetchFailed(taskRes)) throw taskRes.error;
         const byProject = {};
-        (taskRows || []).forEach(tk => {
+        (taskRes.data || []).forEach(tk => {
           if (!byProject[tk.project_id]) byProject[tk.project_id] = { total: 0, done: 0 };
           byProject[tk.project_id].total += 1;
           if (tk.completed) byProject[tk.project_id].done += 1;

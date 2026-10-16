@@ -97,3 +97,19 @@ export function dobFromParts(month, day, year) {
   if (new Date(yyyy, mm - 1, 1) > now || (dayGiven && new Date(yyyy, mm - 1, dd) > now)) return null;
   return `${yyyy}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
 }
+
+// Why dobFromParts said no, in words. Every rejection used to read "Enter
+// your birth month and year", including Feb 30 and month 13 with both
+// fields filled in. Same rules as above; null when the parts are fine.
+export function dobProblem(month, day, year) {
+  if (dobFromParts(month, day, year)) return null;
+  const mm = parseInt(month, 10);
+  const yyyy = parseInt(year, 10);
+  const now = new Date();
+  if (!String(month ?? '').trim() || !String(year ?? '').trim()) return 'Enter your birth **month** and **year**. The day is optional.';
+  if (!(mm >= 1 && mm <= 12)) return 'The **month** is a number from 1 to 12.';
+  if (!/^\d{4}$/.test(String(year).trim())) return 'Enter the **year** as four digits, like 2008.';
+  if (!(yyyy > 1900) || now.getFullYear() - yyyy >= 120) return 'Check the **year**. That would make you over 120.';
+  if (new Date(yyyy, mm - 1, 1) > now) return "That date hasn't happened yet. Check the **year**.";
+  return `${new Date(yyyy, mm - 1, 1).toLocaleString('en-US', { month: 'long' })} ${yyyy} doesn't have that **day**. Fix it or leave it blank.`;
+}

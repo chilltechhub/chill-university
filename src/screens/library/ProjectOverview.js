@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { supabase } from '../../api/profileScopedClient';
 import { FONTS } from '../../theme';
-import { useBlueprint, BlueprintGrid, RulerBar } from './blueprint';
+import { useBlueprint, BlueprintGrid, RulerBar, ProjectMissing } from './blueprint';
 import { useAccess } from '../../../context/AccessContext';
 import { AREAS } from '../../api/plannerService';
 import { areasForProject, linkProjectToArea, unlinkAreaRow } from '../../api/areaLinks';
@@ -102,7 +102,7 @@ export default function ProjectOverview() {
     if (data) navigation.push('ProjectDetail', { project: data });
   };
 
-  if (!project) return null;
+  if (!project) return <ProjectMissing navigation={navigation} />;
   const color = project.color || bp.accent;
   const loading = !info;
   const tasks = info?.tasks || [];

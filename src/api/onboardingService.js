@@ -45,8 +45,11 @@ export async function saveOnboardingFields(userId, partial) {
   const payload = { id: userId };
   const unknown = [];
   for (const [key, value] of Object.entries(partial)) {
-    if (PROFILE_COLUMNS.has(key)) payload[key] = value;
-    else unknown.push(key);
+    if (!PROFILE_COLUMNS.has(key)) { unknown.push(key); continue; }
+    // Names were saved as typed, so "  Sam  " showed with its spaces on Home.
+    payload[key] = (key === 'display_name' || key === 'traveler_name') && typeof value === 'string'
+      ? (value.trim() || null)
+      : value;
   }
   if (unknown.length) {
     console.warn('onboarding: not profiles columns, skipped —', unknown.join(', '));

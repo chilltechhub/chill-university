@@ -28,6 +28,7 @@ const ROOT_SCREENS = new Set([
   'ChildProgress', 'Organization', 'CohortRoster', 'Help', 'Compass', 'Stats', 'Plus', 'WorkMode',
   'MakeItYours',
   'MyFeatures',
+  'Notifications', 'AllProfiles',
 ]);
 
 // The Classes stack, two levels down (Training -> ClassesStack -> screen).

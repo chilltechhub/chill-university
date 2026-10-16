@@ -66,6 +66,9 @@ export default function ModuleScreen() {
     return (
       <View style={[st.container, { alignItems: 'center', justifyContent: 'center', padding: s.xl }]}>
         <Text style={st.bodyText}>That module could not be found.</Text>
+        <TouchableOpacity accessibilityRole="button" onPress={() => navigation.goBack()} style={{ marginTop: s.md }}>
+          <Text style={{ color: c.teal, fontWeight: t.bold }}>Go back</Text>
+        </TouchableOpacity>
       </View>
     );
   }

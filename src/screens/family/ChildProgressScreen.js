@@ -18,7 +18,18 @@ export default function ChildProgressScreen() {
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   const child = route.params?.child;
 
-  if (!child) return null;
+  // Only FamilyScreen opens this, with a child. Anything else (an old link)
+  // got a blank screen with no way out.
+  if (!child) {
+    return (
+      <View style={{ flex: 1, backgroundColor: c.bg0, alignItems: 'center', justifyContent: 'center', padding: s.lg, gap: s.md }}>
+        <Text style={{ color: c.text2, fontSize: t.md, textAlign: 'center' }}>No one picked to show.</Text>
+        <TouchableOpacity accessibilityRole="button" onPress={() => navigation.navigate('Family')}>
+          <Text style={{ color: c.teal, fontWeight: t.bold }}>Go to Family</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   const rank = getRank(child.points || 0);
   const { progress } = getTierProgress(child.points || 0);

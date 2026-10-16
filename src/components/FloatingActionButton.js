@@ -58,6 +58,7 @@ import { showQuickToast } from './QuickToast';
 import LoginScreen from '../screens/LoginScreen';
 import { todayStr } from '../logic/dateUtils';
 import { openTarget } from '../logic/openTarget';
+import { parseTags } from '../logic/tags';
 
 // Root-stack screens that replace MainTabs entirely (no bottom tab bar showing).
 const NO_TABBAR_ROUTES = new Set(['Profile', 'Settings', 'MakeItYours', 'Play', 'PlayGame', 'Leaderboard']);
@@ -108,7 +109,7 @@ function QuickNoteModal({ visible, userId, onSaved, onClose, c, t, s, r }) {
     if (!body.trim() || !userId) return;
     setSaving(true);
     try {
-      const tagList = tags.split(',').map(tg => tg.trim().toLowerCase()).filter(Boolean);
+      const tagList = parseTags(tags);
       const saved = await addCapture(userId, {
         type: 'note',
         title: body.length > 80 ? body.slice(0, 77) + '...' : body,

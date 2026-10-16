@@ -672,18 +672,26 @@ function AgendaRow({ instance, onUpdate, onOpen, c, t, s, r }) {
     ? buildProfileLookup(profiles)[instance.profile_id]
     : null;
   const [saving,   setSaving]   = useState(false);
+  // A ref, not just the state: two quick taps both land before `saving`
+  // re-renders. And the circle is never `disabled` while saving, because a
+  // tap on a disabled touchable falls through to the row and opened the
+  // detail sheet on the item as it was before the first tap.
+  const busy     = useRef(false);
   const area     = AREAS[instance.area] || AREAS.physical;
   const overdue  = isOverdue(instance);
   const done     = instance.completed;
   const skipped  = instance.skipped;
 
   const handle = async (fn) => {
+    if (busy.current) return;
+    busy.current = true;
     setSaving(true);
     try { const updated = await fn(instance.id); if (onUpdate) onUpdate(updated); }
     catch (e) {
       console.warn('AgendaRow', e);
       Alert.alert("Couldn't update that", 'Something went wrong — try again.');
     }
+    busy.current = false;
     setSaving(false);
   };
 
@@ -701,8 +709,8 @@ function AgendaRow({ instance, onUpdate, onOpen, c, t, s, r }) {
         accessibilityRole="button" accessibilityLabel={`${instance.title}. Show details`}>
         {/* Check circle */}
         <TouchableOpacity
-          onPress={() => { if (!done) successHaptic(); handle(() => completeInstance(instance.id, !done)); }}
-          disabled={saving || skipped}
+          onPress={() => { if (busy.current) return; if (!done) successHaptic(); handle(() => completeInstance(instance.id, !done)); }}
+          disabled={skipped}
           accessibilityRole="checkbox" accessibilityState={{ checked: !!done }}
           accessibilityLabel={done ? `Mark ${instance.title} not done` : `Mark ${instance.title} done`}
           hitSlop={8}

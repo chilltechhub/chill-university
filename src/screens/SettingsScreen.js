@@ -39,7 +39,7 @@ import { MAX_STAGE } from '../data/experienceStages';
 import { PRIVACY_POLICY_URL, TERMS_URL, SUPPORT_EMAIL } from '../config/legal';
 import { shareMyDataExport } from '../api/dataExport';
 import { isMinorRequiringConsent } from '../logic/ageOfConsent';
-import { dobFromParts } from '../logic/dateUtils';
+import { dobFromParts, dobProblem } from '../logic/dateUtils';
 import { confirmAsync } from '../logic/confirm';
 import { signOutAndClear, clearLocalUserData } from '../logic/localUserData';
 import TwoFactorSheet from '../components/TwoFactorSheet';
@@ -787,7 +787,7 @@ export default function SettingsScreen() {
   const saveBirthDate = async ({ mm, dd, yyyy }) => {
     // Month + year required, day optional — same rule as onboarding.
     const dateOfBirth = dobFromParts(mm, dd, yyyy);
-    if (!dateOfBirth) { Alert.alert('Check your birth date', 'Enter your birth month and year. The day is optional.'); return; }
+    if (!dateOfBirth) { Alert.alert('Check your birth date', dobProblem(mm, dd, yyyy).replace(/\*\*/g, '')); return; }
     const isMinor = isMinorRequiringConsent(dateOfBirth, liveProfile?.country_code || 'US');
 
     setSavingDob(true);

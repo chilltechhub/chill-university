@@ -18,7 +18,7 @@ const TIPS = [
   { icon: 'key-outline',             color: '#FFB800', title: 'Password Manager', body: 'Use Bitwarden (free) or 1Password to store and generate strong, unique passwords for every account.', link: 'https://bitwarden.com', linkLabel: 'Get Bitwarden (free)' },
   { icon: 'phone-portrait-outline',  color: '#00F0FF', title: '2-Factor Authentication', body: 'Enable 2FA on every account that offers it. Use an authenticator app (Google Authenticator, Authy) instead of SMS when possible.' },
   { icon: 'wifi-outline',            color: '#7C4DFF', title: 'Public WiFi Safety', body: 'Never do banking or login to important accounts on public WiFi without a VPN. Your traffic can be monitored.' },
-  { icon: 'update-outline',          color: '#00E676', title: 'Keep Everything Updated', body: 'Software updates patch security vulnerabilities. Enable auto-updates on your phone, computer, and router.' },
+  { icon: 'sync-outline',            color: '#00E676', title: 'Keep Everything Updated', body: 'Software updates patch security vulnerabilities. Enable auto-updates on your phone, computer, and router.' },
   { icon: 'alert-circle-outline',    color: '#FF4081', title: 'Phishing Awareness', body: 'Never click suspicious links in emails or texts. Hover links to see where they go. Legit companies never ask for passwords via email.' },
   { icon: 'cloud-outline',           color: '#64b5f6', title: 'Backup Your Data', body: 'Keep encrypted backups of important files. Use 3-2-1 rule: 3 copies, 2 formats, 1 offsite.' },
 ];

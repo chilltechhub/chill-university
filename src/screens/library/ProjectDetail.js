@@ -6,11 +6,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import * as Clipboard from 'expo-clipboard';
 import { supabase } from '../../api/profileScopedClient';
-import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../api/offlineCache';
+import { cacheRead, cacheWrite, fetchFailed, isOnline, offlineWrite } from '../../api/offlineCache';
 import { FONTS } from '../../theme';
 import { projectToMarkdown } from '../../logic/exportUtils';
 import LinkifiedText from '../../components/LinkifiedText';
-import { useBlueprint, BlueprintGrid, CornerTicks, Stamp, RulerBar } from './blueprint';
+import { useBlueprint, BlueprintGrid, CornerTicks, Stamp, RulerBar, ProjectMissing } from './blueprint';
 import { getCoreForProject, plantProjectAsIdea } from '../../api/gardenService';
 import ReminderComposer from '../../components/ReminderComposer';
 import { shareText, projectText } from '../../logic/shareOut';
@@ -209,6 +209,8 @@ export default function ProjectDetailScreen() {
     // id, title and next action only), which left the finish date and the
     // description blank when a project was opened from Home.
     const [auth, tasks, journal, research, milestones, fresh] = await Promise.all([supabase.auth.getUser(), supabase.from('project_tasks').select('*').eq('project_id', project.id).order('created_at', { ascending: false }), supabase.from('project_journal').select('*').eq('project_id', project.id).order('created_at', { ascending: false }), supabase.from('project_research').select('*').eq('project_id', project.id).order('created_at', { ascending: false }), supabase.from('project_milestones').select('*').eq('project_id', project.id).order('created_at', { ascending: false }), supabase.from('projects').select('*').eq('id', project.id).maybeSingle()]);
+    // Never reached the server: the cached copy stays on screen and in the cache.
+    if (fetchFailed(tasks, journal, research, milestones, fresh)) { setLoading(false); return; }
     if (fresh?.data) setProject(p => ({ ...p, ...fresh.data }));
     // Vault notes linked to this project (from the note's "Linked" section).
     notesLinkedTo('project', project.id).then(setVaultNotes);
@@ -221,7 +223,7 @@ export default function ProjectDetailScreen() {
     if (uid) { try { setGardenCore(await getCoreForProject(uid, project.id)); } catch (e) { console.warn('garden link lookup error', e); } }
   }, [project?.id]);
   useEffect(() => { load(); }, [load]); useFocusEffect(useCallback(() => { load(); }, [load]));
-  if (!project) return null; const color = project.color || bp.accent; const filtered = filter === 'all' ? objects : objects.filter(x => x.kind === filter); const openTasks = rawData.tasks.filter(x => !x.completed).sort(planOrder).map(x => ({ ...x, kind: 'tasks' })); const next = openTasks.slice(0, 3); const nextIds = new Set(next.map(x => x.id)); /* tasks already under Next on the bench show their due date there; Deadlines lists the rest, not the same ones again */ const deadlines = openTasks.filter(x => x.due_date && !nextIds.has(x.id)).sort((a, b) => a.due_date.localeCompare(b.due_date)).slice(0, 4); const upcoming = sessions.filter(x => !x.completed).slice(0, 4); const dueLate = !!project.due_date && project.status !== 'completed' && project.due_date < todayStr(); const questions = objects.filter(x => x.kind === 'questions').slice(0, 3); const recent = objects.filter(x => x.kind !== 'tasks').slice(0, 4); const toggle = async x => { await supabase.from('project_tasks').update({ completed: !x.completed, completed_at: !x.completed ? new Date().toISOString() : null }).eq('id', x.id); if (!x.completed) recordAction('project_step', x.id); load(); };
+  if (!project) return <ProjectMissing navigation={navigation} />; const color = project.color || bp.accent; const filtered = filter === 'all' ? objects : objects.filter(x => x.kind === filter); const openTasks = rawData.tasks.filter(x => !x.completed).sort(planOrder).map(x => ({ ...x, kind: 'tasks' })); const next = openTasks.slice(0, 3); const nextIds = new Set(next.map(x => x.id)); /* tasks already under Next on the bench show their due date there; Deadlines lists the rest, not the same ones again */ const deadlines = openTasks.filter(x => x.due_date && !nextIds.has(x.id)).sort((a, b) => a.due_date.localeCompare(b.due_date)).slice(0, 4); const upcoming = sessions.filter(x => !x.completed).slice(0, 4); const dueLate = !!project.due_date && project.status !== 'completed' && project.due_date < todayStr(); const questions = objects.filter(x => x.kind === 'questions').slice(0, 3); const recent = objects.filter(x => x.kind !== 'tasks').slice(0, 4); const toggle = async x => { await supabase.from('project_tasks').update({ completed: !x.completed, completed_at: !x.completed ? new Date().toISOString() : null }).eq('id', x.id); if (!x.completed) recordAction('project_step', x.id); load(); };
   const totalTasks = rawData.tasks.length; const doneTasks = rawData.tasks.filter(t => t.completed).length; const { pct, allTasksDone } = projectProgress({ total: totalTasks, done: doneTasks, status: project.status, nextAction: project.next_action });
   // Share sends readable text through the phone's share sheet; a long press
   // still copies the full Markdown export.
