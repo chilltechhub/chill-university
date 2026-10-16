@@ -8,6 +8,9 @@
 //
 // There's no separate skin/hair slot: 32rogues outfits are full character
 // sprites, so the outfit choice fully determines how the character looks.
+//
+// `decor` also lives here: the player's own layout per scene ({ [sceneId]:
+// layout }, see stageDecor.js), so it syncs with the rest of the loadout.
 
 import { useState, useCallback, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
@@ -98,8 +101,17 @@ export default function useCharacterLoadout(baseStats) {
   const safePet = petFor(loadout.petId, stats);
   const safeBackground = findUnlocked(BACKGROUNDS, loadout.backgroundId, stats);
 
+  // Save (or with null, forget) the layout of one scene.
+  const saveDecor = useCallback((sceneId, layout) => {
+    const decor = { ...(loadout.decor || {}) };
+    if (layout) decor[sceneId] = layout; else delete decor[sceneId];
+    persist({ ...loadout, decor });
+  }, [loadout, persist]);
+
   return {
     ready,
+    decor: loadout.decor?.[safeBackground.id] || null,
+    saveDecor,
     outfit: safeOutfit,
     accessory: safeAccessory,
     pet: safePet,

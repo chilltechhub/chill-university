@@ -27,6 +27,13 @@
 //     free-game-assets.itch.io): Prep Student / Uniform Cadet / Bookworm
 //     (that pack's Girl_1/2/3) — craftpix.net/file-licenses/, same terms
 //     as every other CraftPix pack here.
+//   - "Free Townspeople Cyberpunk" (CraftPix, via free-game-assets.itch.io):
+//     the ten townspeople below that have a walk (7 and 8 only sit, so they
+//     idle in scenes instead — sceneArt.js NPCS). Same terms.
+//   - "Villagers Sprite Sheets Free Pixel Art Pack" (CraftPix, via
+//     free-game-assets.itch.io): the six villagers. Same terms.
+//   All sixteen face right; every cell of every strip was checked for
+//   content the column-scan way described below.
 //
 // `frames` below is worth being paranoid about: a wrong (too-low) count
 // doesn't just skip trailing frames — since AnimatedSprite.js sizes the
@@ -123,5 +130,69 @@ export const RIGS = {
   bookworm: {
     idle: { source: require('../../assets/free-schoolgirls-anime-character-pixel-sprite-pack/Girl_3/Idle.png'), frameWidth: 128, frameHeight: 128, frames: 6 },
     walk: { source: require('../../assets/free-schoolgirls-anime-character-pixel-sprite-pack/Girl_3/Walk.png'), frameWidth: 128, frameHeight: 128, frames: 12 },
+  },
+  nightowl: {
+    idle: { source: require('../../assets/townsppl/1/Idle.png'), frameWidth: 48, frameHeight: 48, frames: 6 },
+    walk: { source: require('../../assets/townsppl/1/Walk.png'), frameWidth: 48, frameHeight: 48, frames: 6 },
+  },
+  drifter: {
+    idle: { source: require('../../assets/townsppl/2/Idle.png'), frameWidth: 48, frameHeight: 48, frames: 4 },
+    walk: { source: require('../../assets/townsppl/2/Walk.png'), frameWidth: 48, frameHeight: 48, frames: 6 },
+  },
+  artist: {
+    idle: { source: require('../../assets/townsppl/3/Idle.png'), frameWidth: 48, frameHeight: 48, frames: 4 },
+    walk: { source: require('../../assets/townsppl/3/Walk.png'), frameWidth: 48, frameHeight: 48, frames: 6 },
+  },
+  shopper: {
+    idle: { source: require('../../assets/townsppl/4/Idle.png'), frameWidth: 48, frameHeight: 48, frames: 4 },
+    walk: { source: require('../../assets/townsppl/4/Walk.png'), frameWidth: 48, frameHeight: 48, frames: 6 },
+  },
+  busker: {
+    idle: { source: require('../../assets/townsppl/5/Idle.png'), frameWidth: 48, frameHeight: 48, frames: 4 },
+    walk: { source: require('../../assets/townsppl/5/Walk.png'), frameWidth: 48, frameHeight: 48, frames: 6 },
+  },
+  courier: {
+    idle: { source: require('../../assets/townsppl/6/Idle.png'), frameWidth: 48, frameHeight: 48, frames: 4 },
+    walk: { source: require('../../assets/townsppl/6/Walk.png'), frameWidth: 48, frameHeight: 48, frames: 6 },
+  },
+  catears: {
+    idle: { source: require('../../assets/townsppl/9/Idle.png'), frameWidth: 48, frameHeight: 48, frames: 4 },
+    walk: { source: require('../../assets/townsppl/9/Walk.png'), frameWidth: 48, frameHeight: 48, frames: 6 },
+  },
+  wheels: {
+    idle: { source: require('../../assets/townsppl/10/Idle.png'), frameWidth: 48, frameHeight: 48, frames: 4 },
+    walk: { source: require('../../assets/townsppl/10/Walk.png'), frameWidth: 48, frameHeight: 48, frames: 4 },
+  },
+  redcap: {
+    idle: { source: require('../../assets/townsppl/11/Idle.png'), frameWidth: 48, frameHeight: 48, frames: 4 },
+    walk: { source: require('../../assets/townsppl/11/Walk.png'), frameWidth: 48, frameHeight: 48, frames: 6 },
+  },
+  jogger: {
+    idle: { source: require('../../assets/townsppl/12/Idle.png'), frameWidth: 48, frameHeight: 48, frames: 4 },
+    walk: { source: require('../../assets/townsppl/12/Walk.png'), frameWidth: 48, frameHeight: 48, frames: 6 },
+  },
+  grandpa: {
+    idle: { source: require('../../assets/villagers/1 Old_man/Old_man_idle.png'), frameWidth: 48, frameHeight: 48, frames: 4 },
+    walk: { source: require('../../assets/villagers/1 Old_man/Old_man_walk.png'), frameWidth: 48, frameHeight: 48, frames: 6 },
+  },
+  grandma: {
+    idle: { source: require('../../assets/villagers/2 Old_woman/Old_woman_idle.png'), frameWidth: 48, frameHeight: 48, frames: 4 },
+    walk: { source: require('../../assets/villagers/2 Old_woman/Old_woman_walk.png'), frameWidth: 48, frameHeight: 48, frames: 6 },
+  },
+  villager: {
+    idle: { source: require('../../assets/villagers/3 Man/Man_idle.png'), frameWidth: 48, frameHeight: 48, frames: 4 },
+    walk: { source: require('../../assets/villagers/3 Man/Man_walk.png'), frameWidth: 48, frameHeight: 48, frames: 6 },
+  },
+  villagewoman: {
+    idle: { source: require('../../assets/villagers/4 Woman/Woman_idle.png'), frameWidth: 48, frameHeight: 48, frames: 4 },
+    walk: { source: require('../../assets/villagers/4 Woman/Woman_walk.png'), frameWidth: 48, frameHeight: 48, frames: 6 },
+  },
+  villageboy: {
+    idle: { source: require('../../assets/villagers/5 Boy/Boy_idle.png'), frameWidth: 48, frameHeight: 48, frames: 4 },
+    walk: { source: require('../../assets/villagers/5 Boy/Boy_walk.png'), frameWidth: 48, frameHeight: 48, frames: 6 },
+  },
+  villagegirl: {
+    idle: { source: require('../../assets/villagers/6 Girl/Girl_idle.png'), frameWidth: 48, frameHeight: 48, frames: 4 },
+    walk: { source: require('../../assets/villagers/6 Girl/Girl_walk.png'), frameWidth: 48, frameHeight: 48, frames: 6 },
   },
 };

@@ -74,6 +74,10 @@
 // either way reads fine — left at the default (facing right) rather than
 // guessing a `false` with nothing but a symmetric bob to judge it from.
 //
+// The sixteen CraftPix townspeople and villagers (added 2026-10-15) all face
+// right in every walk frame, read zoomed in; no flags needed. The six
+// villagers are everyday people, so they join the starter tier.
+//
 // The 9 curated `image` portraits have even less to go on than that —
 // one static hero-select-screen pose each, no walk cycle or even a second
 // frame to compare against, mostly front-on or three-quarter. None had a
@@ -108,30 +112,46 @@ export const OUTFITS = [
   { id: 'prepstudent', name: 'Prep Student', rig: RIGS.prepstudent,          requirement: null },
   { id: 'uniformcadet', name: 'Uniform Cadet', rig: RIGS.uniformcadet,       requirement: null },
   { id: 'bookworm',  name: 'Bookworm',      rig: RIGS.bookworm,              requirement: null },
+  { id: 'villager',  name: 'Villager',      rig: RIGS.villager,              requirement: null },
+  { id: 'villagewoman', name: 'Village Woman', rig: RIGS.villagewoman,     requirement: null },
+  { id: 'villageboy', name: 'Village Boy',  rig: RIGS.villageboy,            requirement: null },
+  { id: 'villagegirl', name: 'Village Girl', rig: RIGS.villagegirl,          requirement: null },
+  { id: 'grandpa',   name: 'Grandpa',       rig: RIGS.grandpa,               requirement: null },
+  { id: 'grandma',   name: 'Grandma',       rig: RIGS.grandma,               requirement: null },
   { id: 'pink',      name: 'Pink Monster',  rig: RIGS.pink,                  requirement: { stat: 'level', value: 2 } },
   { id: 'woodlandwarden', name: 'Woodland Warden', image: require('../../assets/Characters/curated/1.png'), imageAspect: 272/656, requirement: { stat: 'level', value: 2 } },
+  { id: 'courier',   name: 'Courier',       rig: RIGS.courier,               requirement: { stat: 'level', value: 2 } },
   // Faces left: eyes on the left of the stem, trailing leg kicks right (checked 2026-10-15 after the user saw it walk backwards).
   { id: 'mushroom',  name: 'Mushroom',      rig: RIGS.mushroom,              requirement: { stat: 'level', value: 3 }, facingRight: false },
   { id: 'farmer',    name: 'Farmer',        sheet: 'rogues', row: 5, col: 0, requirement: { stat: 'level', value: 4 }, facingRight: false },
   { id: 'tideconjurer', name: 'Tide Conjurer', image: require('../../assets/Characters/curated/50.png'), imageAspect: 336/744, requirement: { stat: 'level', value: 4 } },
+  { id: 'shopper',   name: 'Shopper',       rig: RIGS.shopper,               requirement: { stat: 'level', value: 3 } },
   { id: 'gangster3', name: 'Gangster',      rig: RIGS.gangster3,             requirement: { stat: 'level', value: 5 } },
   { id: 'owlet',     name: 'Owlet Monster', rig: RIGS.owlet,                 requirement: { stat: 'level', value: 6 } },
+  { id: 'busker',    name: 'Busker',        rig: RIGS.busker,                requirement: { stat: 'level', value: 4 } },
   { id: 'shadowblade', name: 'Shadowblade', image: require('../../assets/Characters/curated/120.png'), imageAspect: 240/688, requirement: { stat: 'level', value: 6 } },
+  { id: 'redcap',    name: 'Red Cap',       rig: RIGS.redcap,                requirement: { stat: 'level', value: 6 } },
   { id: 'rogue',     name: 'Rogue',         sheet: 'rogues', row: 0, col: 3, requirement: { stat: 'level', value: 7 }, facingRight: false },
+  { id: 'artist',    name: 'Artist',        rig: RIGS.artist,                requirement: { stat: 'level', value: 7 } },
   { id: 'gangster2', name: 'Wiseguy',       rig: RIGS.gangster2,             requirement: { stat: 'level', value: 8 } },
   { id: 'fangguard', name: 'Fangguard',     image: require('../../assets/Characters/curated/300.png'), imageAspect: 288/632, requirement: { stat: 'level', value: 8 } },
   { id: 'dude',      name: 'Dude Monster',  rig: RIGS.dude,                  requirement: { stat: 'level', value: 9 } },
+  { id: 'jogger',    name: 'Jogger',        rig: RIGS.jogger,                requirement: { stat: 'level', value: 9 } },
   { id: 'bat',       name: 'Bat',           rig: RIGS.bat,                   requirement: { stat: 'level', value: 10 }, facingRight: false },
   { id: 'emberweaver', name: 'Emberweaver', image: require('../../assets/Characters/curated/450.png'), imageAspect: 312/744, requirement: { stat: 'level', value: 10 } },
+  { id: 'wheels',    name: 'Wheelchair Racer', rig: RIGS.wheels,             requirement: { stat: 'level', value: 10 } },
   { id: 'gangster1', name: 'Made Man',      rig: RIGS.gangster1,             requirement: { stat: 'level', value: 11 } },
   { id: 'knight',    name: 'Knight',        sheet: 'rogues', row: 1, col: 0, requirement: { stat: 'level', value: 12 }, facingRight: false },
   { id: 'nightwhisper', name: 'Nightwhisper', image: require('../../assets/Characters/curated/470.png'), imageAspect: 264/600, requirement: { stat: 'level', value: 12 } },
+  { id: 'catears',   name: 'Cat Ears',      rig: RIGS.catears,               requirement: { stat: 'level', value: 12 } },
   { id: 'punk',      name: 'Punk',          rig: RIGS.punk,                  requirement: { stat: 'level', value: 13 } },
   { id: 'soldier',   name: 'Soldier',       rig: RIGS.soldier,               requirement: { stat: 'level', value: 14 }, facingRight: false },
   { id: 'templar',   name: 'Templar',       sheet: 'rogues', row: 2, col: 4, requirement: { stat: 'level', value: 15 } },
+  { id: 'drifter',   name: 'Drifter',       rig: RIGS.drifter,               requirement: { stat: 'level', value: 15 } },
   { id: 'starforgedknight', name: 'Starforged Knight', image: require('../../assets/Characters/curated/510.png'), imageAspect: 312/872, requirement: { stat: 'level', value: 15 } },
   { id: 'orc',       name: 'Orc',           rig: RIGS.orc,                   requirement: { stat: 'level', value: 16 } },
   { id: 'biker',     name: 'Biker',         rig: RIGS.biker,                 requirement: { stat: 'level', value: 17 } },
+  { id: 'nightowl',  name: 'Night Owl',     rig: RIGS.nightowl,              requirement: { stat: 'level', value: 17 } },
   { id: 'warlock',   name: 'Warlock',       sheet: 'rogues', row: 4, col: 5, requirement: { stat: 'level', value: 18 } },
   { id: 'sunfallchampion', name: 'Sunfall Champion', image: require('../../assets/Characters/curated/520.png'), imageAspect: 368/936, requirement: { stat: 'level', value: 19 } },
   { id: 'cyborg',    name: 'Cyborg',        rig: RIGS.cyborg,                requirement: { stat: 'level', value: 20 } },

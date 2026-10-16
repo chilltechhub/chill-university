@@ -39,6 +39,10 @@
 // arrows, these carry no button role: on Training the whole stage sits inside
 // one tappable hero, and a button inside a button is invalid on web.
 //
+// With hunger on, the pet's food bowl sits on the ground (`bowlX`, which the
+// player can move in the Decorate sheet) with food in it while the pet is
+// fed, and empty once it's hungry; tapping it opens the same feeding sheet.
+//
 // Meant to sit as a LandscapeBackground's child: it fills the stage
 // (absoluteFill) and lets taps outside the arrows pass through to
 // whatever's behind it (pointerEvents="box-none").
@@ -53,7 +57,9 @@ import { View, Text, TouchableOpacity, Animated, StyleSheet, Easing } from 'reac
 import { Ionicons } from '@expo/vector-icons';
 import PlayerCharacter from './PlayerCharacter';
 import PetCompanion from './PetCompanion';
+import PixelArt from './PixelArt';
 import useAppActive from '../logic/useAppActive';
+import { DEFAULT_BOWL_X } from '../logic/stageDecor';
 import { MAX_HEARTS } from '../logic/petHunger';
 import { petScale, coinValue, MAX_BOND_LEVEL } from '../logic/petBond';
 
@@ -96,8 +102,11 @@ const CharacterWalker = forwardRef(function CharacterWalker({
   // level (it grows a little each one, and wears a ribbon as a Best buddy),
   // and whether its daily gift is waiting (a gift shows on the hearts pill).
   petName, petLevel = 1, petGiftReady = false,
+  // Where the food bowl sits, as a fraction of the stage width.
+  bowlX = DEFAULT_BOWL_X,
 }, ref) {
   const petSize = Math.round(basePetSize * petScale(petLevel));
+  const bowlSize = Math.round(basePetSize * 0.55); // the bowl's drawn width
   const petLabel = petName || pet?.name;
   const [stageWidth, setStageWidth] = useState(0);
   const [x, setX] = useState(null); // null until the first layout centers it
@@ -406,6 +415,19 @@ const CharacterWalker = forwardRef(function CharacterWalker({
         <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={doJump}
           accessibilityRole="button" accessibilityLabel="Make your character jump" />
       )}
+      {!!pet && petHearts != null && stageWidth > 0 && (
+        <TouchableOpacity
+          style={{ position: 'absolute', left: stageWidth * bowlX - bowlSize / 2, bottom: 6 }}
+          onPress={onPetPress}
+          disabled={!onPetPress}
+          hitSlop={8}
+          activeOpacity={0.8}
+          accessibilityLabel={`${petLabel}'s bowl, ${wantsFood ? 'empty' : 'full'}. Feed`}
+        >
+          <PixelArt art={wantsFood ? 'emptyBowl' : 'bowlBlue'} height={bowlSize * (37 / 43)} />
+        </TouchableOpacity>
+      )}
+
       {x != null && (
         <Animated.View
           pointerEvents="none"
@@ -469,7 +491,7 @@ const CharacterWalker = forwardRef(function CharacterWalker({
           <TouchableOpacity onPress={onPetPress} disabled={!onPetPress} hitSlop={8} activeOpacity={0.8}
             accessibilityLabel={`${petLabel} is ${hungry ? 'hungry' : 'getting hungry'}. Feed`}>
             <View style={[styles.bubble, hungry && styles.bubbleHungry]}>
-              <Ionicons name="nutrition" size={13} color={hungry ? '#c43030' : '#8a6420'} />
+              <PixelArt art="drumstick" height={13} />
             </View>
           </TouchableOpacity>
         </Animated.View>

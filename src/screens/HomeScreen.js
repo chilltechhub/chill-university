@@ -64,6 +64,7 @@ import { recordAction } from '../logic/gamificationService';
 import { getDueItems } from '../api/deadlinesService';
 import { advanceNextAction, suggestNextStep } from '../api/nextActionService';
 import { openTarget } from '../logic/openTarget';
+import SleepyCat from '../components/SleepyCat';
 
 function daysSince(iso) {
   if (!iso) return null;
@@ -2179,7 +2180,7 @@ export default function HomeScreen() {
                       accessibilityRole="button"
                       accessibilityLabel="Nothing planned for today. Open the Planner"
                       style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border, borderStyle: 'dashed' }}>
-                      <Ionicons name="calendar-clear-outline" size={16} color={c.text3} />
+                      <SleepyCat size={36} style={{ marginVertical: -8, marginLeft: -6 }} />
                       <Text style={{ flex: 1, fontSize: t.xs, color: c.text2 }}>Nothing planned for today</Text>
                       <Text style={{ fontSize: t.xs, color: accent.primary, fontWeight: t.bold }}>Plan →</Text>
                     </TouchableOpacity>
