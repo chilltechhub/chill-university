@@ -4,9 +4,10 @@
 //
 // Bond comes from feeding, and only from hearts actually refilled: 1 per
 // heart, 2 per heart if the pet still had one left (fed before it went fully
-// hungry). Hearts only drain 3 a day, so that's also the daily cap — about
-// 6 bond a day for someone who feeds on time, half that if they let it
-// starve first. Bond never goes down.
+// hungry). Hearts drain 4 a day (a full bowl lasts 24 hours), so that's
+// also the daily cap: 6 bond for a daily meal with a heart still left, 4 if
+// it went hungry first, 8 at most for topping it up through the day. Bond
+// never goes down.
 //
 // Each level is a real upgrade (Pokémon GO's buddy levels are the model):
 //   Pal          name your pet
@@ -15,8 +16,9 @@
 //   Best buddy   the Best Buddy badge, and coins pay 3 points
 // and the pet grows a little at every level.
 //
-// The server (feed_pet / collect_pet_coin / claim_pet_gift, 20261015130000)
-// keeps the same numbers; scripts/check-pet-hunger.mjs holds the two together.
+// The server (collect_pet_coin / claim_pet_gift, 20261015130000; feed_pet,
+// 20261015140000) keeps the same numbers; scripts/check-pet-hunger.mjs holds
+// the two together.
 
 export const BOND_LEVELS = [
   { level: 1, name: 'New friend', min: 0 },

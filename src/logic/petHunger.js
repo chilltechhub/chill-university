@@ -4,23 +4,24 @@
 // can load it straight into Node.
 //
 // One timestamp holds it all: `fullUntil`, the moment the last heart runs
-// out. Each heart lasts HEART_HOURS, so a full pet (4 hearts) lasts a day and
-// a bit — someone who opens the app once a day sees it peckish, never starving.
+// out. Each heart lasts HEART_HOURS, so a full pet (4 hearts) lasts exactly a
+// day: feed it once a day and it never goes hungry (decided 2026-10-15, to
+// bring people back daily; it was 8-hour hearts, 32 hours full, before).
 //
 //   3-4 hearts  'full'     happy, finds coins
 //   1-2 hearts  'peckish'  a food bubble over its head, still finds coins
-//   0 hearts    'hungry'   slow, sits more, finds no coins until fed
+//   0 hearts    'hungry'   lies down, finds no coins until fed
 //
 // It never gets sick, runs away, or loses anything. Feeding it is the only
 // thing hunger asks for, and food costs points — the first thing points buy.
 // XP is never spent (it's your level), and rank counts every point ever
 // earned, so feeding never lowers either.
 //
-// The server (feed_pet, 20261015120000) keeps the same numbers; keep the two
+// The server (feed_pet, 20261015140000) keeps the same numbers; keep the two
 // in step.
 
 export const MAX_HEARTS = 4;
-export const HEART_HOURS = 8;
+export const HEART_HOURS = 6;
 export const HEART_MS = HEART_HOURS * 60 * 60 * 1000;
 export const FULL_MS = MAX_HEARTS * HEART_MS;
 
@@ -31,7 +32,7 @@ export const FOODS = [
 
 export const foodById = (id) => FOODS.find(f => f.id === id) || null;
 
-// Hearts left at `now`. A heart only empties once its full 8 hours are used,
+// Hearts left at `now`. A heart only empties once its full 6 hours are used,
 // so a pet fed a minute ago still shows every heart. No timestamp yet (the
 // clock hasn't started) counts as full.
 export function heartsLeft(fullUntil, now = Date.now()) {

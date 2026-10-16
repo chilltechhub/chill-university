@@ -3,7 +3,7 @@
 // how hungry it is, food to buy with points, and how close it is to its next
 // level.
 //
-// The rules are in src/logic/petHunger.js (four hearts, one empties every 8
+// The rules are in src/logic/petHunger.js (four hearts, one empties every 6
 // hours, a hungry pet finds no coins) and src/logic/petBond.js (feeding grows
 // bond, double when fed before it's empty; each level is an upgrade). Nothing
 // bad ever happens to the pet and bond never drops, so this sheet never
