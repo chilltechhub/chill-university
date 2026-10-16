@@ -37,6 +37,7 @@ import { useFeatureGate } from '../../components/FeatureGate';
 import { useAccess } from '../../../context/AccessContext';
 import { featureForScreen } from '../../data/featureCatalog';
 import { pathFor } from '../../logic/experienceStage';
+import CalmLibrary from '../../components/CalmLibrary';
 import { unlockHint } from '../../logic/featureAccess';
 import { todayStr, daysBetween } from '../../logic/dateUtils';
 import { Button } from '../../components/ui';
@@ -325,6 +326,11 @@ export default function LibraryScreen() {
   const [bgMode] = useSetting(SETTING_KEYS.LIBRARY_BACKGROUND, 'plain');
   // Set from Settings → Library Sections, or onboarding's Look & Layout step.
   const [hiddenSections] = useSetting(SETTING_KEYS.HIDDEN_LIBRARY_SECTIONS, []);
+  // Calm: one panel per page plus a short list (CalmLibrary.js). Its own
+  // switch, apart from Home's. Not while a walkthrough step points at
+  // something here: its highlights are on the full page.
+  const [libraryView, setLibraryView] = useSetting(SETTING_KEYS.LIBRARY_VIEW, 'full');
+  const calm = libraryView === 'calm' && !(tourActive && !currentStep?.compact);
   // Wayfinder gating. `gatedNavigate` opens the entry if it's available and
   // the unlock sheet if it isn't — a locked tile still does something when
   // tapped, which is the difference between a gate and a dead button.
@@ -799,7 +805,7 @@ export default function LibraryScreen() {
 
   return (
     <View style={styles.container} {...pan.panHandlers}>
-      {bgMode === 'player' && <PlayerMatchBackground background={playerBackground} />}
+      {bgMode === 'player' && !calm && <PlayerMatchBackground background={playerBackground} />}
       <Animated.ScrollView
         ref={scrollRef}
         style={{ opacity: slideOpacity, transform: [{ translateX: slideX }] }}
@@ -829,6 +835,12 @@ export default function LibraryScreen() {
               </TouchableOpacity>
             )}
           </View>
+          <TouchableOpacity onPress={() => setLibraryView(calm ? 'full' : 'calm')} hitSlop={8}
+            accessibilityRole="button" accessibilityLabel={calm ? 'Calm view is on. Show the full Library' : 'Calm view: one panel and a short list'}
+            style={styles.calmBtn}>
+            <Ionicons name={calm ? 'leaf' : 'leaf-outline'} size={14} color={calm ? accent.primary : c.text3} />
+            <Text style={[styles.calmBtnText, calm && { color: accent.primary }]}>Calm</Text>
+          </TouchableOpacity>
           {/* Only with the Inbox on the map: unticked on "Pick your
               features", the button that leads there goes too. */}
           {isFeatureShown('capture') && (
@@ -875,6 +887,34 @@ export default function LibraryScreen() {
           </TourSpot>
         )}
 
+        {calm && (
+          <CalmLibrary
+            tab={activeTab}
+            userId={userId}
+            areaStats={visibleAreas.map(area => {
+              const saved = lifeAreas.find(a => a.label?.toLowerCase() === area.label.toLowerCase());
+              return { area, saved, rating: saved?.progress || 0, days: daysSince(saved?.last_check_date) };
+            })}
+            todayAgenda={todayAgenda}
+            activeProjects={activeProjects}
+            trophies={trophies}
+            vaultCount={vaultCount}
+            recentCaptures={recentCaptures}
+            gardenIdeas={gardenIdeas}
+            tools={LIBRARY_HUBS.filter(hub => hub.tab === activeTab).flatMap(visibleItemsFor)}
+            canOpen={isScreenVisible}
+            captureShown={isFeatureShown('capture')}
+            showEmojis={showEmojis}
+            onOpenArea={openLifeArea}
+            onOpenTool={({ item, feature }) => (feature
+              ? gatedNavigate(feature.id, () => navigation.navigate(item.screen))
+              : navigation.navigate(item.screen))}
+            onNavigate={(screen, params) => navigation.navigate(screen, params)}
+            onShowAll={() => setLibraryView('full')}
+          />
+        )}
+
+        {!calm && (<>
         {/* ── Domains tab ── */}
         {activeTab === 'domains' && (
           <>
@@ -1233,6 +1273,7 @@ export default function LibraryScreen() {
             )}
           </>
         )}
+        </>)}
       </Animated.ScrollView>
 
       {/* Sits above the ScrollView rather than inside it so it overlays the
@@ -1368,6 +1409,8 @@ const makeStyles = (c, t, s, r, ui, accent) =>
       borderRadius: ui.buttonRadius,
     },
     captureBtnText: { color: accent.onPrimary, fontSize: 13, ...ui.buttonLabel },
+    calmBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 10, marginRight: 6 },
+    calmBtnText: { fontSize: 13, fontWeight: t.bold, color: c.text3 },
     sectionContainer: { marginBottom: 28 },
     sectionHeader: {
       flexDirection: 'row',

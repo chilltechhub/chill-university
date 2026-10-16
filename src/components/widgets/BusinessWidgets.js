@@ -105,9 +105,10 @@ export function SystemsCheckWidget({ areas, onOpenLibrary }) {
         <View key={area.id} style={{ marginBottom: s.sm }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <Text style={{ fontSize: t.sm, color: c.text2 }}>{area.emoji} {area.label}</Text>
-            <Text style={{ fontSize: t.sm, color: area.color, fontWeight: t.bold }}>{rating}%</Text>
+            <Text style={{ fontSize: t.sm, color: area.color, fontWeight: t.bold }}>{rating}/5</Text>
           </View>
-          <Bar pct={rating} color={area.color} />
+          {/* Ratings are 1-5 (LifeAreaScreen), not a percent. */}
+          <Bar pct={rating * 20} color={area.color} />
           <Text style={{ fontSize: 11, color: c.text3, marginTop: 2 }}>
             {days === null ? 'never checked' : days === 0 ? 'checked today' : `checked ${days}d ago`}
           </Text>

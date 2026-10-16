@@ -43,6 +43,8 @@ export default function MakeItYoursScreen() {
   const { activeType } = useProfiles();
   const { fabPosition, setFabPosition } = useFabPosition();
   const [tutorials, setTutorials] = useSetting(SETTING_KEYS.SCREEN_TUTORIALS_ENABLED, true);
+  const [homeView, setHomeView] = useSetting(SETTING_KEYS.HOME_VIEW, 'full');
+  const [libraryView, setLibraryView] = useSetting(SETTING_KEYS.LIBRARY_VIEW, 'full');
 
   const areaNames = (Array.isArray(profile?.active_life_areas) ? profile.active_life_areas : [])
     .map(id => LIFE_AREAS.find(a => a.id === id)?.label).filter(Boolean);
@@ -127,6 +129,14 @@ export default function MakeItYoursScreen() {
 
         <Head>What you see</Head>
         <View style={card}>
+          <Row icon="leaf-outline" title="Home view"
+            value={homeView === 'calm' ? '**Calm.** One next step + two cards' : '**Full.** Every card you picked'} />
+          <Segments label="Home view" value={homeView === 'calm' ? 'calm' : 'full'}
+            options={[['calm', 'Calm'], ['full', 'Full']]} onChange={setHomeView} />
+          <Row icon="library-outline" title="Library view"
+            value={libraryView === 'calm' ? '**Calm.** One panel per page + a short list' : '**Full.** Every tool card'} />
+          <Segments label="Library view" value={libraryView === 'calm' ? 'calm' : 'full'}
+            options={[['calm', 'Calm'], ['full', 'Full']]} onChange={setLibraryView} />
           <Row icon="grid-outline" title="Home cards" value="**Add, hide or move** the cards on Home"
             onPress={() => navigation.navigate('MainTabs', { screen: 'Home', params: { editWidgets: Date.now() } })} />
           <Row icon="heart-outline" title="Life areas"

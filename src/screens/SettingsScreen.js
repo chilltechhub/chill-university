@@ -624,6 +624,8 @@ export default function SettingsScreen() {
   const [signingOut,setSigningOut] = useState(false);
   const [heroTapEnabled, setHeroTapEnabled] = useSetting(SETTING_KEYS.HERO_TAP_TO_PROFILE, true);
   const [homeBgMode, setHomeBgMode] = useSetting(SETTING_KEYS.HOME_BACKGROUND, 'plain');
+  const [homeView, setHomeView] = useSetting(SETTING_KEYS.HOME_VIEW, 'full');
+  const [libraryView, setLibraryView] = useSetting(SETTING_KEYS.LIBRARY_VIEW, 'full');
   const [quickButtons, setQuickButtons] = useSetting(SETTING_KEYS.HOME_QUICK_BUTTONS, true);
   const [hideDone, setHideDone] = useSetting(SETTING_KEYS.HIDE_DONE_WIDGETS, false);
   const [libraryBgMode, setLibraryBgMode] = useSetting(SETTING_KEYS.LIBRARY_BACKGROUND, 'plain');
@@ -934,6 +936,38 @@ export default function SettingsScreen() {
         <TourSpot id="settings-appearance">
         <AppearancePicker c={c} t={t} s={s} />
         </TourSpot>
+        <SettingRow
+          icon="leaf-outline"
+          iconColor={c.teal}
+          label="Calm Home"
+          subtitle="One next step, today's focus and two cards for your account type. Every card is one tap away"
+          right={
+            <Switch
+              value={homeView === 'calm'}
+              onValueChange={(v) => setHomeView(v ? 'calm' : 'full')}
+              accessibilityLabel="Calm Home"
+              trackColor={{ false: c.borderStrong, true: c.teal + '88' }}
+              thumbColor={homeView === 'calm' ? c.teal : c.text3}
+            />
+          }
+          c={c} t={t} s={s} r={r}
+        />
+        <SettingRow
+          icon="leaf-outline"
+          iconColor={c.gold}
+          label="Calm Library"
+          subtitle="One panel per page and a short list of tools. All tools are one tap away"
+          right={
+            <Switch
+              value={libraryView === 'calm'}
+              onValueChange={(v) => setLibraryView(v ? 'calm' : 'full')}
+              accessibilityLabel="Calm Library"
+              trackColor={{ false: c.borderStrong, true: c.gold + '88' }}
+              thumbColor={libraryView === 'calm' ? c.gold : c.text3}
+            />
+          }
+          c={c} t={t} s={s} r={r}
+        />
         <TourSpot id="settings-background">
         <SettingRow
           icon="image-outline"
