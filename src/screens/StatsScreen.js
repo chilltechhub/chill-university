@@ -91,8 +91,8 @@ export default function StatsScreen() {
         }
       </Section>
 
-      <MissionSection title="⚔️ Daily Quests"   missions={dailyMissions}    styles={styles} c={c} t={t} />
-      <MissionSection title="📅 Weekly Quests"  missions={weeklyMissions}   styles={styles} c={c} t={t} />
+      <MissionSection title="⚔️ Daily Drills"   missions={dailyMissions}    styles={styles} c={c} t={t} />
+      <MissionSection title="📅 Weekly Challenges" missions={weeklyMissions}   styles={styles} c={c} t={t} />
       <MissionSection title="🏆 Achievements"   missions={longtermMissions} styles={styles} c={c} t={t} />
     </ScrollView>
   );
@@ -129,7 +129,7 @@ function MissionSection({ title, missions = [], styles, c, t }) {
   return (
     <Section title={title} styles={styles} c={c} t={t}>
       {missions.length === 0
-        ? <Text style={styles.empty}>No active quests</Text>
+        ? <Text style={styles.empty}>Nothing here right now</Text>
         : missions.map(m => {
             const pct = m.target > 0 ? (m.progress / m.target) * 100 : 0;
             const done = m.status === 'completed';

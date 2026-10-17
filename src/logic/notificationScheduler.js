@@ -144,10 +144,12 @@ export async function syncReminders({ enabled, tasksAllComplete, checkedInToday 
   // Drills" button, HomeScreen's "Base" framing) rather than generic
   // "tasks"/"check in" language, so a notification reads like it belongs
   // to the same app instead of a stock reminder plugin.
-  const DRILLS = ['📋 Daily Drills open', "Today's Daily Drills are still waiting — a few minutes keeps things moving."];
-  // A day counts when something is done in it (recordAction), not when the
-  // app is opened, so the nudge asks for one small thing.
-  const STREAK = ['🔥 Streak at risk', 'Nothing done yet today. One drill, a planner item or a quick check-in keeps your streak going.'];
+  const DRILLS = ["📋 Today's drills are up", 'Three quick ones, about 5 minutes.'];
+  // Fires only on a day nothing's been done yet (recordAction). It points at
+  // the next step instead of the streak: no "at risk", no guilt for a gap
+  // (docs/north-star.md). Whether it stays at all is a founder call
+  // (docs/north-star-plan-2026-10-17.md, 3.2).
+  const STREAK = ['👣 Your next step is ready', "Got a few minutes? It's on Home."];
 
   for (let d = 0; d < WINDOW_DAYS; d++) {
     // Today is the only day whose state we actually know, so it's the only day
@@ -235,8 +237,8 @@ export async function syncPetReminder({ fullUntil, name, enabled, ask = false })
     await Notifications.scheduleNotificationAsync({
       identifier: PET_ID,
       content: {
-        title: `🍎 ${name} is getting hungry`,
-        body: 'Feed it now for double bond.',
+        title: `🍎 ${name} is eyeing the food bowl`,
+        body: 'Down to one heart.',
         sound: true,
         data: { target: { kind: 'pet' } },
       },

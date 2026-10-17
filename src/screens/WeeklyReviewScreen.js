@@ -196,7 +196,7 @@ export default function WeeklyReviewScreen() {
       });
       // One-off plans that slipped this week.
       instances.filter(i => !i.completed && !i.skipped && i.date < todayDate && (!i.cadence || i.cadence === 'once'))
-        .slice(0, 3).forEach(i => add(`slip_${i.id}`, i.title, 'Slipped this week', 'time-outline'));
+        .slice(0, 3).forEach(i => add(`slip_${i.id}`, i.title, 'Not done yet', 'time-outline'));
       // Each active project's next step, most recently touched first.
       [...projects].filter(p => p.next_action)
         .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))

@@ -101,19 +101,17 @@ export function buildNotices(data, env) {
   // Slipped plans and late tasks are one card: "2 plans slipped past" and
   // "3 tasks overdue" stacked as two red alarms read like a telling-off
   // (2026-10-14). One button takes you to the Planner's review, where each
-  // one gets Today / Tomorrow / Pick a day.
+  // one gets Today / Tomorrow / Pick a day. It names the first thing to pick
+  // up rather than counting what slipped (North Star: no guilt for gaps).
   if (overdue.length || lateTasks.length) {
-    const parts = [
-      overdue.length ? `${plural(overdue.length, 'plan')} slipped` : null,
-      lateTasks.length ? `${plural(lateTasks.length, 'task')} overdue` : null,
-    ].filter(Boolean);
+    const open = [...overdue, ...lateTasks];
     add({
       id: `catch-up:${today}`, cat: 'schedule', priority: 90, icon: 'time-outline', tone: 'gold',
-      title: `${plural(overdue.length + lateTasks.length, 'thing')} from earlier`,
-      body: `${parts.join(' · ')}: ${listTitles([...overdue, ...lateTasks])}`,
-      primary: { label: 'Review & reschedule', target: { kind: 'screen', key: 'PlannerScreen', params: { review: true } } },
+      title: `Pick up ${quote(clip(open[0].title, 40))}${open.length > 1 ? ` and ${open.length - 1} more` : ''}`,
+      body: open.length > 1 ? `Also open: ${listTitles(open.slice(1))}` : 'Still open from earlier.',
+      primary: { label: 'Pick new days', target: { kind: 'screen', key: 'PlannerScreen', params: { review: true } } },
       secondary: overdue.length ? { label: `Move ${overdue.length === 1 ? 'it' : `all ${overdue.length} plans`} to today`, action: 'reschedule-overdue', payload: overdue.map(i => i.id) } : null,
-      ai: { target: 'planner', idea: `These slipped past their day: ${[...overdue, ...lateTasks].map(i => i.title).join('; ')}. Help me reschedule them realistically over the next few days, with reminders.` },
+      ai: { target: 'planner', idea: `These are still open from earlier: ${open.map(i => i.title).join('; ')}. Help me reschedule them realistically over the next few days, with reminders.` },
     });
   }
   const upcomingToday = planner
@@ -167,7 +165,7 @@ export function buildNotices(data, env) {
     } else if (quiet !== null && quiet >= 7) {
       projectNotices.push({
         id: `project-quiet:${p.id}`, cat: 'projects', priority: 45 + Math.min(quiet, 20) / 2, icon: 'hourglass-outline', tone: 'gold',
-        title: `${quote(clip(p.title, 40))} has been quiet for ${quiet} days`,
+        title: `Pick up ${quote(clip(p.title, 40))}`,
         body: `Next step: ${clip(p.next_action, 80)}`,
         primary: { label: 'Open project', target },
         ai: { target: 'projects', idea: `My project "${p.title}" stalled. The next step was "${p.next_action}". Help me restart it with 3 small tasks I can do this week.` },
@@ -186,8 +184,8 @@ export function buildNotices(data, env) {
     .slice(0, 2)
     .forEach(({ i, age }) => add({
       id: `idea-idle:${i.id}`, cat: 'ideas', priority: 35, icon: 'leaf-outline', tone: 'success',
-      title: `${quote(clip(i.title, 40))} has been sitting for ${Math.floor(age / 7)} weeks`,
-      body: 'Grow it into a plan, or let it go.',
+      title: `Still want ${quote(clip(i.title, 40))}?`,
+      body: 'Make it a project, or let it go. Both are fine.',
       primary: { label: 'Open idea', target: { kind: 'idea', id: i.id } },
       ai: { target: 'projects', idea: `Turn my idea "${i.title}" into a small project with a goal and first steps.` },
       remind: { title: `Think about: ${i.title}`, target: { kind: 'idea', id: i.id } },

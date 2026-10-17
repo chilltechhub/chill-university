@@ -71,18 +71,20 @@ export default function LevelUpNotification() {
         <View style={s.card}>
           <Text style={s.ornament}>✦ · ✦</Text>
           <Text style={s.bigEmoji}>{level != null ? '⭐' : tier ? (tier.rankLabel?.emoji || '🏆') : '🎁'}</Text>
-          <Text style={s.title}>{level != null ? 'Level Up!' : tier ? 'New Tier!' : 'Unlocked!'}</Text>
+          <Text style={s.title}>
+            {level != null ? `Level ${level}!` : tier ? `${tier.rankLabel?.label || `Rank ${tier.to}`}!` : 'Something new'}
+          </Text>
           <Text style={s.subtitle}>
             {level != null
-              ? `You reached Level ${level}${tier ? ` and ${tier.rankLabel?.label || 'a new tier'}` : ''}`
+              ? (tier ? `Nice work. That's ${tier.rankLabel?.label || 'a new rank'} too.` : 'Nice work. You earned every point.')
               : tier
-                ? `You're now ${tier.rankLabel?.label || `Rank ${tier.to}`}`
-                : 'Your points opened something new'}
+                ? 'New rank. Well earned.'
+                : 'Your points opened this.'}
           </Text>
 
           {unlocks.length > 0 && (
             <View style={s.unlockBox}>
-              <Text style={s.unlockLabel}>🎁 You unlocked</Text>
+              <Text style={s.unlockLabel}>🎁 Now open</Text>
               {unlocks.map((u, i) => (
                 <View key={i} style={s.unlockRow}>
                   <Text style={s.unlockEmoji}>{u.emoji}</Text>

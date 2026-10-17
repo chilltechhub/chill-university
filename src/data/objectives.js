@@ -304,7 +304,7 @@ export const OBJECTIVES = [
     // couldn't be finished today however much someone did (2026-10-10).
     label: 'Plan Your Day',
     promise: 'Four small things that make a normal day work.',
-    why: 'A day with a focus and a plan is easier to win than one without.',
+    why: 'A day with one focus is easier to finish.',
     estimate: 'About 10 minutes',
     steps: [
       { id: 'focus',   label: 'Set a focus for today',        hint: 'One line on Home. What today is **for**.', screen: 'Home', params: { openFocus: true }, signal: 'focus-set', widget: 'focus', have: 'focus-today' },
@@ -420,7 +420,7 @@ export const OBJECTIVES = [
     intro: true,
     label: 'First Steps',
     promise: 'Three small things, today, to see how the app works for you.',
-    why: 'Every habit starts with a day where you showed up once. This is that day.',
+    why: 'Start with one small habit. Small ones stick.',
     estimate: 'About 10 minutes',
     // Not "set a focus": the focus widget isn't on stage 1's Home. Every
     // step here has to be doable with what stage 1 shows.
@@ -444,7 +444,7 @@ export const OBJECTIVES = [
     intro: true,
     label: 'First Steps',
     promise: 'Three small things, right now, to see how the app works for you.',
-    why: 'Every habit starts with a day where you showed up once. This is that day.',
+    why: 'Start with one small habit. Small ones stick.',
     estimate: 'About 5 minutes',
     steps: [
       { id: 'area',  label: 'Rate one life area',            hint: 'Honestly. **Only you see it.**', screen: 'LibraryScreen', signal: 'area-rated' },
@@ -624,7 +624,7 @@ export const OBJECTIVES = [
     intro: true,
     label: 'Set Up Your Day',
     promise: 'One habit on repeat, your head emptied into the inbox, and a focus for today.',
-    why: 'A day with a plan and an empty head is a day you run, not one that runs you.',
+    why: 'Get it out of your head and onto one list. Your head will thank you.',
     estimate: 'About 10 minutes',
     steps: [
       { id: 'habit',   label: 'Put one small habit in the Planner', hint: 'Something you could do most days. Set it to repeat.', screen: 'PlannerScreen', signal: 'planner-item-added',
@@ -678,7 +678,7 @@ export const OBJECTIVES = [
     purpose: 'build',
     label: 'Show Your Work',
     promise: 'Put a finished thing somewhere other people can see it.',
-    why: 'Discover is a room full of other people’s work. Turning up with something of your own changes what it is for.',
+    why: 'Share one thing you made. Discover is better with your work in it.',
     estimate: '2 days',
     steps: [
       { id: 'ship',      label: 'Have one shipped project',     hint: 'Open the project and tap DONE at the top.', screen: 'ProjectsScreen', signal: 'project-shipped', have: 'shipped' },

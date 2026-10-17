@@ -57,10 +57,10 @@ const humanizeType = t => t ? t.replace(/_/g, ' ').replace(/^./, c => c.toUpperC
 // 'YYYY-MM-DD' → "Oct 12", read as a local day (new Date('2026-10-12') is UTC midnight).
 const dayLabel = iso => { if (!iso) return ''; const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); };
 const shortDay = iso => { if (!iso) return ''; const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); };
-// "in 3 days", "today", "2 days late"
-const daysAway = iso => { const n = daysBetween(todayStr(), iso); return n === 0 ? 'today' : n === 1 ? 'tomorrow' : n > 1 ? `in ${n} days` : `${-n} day${n === -1 ? '' : 's'} late`; };
-// "due Oct 4 · in 3 days", "due today", "2 days late"
-const dueWords = iso => { const n = daysBetween(todayStr(), iso); return n < 0 ? daysAway(iso) : n < 2 ? `due ${daysAway(iso)}` : `due ${shortDay(iso)} · ${daysAway(iso)}`; };
+// "in 3 days", "today", "date passed" (no count of days late)
+const daysAway = iso => { const n = daysBetween(todayStr(), iso); return n === 0 ? 'today' : n === 1 ? 'tomorrow' : n > 1 ? `in ${n} days` : 'date passed'; };
+// "due Oct 4 · in 3 days", "due today", "was due Oct 2"
+const dueWords = iso => { const n = daysBetween(todayStr(), iso); return n < 0 ? `was due ${shortDay(iso)}` : n < 2 ? `due ${daysAway(iso)}` : `due ${shortDay(iso)} · ${daysAway(iso)}`; };
 // The plan's order: oldest batch first, and inside a batch (one AI plan is
 // one insert) the order it was written in.
 const planOrder = (a, b) => (new Date(a.created_at) - new Date(b.created_at)) || ((a.sort_order || 0) - (b.sort_order || 0));

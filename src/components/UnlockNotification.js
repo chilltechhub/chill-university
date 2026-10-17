@@ -271,7 +271,7 @@ export default function UnlockNotification() {
             <Ionicons name={feature.icon || 'lock-open-outline'} size={26} color={c.teal} />
           </View>
           {LevelStrip}
-          <Text style={s.kicker}>Unlocked</Text>
+          <Text style={s.kicker}>Now open</Text>
           <Text style={s.title}>{feature.label}</Text>
           <Text style={s.blurb}>{feature.blurb}</Text>
           <Text style={s.via}>{VIA_COPY[via] || 'It’s yours now.'}</Text>
@@ -280,7 +280,7 @@ export default function UnlockNotification() {
               {others.map(f => (
                 <View key={f.id} style={s.listRow}>
                   <Ionicons name="checkmark" size={14} color={c.teal} style={{ marginTop: 2 }} />
-                  <Text style={s.listText}>Also unlocked: {f.label}</Text>
+                  <Text style={s.listText}>Also open: {f.label}</Text>
                 </View>
               ))}
             </View>

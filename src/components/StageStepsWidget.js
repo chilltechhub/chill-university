@@ -73,7 +73,7 @@ export default function StageStepsWidget() {
           // button for the next one; quoting the next step here too made a
           // new account's Home say the same thing three times.
           detail: activeObjective.complete
-            ? 'All done. **Claim it** on the goal card.'
+            ? 'All done 🎉 Tap **Finish** on the goal card.'
             : `**${activeObjective.done} of ${activeObjective.total}** steps done.`,
           cta: null,
         }

@@ -32,7 +32,7 @@ const FAQ = [
   },
   {
     q: 'How do reminders work?',
-    a: 'Give a Planner item a **time** and turn on **Reminder**. Or tap the **bell** → **New reminder**. **Daily Reminders** (Settings → Reminders) nudge you if your streak is at risk.',
+    a: 'Give a Planner item a **time** and turn on **Reminder**. Or tap the **bell** → **New reminder**. **Daily Reminders** (Settings → Reminders) send evening nudges for **today’s drills** and your **next step**.',
   },
   {
     q: 'How does linking a parent and child account work?',

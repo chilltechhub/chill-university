@@ -627,7 +627,7 @@ export default function SettingsScreen() {
 
         {/* Reminders (Make it yours links here: { section: 'reminders' }) */}
         <View {...markSection('reminders')}><SectionLabel label="Reminders" c={c} t={t} s={s} /></View>
-        <SettingRow icon="notifications-outline" iconColor={c.success} label="Daily Reminders" subtitle="A nudge if today's Daily Drills are still open, or your streak is at risk"
+        <SettingRow icon="notifications-outline" iconColor={c.success} label="Daily Reminders" subtitle="Evening nudges for today's drills and your next step"
           right={
             <Switch
               value={remindersEnabled}

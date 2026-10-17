@@ -35,7 +35,7 @@ export default function GameOver({
   streak = 0,
   timeSeconds = null,
   xpEarned = 0,
-  title = 'Quest Complete!',
+  title = 'Round done!',
   onPlayAgain,
   onQuit,
   gameId, // powers the round-end fact box below — see useGameFacts.js

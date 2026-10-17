@@ -43,11 +43,11 @@ const SCREEN_FEATURES = {
     { title: "Today's Focus", body: "The **one thing** that matters today. Tap the date box for your calendar.", id: 'home-focus-input' },
     { title: 'On the Desk', body: "What to **pick up next** from your projects, notes and ideas. Tap **+ Add** to pin one.", id: 'home-desk' },
     { title: "Today's Activities", body: "Everything **scheduled today**, in time order.", id: 'home-today-activities' },
-    { title: 'Study & Play', body: "**Study** opens Daily Drills. **Play** opens a game. Both grow your streak.", id: 'home-study-play' },
+    { title: 'Study & Play', body: "**Study** opens Daily Drills. **Play** opens a game.", id: 'home-study-play' },
     { title: "Today's Wisdom", body: "A daily quote, plus **your own affirmations** if you add some with **+**.", id: 'home-focus' },
   ],
   Training: [
-    { title: 'Where the points come from', body: "Points and your **streak**. The streak is the one that matters.", id: 'training-stats' },
+    { title: 'Where the points come from', body: "Your **points** and **streak**. Fun to watch. Your **goals** are the real score.", id: 'training-stats' },
     { title: 'Daily Drills & Challenges', body: "**Daily Drills**: three small targets, new each day. **Challenges**: the bigger weekly ones.", id: 'training-games' },
     { title: 'Classes', body: "**Lessons** by subject, with quizzes and quests. The games test what they teach.", id: 'training-classes' },
     { title: 'Pick a subject', body: "Tap **Enter Training** to pick a subject and play.", id: 'training-enter' },
@@ -124,8 +124,8 @@ const SCREEN_FEATURES = {
       id: 'inbox-list',
     },
     {
-      title: "Don't let it rot",
-      body: "Items show **time left**. Empty the inbox a few at a time.",
+      title: 'A few at a time',
+      body: "Each item shows **how old** it is. Sort a few whenever you can.",
       id: 'inbox-list',
     },
   ],
@@ -462,7 +462,7 @@ export function buildScreenTutorial(routeName, personalization, { can, firstVisi
   } else if (info) {
     steps = splitBody(info.body).map((sentence) => ({ title: info.title, body: sentence }));
   } else {
-    steps = [{ title: routeName || 'This screen', body: "No specific walkthrough for this screen yet — check Help for the general FAQ instead." }];
+    steps = [{ title: routeName || 'This screen', body: "No walkthrough here yet. **Help** has the FAQ." }];
   }
 
   steps = forThisApp(personalize(routeName, steps, personalization), shows, track);
