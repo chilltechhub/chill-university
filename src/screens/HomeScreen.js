@@ -31,6 +31,7 @@ import RememberThis from '../components/RememberThis';
 import TodayReview from '../components/TodayReview';
 import RightNowCard from '../components/RightNowCard';
 import CalmHome from '../components/CalmHome';
+import DreamCard from '../components/DreamCard';
 import useDrillPlan from '../logic/useDrillPlan';
 import CalendarModal from '../components/CalendarModal';
 import PlanDetailSheet from '../components/PlanDetailSheet';
@@ -2099,6 +2100,12 @@ export default function HomeScreen() {
             )}
           </View>
         </View>
+
+        {/* ── The Dream: the life they want, in their words, above
+             everything else on Home (docs/north-star.md). Not a widget:
+             it isn't one card among many, and it can't be hidden by
+             accident while rearranging. ── */}
+        {!editingWidgets && <DreamCard userId={userId} />}
 
         {/* ── Getting Started — the deferred half of onboarding, plus the
              tour offer. Deliberately NOT a widget: it's temporary, it

@@ -48,6 +48,8 @@ import { FONTS } from '../theme';
 import { supabase } from '../api/supabaseClient';
 import { generateRecommendations } from '../api/recommendationEngine';
 import { setWayfinderIntent } from '../api/wayfinderService';
+import { loadLocalDream, saveDream } from '../api/dreamService';
+import { applyDreamEdit } from '../logic/dream';
 import { queueWelcomeTour } from '../logic/useWelcomeTour';
 import {
   saveOnboardingFields, loadOnboardingDraft, saveOnboardingDraft, clearOnboardingDraft,
@@ -65,7 +67,7 @@ import { cardApplies, shownCards } from '../logic/onboardingCards';
 import { useFeatureFlag, useRemoteConfig } from '../../context/RemoteConfigContext';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import {
-  WelcomeStep, AimStep, PersonaStep, StartModeStep, PickFeaturesStep, picksForData, NameStep, SectorsStep, PERSONA_AREA_DEFAULTS, areasForAim, pickFocusHub, buildRecommendations,
+  WelcomeStep, AimStep, DreamStep, PersonaStep, StartModeStep, PickFeaturesStep, picksForData, NameStep, SectorsStep, PERSONA_AREA_DEFAULTS, areasForAim, pickFocusHub, buildRecommendations,
 } from './onboarding/steps';
 
 const { width: SW } = Dimensions.get('window');
@@ -103,6 +105,9 @@ const STEPS = [
   { key: 'welcome', component: WelcomeStep,    title: 'Welcome', subtitle: 'What this app is' },
   // The question everything else is tailored to. See AimStep.
   { key: 'aim',      component: AimStep,        title: 'Aim',     subtitle: 'What you came for' },
+  // The life they want, in their words (the North Star's Dream layer).
+  // Optional; see DreamStep.
+  { key: 'dream',    component: DreamStep,      title: 'Dream',   subtitle: 'The life you want' },
   { key: 'persona',  component: PersonaStep,    title: 'Profile', subtitle: 'Your account type' },
   { key: 'start',    component: StartModeStep,  title: 'Start',   subtitle: 'How you want to start' },
   { key: 'features', component: PickFeaturesStep, title: 'Features', subtitle: 'What goes in your app' },
@@ -194,6 +199,9 @@ export default function MultiStepOnboarding() {
     // src/data/objectives.js), written to profiles.purpose_key in finish().
     // Null means unanswered: the first goal then goes by account type.
     aim:               null,
+    // "Describe a normal Tuesday in the life you want" (DreamStep). Saved
+    // as their dream in finish() when it isn't blank.
+    dream_life:        '',
     // Set once the profile card has been used, so a later change of aim
     // stops re-suggesting a type over the person's own pick.
     persona_touched:   false,
@@ -534,6 +542,7 @@ export default function MultiStepOnboarding() {
   const cardCtx = {
     mode: data.experience_mode,
     hasLifeAreas: picksForData(data, { plusOnSale, socialOn }).includes('life-areas'),
+    ageBand,
   };
   const stepApplies = (i) => !STEPS[i] || cardApplies(STEPS[i].key, cardCtx);
   const stepFrom = (from, dirn) => {
@@ -620,6 +629,12 @@ export default function MultiStepOnboarding() {
     // The persona's accent colour, once, and only if none is set yet —
     // Settings > Appearance owns it after that. Device-local; can't strand.
     await suggestAccentForPersona(data.active_persona || DEFAULT_PERSONA).catch(() => {});
+    // Their dream, if they wrote one. On the device first (awaited, so the
+    // top of Home has it on its first render), synced after; can't throw.
+    if ((data.dream_life || '').trim() && cardApplies('dream', cardCtx)) {
+      await saveDream(userId, applyDreamEdit(await loadLocalDream(userId).catch(() => null), { life: data.dream_life }, 'onboarding'))
+        .catch(e => console.warn('onboarding dream', e?.message));
+    }
     // "Show me around" on landing: the tab bar, top bar, + button, Library
     // pages and going back, before the first goal starts. Home reads this
     // on its first render, so it has to be down before navigating.
@@ -930,7 +945,10 @@ export default function MultiStepOnboarding() {
             {saving
               ? <ActivityIndicator color="#fff" size="small" />
               : <>
-                  <Text style={cs.nextBtnText}>{isLast ? 'Finish and show me around' : 'Continue'}</Text>
+                  <Text style={cs.nextBtnText}>
+                    {isLast ? 'Finish and show me around'
+                      : STEPS[step]?.key === 'dream' && !(data.dream_life || '').trim() ? 'Skip for now' : 'Continue'}
+                  </Text>
                   {!isLast && <Ionicons name="chevron-forward" size={18} color="#fff" />}
                 </>
             }

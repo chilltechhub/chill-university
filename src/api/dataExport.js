@@ -19,7 +19,7 @@ const USER_TABLES = [
   'tasks', 'priority_tasks', 'garden_cores', 'garden_vines', 'agenda_instances',
   'calendar_events', 'daily_focus', 'daily_checkins', 'user_planner_components',
   'life_areas', 'user_area_actions', 'portfolio_entries', 'vault_documents',
-  'wayfinder_maps', 'user_objectives', 'feature_unlocks', 'user_missions',
+  'wayfinder_maps', 'dreams', 'user_objectives', 'feature_unlocks', 'user_missions',
   'subject_progress', 'timer_sessions', 'activity_log', 'project_research',
   'community_posts', 'organization_members',
 ];
