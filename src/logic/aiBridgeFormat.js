@@ -2,8 +2,8 @@
 // "Fill with AI" — the free path. The app writes a prompt, the person pastes
 // it into whatever chatbot they already use (ChatGPT, Claude, Gemini...), and
 // pastes the reply back. Nothing is sent anywhere by the app, so it costs
-// nothing per use — unlike 'ai-import' (featureCatalog.js), which runs a
-// paid model and is a Plus feature.
+// nothing per use — unlike the retired AI Import, which ran a
+// paid model as a Plus feature and was folded into this.
 //
 // The reply is a change script, not SQL. Every existing item goes out in the
 // prompt with a short `ref`, and each item in the reply is one of:

@@ -236,6 +236,9 @@ export function AccessProvider({ children }) {
   // than an "Unlocked" card for something they never asked for.
   const trackRef = useRef('auto');
   const earnedRef = useRef([]);
+  // Tools the goal just finished sent someone into without them having
+  // picked it (completeActiveObjective), so the card can say "keep it".
+  const usedToolsRef = useRef(new Set());
   const noteUnlocks = useCallback((featureIds, via) => {
     const known = knownUnlocksRef.current;
     const fresh = featureIds.filter(id => !known || !known.has(id));
@@ -404,6 +407,7 @@ export function AccessProvider({ children }) {
         setExperimentalOverride(true);
         if (userId) setExperimentalOptIn(userId, true).catch(() => {});
       }
+      if (patch.picks.includes('lesson-builder')) setDoorSetting('educatorMode', true);
     } else if (next === 'full') {
       // All in means everything: switching to it starts from a full list
       // again, and My features is where to untick.
@@ -417,7 +421,7 @@ export function AccessProvider({ children }) {
       setPicksOverride(patch.picks);
     }
     await persistStart(patch);
-  }, [persistStart, savedPicks, persona, derivedStage, exploring, purposeKey, userId]);
+  }, [persistStart, savedPicks, persona, derivedStage, exploring, purposeKey, userId, setDoorSetting]);
 
   // "More of the app is open" — only for stages reached by progress. A
   // stage you switched on yourself isn't news. The first real load records
@@ -440,7 +444,9 @@ export function AccessProvider({ children }) {
           allowed: (item) => !item.labs && pickableAvailable(item, { plusOnSale, socialOn }),
         });
         earnedRef.current = [];
-        if (suggest) setStageEvents(q => (q.some(e => e.suggest) ? q : [...q, { suggest, from: seen, to: derivedStage }]));
+        const used = !!suggest && (getPickable(suggest)?.features || []).some(f => usedToolsRef.current.has(f));
+        usedToolsRef.current = new Set();
+        if (suggest) setStageEvents(q => (q.some(e => e.suggest) ? q : [...q, { suggest, used, from: seen, to: derivedStage }]));
       } else if (Number.isFinite(seen) && derivedStage > seen && experienceMode === 'auto') {
         // What is actually new, not just what the stage lists: what someone
         // came for opens tools early (AIM_OPENS), so a stage can "add" the
@@ -516,7 +522,9 @@ export function AccessProvider({ children }) {
   }, [chosen, picks]);
 
   // Ticking and unticking on "Pick your features" (onboarding and Make it
-  // yours). Labs is one switch: ticking it is the experimental opt-in.
+  // yours). Labs is one switch: ticking it is the experimental opt-in. The
+  // Lesson Builder is too: ticking it is Educator Mode, which used to be a
+  // second switch in Settings that had to be on as well.
   const setPicks = useCallback(async (list) => {
     const next = PICKABLE_IDS.filter(id => list.includes(id));
     setPicksOverride(next);
@@ -526,8 +534,10 @@ export function AccessProvider({ children }) {
       setExperimentalOverride(labsOn);
       if (userId) setExperimentalOptIn(userId, labsOn).catch(() => {});
     }
+    const teachOn = next.includes('lesson-builder');
+    if (teachOn !== (picks || []).includes('lesson-builder')) setDoorSetting('educatorMode', teachOn);
     await persistStart({ picks: next });
-  }, [persistStart, picks, userId]);
+  }, [persistStart, picks, userId, setDoorSetting]);
   const addPick = useCallback((id) => setPicks([...(picks || []), id]), [setPicks, picks]);
   const declinePick = useCallback(async (id) => {
     const next = [...new Set([...declinedPicks, id])];
@@ -836,6 +846,17 @@ export function AccessProvider({ children }) {
     if (!activeObjectiveId) return { error: new Error('Nothing active') };
     const objective = getObjective(activeObjectiveId);
     const unlockIds = objective?.unlocks || [];
+
+    // "Just my picks": a goal's steps can send someone into a tool they
+    // didn't pick (a study block in the Planner). It shows while the goal
+    // runs, then hides again the moment the goal is done, work and all. So
+    // those tools are the first thing the end-of-goal card offers to keep,
+    // ahead of anything new. Still only on a yes.
+    if (trackRef.current === 'picks') {
+      const used = (objective?.steps || []).map(st => st.screen && featureForScreen(st.screen)?.id).filter(Boolean);
+      usedToolsRef.current = new Set(used);
+      earnedRef.current = [...new Set([...used, ...earnedRef.current])];
+    }
 
     applyLocal(prev => {
       const unlocks = { ...(prev.unlocks || {}) };

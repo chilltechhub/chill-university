@@ -78,13 +78,8 @@ export const PICKABLES = [
   },
   {
     id: 'import-hub', group: 'save', icon: 'cloud-upload-outline',
-    label: 'Import Hub', blurb: 'Bring in text, links and files in bulk.',
+    label: 'Bring stuff in', blurb: 'Lists, links and files in bulk, or messy notes with any chatbot.',
     features: ['import-hub'],
-  },
-  {
-    id: 'ai-import', group: 'save', icon: 'sparkles-outline',
-    label: 'AI Import', blurb: 'Messy text in, sorted items out.',
-    features: ['ai-import'],
   },
 
   // ── Build things ──

@@ -224,10 +224,12 @@ const SCREEN_FEATURES = {
     { title: 'Finishing counts', body: "Finishing a topic earns **XP** and grows that **subject's progress**.", id: 'classes-list' },
   ],
   Settings: [
-    { title: 'Backgrounds', body: "Use your character's **landscape** behind Home or the Library, or keep it plain.", id: 'settings-background' },
+    { title: 'Looks and layout', body: "Theme, Home, Library, features, life areas: all in **Make it yours**.", id: 'settings-appearance' },
     { title: 'Family', body: "Link a parent or child account. **Read-only.**", id: 'settings-family' },
     { title: 'Organizations', body: "Join a school or team with a **code**, or start one. They never see your personal profiles.", id: 'settings-organization' },
-    { title: 'Everything else', body: "Theme, life areas, notifications, tutorials, account: **all here**.", id: 'settings-appearance' },
+  ],
+  MakeItYours: [
+    { title: 'Scenes', body: "Use your character's **landscape** behind Home or the Library, or keep it plain.", id: 'settings-background' },
   ],
   Profile: [
     { title: 'Your rank', body: "Level, points and streak, **shared by all your profiles**.", id: 'profile-rank' },
@@ -241,7 +243,7 @@ const SCREEN_FEATURES = {
   ImportScreen: [
     { title: 'Paste anything', body: "Paste **anything**: URLs, bookmarks, lists, CSV. It works out the format.", id: 'import-paste' },
     { title: 'Format', body: "**Auto-detect** usually gets it right. Change it here if not.", id: 'import-format' },
-    { title: 'Parse or Analyze', body: "Tidy formats import **instantly**. Messy text uses **AI** (add your key in Settings).", id: 'import-analyze' },
+    { title: 'Parse or sort', body: "Tidy formats import **instantly**. Messy notes go to **Fill with AI**, free.", id: 'import-analyze' },
   ],
   Family: [
     { title: 'Link a Child', body: "Your child makes a **code** in Family on their account. Enter it here.", id: 'family-link' },

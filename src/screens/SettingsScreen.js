@@ -13,29 +13,21 @@ import { useTheme } from '../../context/ThemeContext';
 import { useUIPrefs } from '../../context/UIPrefsContext';
 import { supabase } from '../api/supabaseClient';
 import { cacheRead, cacheWrite, isOnline } from '../api/offlineCache';
-import { RANK_LABELS, FONTS, STYLES, ACCENTS } from '../theme';
+import { RANK_LABELS } from '../theme';
 import { SectionLabel, Eyebrow, Button, ListRow, Readout } from '../components/ui';
 import LevelRing from '../components/LevelRing';
 import { getRank, getTierProgress } from '../logic/rankUtils';
-import { getUserApiKey, setUserApiKey, clearUserApiKey, maskKey } from '../api/aiKey';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import { resetSeenScreens } from '../logic/useFirstVisitTutorial';
-import { useFabPosition } from '../../context/FabPositionContext';
 import { syncReminders, cancelAllReminders, computeReminderState, syncPetReminder, cancelPetReminder } from '../logic/notificationScheduler';
 import usePetCare from '../logic/usePetCare';
 import { readEquippedPet } from '../logic/useCharacterLoadout';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { useTour } from '../../context/TourContext';
 import TourSpot from '../components/TourSpot';
-import { LIFE_AREAS } from './library/LifeAreaScreen';
-import { LIBRARY_HUBS } from './library/LibraryScreen';
 import { CREST_COLORS, ROLE_BADGES } from '../data/crestOptions';
 import { useAccess } from '../../context/AccessContext';
 import { usePlus } from '../../context/PlusContext';
-import { useProfiles } from '../../context/ProfileAccountsContext';
-import { FEATURES } from '../data/featureCatalog';
-import { stageMeta } from '../logic/experienceStage';
-import { MAX_STAGE } from '../data/experienceStages';
 import { PRIVACY_POLICY_URL, TERMS_URL, SUPPORT_EMAIL } from '../config/legal';
 import { shareMyDataExport } from '../api/dataExport';
 import { isMinorRequiringConsent } from '../logic/ageOfConsent';
@@ -43,252 +35,10 @@ import { dobFromParts, dobProblem } from '../logic/dateUtils';
 import { confirmAsync } from '../logic/confirm';
 import { signOutAndClear, clearLocalUserData } from '../logic/localUserData';
 import TwoFactorSheet from '../components/TwoFactorSheet';
-import { isAdultProfile } from '../logic/useGradeLevel';
-import AccessibilitySettings from '../components/AccessibilitySettings';
 
-// `alwaysShowSubtitle` is for the Show Emojis / Show Subtitles rows
-// themselves — hiding the explanation of what "show subtitles" does the
-// instant you turn it off would bury the very control you'd need to turn
-// it back on.
 // Thin adapter: the existing call sites pass `label`, and c/t/s/r (ignored).
-const TRACK_LABEL = { picks: 'Just my picks', auto: 'Level up', full: 'All in' };
-
 function SettingRow({ label, ...rest }) {
   return <ListRow title={label} {...rest} />;
-}
-
-// A one-line tally of what's open and what isn't. Deliberately a count
-// rather than a list: the list is the Compass's job, and reproducing it
-// here would rebuild the wall of options in the one screen people already
-// open when they feel lost.
-function UnlockSummary({ accessFor, c, t, s, r, onPress }) {
-  // Counts only doors that are on show. A Plus door before Plus is on sale
-  // is hidden (it has no key), so counting it would be a tally of things
-  // nobody can see or open.
-  const gated = FEATURES
-    .filter(f => f.gate !== 'open')
-    .map(f => accessFor(f.id))
-    .filter(a => a.available || !a.hidden || a.gate === 'experimental');
-  const open = gated.filter(a => a.available).length;
-
-  return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, backgroundColor: c.bg1, borderRadius: r.md, padding: s.lg, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border }}>
-        <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: c.teal + '22', alignItems: 'center', justifyContent: 'center' }}>
-          <Ionicons name="lock-open-outline" size={18} color={c.teal} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1 }}>{open} of {gated.length} unlocked</Text>
-          <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>
-            {open === gated.length
-              ? 'Everything is open.'
-              : 'App Nav lists what opens each one: a goal, a short quiz, or a switch.'}
-          </Text>
-        </View>
-        <Ionicons name="chevron-forward" size={16} color={c.text4} />
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-// Mode / Style / Accent — the three appearance choices, all in ThemeContext.
-const MODE_OPTIONS = [
-  { key: 'system', label: 'System', icon: 'phone-portrait-outline' },
-  { key: 'light',  label: 'Light',  icon: 'sunny-outline' },
-  { key: 'dark',   label: 'Dark',   icon: 'moon-outline' },
-];
-
-function AppearancePicker({ c, t, s }) {
-  const { mode, setMode, styleName, setStyle, accentName, setAccent, accent, style, isDark } = useTheme();
-  const box = { backgroundColor: c.bg1, borderRadius: style.cardRadius, padding: s.lg, marginBottom: s.sm, borderWidth: style.borderWidth, borderColor: c.border };
-  const heading = { fontSize: t.sm, fontWeight: t.semibold, color: c.text1, marginBottom: s.sm };
-  return (
-    <View style={box}>
-      <Text style={heading}>Mode</Text>
-      <View style={{ flexDirection: 'row', backgroundColor: c.bg2, borderRadius: style.buttonRadius, padding: 3, marginBottom: s.lg }}>
-        {MODE_OPTIONS.map(m => {
-          const on = mode === m.key;
-          return (
-            <TouchableOpacity
-              key={m.key}
-              onPress={() => setMode(m.key)}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-              accessibilityState={{ selected: on }}
-              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 9, borderRadius: style.buttonRadius - 2, backgroundColor: on ? c.bg1 : 'transparent' }}
-            >
-              <Ionicons name={m.icon} size={15} color={on ? accent.primary : c.text3} />
-              <Text style={{ fontSize: t.sm, fontWeight: on ? t.semibold : t.medium, color: on ? c.text1 : c.text3 }}>{m.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      <Text style={heading}>Style</Text>
-      <View style={{ flexDirection: 'row', gap: s.sm, marginBottom: s.lg }}>
-        {Object.values(STYLES).map(st => {
-          const on = styleName === st.name;
-          return (
-            <TouchableOpacity
-              key={st.name}
-              onPress={() => setStyle(st.name)}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityState={{ selected: on }}
-              style={{ flex: 1, borderRadius: st.cardRadius, borderWidth: on ? 2 : 1, borderColor: on ? accent.primary : c.border, backgroundColor: c.bg0, padding: s.md }}
-            >
-              {/* A tiny sample of the style itself: its label and a card. */}
-              <Text style={{ fontSize: 11, color: c.text3, ...st.sectionLabel }}>{st.name === 'plain' ? 'Today' : 'TODAY'}</Text>
-              <View style={{ marginTop: 6, height: 22, borderRadius: st.cardRadius / 2, backgroundColor: c.bg1, borderWidth: st.borderWidth, borderColor: c.border, justifyContent: 'center', paddingHorizontal: 8 }}>
-                <View style={{ width: '60%', height: 5, borderRadius: 3, backgroundColor: c.text4 }} />
-              </View>
-              <Text style={{ marginTop: s.sm, fontSize: t.sm, fontWeight: t.semibold, color: c.text1, fontFamily: st.titleFont }}>{st.label}</Text>
-              <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>{st.description}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      <Text style={heading}>Accent</Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.lg, rowGap: s.md }}>
-        {Object.entries(ACCENTS).map(([key, a]) => {
-          const on = accentName === key;
-          const swatch = a[isDark ? 'dark' : 'light'].primary;
-          return (
-            <TouchableOpacity
-              key={key}
-              onPress={() => setAccent(key)}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-              accessibilityLabel={`${a.label} accent`}
-              accessibilityState={{ selected: on }}
-              style={{ alignItems: 'center', gap: 4 }}
-            >
-              <View style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: on ? swatch : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
-                <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: swatch, alignItems: 'center', justifyContent: 'center' }}>
-                  {on && <Ionicons name="checkmark" size={15} color={a[isDark ? 'dark' : 'light'].onPrimary} />}
-                </View>
-              </View>
-              <Text style={{ fontSize: t.xs, color: on ? c.text1 : c.text3 }}>{a.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
-// 2x2 grid, laid out the way the corners actually sit on screen.
-const FAB_POSITIONS = [
-  { key: 'top-left',     label: 'Top Left' },
-  { key: 'top-right',    label: 'Top Right' },
-  { key: 'bottom-left',  label: 'Bottom Left' },
-  { key: 'bottom-right', label: 'Bottom Right' },
-];
-
-function FabPositionPicker({ value, onChange, c, t, s, r }) {
-  return (
-    <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.lg, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, marginBottom: s.md }}>
-        <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: c.teal + '22', alignItems: 'center', justifyContent: 'center' }}>
-          <Ionicons name="apps-outline" size={18} color={c.teal} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1 }}>Quick Actions Button</Text>
-          <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>Choose where the floating + button sits</Text>
-        </View>
-      </View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm }}>
-        {FAB_POSITIONS.map(pos => {
-          const active = value === pos.key;
-          return (
-            <TouchableOpacity
-              key={pos.key}
-              onPress={() => onChange(pos.key)}
-              style={{
-                flexGrow: 1, minWidth: '45%', alignItems: 'center', justifyContent: 'center',
-                paddingVertical: s.sm + 2, borderRadius: r.md, borderWidth: 1,
-                borderColor: active ? c.teal : c.border,
-                backgroundColor: active ? c.teal + '18' : c.bg0,
-              }}
-            >
-              <Text style={{ fontSize: t.xs, fontWeight: '700', color: active ? c.teal : c.text3 }}>{pos.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
-// Which Library life-area bubbles are showing — same field onboarding's
-// "Sectors" step writes (profiles.active_life_areas), editable here too so
-// "add them later" has an obvious home. LibraryScreen.js's own "+ Add"
-// tile on the life-area grid writes the exact same column.
-function LifeAreasPicker({ activeIds, onToggle, c, t, s, r }) {
-  return (
-    <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.lg, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, marginBottom: s.md }}>
-        <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: c.teal + '22', alignItems: 'center', justifyContent: 'center' }}>
-          <Ionicons name="grid-outline" size={18} color={c.teal} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1 }}>Life Areas</Text>
-          <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>Which ones show up in your Library</Text>
-        </View>
-      </View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm }}>
-        {LIFE_AREAS.map(area => {
-          const active = activeIds.includes(area.id);
-          return (
-            <TouchableOpacity
-              key={area.id}
-              onPress={() => onToggle(area.id)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: active ? area.color : c.border, backgroundColor: active ? area.color + '18' : c.bg0 }}
-            >
-              <Text style={{ fontSize: 14 }}>{area.emoji}</Text>
-              <Text style={{ fontSize: 12, color: active ? area.color : c.text3, fontWeight: active ? '700' : '400' }}>{area.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
-// Same AsyncStorage setting (SETTING_KEYS.HIDDEN_LIBRARY_SECTIONS) as
-// onboarding's "Look & Layout" step and LibraryScreen.js's own filtering —
-// whichever place changes it, the other picks it up.
-function LibrarySectionsPicker({ hidden, onToggle, c, t, s, r }) {
-  const allSections = LIBRARY_HUBS.flatMap(hub => hub.items);
-  return (
-    <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.lg, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, marginBottom: s.md }}>
-        <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: c.gold + '22', alignItems: 'center', justifyContent: 'center' }}>
-          <Ionicons name="apps-outline" size={18} color={c.gold} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1 }}>Library Sections</Text>
-          <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>Hide any you don't need</Text>
-        </View>
-      </View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm }}>
-        {allSections.map(item => {
-          const isHidden = hidden.includes(item.screen);
-          return (
-            <TouchableOpacity
-              key={item.screen}
-              onPress={() => onToggle(item.screen)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: isHidden ? c.border : c.gold, backgroundColor: isHidden ? c.bg0 : c.gold + '18', opacity: isHidden ? 0.5 : 1 }}
-            >
-              <Ionicons name={item.icon} size={13} color={isHidden ? c.text4 : c.gold} />
-              <Text style={{ fontSize: 12, color: isHidden ? c.text3 : c.gold, fontWeight: isHidden ? '400' : '700' }}>{item.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </View>
-  );
 }
 
 // Replaces the old "relaunch the whole 7-step onboarding just to change a
@@ -535,85 +285,6 @@ function BirthDateModal({ visible, onClose, onSave, saving, c, t, s, r }) {
   );
 }
 
-function AIKeyCard({ c, t, s, r }) {
-  const [savedKey, setSavedKey] = useState(null); // null = loading, '' = none saved
-  const [draft, setDraft] = useState('');
-  const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => { getUserApiKey().then(k => setSavedKey(k || '')); }, []);
-
-  const save = async () => {
-    const key = draft.trim();
-    if (!key.startsWith('sk-ant-')) {
-      Alert.alert('That doesn’t look like an Anthropic key', 'Anthropic API keys start with "sk-ant-". Get one at console.anthropic.com.');
-      return;
-    }
-    setSaving(true);
-    await setUserApiKey(key);
-    setSaving(false);
-    setSavedKey(key);
-    setDraft('');
-    setEditing(false);
-  };
-
-  const remove = () => {
-    Alert.alert('Remove your API key?', 'Imports will fall back to the app’s shared AI.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: async () => { await clearUserApiKey(); setSavedKey(''); } },
-    ]);
-  };
-
-  return (
-    <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.lg, marginBottom: s.sm, borderWidth: 0.5, borderColor: c.border }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, marginBottom: s.sm }}>
-        <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: c.gold + '22', alignItems: 'center', justifyContent: 'center' }}>
-          <Ionicons name="key-outline" size={18} color={c.gold} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1 }}>Your Anthropic API Key</Text>
-          <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>Used for Import Hub AI parsing — kept on this device only</Text>
-        </View>
-      </View>
-
-      {savedKey === null ? (
-        <ActivityIndicator size="small" color={c.gold} />
-      ) : savedKey && !editing ? (
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={{ fontSize: t.sm, fontFamily: FONTS.mono, color: c.text2 }}>{maskKey(savedKey)}</Text>{/* style-ok: keys read better monospaced */}
-          <View style={{ flexDirection: 'row', gap: s.md }}>
-            <TouchableOpacity onPress={() => { setDraft(savedKey); setEditing(true); }}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: c.teal }}>Change</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={remove}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: c.error }}>Remove</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      ) : (
-        <>
-          <TextInput
-            value={draft}
-            onChangeText={setDraft}
-            placeholder="sk-ant-..."
-            placeholderTextColor={c.text4}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-            style={{ fontSize: t.sm, color: c.text1, backgroundColor: c.bg0, borderRadius: r.md, borderWidth: 0.5, borderColor: c.border, padding: s.md, marginBottom: s.sm, fontFamily: FONTS.mono /* style-ok: keys read better monospaced */ }}
-          />
-          <View style={{ flexDirection: 'row', gap: s.sm }}>
-            <TouchableOpacity onPress={() => Linking.openURL('https://console.anthropic.com/settings/keys')} style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: s.sm }}>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: c.teal }}>Get a key →</Text>
-            </TouchableOpacity>
-            <Button label="Save key" size="sm" onPress={save} disabled={!draft.trim()} busy={saving} style={{ flex: 1 }} />
-          </View>
-        </>
-      )}
-    </View>
-  );
-}
-
 export default function SettingsScreen() {
   const navigation  = useNavigation();
   const route       = useRoute();
@@ -622,36 +293,13 @@ export default function SettingsScreen() {
   const [profile,   setProfile]   = useState(null);
   const [loading,   setLoading]   = useState(true);
   const [signingOut,setSigningOut] = useState(false);
-  const [heroTapEnabled, setHeroTapEnabled] = useSetting(SETTING_KEYS.HERO_TAP_TO_PROFILE, true);
-  const [homeBgMode, setHomeBgMode] = useSetting(SETTING_KEYS.HOME_BACKGROUND, 'plain');
-  const [homeView, setHomeView] = useSetting(SETTING_KEYS.HOME_VIEW, 'full');
-  const [libraryView, setLibraryView] = useSetting(SETTING_KEYS.LIBRARY_VIEW, 'full');
-  const [quickButtons, setQuickButtons] = useSetting(SETTING_KEYS.HOME_QUICK_BUTTONS, true);
-  const [hideDone, setHideDone] = useSetting(SETTING_KEYS.HIDE_DONE_WIDGETS, false);
-  const [libraryBgMode, setLibraryBgMode] = useSetting(SETTING_KEYS.LIBRARY_BACKGROUND, 'plain');
   const [remindersEnabled, setRemindersEnabled] = useSetting(SETTING_KEYS.DAILY_REMINDERS_ENABLED, false);
   // The pet's "getting hungry" reminder. On by default; same switch as the
   // pet's feed sheet.
   const [petRemindOn, setPetRemindOn] = useSetting(SETTING_KEYS.PET_REMINDERS, true);
-  const [screenTutorials, setScreenTutorials] = useSetting(SETTING_KEYS.SCREEN_TUTORIALS_ENABLED, true);
-  const [hiddenSections, setHiddenSections] = useSetting(SETTING_KEYS.HIDDEN_LIBRARY_SECTIONS, []);
-  // Compass — purpose, the active objective, the experimental opt-in and
-  // plan state. Settings is where people come looking for "why can't I see
-  // X", so the same switches the Compass offers live here too.
-  const {
-    purpose, activeObjective, accessFor, experimentalOn, setExperimental, isPlus,
-    stage, nextStage, experienceMode, setExperienceMode, can, plusOnSale,
-    doorSettings, setDoorSetting,
-  } = useAccess();
-  // Labs, Plus and the unlock tally arrive with the last stage ('doors').
-  const showAll = can('doors');
-  const { activeType } = useProfiles();
-  // Educator Mode is a key to the Lesson Builder's door (featureCatalog's
-  // `settingKey`), so it lives with the doors in AccessContext rather than
-  // in a setting of its own the lock wouldn't know about. null = never
-  // decided; the Switch treats that as off.
-  const educatorMode = doorSettings?.educatorMode ?? null;
-  const setEducatorMode = (on) => setDoorSetting('educatorMode', on);
+  // Plan state for the Plus row. Everything else Settings used to read from
+  // here (stage, track, Labs, Educator Mode) is on Make it yours.
+  const { isPlus, plusOnSale } = useAccess();
   const [userId, setUserId] = useState(null);
   const [showCrestModal, setShowCrestModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -674,7 +322,7 @@ export default function SettingsScreen() {
     const y = sectionY.current[key];
     if (y != null) scrollRef.current?.scrollTo({ y: Math.max(0, y - 8), animated: true });
   };
-  // "Make it yours" links straight to a section: { section: 'personalization' }.
+  // Other screens link straight to a section: { section: 'reminders' }.
   const sectionParam = route?.params?.section;
   useEffect(() => {
     if (!sectionParam) return undefined;
@@ -686,10 +334,7 @@ export default function SettingsScreen() {
   const [savingDob, setSavingDob] = useState(false);
   const [exportingData, setExportingData] = useState(false);
   const { startTour } = useTour();
-  // Shared live context, not useSetting — the FAB itself (not a Screen, so
-  // it never gets focus events) also needs to see this change immediately.
-  const { fabPosition, setFabPosition } = useFabPosition();
-  const { showEmojis, showSubtext, setShowEmojis, setShowSubtext } = useUIPrefs();
+  const { showEmojis } = useUIPrefs();
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -711,21 +356,6 @@ export default function SettingsScreen() {
       setLoading(false);
     });
   }, []);
-
-  const activeLifeAreaIds = profile?.active_life_areas?.length ? profile.active_life_areas : LIFE_AREAS.map(a => a.id);
-
-  const toggleLifeArea = async (id) => {
-    const cur = activeLifeAreaIds;
-    const next = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id];
-    setProfile(prev => ({ ...prev, active_life_areas: next }));
-    if (!userId) return;
-    const hidden = LIFE_AREAS.map(a => a.id).filter(aid => !next.includes(aid));
-    await supabase.from('profiles').update({ active_life_areas: next, hidden_life_areas: hidden }).eq('id', userId);
-  };
-
-  const toggleLibrarySection = (screen) => {
-    setHiddenSections(hiddenSections.includes(screen) ? hiddenSections.filter(x => x !== screen) : [...hiddenSections, screen]);
-  };
 
   const saveCrest = async (color, badge) => {
     setProfile(prev => ({ ...prev, suit_color: color, badge }));
@@ -918,9 +548,12 @@ export default function SettingsScreen() {
           );
         })()}
 
-        {/* Appearance */}
+        {/* Jump links. How the app looks and what is in it moved to Make it
+            yours (2026-10-16): it was half here and half there, some of it two
+            different switches for one setting. Settings is the account,
+            reminders, privacy and help. */}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm, marginBottom: s.md }}>
-          {[['appearance', 'Appearance'], ['accessibility', 'Accessibility'], ['experience', 'Learning'], ['privacy', 'Privacy'], ['account', 'Account']].map(([key, label]) => (
+          {[['reminders', 'Reminders'], ['privacy', 'Privacy'], ['help', 'Help'], ['account', 'Account']].map(([key, label]) => (
             <TouchableOpacity
               key={key}
               onPress={() => jumpTo(key)}
@@ -932,271 +565,31 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           ))}
         </View>
-        <View {...markSection('appearance')}><SectionLabel label="Appearance" c={c} t={t} s={s} /></View>
         <TourSpot id="settings-appearance">
-        <AppearancePicker c={c} t={t} s={s} />
-        </TourSpot>
-        <SettingRow
-          icon="leaf-outline"
-          iconColor={c.teal}
-          label="Calm Home"
-          subtitle="One next step, today's focus and two cards for your account type. Every card is one tap away"
-          right={
-            <Switch
-              value={homeView === 'calm'}
-              onValueChange={(v) => setHomeView(v ? 'calm' : 'full')}
-              accessibilityLabel="Calm Home"
-              trackColor={{ false: c.borderStrong, true: c.teal + '88' }}
-              thumbColor={homeView === 'calm' ? c.teal : c.text3}
-            />
-          }
-          c={c} t={t} s={s} r={r}
-        />
-        <SettingRow
-          icon="leaf-outline"
-          iconColor={c.gold}
-          label="Calm Library"
-          subtitle="One panel per page and a short list of tools. All tools are one tap away"
-          right={
-            <Switch
-              value={libraryView === 'calm'}
-              onValueChange={(v) => setLibraryView(v ? 'calm' : 'full')}
-              accessibilityLabel="Calm Library"
-              trackColor={{ false: c.borderStrong, true: c.gold + '88' }}
-              thumbColor={libraryView === 'calm' ? c.gold : c.text3}
-            />
-          }
-          c={c} t={t} s={s} r={r}
-        />
-        <TourSpot id="settings-background">
-        <SettingRow
-          icon="image-outline"
-          iconColor={c.teal}
-          label="Home Background"
-          subtitle="Match your equipped landscape instead of a plain background"
-          right={
-            <Switch
-              value={homeBgMode === 'player'}
-              onValueChange={(v) => setHomeBgMode(v ? 'player' : 'plain')}
-              trackColor={{ false: c.borderStrong, true: c.teal + '88' }}
-              thumbColor={homeBgMode === 'player' ? c.teal : c.text3}
-            />
-          }
-          c={c} t={t} s={s} r={r}
-        />
-        <SettingRow
-          icon="image-outline"
-          iconColor={c.gold}
-          label="Library Background"
-          subtitle="Match your equipped landscape instead of a plain background"
-          right={
-            <Switch
-              value={libraryBgMode === 'player'}
-              onValueChange={(v) => setLibraryBgMode(v ? 'player' : 'plain')}
-              trackColor={{ false: c.borderStrong, true: c.gold + '88' }}
-              thumbColor={libraryBgMode === 'player' ? c.gold : c.text3}
-            />
-          }
-          c={c} t={t} s={s} r={r}
-        />
-        </TourSpot>
-        <SettingRow
-          icon="game-controller-outline"
-          iconColor={c.teal}
-          label="Study & Play buttons"
-          subtitle="The two buttons on your profile card on Home"
-          right={
-            <Switch
-              value={quickButtons !== false}
-              onValueChange={setQuickButtons}
-              accessibilityLabel="Study and Play buttons on Home"
-              trackColor={{ false: c.borderStrong, true: c.teal + '88' }}
-              thumbColor={quickButtons !== false ? c.teal : c.text3}
-            />
-          }
-          c={c} t={t} s={s} r={r}
-        />
-        <SettingRow
-          icon="checkmark-done-outline"
-          iconColor={c.teal}
-          label="Hide cards once they're done"
-          subtitle="Today's Activities, Check-ins Due and Daily Drills step aside when finished, and come back tomorrow"
-          right={
-            <Switch
-              value={!!hideDone}
-              onValueChange={setHideDone}
-              accessibilityLabel="Hide Home cards once they're done"
-              trackColor={{ false: c.borderStrong, true: c.teal + '88' }}
-              thumbColor={hideDone ? c.teal : c.text3}
-            />
-          }
-          c={c} t={t} s={s} r={r}
-        />
-        <SettingRow
-          icon="happy-outline"
-          iconColor={c.gold}
-          label="Show Emojis"
-          subtitle="Decorative emoji next to titles and labels throughout the app"
-          alwaysShowSubtitle
-          right={
-            <Switch
-              value={showEmojis}
-              onValueChange={setShowEmojis}
-              trackColor={{ false: c.borderStrong, true: c.gold + '88' }}
-              thumbColor={showEmojis ? c.gold : c.text3}
-            />
-          }
-          c={c} t={t} s={s} r={r}
-        />
-        <SettingRow
-          icon="reader-outline"
-          iconColor={c.teal}
-          label="Show Subtitles"
-          subtitle="The description line under a screen's title"
-          alwaysShowSubtitle
-          right={
-            <Switch
-              value={showSubtext}
-              onValueChange={setShowSubtext}
-              trackColor={{ false: c.borderStrong, true: c.teal + '88' }}
-              thumbColor={showSubtext ? c.teal : c.text3}
-            />
-          }
-          c={c} t={t} s={s} r={r}
-        />
-        <FabPositionPicker value={fabPosition} onChange={setFabPosition} c={c} t={t} s={s} r={r} />
-
-        {/* Accessibility — text size, font, bold, contrast, motion. Same
-            card as Make it yours (src/components/AccessibilitySettings.js). */}
-        <View {...markSection('accessibility')}><SectionLabel label="Accessibility" c={c} t={t} s={s} /></View>
-        <AccessibilitySettings />
-
-        {/* App experience — how much of the app is on show. First, because
-            it's the answer to "where did X go?" for anyone not at the last
-            stage. See src/data/experienceStages.js. */}
-        <View {...markSection('experience')}><SectionLabel label="App experience" c={c} t={t} s={s} /></View>
-        <SettingRow
-          icon="apps-outline"
-          iconColor={c.teal}
-          label={`How you start: ${TRACK_LABEL[experienceMode] || 'Level up'}`}
-          subtitle="Pick what's in your app, and how it grows."
-          alwaysShowSubtitle
-          onPress={() => navigation.navigate('MakeItYours')}
-          c={c} t={t} s={s} r={r}
-        />
-        <SettingRow
-          icon="checkbox-outline"
-          iconColor={c.teal}
-          label="My features"
-          subtitle="Add or remove any part of the app."
-          alwaysShowSubtitle
-          onPress={() => navigation.navigate('MyFeatures')}
-          c={c} t={t} s={s} r={r}
-        />
-        {experienceMode === 'auto' && (<>
-        <SettingRow
-          icon="layers-outline"
-          iconColor={c.teal}
-          label={`Stage ${stage} of ${MAX_STAGE} · ${stageMeta(stage, activeType).label}`}
-          subtitle={experienceMode === 'full'
-            ? 'Everything is on show because you asked for it. Turn the switch below off and the app goes by your progress again.'
-            : nextStage
-              ? `The app opens a little at a time. ${nextStage.text} to open the next stage: ${nextStage.label}.`
-              : 'Everything is on show.'}
-          alwaysShowSubtitle
-          c={c} t={t} s={s} r={r}
-        />
-        <SettingRow
-          icon="eye-outline"
-          iconColor={c.teal}
-          label="Show everything now"
-          subtitle="Every tool, game and widget from today, including locked tools and how to open them. For people who know their way around apps like this."
-          alwaysShowSubtitle
-          right={
-            <Switch
-              value={experienceMode === 'full'}
-              onValueChange={(on) => setExperienceMode(on ? 'full' : 'auto')}
-              trackColor={{ false: c.borderStrong, true: c.teal + '88' }}
-              thumbColor={experienceMode === 'full' ? c.teal : c.text3}
-            />
-          }
-          c={c} t={t} s={s} r={r}
-        />
-        </>)}
-
-        {/* Compass — the purpose/objective/gating layer. First under
-            Personalization because it's the setting that changes most of
-            what the rest of the app shows you. */}
-        <SectionLabel label="App Nav" c={c} t={t} s={s} />
-        <SettingRow
-          icon="navigate-outline"
-          iconColor={c.gold}
-          label={purpose ? purpose.label : 'Set your purpose'}
-          subtitle={activeObjective?.active
-            ? `On "${activeObjective.objective.label}" — ${activeObjective.done} of ${activeObjective.total} steps done`
-            : 'One goal at a time. Finishing one opens more of the app.'}
+        <SettingRow icon="color-palette-outline" iconColor={c.teal} label="Make it yours"
+          subtitle="Look, Home, Library, features, life areas and your character"
           alwaysShowSubtitle
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
-          onPress={() => navigation.navigate('Compass')}
-          c={c} t={t} s={s} r={r}
-        />
-        {/* Labs, Plus and the unlock tally belong to the last stage — before
-            that, none of what they talk about is on show. Plus only once it
-            can be bought: a plan row with nothing to buy is noise. */}
-        {showAll && (<>
-        <SettingRow
-          icon="flask-outline"
-          iconColor={c.purple}
-          label="Experimental Features"
-          subtitle="Shows work that isn't finished — rough layouts, thin empty states, things that may be rebuilt. Off by default so you never land in one by accident."
-          alwaysShowSubtitle
-          right={
-            <Switch
-              value={experimentalOn}
-              onValueChange={setExperimental}
-              trackColor={{ false: c.borderStrong, true: c.purple + '88' }}
-              thumbColor={experimentalOn ? c.purple : c.text3}
-            />
-          }
-          c={c} t={t} s={s} r={r}
-        />
+          onPress={() => navigation.navigate('MakeItYours')}
+          c={c} t={t} s={s} r={r} />
+        </TourSpot>
+        <SettingRow icon="accessibility-outline" iconColor={c.teal} label="Easier to read and use"
+          subtitle="Text size, bold, contrast and motion"
+          right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
+          onPress={() => navigation.navigate('MakeItYours', { section: 'accessibility' })}
+          c={c} t={t} s={s} r={r} />
         {(plusOnSale || isPlus) && <SettingRow
           icon={isPlus ? 'star' : 'star-outline'}
           iconColor={c.gold}
           label={isPlus ? 'Plus' : 'Free plan'}
           subtitle={isPlus
-            ? 'Business courses, AI Import and Organizations are included. Manage your plan here.'
-            : 'Get Plus for the business courses, AI Import and Organizations. Everything else works the same on the free plan.'}
+            ? 'Business courses and Organizations are included. Manage your plan here.'
+            : 'Get Plus for the business courses and Organizations. Everything else works the same on the free plan.'}
           alwaysShowSubtitle
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
           onPress={() => navigation.navigate('Plus')}
           c={c} t={t} s={s} r={r}
         />}
-        <UnlockSummary accessFor={accessFor} c={c} t={t} s={s} r={r} onPress={() => navigation.navigate('Compass')} />
-        </>)}
-
-        {/* Personalization — same fields onboarding's Sectors / Look &
-            Layout / Character steps set, editable here without re-running
-            the whole flow */}
-        <View {...markSection('personalization')}><SectionLabel label="Personalization" c={c} t={t} s={s} /></View>
-        <SettingRow
-          icon="easel-outline"
-          iconColor={c.purple}
-          label="Teacher / Educator Mode"
-          subtitle="Adds lesson-planning tools to Classes, for teachers. Saved plans are kept either way."
-          alwaysShowSubtitle
-          right={
-            <Switch
-              value={educatorMode === true}
-              onValueChange={setEducatorMode}
-              trackColor={{ false: c.borderStrong, true: c.purple + '88' }}
-              thumbColor={educatorMode === true ? c.purple : c.text3}
-            />
-          }
-          c={c} t={t} s={s} r={r}
-        />
-        <LifeAreasPicker activeIds={activeLifeAreaIds} onToggle={toggleLifeArea} c={c} t={t} s={s} r={r} />
-        <LibrarySectionsPicker hidden={hiddenSections} onToggle={toggleLibrarySection} c={c} t={t} s={s} r={r} />
 
         {/* Profile */}
         <SectionLabel label="Profile" c={c} t={t} s={s} />
@@ -1207,16 +600,6 @@ export default function SettingsScreen() {
         <SettingRow icon="color-palette-outline" iconColor={c.purple} label="Crest" subtitle="Crest color and role badge shown on Home & Portfolio"
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
           onPress={() => setShowCrestModal(true)}
-          c={c} t={t} s={s} r={r} />
-        <SettingRow icon="hand-left-outline" iconColor={c.teal} label="Tap Avatar for Profile" subtitle="Tap your character on the Training screen to open your Profile. Off: the tap makes them jump, and the jump arrow goes away"
-          right={
-            <Switch
-              value={heroTapEnabled}
-              onValueChange={setHeroTapEnabled}
-              trackColor={{ false: c.borderStrong, true: c.teal + '88' }}
-              thumbColor={heroTapEnabled ? c.teal : c.text3}
-            />
-          }
           c={c} t={t} s={s} r={r} />
         <TourSpot id="settings-family">
         <SettingRow icon="people-outline" iconColor={c.warning} label="Family" subtitle="Link a parent/child account to follow progress"
@@ -1242,8 +625,8 @@ export default function SettingsScreen() {
             c={c} t={t} s={s} r={r} />
         )}
 
-        {/* Notifications */}
-        <SectionLabel label="Notifications" c={c} t={t} s={s} />
+        {/* Reminders (Make it yours links here: { section: 'reminders' }) */}
+        <View {...markSection('reminders')}><SectionLabel label="Reminders" c={c} t={t} s={s} /></View>
         <SettingRow icon="notifications-outline" iconColor={c.success} label="Daily Reminders" subtitle="A nudge if today's Daily Drills are still open, or your streak is at risk"
           right={
             <Switch
@@ -1264,15 +647,6 @@ export default function SettingsScreen() {
             />
           }
           c={c} t={t} s={s} r={r} />
-
-        {/* AI Import — bring-your-own Anthropic key. A developer tool, so it
-            isn't offered to under-18 accounts (or guests, whose age is unknown).
-            Labelled optional: Import Hub's "Use my own key" lands here, but
-            nobody else needs it. */}
-        {isAdultProfile(liveProfile) && (<>
-        <SectionLabel label="AI Import (optional, advanced)" c={c} t={t} s={s} />
-        <AIKeyCard c={c} t={t} s={s} r={r} />
-        </>)}
 
         {/* Data */}
         <View {...markSection('privacy')}><SectionLabel label="Data & Privacy" c={c} t={t} s={s} /></View>
@@ -1302,25 +676,11 @@ export default function SettingsScreen() {
             c={c} t={t} s={s} r={r} />
         )}
 
-        {/* About */}
-        <SectionLabel label="About" c={c} t={t} s={s} />
+        {/* Help. The tips-on-new-screens switch is on Make it yours. */}
+        <View {...markSection('help')}><SectionLabel label="Help" c={c} t={t} s={s} /></View>
         <SettingRow icon="school-outline" iconColor={c.purple} label="Replay Tutorial" subtitle="Take the guided tour of the app's features again"
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
           onPress={() => { navigation.navigate('MainTabs'); setTimeout(startTour, 300); }}
-          c={c} t={t} s={s} r={r} />
-        {/* Per-screen tutorials — see src/logic/useFirstVisitTutorial.js. The
-            main teaching in the app now, which is why it defaults on. */}
-        <SettingRow icon="chatbubbles-outline" iconColor={c.purple} label="Screen Tutorials"
-          subtitle="A short walkthrough the first time you open each screen"
-          alwaysShowSubtitle
-          right={
-            <Switch
-              value={screenTutorials !== false}
-              onValueChange={setScreenTutorials}
-              trackColor={{ false: c.borderStrong, true: c.teal + '88' }}
-              thumbColor={screenTutorials !== false ? c.teal : c.text3}
-            />
-          }
           c={c} t={t} s={s} r={r} />
         <SettingRow icon="refresh-outline" iconColor={c.purple} label="Show All Tutorials Again"
           subtitle="Forget which screens you've already seen a walkthrough for"

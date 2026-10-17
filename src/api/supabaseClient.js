@@ -22,7 +22,7 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 // good. A timed-out request fails like any network error: supabase-js hands
 // back { error } (status 0), auth retries, and offline writes stay queued.
 //
-// Edge functions get longer (AI Import waits on a model), and so does
+// Edge functions get longer (some wait on a model), and so does
 // Storage (file transfers). The clock runs until the response starts; a
 // slow body after that isn't cut off.
 //

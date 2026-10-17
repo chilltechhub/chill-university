@@ -210,7 +210,7 @@ export const FEATURES = [
   },
   {
     id: 'import-hub',
-    label: 'Import Hub',
+    label: 'Bring stuff in',
     screen: 'ImportScreen',
     icon: 'download-outline',
     gate: 'locked',
@@ -218,7 +218,7 @@ export const FEATURES = [
     purposes: ['learn', 'build', 'habits'],
     unlockedBy: ['learn-one-skill', 'clear-the-inbox'],
     testable: true,
-    blurb: 'Bulk-import text, links and files straight into your inbox.',
+    blurb: 'Lists, links and files into your inbox at once. Messy notes go to Fill with AI.',
     why: 'Importing hundreds of items into an inbox you have never processed just moves the pile. Learn the inbox first.',
   },
   {
@@ -247,7 +247,7 @@ export const FEATURES = [
     testable: true,
     settingKey: 'educatorMode',
     blurb: 'Build and save classroom-day lesson plans for other people.',
-    why: 'An authoring tool in a learner’s hands is clutter. Show you teach, or prove you know how, and it appears. If you already teach, Educator Mode in Settings opens it straight away.',
+    why: 'An authoring tool in a learner’s hands is clutter. Show you teach, or prove you know how, and it appears. If you already teach, tick it in My features and it opens straight away.',
   },
   {
     id: 'savings-investing',
@@ -352,18 +352,9 @@ export const FEATURES = [
     blurb: 'Your last four weeks: things done, habits kept, focus time, what you used.',
     why: 'See your real progress add up, then your game stats.',
   },
-  {
-    id: 'ai-import',
-    label: 'AI Import',
-    screen: null,
-    parent: 'import-hub',
-    icon: 'sparkles-outline',
-    gate: 'paid',
-    depth: 'deep',
-    purposes: ['build', 'learn', 'career'],
-    blurb: 'Point it at messy text and it sorts what it found into real items.',
-    why: 'Parsing runs against a paid model, so this one genuinely costs money per use.',
-  },
+  // 'ai-import' (AI Import, a Plus perk on a paid model) was folded into
+  // Fill with AI on 2026-10-16: the same job, free, with any chatbot. Its
+  // server function was never deployed, so the perk had never worked.
   // 'custom-paths' (Custom Goals) was listed here and sold in Plus with no
   // screen behind it. Removed until it's built.
 ];

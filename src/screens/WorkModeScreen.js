@@ -169,7 +169,7 @@ export default function WorkModeScreen() {
       // fixed AREAS taxonomy this screen's chips pick from, so there's no
       // valid id to pass here. areaKey still tags the finish summary and
       // routes a project-less scratchpad note below.
-      await saveTimerSession(userId, elapsedSeconds, null);
+      await saveTimerSession(userId, elapsedSeconds, null, focusText);
       if (project && project.next_action && stepDone) {
         await advanceNextAction(userId, project, { done: true, next: nextStep });
       }

@@ -137,7 +137,7 @@ export default function LibraryNavigator() {
       <Stack.Screen name="CaptureInbox" component={CaptureInbox} options={{ title: 'Capture Inbox' }} />
       <Stack.Screen name="WorkModeScreen" component={GatedWorkMode} options={{ headerShown: false }} />
       <Stack.Screen name="WeeklyReviewScreen" component={GatedWeeklyReview} options={{ headerShown: false }} />
-      <Stack.Screen name="ImportScreen" component={GatedImport} options={{ headerShown: false, title: 'Import Hub' }} />
+      <Stack.Screen name="ImportScreen" component={GatedImport} options={{ headerShown: false, title: 'Bring stuff in' }} />
       {/* Fill with AI — free and open to everyone: it only writes into places
           the person has unlocked, and checks that itself (AIBridgeScreen.js). */}
       <Stack.Screen name="AIBridgeScreen" component={AIBridgeScreen} options={{ headerShown: false, title: 'Fill with AI' }} />

@@ -322,10 +322,8 @@ export default function LibraryScreen() {
   const { level, points, rank, streakDays } = useUserProgress();
   const { currentStep, active: tourActive, completeAction: completeTourAction } = useTour();
   const { background: playerBackground } = useCharacterLoadout({ level, points, rank, streakDays });
-  // Set from Settings → Appearance, not on this screen itself.
+  // Set from Make it yours → Look, not on this screen itself.
   const [bgMode] = useSetting(SETTING_KEYS.LIBRARY_BACKGROUND, 'plain');
-  // Set from Settings → Library Sections, or onboarding's Look & Layout step.
-  const [hiddenSections] = useSetting(SETTING_KEYS.HIDDEN_LIBRARY_SECTIONS, []);
   // Calm: one panel per page plus a short list (CalmLibrary.js). Its own
   // switch, apart from Home's. Not while a walkthrough step points at
   // something here: its highlights are on the full page.
@@ -687,8 +685,9 @@ export default function LibraryScreen() {
   // until the last stage ('doors') or until the goal in flight opens one.
   // Entries outside the catalog (the Wayfinder) go by isScreenVisible,
   // which applies the same stage.
+  // (A separate "Library Sections" hide list used to filter here too; every
+  // one of its eight tools is a My features pick, so that is the one switch.)
   const visibleItemsFor = (hub) => hub.items
-      .filter(item => !hiddenSections.includes(item.screen))
       .map(item => {
         const feature = featureForScreen(item.screen);
         return { item, feature, access: feature ? accessFor(feature.id) : null };
@@ -1094,7 +1093,7 @@ export default function LibraryScreen() {
             const path = pathFor(persona);
             const shown = new Set(LIBRARY_HUBS.filter(h => h.tab === activeTab).flatMap(h => visibleItemsFor(h).map(e => e.item.screen)));
             const coming = LIBRARY_HUBS.filter(h => h.tab === activeTab).flatMap(h => h.items)
-              .filter(item => !shown.has(item.screen) && !hiddenSections.includes(item.screen))
+              .filter(item => !shown.has(item.screen))
               .map(item => {
                 const feature = featureForScreen(item.screen);
                 // Not stage locks: Plus, Labs and social tools wait on other things.

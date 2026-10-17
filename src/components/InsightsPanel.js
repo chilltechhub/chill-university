@@ -45,7 +45,7 @@ export default function InsightsPanel({ userId }) {
       accessible accessibilityLabel={`${label}: ${value}${note ? `. ${note}` : ''}`}>
       <Text style={{ fontSize: 12, color: c.text3 }}>{label}</Text>
       <Text style={{ fontSize: 26, fontWeight: '700', color: c.text1, marginTop: 2 }}>{value}</Text>
-      {!!note && <Text style={{ fontSize: 12, color: c.text3, marginTop: 2 }}>{note}</Text>}
+      {!!note && <Text style={{ fontSize: 12, color: c.text3, marginTop: 2 }} numberOfLines={2}>{note}</Text>}
     </View>
   );
 
@@ -69,7 +69,8 @@ export default function InsightsPanel({ userId }) {
         <Tile label="Habits kept" value={data.habits.total ? `${data.habits.kept} of ${data.habits.total}` : '—'}
           note={data.habits.total ? 'last 7 days' : 'No habits yet'} />
         <Tile label="Focus this week" value={fmtMinutes(data.focus.week)}
-          note={data.focus.prevWeek ? `${fmtMinutes(data.focus.prevWeek)} the week before` : 'From Work Mode'} />
+          note={data.focus.top ? `Most on ${data.focus.top.label} (${fmtMinutes(data.focus.top.minutes)})`
+            : data.focus.prevWeek ? `${fmtMinutes(data.focus.prevWeek)} the week before` : 'From Work Mode'} />
         <Tile label="Used what you saved" value={data.knowledge.saved ? `${data.knowledge.used} of ${data.knowledge.saved}` : '—'}
           note={`Vault, last ${INSIGHT_DAYS / 7} weeks`} />
       </View>

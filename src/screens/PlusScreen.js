@@ -32,24 +32,20 @@ import { FONTS } from '../theme';
 const PERKS = [
   { icon: 'briefcase-outline', title: 'Every business & startup course',
     body: 'All of Business Foundations, Acquisition & Ownership, Startup & Venture and Operations & Compliance. The first lesson of each level is free, and Plus opens the rest.' },
-  { icon: 'sparkles-outline', title: 'AI Import',
-    body: 'Paste messy notes and they get sorted into real tasks, ideas and links.' },
   { icon: 'business-outline', title: 'Organizations & Cohorts',
     body: 'Run a class, team or group, with rosters, invites and assignments.' },
 ];
 
 // What they bumped into, said back to them. `feature` with a featureId
-// names the tool ("AI Import is part of Plus.").
+// names the tool ("Organizations is part of Plus.").
 const FROM_COPY = {
   business: 'The rest of this course is part of Plus.',
   feature: 'That one is part of Plus.',
-  'ai-import': 'AI Import is part of Plus.',
 };
 // A free way to do the same job, said on the paywall so Plus never looks
 // like the only road. Keyed like FROM_COPY / featureId.
-const FREE_ALTERNATIVE = {
-  'ai-import': 'Fill with AI stays free: it works with your own ChatGPT, Claude or Gemini.',
-};
+// (AI Import had one, Fill with AI; it was folded into Fill with AI.)
+const FREE_ALTERNATIVE = {};
 
 export default function PlusScreen() {
   const { colors: c, spacing: s, radius: r } = useTheme();
@@ -60,7 +56,7 @@ export default function PlusScreen() {
   const st = useMemo(() => makeStyles(c, s, r), [c, s, r]);
 
   const from = route.params?.from;
-  const featureId = route.params?.featureId || (from === 'ai-import' ? 'ai-import' : null);
+  const featureId = route.params?.featureId || null;
   const feature = featureId ? getFeature(featureId) : null;
   const headline = (from === 'feature' && feature) ? `${feature.label} is part of Plus.` : FROM_COPY[from];
   const freeAlt = FREE_ALTERNATIVE[featureId];

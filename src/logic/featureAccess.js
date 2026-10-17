@@ -336,7 +336,7 @@ function evaluateGate(feature, ctx = {}) {
 }
 
 const SETTING_KEY_LABELS = {
-  educatorMode: 'Educator Mode',
+  educatorMode: 'your Lesson Builder pick',
 };
 
 function earnedHeadline(method) {
@@ -352,7 +352,7 @@ function earnedReason(method, feature) {
   if (method === 'test') return `You passed the ${feature.label} check first time.`;
   if (method === 'objective') return `Opened by finishing a goal.`;
   if (method === 'granted') return 'Switched on for your account.';
-  if (method === 'setting') return `Opened by ${SETTING_KEY_LABELS[feature.settingKey] || 'a switch'} in Settings.`;
+  if (method === 'setting') return `Opened by ${SETTING_KEY_LABELS[feature.settingKey] || 'a switch'} in My features.`;
   return 'Unlocked.';
 }
 

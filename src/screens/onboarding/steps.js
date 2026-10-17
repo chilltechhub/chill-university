@@ -1066,7 +1066,7 @@ export function LookStep({ data, set, theme, onThemeChange }) {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: c.bg1, borderRadius: 12, padding: 14, marginBottom: 20, borderWidth: 0.5, borderColor: c.border }}>
         <Ionicons name="image-outline" size={20} color={c.text3} />
         <Text style={{ flex: 1, fontSize: 12, color: c.text3, lineHeight: 17 }}>
-          Home and the Library start with a plain background. You can switch to a scenic one later in Settings → Personalization.
+          Home and the Library start with a plain background. Switch to a scenic one any time in Make it yours.
         </Text>
       </View>
 
