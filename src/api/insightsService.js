@@ -14,6 +14,17 @@ import { todayStr, addDays, dateStr } from '../logic/dateUtils';
 
 export const INSIGHT_DAYS = 28;
 
+// Work Mode sessions for the last two weeks, with what each was for once
+// that column exists (20261016120000_timer_session_label.sql). Before
+// then the same rows without it, so the focus minutes never go missing.
+async function timerRows(userId, today) {
+  const q = (cols) => supabase.from('timer_sessions').select(cols)
+    .eq('user_id', userId).gte('session_date', addDays(today, -13)).limit(500);
+  let res = await q('session_date, duration_seconds, label');
+  if (res.error?.code === '42703') res = await q('session_date, duration_seconds');
+  return quiet('focus')(res);
+}
+
 const quiet = (label) => (res) => {
   if (res?.error) console.warn(`[insights] ${label}`, res.error.message);
   return res?.data || [];
@@ -24,7 +35,7 @@ const quiet = (label) => (res) => {
  *   days: { date: string, done: number }[],   // oldest first, INSIGHT_DAYS long, ends today
  *   doneWeek: number, donePrevWeek: number,
  *   habits: { kept: number, total: number },   // repeating plans due in the last 7 days
- *   focus: { week: number, prevWeek: number },  // minutes
+ *   focus: { week: number, prevWeek: number, top: { label: string, minutes: number } | null },  // minutes; top = what most of this week went on
  *   areas: { key: string, label: string, color: string, done: number }[],  // most first, done > 0
  *   knowledge: { saved: number, used: number }, // last INSIGHT_DAYS: saved items, items used at least once
  * }>}
@@ -41,8 +52,7 @@ export async function getInsights(userId) {
       .eq('user_id', userId).gte('date', from).lte('date', today).limit(2000).then(quiet('plans'), () => []),
     supabase.from('tasks').select('completed_at')
       .eq('user_id', userId).eq('completed', true).gte('completed_at', fromIso).limit(2000).then(quiet('tasks'), () => []),
-    supabase.from('timer_sessions').select('session_date, duration_seconds')
-      .eq('user_id', userId).gte('session_date', addDays(today, -13)).limit(500).then(quiet('focus'), () => []),
+    timerRows(userId, today).catch(() => []),
     supabase.from('captures').select('id, created_at, url_meta')
       .eq('user_id', userId).in('type', ['note', 'link', 'resource']).neq('status', 'inbox')
       .is('deleted_at', null).gte('created_at', fromIso).limit(1000).then(quiet('vault'), () => []),
@@ -73,13 +83,24 @@ export async function getInsights(userId) {
   const minutes = (rows) => Math.round(rows.reduce((n, r) => n + (r.duration_seconds || 0), 0) / 60);
   const focusWeek = minutes(timers.filter(r => r.session_date >= weekFrom));
   const focusPrev = minutes(timers.filter(r => r.session_date < weekFrom));
+  // What most of this week's focus went on, by Work Mode's session name.
+  const byLabel = new Map();
+  for (const r of timers) {
+    const name = (r.label || '').trim();
+    if (!name || r.session_date < weekFrom) continue;
+    const key = name.toLowerCase();
+    const cur = byLabel.get(key) || { label: name, seconds: 0 };
+    byLabel.set(key, { ...cur, seconds: cur.seconds + (r.duration_seconds || 0) });
+  }
+  const topRow = [...byLabel.values()].sort((a, b) => b.seconds - a.seconds)[0];
+  const focusTop = topRow && topRow.seconds >= 60 ? { label: topRow.label, minutes: Math.round(topRow.seconds / 60) } : null;
 
   return {
     days,
     doneWeek: sum(days.slice(-7)),
     donePrevWeek: sum(days.slice(-14, -7)),
     habits: { kept: habitRows.filter(p => p.completed).length, total: habitRows.length },
-    focus: { week: focusWeek, prevWeek: focusPrev },
+    focus: { week: focusWeek, prevWeek: focusPrev, top: focusTop },
     areas: [...byArea.entries()]
       .filter(([key]) => AREAS[key])
       .map(([key, done]) => ({ key, label: AREAS[key].label, color: AREAS[key].color, done }))
@@ -112,7 +133,7 @@ function emptyInsights(today) {
   const days = Array.from({ length: INSIGHT_DAYS }, (_, i) => ({ date: addDays(today, i - (INSIGHT_DAYS - 1)), done: 0 }));
   return {
     days, doneWeek: 0, donePrevWeek: 0,
-    habits: { kept: 0, total: 0 }, focus: { week: 0, prevWeek: 0 },
+    habits: { kept: 0, total: 0 }, focus: { week: 0, prevWeek: 0, top: null },
     areas: [], knowledge: { saved: 0, used: 0 },
     feelings: { count: 0, series: [] },
   };

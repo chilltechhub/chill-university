@@ -11,7 +11,8 @@
 // The format and prompt live in src/logic/aiBridgeFormat.js, the reply
 // reader in src/logic/aiBridgeParse.js, reads and writes in
 // src/api/aiBridgeData.js. This screen costs nothing to run: the app never
-// calls a model itself (that's the paid 'ai-import' path in ImportScreen).
+// calls a model itself. It also took over from AI Import (2026-10-16): the
+// Import screen hands free-form text here.
 
 import React, { useEffect, useMemo, useState } from 'react';
 import {

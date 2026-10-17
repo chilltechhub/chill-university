@@ -1,26 +1,15 @@
 // src/screens/ImportScreen.js
-// Import Hub — lives inside the Capture Inbox. Paste anything (raw URLs,
-// browser bookmark exports, markdown link lists, CSV, tab dumps) and it's
-// organized into `captures` (status: 'inbox'), same table and shape as
-// Quick Capture, via captureService.addCapture so it gets the same
-// offline-queue behavior as everything else in the Inbox.
+// "Bring stuff in" (the Import Hub) — lives inside the Capture Inbox. Paste
+// anything (raw URLs, browser bookmark exports, markdown link lists, CSV, tab
+// dumps) and it is organized into `captures` (status: 'inbox'), same table
+// and shape as Quick Capture, via captureService.addCapture so it gets the
+// same offline-queue behavior as everything else in the Inbox.
 //
-// Structured formats (CSV, bookmark HTML, markdown links, "site.com -
-// description" lists, URL lists) are parsed deterministically in
-// src/logic/importParsers.js — instantly, no AI, no API key needed. Only
-// genuinely freeform text with no recognizable structure falls back to AI
-// extraction, and every result can optionally be enriched with AI afterward.
-// The AI is given your real life areas, active projects, and idea garden
-// entries so it can attach an item directly to one of them (project_id /
-// life_area_id on the capture) instead of only guessing a generic category —
-// so "where did this go" has a concrete answer: your Inbox, and if matched,
-// also that project or life area.
-//
-// The AI call itself never runs in this file — see src/api/importAI.js: it
-// uses your own API key (Settings) if you've set one, otherwise the app's
-// shared server-side function. A key referenced from client code ships
-// inside the downloadable app bundle and can be extracted by anyone, so it
-// must never live here.
+// Structured formats are parsed in src/logic/importParsers.js: instantly, no
+// AI, no key. Free-form notes with no structure go to Fill with AI
+// (AIBridgeScreen) with the text already filled in: free, with whatever
+// chatbot someone uses. That replaced AI Import (2026-10-16), a Plus perk on
+// a paid model whose server function was never deployed.
 
 import React, { useState, useEffect, useMemo } from 'react';
 import {
@@ -32,16 +21,15 @@ import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
-import { usePlus } from '../../context/PlusContext';
 import { supabase } from '../api/profileScopedClient';
 import { addCapture } from '../api/captureService';
-import { analyzeWithAI, hasUserApiKey } from '../api/importAI';
 import { detectFormat, parseDeterministic, normalizeUrlForDedupe } from '../logic/importParsers';
 import { itemsToMarkdown, itemsToCSV } from '../logic/exportUtils';
 import { CAPTURE_TYPES } from './CaptureInbox';
 import { LIFE_AREAS } from './library/LifeAreaScreen';
 import { FONTS } from '../theme';
 import TourSpot from '../components/TourSpot';
+import RichText from '../components/RichText';
 
 const TYPE_MAP = Object.fromEntries(CAPTURE_TYPES.map(t => [t.key, t]));
 const LIFE_AREA_MAP = Object.fromEntries(LIFE_AREAS.map(a => [a.id, a]));
@@ -65,11 +53,8 @@ export default function ImportScreen() {
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
 
   const [userId, setUserId] = useState(null);
-  const [hasKey, setHasKey] = useState(false);
   const [pasteText, setPasteText] = useState('');
   const [format, setFormat] = useState('auto');
-  const [analyzing, setAnalyzing] = useState(false);
-  const [enriching, setEnriching] = useState(false);
   const [items, setItems] = useState([]);
   const [editingId, setEditingId] = useState(null);
 
@@ -97,22 +82,18 @@ export default function ImportScreen() {
         lifeAreaRows: areaRes.data || [],
       });
     });
-    hasUserApiKey().then(setHasKey);
   }, []);
 
   const detected = useMemo(() => (format === 'auto' ? detectFormat(pasteText) : format), [pasteText, format]);
-  const willUseAI = detected === 'freeform';
-  // The shared AI runs on the app's paid model, so the server only allows it
-  // with Plus. Without Plus or your own key, say so up front and point at
-  // the free route (Fill with AI) instead of letting the tap fail.
-  const plus = usePlus();
-  const sharedAIOpen = hasKey || plus.hasPlus;
-  const [planNotice, setPlanNotice] = useState(null); // text shown by the Analyze button
-  const needsPlus = (e) => {
-    if (e?.code !== 'PLUS_REQUIRED') return false;
-    setPlanNotice(e.message);
-    return true;
-  };
+  // An empty box detects as free-form too; nothing to sort yet.
+  const willUseAI = !!pasteText.trim() && detected === 'freeform';
+  // Free-form text needs AI to sort: Fill with AI, with the paste already in.
+  const sortWithAI = () => navigation.navigate('AIBridgeScreen', {
+    target: 'vault', at: Date.now(),
+    idea: `Sort this into my Vault as notes and links:
+
+${pasteText.trim()}`,
+  });
 
   const pasteFromClipboard = async () => {
     try {
@@ -188,71 +169,22 @@ export default function ImportScreen() {
 
   const analyze = async () => {
     if (!pasteText.trim()) return;
+    if (willUseAI) { sortWithAI(); return; }
     setSummary(null);
     setDupSkipped(0);
-
-    if (!willUseAI) {
-      const { items: parsed } = parseDeterministic(pasteText, format);
-      if (parsed.length === 0) {
-        Alert.alert('Nothing found', `Detected ${FORMAT_LABEL[detected]}, but couldn't find any items in it.`);
-        return;
-      }
-      try {
-        const { items: normalized, duplicatesSkipped } = await normalizeItems(parsed);
-        setItems(normalized);
-        setDupSkipped(duplicatesSkipped);
-      } catch (e) {
-        console.error('ImportScreen normalizeItems failed:', e);
-        Alert.alert('Could not check for duplicates', e.message || 'Try again in a moment.');
-      }
+    const { items: parsed } = parseDeterministic(pasteText, format);
+    if (parsed.length === 0) {
+      Alert.alert('Nothing found', `Detected ${FORMAT_LABEL[detected]}, but couldn't find any items in it.`);
       return;
     }
-
-    setAnalyzing(true);
     try {
-      const parsed = await analyzeWithAI(pasteText, 'auto', context);
-      if (parsed.length === 0) {
-        Alert.alert('Nothing found', "Couldn't find any links or notes worth importing in that paste.");
-        setItems([]);
-      } else {
-        const { items: normalized, duplicatesSkipped } = await normalizeItems(parsed);
-        setItems(normalized);
-        setDupSkipped(duplicatesSkipped);
-      }
+      const { items: normalized, duplicatesSkipped } = await normalizeItems(parsed);
+      setItems(normalized);
+      setDupSkipped(duplicatesSkipped);
     } catch (e) {
-      if (!needsPlus(e)) Alert.alert('Could not analyze that', e.message || 'Try again in a moment.');
+      console.error('ImportScreen normalizeItems failed:', e);
+      Alert.alert('Could not check for duplicates', e.message || 'Try again in a moment.');
     }
-    setAnalyzing(false);
-  };
-
-  const enrich = async () => {
-    if (items.length === 0) return;
-    setEnriching(true);
-    try {
-      const slim = items.map(it => ({ title: it.title, url: it.url || undefined }));
-      const enriched = await analyzeWithAI(JSON.stringify(slim), 'enrich', context);
-      setItems(prev => prev.map((it, i) => {
-        const e = enriched[i];
-        if (!e) return it;
-        const matchType = e.match_type === 'project' || e.match_type === 'idea' ? e.match_type : null;
-        const matchId = matchType && e.match_id ? e.match_id : null;
-        const matchLabel = matchType === 'project' ? projectTitle(matchId) : matchType === 'idea' ? ideaTitle(matchId) : null;
-        return {
-          ...it,
-          type: TYPE_MAP[e.type] ? e.type : it.type,
-          description: e.description || it.description,
-          tags: Array.isArray(e.tags) && e.tags.length ? e.tags.slice(0, 4) : it.tags,
-          lifeArea: LIFE_AREA_MAP[e.life_area] ? e.life_area : it.lifeArea,
-          matchType: matchLabel ? matchType : it.matchType,
-          matchId: matchLabel ? matchId : it.matchId,
-          matchLabel: matchLabel || it.matchLabel,
-        };
-      }));
-    } catch (e) {
-      console.error('ImportScreen enrich failed:', e);
-      if (!needsPlus(e)) Alert.alert('Could not enrich with AI', e.message || 'Try again in a moment.');
-    }
-    setEnriching(false);
   };
 
   const toggleItem = (localId) => {
@@ -317,34 +249,19 @@ export default function ImportScreen() {
           <Ionicons name="chevron-back" size={22} color={c.teal} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: t.xxl, fontFamily: FONTS.display, fontWeight: t.bold, color: c.text1 }}>⬇️ Import Hub</Text>
-          <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>Everything lands in your Inbox — matched items also attach directly</Text>
+          <Text style={{ fontSize: t.xxl, fontFamily: FONTS.display, fontWeight: t.bold, color: c.text1 }}>Bring stuff in</Text>
+          <RichText style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }} boldStyle={{ color: c.text1 }}>Lists, links and files land in your **Inbox**. Messy notes go to **Fill with AI**.</RichText>
         </View>
-        <TouchableOpacity accessibilityRole="button" accessibilityLabel={hasKey ? 'AI key saved. Open Settings' : 'Add an AI key in Settings'} onPress={() => navigation.navigate('Settings')} style={{ padding: 4 }}>
-          <Ionicons name={hasKey ? 'key' : 'key-outline'} size={20} color={hasKey ? c.gold : c.text4} />
-        </TouchableOpacity>
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
 
-          {!hasKey && (
-            <TouchableOpacity onPress={() => navigation.navigate('Settings')}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.goldLight, borderRadius: r.md, padding: s.md, marginBottom: s.lg, borderWidth: 0.5, borderColor: c.gold + '55' }}>
-              <Ionicons name="information-circle-outline" size={16} color={c.gold} />
-              <Text style={{ flex: 1, fontSize: 11, color: c.gold }}>
-                {plus.hasPlus
-                  ? 'Using Deskartes AI with your Plus plan. Add your own Anthropic key in Settings for unlimited imports.'
-                  : 'Sorting messy text with AI is part of Plus, or free with your own Anthropic key (tap to add one). Links, lists and CSV import free either way.'}
-              </Text>
-            </TouchableOpacity>
-          )}
-
           <TouchableOpacity onPress={() => navigation.navigate('AIBridgeScreen', { target: 'vault' })}
             style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.tealLight, borderRadius: r.md, padding: s.md, marginBottom: s.lg, borderWidth: 0.5, borderColor: c.teal + '55' }}>
             <Ionicons name="sparkles-outline" size={16} color={c.teal} />
             <Text style={{ flex: 1, fontSize: 11, color: c.teal }}>
-              Rather use your own chatbot? Fill with AI works with ChatGPT, Claude or Gemini for free, and can edit and delete too.
+              Messy notes? Fill with AI sorts them with ChatGPT, Claude or Gemini, free. It can edit and delete too.
             </Text>
             <Ionicons name="chevron-forward" size={14} color={c.teal} />
           </TouchableOpacity>
@@ -361,7 +278,7 @@ export default function ImportScreen() {
             </View>
             <TextInput
               value={pasteText}
-              onChangeText={(v) => { setPasteText(v); setPlanNotice(null); }}
+              onChangeText={setPasteText}
               placeholder={'Drop in raw URLs, "site.com - what it does" one per line, a browser bookmarks export, a markdown list, CSV, tab dumps — whatever you\'ve got.'}
               placeholderTextColor={c.text4}
               multiline
@@ -372,7 +289,7 @@ export default function ImportScreen() {
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
                 <Text style={{ fontSize: 11, fontFamily: FONTS.mono, color: willUseAI ? c.gold : c.teal }}>
                   {format === 'auto' ? `Detected: ${FORMAT_LABEL[detected]}` : `Format: ${FORMAT_LABEL[detected] || detected}`}
-                  {willUseAI ? ' · uses AI' : ' · parses instantly, no AI'}
+                  {willUseAI ? ' · sorts with Fill with AI' : ' · parses instantly, no AI'}
                 </Text>
                 <Text style={{ fontSize: 11, fontFamily: FONTS.mono, color: c.text3 }}>{pasteText.length.toLocaleString()} chars</Text>
               </View>
@@ -403,47 +320,27 @@ export default function ImportScreen() {
           </TourSpot>
 
           {/* ── 3. Analyze / Parse ── */}
-          {(planNotice || (willUseAI && !sharedAIOpen)) && (
-            <View style={{ backgroundColor: c.bg1, borderRadius: r.md, borderWidth: 1, borderColor: c.gold + '66', padding: s.md, marginBottom: s.md, gap: s.sm }}>
-              <Text style={{ fontSize: t.sm, color: c.text1, lineHeight: 19 }}>
-                {planNotice || 'This looks like free-form text, which needs AI to sort. That runs with Plus or your own key.'}
-              </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm }}>
-                <TouchableOpacity onPress={() => navigation.navigate('AIBridgeScreen', { target: 'vault' })}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: s.md, paddingVertical: 8, borderRadius: r.md, backgroundColor: c.tealLight }}>
-                  <Ionicons name="sparkles-outline" size={14} color={c.teal} />
-                  <Text style={{ fontSize: t.xs, fontWeight: '700', color: c.teal }}>Fill with AI (free)</Text>
-                </TouchableOpacity>
-                {plus.onSale && (
-                  <TouchableOpacity onPress={() => navigation.navigate('Plus', { from: 'ai-import' })}
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: s.md, paddingVertical: 8, borderRadius: r.md, borderWidth: 1, borderColor: c.gold }}>
-                    <Ionicons name="star-outline" size={14} color={c.gold} />
-                    <Text style={{ fontSize: t.xs, fontWeight: '700', color: c.gold }}>See Plus</Text>
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity onPress={() => navigation.navigate('Settings')}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: s.md, paddingVertical: 8 }}>
-                  <Ionicons name="key-outline" size={14} color={c.text2} />
-                  <Text style={{ fontSize: t.xs, fontWeight: '700', color: c.text2 }}>Use my own key</Text>
-                </TouchableOpacity>
-              </View>
+          {willUseAI && (
+            <View style={{ backgroundColor: c.bg1, borderRadius: r.md, borderWidth: 1, borderColor: c.teal + '66', padding: s.md, marginBottom: s.md }}>
+              <RichText style={{ fontSize: t.sm, color: c.text1, lineHeight: 19 }}>
+                This is free-form text. **Fill with AI** sorts it with your own chatbot, free. Your text goes with it.
+              </RichText>
             </View>
           )}
           <TourSpot id="import-analyze">
           <TouchableOpacity
             onPress={analyze}
-            disabled={analyzing || !pasteText.trim()}
+            disabled={!pasteText.trim()}
+            accessibilityRole="button"
             style={{
               flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: s.sm,
-              backgroundColor: willUseAI ? c.gold : c.teal, borderRadius: r.lg, paddingVertical: s.md,
-              opacity: (analyzing || !pasteText.trim()) ? 0.5 : 1, marginBottom: s.xl,
+              backgroundColor: c.teal, borderRadius: r.lg, paddingVertical: s.md,
+              opacity: !pasteText.trim() ? 0.5 : 1, marginBottom: s.xl,
             }}
           >
-            {analyzing
-              ? <ActivityIndicator color="#fff" size="small" />
-              : <Ionicons name={willUseAI ? 'sparkles' : 'flash'} size={16} color="#fff" />}
+            <Ionicons name={willUseAI ? 'sparkles' : 'flash'} size={16} color="#fff" />
             <Text style={{ color: '#fff', fontWeight: t.bold, fontSize: t.md }}>
-              {analyzing ? 'Analyzing…' : willUseAI ? 'Analyze with AI' : 'Parse'}
+              {willUseAI ? 'Sort with Fill with AI' : 'Parse'}
             </Text>
           </TouchableOpacity>
           </TourSpot>
@@ -457,10 +354,6 @@ export default function ImportScreen() {
                   {dupSkipped > 0 ? ` · ${dupSkipped} repeat link${dupSkipped === 1 ? '' : 's'} skipped` : ''}
                 </Text>
                 <View style={{ flexDirection: 'row', gap: s.md, alignItems: 'center' }}>
-                  <TouchableOpacity onPress={enrich} disabled={enriching} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    {enriching ? <ActivityIndicator size="small" color={c.gold} /> : <Ionicons name="sparkles-outline" size={13} color={c.gold} />}
-                    <Text style={{ fontSize: 12, color: c.gold, fontWeight: '700' }}>{enriching ? 'Enriching…' : 'Enrich with AI'}</Text>
-                  </TouchableOpacity>
                   <TouchableOpacity onPress={() => setAll(true)}><Text style={{ fontSize: 12, color: c.teal, fontWeight: '700' }}>Select all</Text></TouchableOpacity>
                   <TouchableOpacity onPress={() => setAll(false)}><Text style={{ fontSize: 12, color: c.text3, fontWeight: '700' }}>Deselect all</Text></TouchableOpacity>
                 </View>

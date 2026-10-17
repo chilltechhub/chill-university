@@ -14,7 +14,7 @@ import {
   KeyboardAvoidingView, Platform, Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { supabase } from '../api/supabaseClient';
 import { useTheme } from '../../context/ThemeContext';
 import SignInPrompt from '../components/SignInPrompt';
@@ -63,6 +63,9 @@ export default function ProfileScreen() {
   const wallet = useSpendablePoints(user?.id, points);
   const [petSheetOpen, setPetSheetOpen] = useState(false);
   const [decorOpen, setDecorOpen] = useState(false);
+  // Make it yours → Decorate opens straight into the sheet ({ decorate: Date.now() }).
+  const route = useRoute();
+  useEffect(() => { if (route.params?.decorate) setDecorOpen(true); }, [route.params?.decorate]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

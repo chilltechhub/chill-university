@@ -281,7 +281,7 @@ export default function FloatingActionButton({ currentScreen, navigationRef }) {
   const [captureOpen, setCaptureOpen] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
 
-  // Shared live context — also settable from Settings → Appearance, but
+  // Shared live context — also settable from Make it yours → Look, but
   // living here means the Move circle below can relocate the FAB instantly.
   const { fabPosition, setFabPosition } = useFabPosition();
   const [vSide, hSide] = fabPosition.split('-'); // 'top'|'bottom', 'left'|'right'

@@ -36,9 +36,8 @@ export const SETTING_KEYS = {
   // On by default; the pet's feed sheet and Settings both switch it.
   PET_REMINDERS: 'petReminders',
   TOUR_SEEN: 'tourSeen',
-  // Array of LIBRARY_HUBS item `screen` values the user has chosen to hide
-  // from the Library tab (src/screens/library/LibraryScreen.js). Set from
-  // onboarding's Look & Layout step or Settings → Library Sections.
+  // Retired 2026-10-16: the Library's own hide list. Its eight tools are all
+  // My features picks, so the Library no longer reads it.
   HIDDEN_LIBRARY_SECTIONS: 'hiddenLibrarySections',
   // Display/default order of the Library's three sub-views — see TABS in
   // LibraryScreen.js. An array of tab keys, e.g. ['domains','build','knowledge'];
@@ -60,8 +59,8 @@ export const SETTING_KEYS = {
   // bands, topic readings, practice quizzes — while the Classroom Day Lesson
   // Plan Builder (src/screens/LessonBuilder.js + MyLessonPlans.js) is an
   // authoring tool for whoever is teaching. Off by default so a learner
-  // never sees the authoring entry points; Settings → Personalization turns
-  // it on. Read it with a `null` default, not `false`: null means "never
+  // never sees the authoring entry points; ticking Lesson Builder in My
+  // features turns it on (AccessContext.setPicks). Read it with a `null` default, not `false`: null means "never
   // decided", which is what lets Classes.js switch it on once for anyone who
   // already has saved plans rather than stranding their work behind a toggle
   // they'd have no reason to look for.

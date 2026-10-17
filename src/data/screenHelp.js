@@ -39,8 +39,8 @@ export const SCREEN_HELP = {
     body: 'A landing zone for anything you jot down before deciding where it belongs. Tap an item to route it — to a project, your notes, the planner, a life area, and more.',
   },
   ImportScreen: {
-    title: 'Import Hub',
-    body: 'Bulk-import text, links, or files. Items land in your Capture Inbox so you can process them the same way as anything else.',
+    title: 'Bring stuff in',
+    body: 'Lists, links and files land in your Capture Inbox at once. Messy notes go to Fill with AI, which sorts them with your own chatbot, free.',
   },
   ProjectsScreen: {
     title: 'The Workshop',
@@ -91,7 +91,11 @@ export const SCREEN_HELP = {
   },
   Settings: {
     title: 'Settings',
-    body: 'Theme (light/dark), notifications, and account preferences.',
+    body: 'Your account, reminders, privacy and help. How the app looks and what is in it are on Make it yours.',
+  },
+  MakeItYours: {
+    title: 'Make it yours',
+    body: 'Every way to shape the app: what it is for, what is in it, Home and the Library, the look, your character.',
   },
   Play: {
     title: 'Play',

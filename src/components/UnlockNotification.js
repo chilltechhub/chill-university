@@ -132,12 +132,14 @@ export default function UnlockNotification() {
               <Ionicons name={suggestion.icon || 'add-circle-outline'} size={26} color={c.teal} />
             </View>
             {LevelStrip}
-            <Text style={s.kicker}>Goal done · want more?</Text>
-            <Text style={s.title}>{`Add ${suggestion.label}?`}</Text>
-            <Text style={s.blurb}>{suggestion.blurb}</Text>
+            {/* `used`: the goal sent them into it without it being picked
+                (AccessContext.completeActiveObjective), so it's "keep", not "add". */}
+            <Text style={s.kicker}>{stageEvent.used ? 'Goal done · keep it?' : 'Goal done · want more?'}</Text>
+            <Text style={s.title}>{`${stageEvent.used ? 'Keep' : 'Add'} ${suggestion.label}?`}</Text>
+            <Text style={s.blurb}>{stageEvent.used ? `You used it for this goal. ${suggestion.blurb}` : suggestion.blurb}</Text>
             <Text style={s.via}>Only if you want it. Change it any time in My features.</Text>
             <TouchableOpacity style={s.btn} onPress={add} activeOpacity={0.85} accessibilityRole="button">
-              <Text style={s.btnText}>Add it</Text>
+              <Text style={s.btnText}>{stageEvent.used ? 'Keep it' : 'Add it'}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.ghost} onPress={no} activeOpacity={0.7} accessibilityRole="button">
               <Text style={s.ghostText}>No thanks</Text>

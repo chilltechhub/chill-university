@@ -222,7 +222,31 @@ export async function completeInstance(instanceId, completed = true) {
     (completed ? recordUse(data.link_id, { planId: data.id }) : removePlanUse(data.link_id, data.id))
       .catch(e => console.warn('[planner] vault use', e?.message));
   }
+  // A work session for a project: Done shows on the project too.
+  logProjectSession(data, completed).catch(e => console.warn('[planner] project log', e?.message));
   return data;
+}
+
+// A Planner item linked to a project (work sessions, workSessions.js) used
+// to tick off with nothing on the project, while the same work done in
+// Work Mode wrote to it. Now Done adds a line to the project's log and moves
+// the project to the top of "Pick up where you left off"; unticking takes
+// the line back out, and ticking twice doesn't write it twice.
+async function logProjectSession(row, completed) {
+  if (row?.link_type !== 'project' || !row.link_id) return;
+  const title = `Worked: ${row.title}${row.duration_minutes ? ` (${row.duration_minutes} min)` : ''}`;
+  const { data: existing } = await supabase.from('project_milestones').select('id')
+    .eq('project_id', row.link_id).eq('type', 'work_session').eq('title', title).eq('date', row.date).limit(1);
+  if (completed) {
+    if (!existing?.length) {
+      await supabase.from('project_milestones').insert({
+        user_id: row.user_id, project_id: row.link_id, title, type: 'work_session', date: row.date,
+      });
+    }
+    await supabase.from('projects').update({ updated_at: new Date().toISOString() }).eq('id', row.link_id);
+  } else if (existing?.length) {
+    await supabase.from('project_milestones').delete().eq('id', existing[0].id);
+  }
 }
 
 // "Something planned got done", for goal steps that wait on it

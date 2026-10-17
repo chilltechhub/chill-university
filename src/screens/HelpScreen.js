@@ -32,7 +32,7 @@ const FAQ = [
   },
   {
     q: 'How do reminders work?',
-    a: 'Give a Planner item a **time** and turn on **Reminder**. Or tap the **bell** → **New reminder**. **Daily Reminders** (Settings → Notifications) nudge you if your streak is at risk.',
+    a: 'Give a Planner item a **time** and turn on **Reminder**. Or tap the **bell** → **New reminder**. **Daily Reminders** (Settings → Reminders) nudge you if your streak is at risk.',
   },
   {
     q: 'How does linking a parent and child account work?',
@@ -52,7 +52,7 @@ const FAQ = [
   },
   {
     q: 'How do I switch light and dark mode?',
-    a: '**Settings → Appearance → Mode**.',
+    a: 'Tap **your picture** → **Make it yours** → **Look** → **Mode**.',
   },
   {
     q: 'Where do I manage my account or sign out?',
@@ -61,7 +61,7 @@ const FAQ = [
   {
     q: 'What’s free, and what’s in Plus?',
     plusOnly: true,
-    a: '**Free, and staying free**: learning, games, classes, the Planner, capture, projects and Fill with AI. **Plus** (optional subscription) adds the business and startup courses (the first lesson of each level is free), AI Import and Organizations. The Plus screen shows the price before you buy.',
+    a: '**Free, and staying free**: learning, games, classes, the Planner, capture, projects and Fill with AI. **Plus** (optional subscription) adds the business and startup courses (the first lesson of each level is free) and Organizations. The Plus screen shows the price before you buy.',
   },
   {
     q: 'How do I cancel or restore Plus?',

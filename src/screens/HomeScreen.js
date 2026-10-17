@@ -905,7 +905,7 @@ export default function HomeScreen() {
   const { active: tourActive, startLesson, currentStep: tourStep } = useTour();
   const homeFocused = useIsFocused();
   const { background: playerBackground } = useCharacterLoadout({ level, points, rank, streakDays });
-  // Set from Settings → Appearance, not on this screen itself.
+  // Set from Make it yours → Look, not on this screen itself.
   const [bgMode] = useSetting(SETTING_KEYS.HOME_BACKGROUND, 'plain');
   // Calm: one next step, today's focus and two cards for this account type
   // (CalmHome.js). Full: every card. Switched here, in Settings or Make it
