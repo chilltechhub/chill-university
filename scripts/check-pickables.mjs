@@ -91,10 +91,12 @@ actionKeys.forEach(k => { if (!FAB_ACTIONS.includes(k)) fail(`+ button action "$
   if (stepKeys.join() !== ONBOARDING_CARDS.join()) fail(`onboarding: STEPS keys [${stepKeys}] don't match ONBOARDING_CARDS [${ONBOARDING_CARDS}]`);
   const seen = (ctx) => shownCards(ONBOARDING_CARDS, ctx).map(i => ONBOARDING_CARDS[i]).join(' ');
   const want = (name, ctx, expected) => { const got = seen(ctx); if (got !== expected) fail(`onboarding ${name}: got "${got}", want "${expected}"`); };
-  want('Level up', { mode: 'auto', hasLifeAreas: false }, 'welcome aim persona start name sectors');
-  want('Just my picks + Life Areas', { mode: 'picks', hasLifeAreas: true }, 'welcome aim persona start features name sectors');
-  want('Just my picks, no Life Areas', { mode: 'picks', hasLifeAreas: false }, 'welcome aim persona start features name');
-  want('All in, Life Areas unticked', { mode: 'full', hasLifeAreas: false }, 'welcome aim persona start features name');
+  want('Level up', { mode: 'auto', hasLifeAreas: false }, 'welcome aim dream persona start name sectors');
+  want('Just my picks + Life Areas', { mode: 'picks', hasLifeAreas: true }, 'welcome aim dream persona start features name sectors');
+  want('Just my picks, no Life Areas', { mode: 'picks', hasLifeAreas: false }, 'welcome aim dream persona start features name');
+  want('All in, Life Areas unticked', { mode: 'full', hasLifeAreas: false }, 'welcome aim dream persona start features name');
+  want('Under 13: no dream card yet', { mode: 'picks', hasLifeAreas: false, ageBand: 'kid' }, 'welcome aim persona start features name');
+  want('Teen gets the dream card', { mode: 'picks', hasLifeAreas: false, ageBand: 'teen' }, 'welcome aim dream persona start features name');
 }
 
 if (problems.length) {

@@ -32,6 +32,11 @@ export const SETTING_KEYS = {
   // Drills) step aside once done, until tomorrow. Off by default.
   HIDE_DONE_WIDGETS: 'hideDoneWidgets',
   DAILY_REMINDERS_ENABLED: 'dailyRemindersEnabled',
+  // The Dream card on Home (src/components/DreamCard.js). "Later" on its
+  // empty prompt: an ISO time; until then the prompt is a one-line link.
+  DREAM_LATER_UNTIL: 'dreamLaterUntil',
+  // "Not me" on the editor's Wayfinder draft, so it isn't offered again.
+  DREAM_DRAFT_DISMISSED: 'dreamDraftDismissed',
   // "Your pet is getting hungry" (notificationScheduler.syncPetReminder).
   // On by default; the pet's feed sheet and Settings both switch it.
   PET_REMINDERS: 'petReminders',

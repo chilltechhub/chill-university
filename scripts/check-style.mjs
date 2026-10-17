@@ -31,6 +31,8 @@ const MIGRATED = [
   'src/components/widgets/BusinessWidgets.js',
   'src/components/widgets/EntrepreneurWidgets.js',
   'src/components/widgets/QuestWidget.js',
+  'src/components/DreamCard.js',
+  'src/components/DreamSheet.js',
 ];
 
 const RULES = [

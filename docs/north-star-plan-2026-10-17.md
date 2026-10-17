@@ -167,33 +167,34 @@ Their dream on top. Everything else **points at it**.
 
 Rules: **rough is fine** · every field **optional** · **edit any time** · old versions kept.
 
-### 2.2 Data model (sketch)
+### 2.2 Data model (as built in PR 1)
 
 Per **account**, like `wayfinder_maps`: who you are doesn't change when you switch profile.
 
 ```
-dreams                       one row per account
-  user_id       uuid pk → auth.users
-  life          text         their words
-  values        text[]       ≤3, Wayfinder value ids or their own words
-  wont_trade    text[]       ≤3
-  becoming      text
-  drafted_from  text         'onboarding' | 'wayfinder' | 'typed'
-  updated_at    timestamptz
+dreams                       one row per account (20261017120000_dreams.sql)
+  user_id     uuid pk → auth.users, on delete cascade
+  data        jsonb          shape below (src/logic/dream.js)
+  updated_at  timestamptz
 
-dream_parts                  what things ladder up to
-  id, user_id, label ('the farm'), sort, archived_at
+data = {
+  life        'A small farm. Home by 5.'        their words
+  parts       [{ id, label: 'the farm' }]       ≤3, ids stay put on rename
+  values      ['freedom', 'family']             ≤3, Wayfinder ids or own words
+  wontTrade   ['Sundays with my kids']          ≤3
+  becoming    'someone who finishes things'
+  draftedFrom 'onboarding' | 'wayfinder' | 'typed'
+  history     [{ savedAt, life, parts, … }]     last 20 versions
+}
 
-dream_versions               old copies, so it can change without losing the old one
-  id, user_id, snapshot jsonb, saved_at
-
-projects.dream_part_id       uuid null → dream_parts
+projects.dream_part_id       text null → a part id   (PR 2)
 ```
 
+- **One jsonb row, not three tables**: same pattern as Wayfinder, works offline and for guests, and one upsert can't half-save.
 - Tasks, steps, work sessions and Planner items linked to a project **inherit** its part. No new columns on them.
 - Goals (Compass) store a part in their existing progress row when one is picked.
-- **Local-first + sync**, same as `src/api/wayfinderService.js`. Guests keep it on the device.
-- **RLS: owner only.** Never shown to Family or Organization links.
+- **Local-first + sync** (`src/api/dreamService.js`). Without the migration it stays on the device.
+- **RLS: owner only.** Never shown to Family or Organization links. In Export My Data.
 
 ### 2.3 Where it shows
 
@@ -341,9 +342,11 @@ Today: a default card for Personal and Student (`personas.js:62,78`). "Plan Your
 | Phase | Size | Needs from you |
 |---|---|---|
 | **1** | 1 PR, ~40 strings | **Started** 2026-10-17 |
-| **2** | 3 PRs + 1 migration | OK + a layer name |
+| **2** | 3 PRs + 1 migration | **PR 1 built** 2026-10-17 · a layer name |
 | **3** | One PR per decision | A call on each |
 
 ## Status
 
-**Phase 1 started** 2026-10-17 (separate PR). Phases 2-3 not built.
+- **Phase 1** merged 2026-10-17 (#74). Two cut quotes still live in the `app_content` table.
+- **Phase 2, PR 1** built 2026-10-17: storage, Home card (full + Calm), editor with Wayfinder draft, onboarding Tuesday card (13+). `DREAM_NAME = 'The Dream'` until 3.7 is decided. Migration `20261017120000_dreams.sql` **not run yet**.
+- **Phase 2, PR 2-3** and **Phase 3** not built.

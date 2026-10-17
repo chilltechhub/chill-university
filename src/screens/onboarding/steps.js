@@ -405,6 +405,42 @@ export function AimStep({ data, set, theme, isMinor, ageBand }) {
   );
 }
 
+// ─── The life you want ───────────────────────────────────────────────────────
+// The North Star's Dream layer (docs/north-star.md): the app asks for the
+// life someone wants, in their words, with a concrete question instead of
+// "what's your passion?". Optional: an empty box is "Skip for now" (the
+// button says so) and Home asks again, once, gently. Saved in finish() via
+// src/api/dreamService.js; it shows at the top of Home.
+// Not shown to under-13s yet: how to ask them is an open founder question
+// (docs/north-star-plan-2026-10-17.md, 3.7). See onboardingCards.js.
+export function DreamStep({ data, set, theme }) {
+  const { c } = theme;
+  const st = stepStyles(theme);
+  return (
+    <View style={st.stepContent}>
+      <Text style={st.stepTitle}>
+        Describe a normal <Text style={{ color: c.teal }}>Tuesday</Text> in the life you want.
+      </Text>
+      <Text style={st.stepSubtitle}>
+        <Text style={{ fontWeight: '700' }}>Rough is fine.</Text> Not sure yet? Skip it.
+      </Text>
+      <TextInput
+        style={[st.input, { minHeight: 120, textAlignVertical: 'top' }]}
+        value={data.dream_life}
+        onChangeText={v => set('dream_life', v)}
+        placeholder="e.g. Up early on a small farm. Fix a neighbor's truck. Home by 5 for dinner."
+        placeholderTextColor={c.text4}
+        accessibilityLabel="A normal Tuesday in the life you want"
+        multiline
+        maxLength={600}
+      />
+      <Text style={{ fontSize: 12, color: c.text3, lineHeight: 17, marginTop: 10 }}>
+        It goes at the <Text style={{ fontWeight: '700', color: c.text2 }}>top of your Home</Text>. Only you see it. Change it any time.
+      </Text>
+    </View>
+  );
+}
+
 // Second now, and secondary: what someone came for is the card before this
 // (AimStep), and it pre-selects this one. The type still decides which
 // classes and games come first, the dashboard's full layout, and the order
