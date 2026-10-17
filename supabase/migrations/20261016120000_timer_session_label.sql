@@ -7,7 +7,7 @@
 -- ── What changes ─────────────────────────────────────────────────────────────
 -- * timer_sessions gets a nullable `label` (what the session was for).
 -- The app writes it when the column is there and leaves it out when it isn't
--- (src/api/commandCenterService.js retries without it on 42703), so app and
+-- (src/api/commandCenterService.js retries without it on PGRST204), so app and
 -- database can ship in either order. Existing rows stay as they are.
 -- Safe to run more than once.
 --

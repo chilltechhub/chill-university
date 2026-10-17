@@ -126,8 +126,10 @@ export async function getWeekSeconds(userId) {
 
 // `label` is what the session was for (Work Mode's "What are you working
 // on?"), so Insights can say where the time went. The column comes with
-// 20261016120000_timer_session_label.sql; until that runs, the insert
-// is retried without it (42703 = no such column).
+// 20261016120000_timer_session_label.sql; until that runs, the insert is
+// retried without it. An unknown column on INSERT is PostgREST's PGRST204
+// ("not in the schema cache"), not Postgres's 42703 — checking only 42703
+// made every Work Mode save fail before the migration (found 2026-10-17).
 export async function saveTimerSession(userId, durationSeconds, lifeAreaId = null, label = null) {
   const row = {
     user_id: userId,
@@ -138,7 +140,7 @@ export async function saveTimerSession(userId, durationSeconds, lifeAreaId = nul
   const name = (label || '').trim().slice(0, 120);
   const insert = (r) => supabase.from('timer_sessions').insert(r).select().single();
   let { data, error } = await insert(name ? { ...row, label: name } : row);
-  if (error && name && error.code === '42703') ({ data, error } = await insert(row));
+  if (error && name && (error.code === 'PGRST204' || error.code === '42703')) ({ data, error } = await insert(row));
   if (error) throw error;
   return data;
 }
