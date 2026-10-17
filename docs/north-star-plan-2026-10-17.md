@@ -40,7 +40,7 @@ Not in this plan (already planned elsewhere):
 | Planner | ✓ | ✓ | ✗ | ✗ | ✓ | ~ | red "MISSED" `PlannerScreen.js:729` |
 | Bell (notices) | ✓ | ~ | ~ | ~ | ✓ | ✓ | "has been quiet for 12 days" `notices.js:170` |
 | Phone reminders | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | "🔥 Streak at risk" `notificationScheduler.js:150` |
-| Celebrations | ~ | ~ | ✗ | ✓ | ✗ | ~ | "Quest Complete!" `GameOver.js:38` |
+| Celebrations | ~ | ~ | ✗ | ✓ | ✗ | ~ | "Level Up!" on real-life progress `LevelUpNotification.js:74` |
 | Tutorials | ✓ | ~ | ~ | ✓ | ~ | ~ | "The streak is the one that matters." `screenTutorials.js:50` |
 | Streaks + badges | ~ | ✗ | ✗ | ✗ | ✗ | ✗ | "Unstoppable: reach a 30-day streak" `badgeDefinitions.js:20` |
 | Pet | ✓ | ✗ | ✗ | ~ | ~ | ✗ | "Feed it now for double bond." `notificationScheduler.js:239` |
@@ -62,12 +62,10 @@ Not in this plan (already planned elsewhere):
 | | "quiet for 12 days" · "sitting for 3 weeks" | `notices.js:170`, `:189` | 1.2 |
 | | "Late · do it today" · "3 days late" · "Slipped this week" | `rightNow.js:54`, `ProjectDetail.js:61`, `WeeklyReviewScreen.js:199` | 1.2 |
 | | "Don't let it rot" · "Items show **time left**" (wrong: the inbox shows age) | `screenTutorials.js:127-128` | 1.3 |
-| **Game voice** | "Level Up!" · "New Tier!" · "Unlocked!" · "Nice!" | `LevelUpNotification.js:74`, `:96` | 1.1 |
-| | "Quest Complete!" · "Legendary / Master / Expert" | `GameOver.js:38`, `:20-24` | 1.1 |
-| | "Pick a prize!" · "🔥 Almost there!" | `RoundCompleteScreen.js:151`, `MissionCard.js:91` | 1.1 |
-| | "where learning levels up real life" | `shareOut.js:77-80` | 1.1 |
+| **Game voice on real life** | "Level Up!" · "New Tier!" · "Unlocked!" | `LevelUpNotification.js:74` | 1.1 |
+| | "where learning levels up real life" | `shareOut.js:77-78` | 1.1 |
 | | "**Claim it** on the goal card" | `StageStepsWidget.js:76`, `firstGoalGuide.js:241` | 1.1 |
-| | "wing of your base" · "Loading your chronicles..." · "⚔️ Daily Quests" | `Classes.js:246`, `StatsScreen.js:23`, `:94` | 1.4 |
+| | "wing of your base" · "⚔️ Daily Quests" (Training calls them Daily Drills) | `Classes.js:246`, `StatsScreen.js:94` | 1.4 |
 | **Our wants over theirs** | "LV 4 · 120 PTS" on every screen | `TopBar.js:181` | 3.3 |
 | | Goal steps: "Reach level 3" · "Earn 250 points" · "Finish a daily drill" · "Play one training game" (5 first goals) | `objectives.js:347`, `:400`, `:312`, `:431,452,468,488,505` | 3.3 |
 | | Goal done → "Keep Planner?" is the whole moment | `UnlockNotification.js:137-139` | 2.5 |
@@ -84,30 +82,23 @@ Not in this plan (already planned elsewhere):
 
 ## Phase 1 · Copy only
 
-No product decisions. Strings change, plus two colours. No logic.
-Every line: **short**, **plain**, names the **real thing** they did. No hype, no slogans.
+No product decisions. Strings change, plus red → grey on not-done Planner items. No logic.
+Every line: **short**, names the **real thing**. **Encouragement and a little fun are welcome.** Generic hype and slogans aren't.
 
 ### 1.1 Celebrations
 
 | Where | Before | After |
 |---|---|---|
-| `LevelUpNotification.js:74` | Level Up! | **Level 4** |
-| | New Tier! | **{rank name}** |
-| | Unlocked! | **Now open** |
-| `:80` | Your points opened something new | From your points. |
-| `:85` | 🎁 You unlocked | **Now open** |
-| `:96` | Nice! | **OK** |
-| `GameOver.js:38` | Quest Complete! | **Round done** |
-| `GameOver.js:20-24` | Legendary · Master · Expert · Skilled · Apprentice | Drop the word. Show **18 of 20 right**. |
-| `RoundCompleteScreen.js:151` | Pick a prize! · +40 points! | **Pick a card** · **+40 points** |
-| `MissionCard.js:91` | 🔥 Almost there! | **{n} to go** |
-| `QuestScreen.js:625` | Quest complete | **{quest title}**: done |
-| `shareOut.js:77-78` | I just reached Level 4 in Deskartes, where learning levels up real life. | I reached Level 4 in Deskartes. |
-| `shareOut.js:80` | Leveling up with Deskartes. | Working on my goals with Deskartes. |
+| `LevelUpNotification.js:74` | Level Up! · New Tier! · Unlocked! | **Level 4!** · **{rank name}!** · **Something new** |
+| `:77-80` | You reached Level 4 · You're now {rank} · Your points opened something new | **Nice work.** You earned every point. · New rank. **Well earned.** · Your points opened this. |
+| `:85` | 🎁 You unlocked | 🎁 Now open |
+| `shareOut.js:77-78` | I just reached Level 4 in Deskartes, where learning levels up real life. | I just reached Level 4 in Deskartes. |
 | `UnlockNotification.js:274`, `:283` | Unlocked · Also unlocked: | **Now open** · Also open: |
-| `StageStepsWidget.js:76` | All done. **Claim it** on the goal card. | All done. Tap **Finish** on the goal card. |
-| `firstGoalGuide.js:241` | Tap **Finish** on your goal card to claim it. | Tap **Finish** on your goal card. |
-| `lifeareas/ActionPanel.js:52` | Logged. Keep it going. | **Logged.** |
+| `StageStepsWidget.js:76` | All done. **Claim it** on the goal card. | All done 🎉 Tap **Finish** on the goal card. |
+| `firstGoalGuide.js:241` | Tap **Finish** on your goal card to claim it. | Tap **Finish** on your goal card. **You earned it.** |
+| `GameOver.js:38` (default, unused) | Quest Complete! | Round done! |
+
+**Kept on purpose** (fun is fine): each game's own title ("Master Chef!", "Word Wizard!"), rank words, "Pick a prize!", "🔥 Almost there!", the **Nice!** button, "Loading your chronicles...", "Logged. Keep it going."
 
 The "who you're becoming" line needs real counts, so it's **2.5**.
 
@@ -115,20 +106,19 @@ The "who you're becoming" line needs real counts, so it's **2.5**.
 
 | Where | Before | After |
 |---|---|---|
-| `notificationScheduler.js:150` (until **3.2**) | 🔥 Streak at risk · Nothing done yet today. One drill, a planner item or a quick check-in keeps your streak going. | **Your next step is ready** · Open Home when you have a few minutes. |
-| `:147` | 📋 Daily Drills open · Today's Daily Drills are still waiting — a few minutes keeps things moving. | **Today's drills** · Three short ones, about 5 minutes. |
-| `:238-239` | 🍎 Cleo is getting hungry · Feed it now for double bond. | 🍎 **Cleo** is hungry · Down to one heart. |
-| `SettingsScreen.js:630` | A nudge if today's Daily Drills are still open, or your streak is at risk | Evening nudges: **today's drills** and your **next step** |
-| `steps.js:172`, `:1009` | same as above | same as above |
-| `HelpScreen.js:35` | …nudge you if your streak is at risk. | …nudge you in the evening about **today's drills** and your **next step**. |
-| `notices.js:112-114` | 3 things from earlier · 2 plans slipped · 1 task overdue: … · **Review & reschedule** | Pick up **{first title}** (+2 more) · {titles} · **Pick new days** |
-| `notices.js:170-171` | "Fence" has been quiet for 12 days · Next step: buy posts | Pick up **Fence** · Next step: **buy posts** |
-| `notices.js:189-190` | "Garden bed" has been sitting for 3 weeks · Grow it into a plan, or let it go. | Still want **Garden bed**? · Make it a **project**, or **let it go**. |
-| `PlannerScreen.js:729` | MISSED (red) | **NOT DONE** (grey) |
+| `notificationScheduler.js:150` (until **3.2**) | 🔥 Streak at risk · Nothing done yet today. One drill, a planner item or a quick check-in keeps your streak going. | 👣 Your next step is ready · Got a few minutes? It's on Home. |
+| `:147` | 📋 Daily Drills open · Today's Daily Drills are still waiting — a few minutes keeps things moving. | 📋 Today's drills are up · Three quick ones, about 5 minutes. |
+| `:238-239` | 🍎 Cleo is getting hungry · Feed it now for double bond. | 🍎 Cleo is eyeing the food bowl · Down to one heart. |
+| `SettingsScreen.js:630`, `steps.js:172`, `:1009` | A nudge if today's Daily Drills are still open, or your streak is at risk | Evening nudges for **today's drills** and your **next step** |
+| `HelpScreen.js:35` | …nudge you if your streak is at risk. | …send evening nudges for **today's drills** and your **next step**. |
+| `notices.js:112-114` | 3 things from earlier · 2 plans slipped · 1 task overdue: … · **Review & reschedule** | Pick up "Fence posts" and 2 more · Also open: … · **Pick new days** |
+| `notices.js:170-171` | "Fence" has been quiet for 12 days · Next step: buy posts | Pick up "Fence" · Next step: buy posts |
+| `notices.js:189-190` | "Garden bed" has been sitting for 3 weeks · Grow it into a plan, or let it go. | Still want "Garden bed"? · Make it a project, or let it go. **Both are fine.** |
+| `PlannerScreen.js:729`, `:702-703` | MISSED, red card edge | **NOT DONE**, grey; normal edge |
 | `PlannerScreen.js:978` | ⚠️ Missed (red) | **Earlier** (grey) |
-| `PlannerScreen.js:1248` | · 2 missed | · 2 open |
+| `PlannerScreen.js:1192`, `:1238`, `:1248` | red day border · "2 missed" | normal border · "2 not done" |
 | `rightNow.js:54` | Late · do it today | **From earlier** |
-| `ProjectDetail.js:61` | 3 days late | **was due Oct 14** |
+| `ProjectDetail.js:61-63` | 3 days late | **date passed** (finish line) · **was due Oct 14** (tasks) |
 | `WeeklyReviewScreen.js:199` | Slipped this week | **Not done yet** |
 
 ### 1.3 Tutorials and help
@@ -136,30 +126,28 @@ The "who you're becoming" line needs real counts, so it's **2.5**.
 | Where | Before | After |
 |---|---|---|
 | `screenTutorials.js:46` | **Study** opens Daily Drills. **Play** opens a game. Both grow your streak. | **Study** opens Daily Drills. **Play** opens a game. |
-| `:50` | Points and your **streak**. The streak is the one that matters. | Your **points** and **streak**. |
-| `:127-128` | Don't let it rot · Items show **time left**. Empty the inbox a few at a time. | **A few at a time** · Each item shows **how old** it is. Sort a few when you can. |
+| `:50` | Points and your **streak**. The streak is the one that matters. | Your **points** and **streak**. Fun to watch. Your **goals** are the real score. |
+| `:127-128` | Don't let it rot · Items show **time left**. Empty the inbox a few at a time. | A few at a time · Each item shows **how old** it is. Sort a few whenever you can. |
 | `:465` | No specific walkthrough for this screen yet — check Help for the general FAQ instead. | No walkthrough here yet. **Help** has the FAQ. |
-| `screenHelp.js:15` | Your dashboard — daily missions, streak, and a snapshot of what needs attention today. … | **Today**: your goal, its next step, and what's planned. |
+| `screenHelp.js:15` | Your dashboard — daily missions, streak, and a snapshot of what needs attention today. … | Today at a glance: your goal and its next step, what's planned, and the cards you picked. |
 
 ### 1.4 Onboarding, goals, Classes, Insights
 
 | Where | Before | After |
 |---|---|---|
-| `steps.js:276` | **Your whole life**, one app. | Start with **one goal**. Add the rest when you need it. |
-| `objectives.js:307` | A day with a focus and a plan is easier to win than one without. | A day with **one focus** is easier to finish. |
-| `objectives.js:627` | A day with a plan and an empty head is a day you run, not one that runs you. | Get it out of your head and onto **one list**. |
-| `objectives.js:423`, `:447` | Every habit starts with a day where you showed up once. This is that day. | Start with **one small habit**. Small is easier to keep. |
-| `objectives.js:681` | Discover is a room full of other people's work. Turning up with something of your own changes what it is for. | Share **one thing you made**. |
+| `steps.js:276` | **Your whole life**, one app. | Start with **one goal**. Add more when you're ready. |
+| `objectives.js:307` | A day with a focus and a plan is easier to win than one without. | A day with one focus is easier to finish. |
+| `objectives.js:627` | A day with a plan and an empty head is a day you run, not one that runs you. | Get it out of your head and onto one list. Your head will thank you. |
+| `objectives.js:423`, `:447` | Every habit starts with a day where you showed up once. This is that day. | Start with one small habit. Small ones stick. |
+| `objectives.js:681` | Discover is a room full of other people's work. Turning up with something of your own changes what it is for. | Share one thing you made. Discover is better with your work in it. |
 | `HomeScreen.js:115` | "The only way to do great work is to love what you do." | **Cut.** Says passion is found. |
 | `HomeScreen.js:116` | "Success is the sum of small efforts repeated day in and day out." | **Cut.** Says routine is the only way. |
 | `HomeScreen.js:170`, `:2405` | Check-ins Due | **Check-ins** |
-| `Classes.js:246` | Pick a subject to build up that wing of your base | Pick a **subject** to learn. |
-| `StatsScreen.js:23` | Loading your chronicles... | Loading… |
-| `StatsScreen.js:70` | Start playing to build subject mastery! | Play a round in a subject and it shows here. |
-| `StatsScreen.js:94-96` | ⚔️ Daily Quests · 📅 Weekly Quests · 🏆 Achievements | **Daily Drills** · **Weekly Challenges** · **Milestones** (Training's own names) |
+| `Classes.js:246` | Pick a subject to build up that wing of your base | Pick a subject and dive in. |
+| `StatsScreen.js:94-95` | ⚔️ Daily Quests · 📅 Weekly Quests | ⚔️ **Daily Drills** · 📅 **Weekly Challenges** (Training's own names) |
 | `StatsScreen.js:132` | No active quests | Nothing here right now. |
 
-**Size:** ~50 strings, ~25 files, one PR.
+**Size:** ~40 strings, ~22 files, one PR.
 
 ---
 
@@ -240,7 +228,7 @@ From real actions only (`record_action` kinds, `gamificationService.js:526`), la
 | 5+ steps on one part | **9 steps** for **the farm** this month. | Their becoming line, if set |
 | Their first goal | **Plan Your Day**: done. | Nothing |
 
-- **No praise words.** Counts of what they did, then their own words.
+- **Counts of what they did**, then their own words. A short **Nice work.** is fine; never praise for something they didn't do.
 - Goal-done card (`UnlockNotification.js:137`): **what they did first**, the feature offer below it.
 
 ### 2.6 Welcome back (Home row of the North Star)
@@ -352,10 +340,10 @@ Today: a default card for Personal and Student (`personas.js:62,78`). "Plan Your
 
 | Phase | Size | Needs from you |
 |---|---|---|
-| **1** | 1 PR, ~50 strings | OK on the lines |
+| **1** | 1 PR, ~40 strings | **Started** 2026-10-17 |
 | **2** | 3 PRs + 1 migration | OK + a layer name |
 | **3** | One PR per decision | A call on each |
 
 ## Status
 
-Plan only. **Nothing built.**
+**Phase 1 started** 2026-10-17 (separate PR). Phases 2-3 not built.
