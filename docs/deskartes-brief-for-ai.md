@@ -2,6 +2,12 @@
 
 > **For the AI reading this:** this is a plain-language summary of an app that's built but not launched. Use it to analyze the product: what to cut, what to fix first, where it can win, how it compares to competitors. Scores are the founder's own honest estimates (with Claude's help), not user data. There are **no users yet**, so there's no usage data.
 
+> **Read [north-star.md](north-star.md) first.** It's the founder's mission. Every recommendation should pass its **screen test**.
+
+## North Star
+
+**Mission:** help people **discover who they really are**, **find a dream they can reach**, and **walk the way there**: on **their** terms, not the system's. Their **dream** sits on top, every task ties back to it, and the app speaks like a **mentor**, not a game.
+
 ---
 
 ## The app in one paragraph
