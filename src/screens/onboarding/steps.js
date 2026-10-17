@@ -169,7 +169,7 @@ export function pickFocusHub(data) {
 // buried in a later tour step.
 const FEATURE_RECS = [
   { pattern: 'habits',     icon: 'checkmark-circle-outline', title: 'Daily Check-in',       body: 'A one-tap log for your life areas — Library → any area → Quick Log.' },
-  { pattern: 'habits',     icon: 'notifications-outline',     title: 'Daily Reminders',       body: 'Turn on below — a nudge if today\'s drills are open or your streak is at risk.' },
+  { pattern: 'habits',     icon: 'notifications-outline',     title: 'Daily Reminders',       body: 'Turn on below: evening nudges for today\'s drills and your next step.' },
   { pattern: 'building',   icon: 'hammer-outline',            title: 'The Workshop',          body: 'Start your first project — Library → The Workshop → New Project.' },
   { pattern: 'building',   icon: 'briefcase-outline',         title: 'Portfolio Archives',    body: 'Finished builds land here automatically as a running showcase.' },
   { pattern: 'learning',   icon: 'ribbon-outline',            title: 'Academy Classes',       body: 'Structured coursework across every subject — Library → Academy Classes.' },
@@ -273,7 +273,7 @@ export function WelcomeStep({ theme }) {
         </View>
         <Text style={[st.stepTitle, { textAlign: 'center', fontSize: 26 }]}>Welcome to Deskartes</Text>
         <Text style={{ fontSize: 15, color: c.text2, textAlign: 'center', lineHeight: 21 }}>
-          <Text style={{ fontWeight: '800', color: c.text1 }}>Your whole life</Text>, one app.
+          Start with <Text style={{ fontWeight: '800', color: c.text1 }}>one goal</Text>. Add more when you're ready.
         </Text>
       </View>
 
@@ -1006,7 +1006,7 @@ export function GoalsStep({ data, set, theme }) {
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: c.bg1, borderRadius: 12, padding: 14, marginTop: 8, borderWidth: 0.5, borderColor: c.border }}>
         <View style={{ flex: 1, marginRight: 12 }}>
           <Text style={{ color: c.text1, fontWeight: '600', fontSize: 14 }}>Daily reminders</Text>
-          <Text style={{ color: c.text3, fontSize: 12, marginTop: 2 }}>A nudge if today's Daily Drills are open, or your streak's at risk</Text>
+          <Text style={{ color: c.text3, fontSize: 12, marginTop: 2 }}>Evening nudges for today's drills and your next step</Text>
         </View>
         <Switch
           value={remindersEnabled}

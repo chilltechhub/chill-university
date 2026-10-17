@@ -238,7 +238,7 @@ export const FIRST_GOAL_GUIDE = {
 export const CLAIM_STEP = {
   go: 'Home', spot: 'home-compass', mode: 'tap',
   path: "your goal card on Home",
-  say: "Tap **Finish** on your goal card to claim it.",
+  say: "Tap **Finish** on your goal card. **You earned it.**",
 };
 
 // ── Every other goal ────────────────────────────────────────────────────────

@@ -112,8 +112,6 @@ const QUOTES = [
   { text: "The mind is not a vessel to be filled but a fire to be kindled.", author: "Plutarch" },
   { text: "Learning never exhausts the mind.", author: "Leonardo da Vinci" },
   { text: "Wisdom is not a product of schooling but of the lifelong attempt to acquire it.", author: "Albert Einstein" },
-  { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
-  { text: "Success is the sum of small efforts repeated day in and day out.", author: "Robert Collier" },
   { text: "Real knowledge is to know the extent of one's ignorance.", author: "Confucius" },
 ];
 
@@ -167,7 +165,7 @@ const WIDGET_DEFS = [
   { key: 'desk',        title: 'On the Desk' },
   { key: 'ideas',       title: 'Latest Ideas' },
   { key: 'builds',      title: 'Active Projects' },
-  { key: 'checkins',    title: 'Check-ins Due' },
+  { key: 'checkins',    title: 'Check-ins' },
   // Not tied to one persona — see personas.defaultWidgets and the
   // `exploring` option on layoutForPersona.
   { key: 'wayfinder',   title: 'Wayfinder' },
@@ -2402,7 +2400,7 @@ export default function HomeScreen() {
               ),
             },
             {
-              key: 'checkins', title: 'Check-ins Due',
+              key: 'checkins', title: 'Check-ins',
               render: () => (
                 checkInDue.length === 0 ? (
                   editingWidgets ? (
@@ -2414,7 +2412,7 @@ export default function HomeScreen() {
                   ) : <View />
                 ) : (
                   <View style={{ paddingHorizontal: s.lg }}>
-                    <SectionHead title="Check-ins Due" action="Library →" onAction={() => navigation.navigate('Library')} c={c} t={t} />
+                    <SectionHead title="Check-ins" action="Library →" onAction={() => navigation.navigate('Library')} c={c} t={t} />
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm }}>
                       {checkInDue.map(({ area, rating, lastCheck, days }) => (
                         <TouchableOpacity

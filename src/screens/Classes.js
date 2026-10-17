@@ -243,7 +243,7 @@ export default function Classes() {
           <Ionicons name="chevron-back" size={22} color={c.teal} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Academy Classes</Text>
-        {showSubtext && <Text style={styles.headerSubtitle}>Pick a subject to build up that wing of your base</Text>}
+        {showSubtext && <Text style={styles.headerSubtitle}>Pick a subject and dive in.</Text>}
 
         {showAuthoring && (
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>

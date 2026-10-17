@@ -43,8 +43,9 @@ const build = (data, env = {}) => N.buildNotices(data, { ...ENV, ...env });
   const next = out.find(n => n.id.startsWith('plan-next'));
   check('next: the 3:30 plan', next?.id === 'plan-next:p4' && /3:30 PM/.test(next.title), show(next));
   check('next: mentions what follows', /Dinner/.test(next?.body || ''));
-  check('catch-up: late tasks join the same card', /1 task overdue/.test(overdue?.body || '') && /Essay/.test(overdue?.body || ''), overdue?.body);
-  check('catch-up: one card, not two', out.filter(n => n.cat === 'schedule' && /earlier|overdue|slipped/.test(n.title)).length === 1, show(ids(out)));
+  check('catch-up: late tasks join the same card', /Essay/.test(`${overdue?.title} ${overdue?.body}`), show(overdue));
+  check('catch-up: names what to pick up, no slipped/overdue count', /^Pick up “/.test(overdue?.title || '') && !/slipped|overdue/.test(`${overdue?.title} ${overdue?.body}`), show(overdue));
+  check('catch-up: one card, not two', out.filter(n => n.id.startsWith('catch-up')).length === 1, show(ids(out)));
 
   const far = build({ planner: [{ id: 'p9', title: 'Late', date: '2026-09-21', start_time: '20:00' }] });
   check('next: nothing more than 3h out', !far.some(n => n.id.startsWith('plan-next')), show(ids(far)));
@@ -66,7 +67,7 @@ const build = (data, env = {}) => N.buildNotices(data, { ...ENV, ...env });
   check('projects: fresh one with a next step says nothing', !out.some(n => n.id.endsWith(':d')));
   check('projects: finished projects ignored', !out.some(n => n.id.endsWith(':f')));
   const quietOnly = build({ projects: [projects[2]] })[0];
-  check('projects: quiet 10 days', quietOnly?.id === 'project-quiet:c' && /10 days/.test(quietOnly.title) && /Buy wood/.test(quietOnly.body), show(quietOnly));
+  check('projects: quiet one, no day count', quietOnly?.id === 'project-quiet:c' && /Quiet/.test(quietOnly.title) && !/days/.test(quietOnly.title) && /Buy wood/.test(quietOnly.body), show(quietOnly));
   const ship = build({ projects: [projects[1]] })[0];
   check('projects: ship it', ship?.id === 'project-ship:b' && !!ship.share, show(ship));
 }
@@ -81,7 +82,7 @@ const build = (data, env = {}) => N.buildNotices(data, { ...ENV, ...env });
   ];
   const out = build({ ideas });
   check('ideas: only old, unlinked sprouts/plants', show(out.map(n => n.id)) === show(['idea-idle:i1']), show(out.map(n => n.id)));
-  check('ideas: weeks in title', /5 weeks/.test(out[0]?.title || ''), out[0]?.title);
+  check('ideas: asks, no weeks count', /Old sprout/.test(out[0]?.title || '') && !/weeks/.test(out[0]?.title || ''), out[0]?.title);
 
   check('inbox: 2 is quiet', !build({ inboxCount: 2 }).length);
   check('inbox: 5 speaks up', build({ inboxCount: 5 })[0]?.cat === 'inbox');

@@ -74,8 +74,8 @@ export function projectText(project, tasks = []) {
 export const APP_PAGE = `${SITE_URL}/ct-app`;
 export function milestoneText(kind, detail) {
   switch (kind) {
-    case 'level': return `I just reached Level ${detail} in Deskartes, where learning levels up real life. ${APP_PAGE}`;
-    case 'tier':  return `I just made ${detail} in Deskartes, where learning levels up real life. ${APP_PAGE}`;
+    case 'level': return `I just reached Level ${detail} in Deskartes. ${APP_PAGE}`;
+    case 'tier':  return `I just made ${detail} in Deskartes. ${APP_PAGE}`;
     case 'quest': return `I just finished the "${detail}" quest in Deskartes. ${APP_PAGE}`;
     default:      return `Leveling up with Deskartes. ${APP_PAGE}`;
   }

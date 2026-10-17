@@ -699,8 +699,10 @@ function AgendaRow({ instance, onUpdate, onOpen, c, t, s, r }) {
     <View style={{
       borderRadius: r.md, marginBottom: s.sm,
       backgroundColor: c.bg1, borderWidth: 0.5,
-      borderColor: overdue ? '#e05858' : done ? c.border : area.color + '55',
-      borderLeftWidth: 3, borderLeftColor: overdue ? '#e05858' : area.color,
+      // A past item that isn't done keeps its area colour: grey label, no
+      // red alarm (North Star: no guilt for gaps).
+      borderColor: done ? c.border : area.color + '55',
+      borderLeftWidth: 3, borderLeftColor: area.color,
       opacity: skipped ? 0.5 : 1,
     }}>
       {/* Main row */}
@@ -725,8 +727,8 @@ function AgendaRow({ instance, onUpdate, onOpen, c, t, s, r }) {
               {instance.title}
             </Text>
             {overdue && !done && (
-              <View style={{ backgroundColor: '#e0585822', borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1 }}>
-                <Text style={{ fontSize: 11, color: '#e05858', fontWeight: t.bold }}>MISSED</Text>
+              <View style={{ backgroundColor: c.bg2, borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1 }}>
+                <Text style={{ fontSize: 11, color: c.text3, fontWeight: t.bold }}>NOT DONE</Text>
               </View>
             )}
             {/* Only shown when the item belongs to a profile other than the
@@ -757,7 +759,7 @@ function AgendaRow({ instance, onUpdate, onOpen, c, t, s, r }) {
         <Ionicons name="chevron-forward" size={14} color={c.text4} />
       </TouchableOpacity>
 
-      {/* Missed-item quick actions — one tap, no need to open it first.
+      {/* Not-done-item quick actions — one tap, no need to open it first.
           Do Now = completeInstance, Move = rescheduleInstance (defaults to
           today), Drop = skipInstance; see plannerService.js. */}
       {overdue && !done && !skipped && (
@@ -934,7 +936,6 @@ function CurrentTimeLine({ startHour, endHour }) {
 
 // ─── List daily view ──────────────────────────────────────────────────────────
 function ListView({ instances, onUpdate, onOpen, onAdd, c, t, s, r }) {
-  const { showEmojis } = useUIPrefs();
   const sorted   = [...instances].sort(byTime);
   const overdue  = sorted.filter(i => isOverdue(i));
   const today    = sorted.filter(i => !isOverdue(i) && !i.skipped);
@@ -975,7 +976,7 @@ function ListView({ instances, onUpdate, onOpen, onAdd, c, t, s, r }) {
 
   return (
     <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: s.lg, paddingBottom: FAB_CLEARANCE }}>
-      <Section label={showEmojis ? '⚠️ Missed' : 'Missed'} items={overdue} color="#e05858" />
+      <Section label="Earlier" items={overdue} />
       <Section label="Today" items={today} />
       <Section label="Skipped" items={skipped} />
     </ScrollView>
@@ -1179,7 +1180,6 @@ function WeeklyView({ userId, anchor, activeAreas, onDayPress, refreshKey, showi
           const items = (byDate[iso] || []).filter(x => !x.skipped);
           const dueHere = dueByDate[iso] || [];
           const isToday = iso === today;
-          const missed = items.some(x => isOverdue(x));
           const blocks = [
             ...dueHere.map(d => ({ key: d.key, due: d, title: d.kind === 'project' ? `Finish: ${d.title}` : d.title, done: d.completed })),
             ...items.map(x => ({ key: x.id, inst: x, title: x.title, done: x.completed })),
@@ -1189,7 +1189,7 @@ function WeeklyView({ userId, anchor, activeAreas, onDayPress, refreshKey, showi
             <TouchableOpacity key={iso} onPress={() => onDayPress(day)} activeOpacity={0.75}
               accessibilityRole="button"
               accessibilityLabel={`${day.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}: ${items.length} planned${dueHere.length ? `, ${dueHere.length} due` : ''}. Open the day`}
-              style={{ flex: 1, minWidth: 0, minHeight: 280, backgroundColor: isToday ? c.teal + '10' : c.bg1, borderRadius: 8, borderWidth: isToday ? 1.5 : 0.5, borderColor: isToday ? c.teal : missed ? c.error : c.border, paddingBottom: 4, overflow: 'hidden' }}>
+              style={{ flex: 1, minWidth: 0, minHeight: 280, backgroundColor: isToday ? c.teal + '10' : c.bg1, borderRadius: 8, borderWidth: isToday ? 1.5 : 0.5, borderColor: isToday ? c.teal : c.border, paddingBottom: 4, overflow: 'hidden' }}>
               <View style={{ alignItems: 'center', paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: c.border }}>
                 <Text style={{ fontSize: 11, fontWeight: '700', color: isToday ? c.teal : c.text3 }}>
                   {day.toLocaleDateString('en-US', { weekday: 'short' })}
@@ -1231,11 +1231,11 @@ function WeeklyView({ userId, anchor, activeAreas, onDayPress, refreshKey, showi
         const items   = byDate[iso] || [];
         const isToday = iso === today;
         const done    = items.filter(i => i.completed).length;
-        const missed  = items.filter(i => isOverdue(i)).length;
+        const notDone = items.filter(i => isOverdue(i)).length;
         const dueHere = dueByDate[iso] || [];
         return (
           <TouchableOpacity key={i} onPress={() => onDayPress(day)}
-            style={{ backgroundColor: c.bg1, borderRadius: 12, marginBottom: s.sm, borderWidth: isToday ? 1.5 : 0.5, borderColor: isToday ? c.teal : missed > 0 ? '#e05858' : c.border, overflow: 'hidden' }}>
+            style={{ backgroundColor: c.bg1, borderRadius: 12, marginBottom: s.sm, borderWidth: isToday ? 1.5 : 0.5, borderColor: isToday ? c.teal : c.border, overflow: 'hidden' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', padding: s.md, gap: s.sm }}>
               <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: isToday ? c.teal : c.bg2, alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={{ fontSize: 13, fontWeight: '800', color: isToday ? c.onFill : c.text1 }}>{day.getDate()}</Text>
@@ -1245,7 +1245,7 @@ function WeeklyView({ userId, anchor, activeAreas, onDayPress, refreshKey, showi
                   {day.toLocaleDateString('en-US', { weekday: 'long' })}
                 </Text>
                 <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 1 }}>
-                  {items.length} {items.length === 1 ? 'item' : 'items'} · {done} done{missed > 0 ? ` · ${missed} missed` : ''}{dueHere.some(d => !d.completed) ? ` · ${dueHere.filter(d => !d.completed).length} due` : ''}
+                  {items.length} {items.length === 1 ? 'item' : 'items'} · {done} done{notDone > 0 ? ` · ${notDone} not done` : ''}{dueHere.some(d => !d.completed) ? ` · ${dueHere.filter(d => !d.completed).length} due` : ''}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={14} color={c.text4} />

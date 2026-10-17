@@ -12,7 +12,7 @@
 export const SCREEN_HELP = {
   Home: {
     title: 'Home',
-    body: 'Your dashboard — daily missions, streak, and a snapshot of what needs attention today. One of the widgets is your goal card: one goal, its next step, and what is next in the app.',
+    body: 'Today at a glance: your goal and its next step, what is planned, and the cards you picked.',
   },
   Compass: {
     title: 'App Nav',

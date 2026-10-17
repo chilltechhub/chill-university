@@ -51,7 +51,7 @@ export function pickRightNow({ items = [], desk = [], now = new Date(), quiet = 
     return { kind: 'soon', item: next, title: next.title, label: `Next · ${mins <= 1 ? 'in a minute' : `in ${mins} min`} (${fmt(next.start)})` };
   }
   const late = open.find(i => i.late) || open.find(i => i.due);
-  if (late) return { kind: 'late', item: late, title: late.title, label: late.late ? 'Late · do it today' : 'Due today' };
+  if (late) return { kind: 'late', item: late, title: late.title, label: late.late ? 'From earlier' : 'Due today' };
   const untimed = open.find(i => i.time == null && i.src === 'planner');
   if (untimed) {
     return { kind: 'today', item: untimed, title: untimed.title, label: nowMin >= 17 * 60 ? 'Before the day ends' : 'For today' };
