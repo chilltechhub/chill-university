@@ -60,6 +60,7 @@ import CommandPalette from './src/components/CommandPalette';
 import HelpScreen       from './src/screens/HelpScreen';
 import MakeItYoursScreen from './src/screens/MakeItYoursScreen';
 import MyFeaturesScreen from './src/screens/MyFeaturesScreen';
+import ConnectedAppsScreen from './src/screens/ConnectedAppsScreen';
 import CompassScreen  from './src/screens/CompassScreen';
 import PlusScreen     from './src/screens/PlusScreen';
 import StatsScreen      from './src/screens/StatsScreen';
@@ -542,6 +543,7 @@ function AppInner() {
           <Stack.Screen name="Help"                component={HelpScreen} />
           <Stack.Screen name="MakeItYours"         component={MakeItYoursScreen} options={{ title: 'Make it yours' }} />
           <Stack.Screen name="MyFeatures"          component={MyFeaturesScreen} options={{ title: 'My features' }} />
+          <Stack.Screen name="ConnectedApps"       component={ConnectedAppsScreen} options={{ title: 'Connected apps' }} />
           {/* The Compass — purpose, the one active objective, and the
               locked / experimental / Plus rosters. Reachable from Home's
               card, Settings, the Library header and every unlock sheet,

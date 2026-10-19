@@ -26,6 +26,7 @@ import { useAccess } from '../../context/AccessContext';
 import { todayStr, dateStr } from '../logic/dateUtils';
 import { parseTags } from '../logic/tags';
 import { useFabPosition } from '../../context/FabPositionContext';
+import { pullReminders } from '../connectors/appleReminders';
 
 // supabase-js resolves { data, error } instead of throwing on a failed
 // insert/update — awaiting a call directly silently ignores a rejected
@@ -1586,7 +1587,11 @@ export default function CaptureInbox() {
   }, []);
 
   useFocusEffect(useCallback(() => {
-    if (userId) loadAll(userId);
+    if (!userId) return;
+    // Connected Apple Reminders land here (src/connectors/appleReminders.js):
+    // bring in anything new first, then load. A no-op unless connected.
+    if (view === 'inbox') pullReminders(userId).catch(() => {}).finally(() => loadAll(userId));
+    else loadAll(userId);
   }, [userId, view]));
 
   const loadAll = async (uid) => {
