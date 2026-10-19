@@ -93,8 +93,8 @@ export const PURPOSES = [
   },
   {
     key: 'build',
-    ask: 'Build a project',
-    you: 'build a project',
+    ask: 'Start something',
+    you: 'start something',
     label: 'Ship something real',
     short: 'Build',
     emoji: '🏗️',
@@ -111,8 +111,8 @@ export const PURPOSES = [
   },
   {
     key: 'learn',
-    ask: 'Keep learning',
-    you: 'keep learning',
+    ask: 'Learn a skill',
+    you: 'learn a skill',
     label: 'Learn a real skill',
     short: 'Learn',
     emoji: '🎓',
@@ -146,8 +146,8 @@ export const PURPOSES = [
   },
   {
     key: 'money',
-    ask: 'Sort out my money',
-    you: 'sort out your money',
+    ask: 'Get my money right',
+    you: 'get your money right',
     label: 'Get my money right',
     short: 'Money',
     emoji: '💰',
@@ -209,10 +209,13 @@ export const PURPOSES = [
     short: 'Tools',
     emoji: '🧰',
     accentKey: 'gold',
-    blurb: 'See what is in here: a planner, an inbox, a vault, projects, classes and games. Keep what helps.',
-    leads: ['capture', 'planner', 'knowledge-vault'],
+    // Outward since 2026-10-18 (docs/refocus-plan-2026-10-18.md): real-world
+    // tools and know-how ("Finds", the Discover catalogs), not a tour of
+    // this app's own planner and inbox.
+    blurb: 'Tools and know-how that save you time or money, explained plainly. Try one today.',
+    leads: ['knowledge-vault', 'life-areas', 'classes'],
     firstGoal: 'first-toolkit',
-    path: ['clear-the-inbox', 'learn-one-skill', 'ship-first-build'],
+    path: ['learn-one-skill', 'clear-the-inbox', 'ship-first-build'],
     matches: { goals: [], motivations: ['all'], usage: [] },
   },
   {
@@ -264,7 +267,12 @@ export const PURPOSES = [
 // (AIM_OPENS in experienceStages.js) all follow from the one pick. Career and
 // wellbeing stay pickable on the Compass; "Find my way" and "Improve parts of
 // my life" cover them for someone who has just arrived.
-export const ONBOARDING_AIMS = ['build', 'learn', 'direction', 'explore', 'areas', 'snapshot', 'store', 'habits', 'money'];
+//
+// Five up front, the app's focus: find your way, find useful things, learn,
+// money, start something. The rest sit behind "More reasons" (AimStep) so
+// they're still one tap away, just not the pitch (2026-10-18 refocus).
+export const ONBOARDING_AIMS = ['direction', 'explore', 'learn', 'money', 'build'];
+export const MORE_AIMS = ['areas', 'snapshot', 'habits', 'store'];
 
 // The account type an answer points at, when the person's age allows it
 // (personasFor in personas.js decides that). Only a suggestion: onboarding
@@ -554,14 +562,14 @@ export const OBJECTIVES = [
     id: 'first-toolkit',
     purpose: 'explore',
     intro: true,
-    label: 'Try Three Tools',
-    promise: 'The three tools most people keep: an inbox, a planner and a vault. Use each one once.',
-    why: 'You can only tell if a tool helps by using it on something real.',
+    label: 'Try Your First Find',
+    promise: 'One useful tool or idea, picked for you. Open it, try it, and find one more.',
+    why: 'You only know if something helps by trying it on your real life.',
     estimate: 'About 10 minutes',
     steps: [
-      { id: 'capture', label: 'Drop a thought in the Capture Inbox', hint: 'Anything on your mind. Sort it later.', screen: 'CaptureInbox', signal: 'inbox-captured' },
-      { id: 'plan',    label: 'Put one thing in the Planner',       hint: 'Something real, on a real day.', screen: 'PlannerScreen', signal: 'planner-item-added' },
-      { id: 'vault',   label: 'Save a note to the Knowledge Vault', hint: 'Type it in the quick-note box and tap +.', screen: 'KnowledgeScreen', signal: 'vault-saved' },
+      { id: 'open',   label: "Open today's Find",                hint: 'It sits on Home, under your dream.', screen: 'Home', signal: 'find-opened' },
+      { id: 'try',    label: 'Try it, then tap I tried it',      hint: 'Ten minutes is enough. It saves to your Vault.', screen: 'Home', signal: 'find-tried' },
+      { id: 'browse', label: 'Find one more for a life area',    hint: 'Library, Find, Finds. Pick an area you care about.', screen: 'KnowledgeScreen', signal: 'finds-browsed' },
     ],
     unlocks: [],
     next: 'clear-the-inbox',

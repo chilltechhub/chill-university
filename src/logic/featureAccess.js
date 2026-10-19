@@ -165,6 +165,8 @@ export function evaluateAccess(feature, ctx = {}) {
 // social) while 'social_on' is off.
 export function pickableAvailable(item, { plusOnSale = false, socialOn = false } = {}) {
   const features = item.features || [];
+  // place 'off' (featureCatalog): v2 tools (schools, teams), not offered.
+  if (features.some(f => getFeature(f)?.place === 'off')) return false;
   if (!socialOn && (item.labs || features.some(f => getFeature(f)?.social)
     || (item.screens || []).some(sc => SOCIAL_SCREENS.includes(sc)))) return false;
   return !features.some(f => getFeature(f)?.gate === 'paid') || plusOnSale;

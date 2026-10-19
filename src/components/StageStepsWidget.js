@@ -92,7 +92,7 @@ export default function StageStepsWidget() {
       key: 'level',
       icon: 'trending-up-outline',
       label: 'Gain a level',
-      detail: 'Play **Training** rounds. Either way works.',
+      detail: 'Play **Practice** rounds. Either way works.',
       cta: 'Train',
       onPress: () => goToScreen(navigation, 'Training'),
     },

@@ -99,6 +99,24 @@ actionKeys.forEach(k => { if (!FAB_ACTIONS.includes(k)) fail(`+ button action "$
   want('Teen gets the dream card', { mode: 'picks', hasLifeAreas: false, ageBand: 'teen' }, 'welcome aim dream persona start features name');
 }
 
+// ── Places (featureCatalog `place`, the 2026-10-18 refocus) ──────────────
+// Every feature has one; an extra is exactly what sits in the More tools
+// group (so "All in" leaves it out until ticked); and a v2 'off' feature
+// is never something onboarding or My features can offer.
+{
+  const PLACES = ['front', 'background', 'extra', 'off'];
+  const placeOf = Object.fromEntries(FEATURES.map(f => [f.id, f.place]));
+  FEATURES.forEach(f => { if (!PLACES.includes(f.place)) fail(`featureCatalog: '${f.id}' has place '${f.place}', want one of ${PLACES.join('/')}`); });
+  PICKABLES.forEach(p => {
+    const places = (p.features || []).map(f => placeOf[f]);
+    const isExtra = places.includes('extra');
+    if (isExtra && p.group !== 'extra') fail(`pickables: '${p.id}' opens an extra but sits in group '${p.group}', not 'extra' (More tools)`);
+    if (p.group === 'extra' && !isExtra) fail(`pickables: '${p.id}' is in More tools but none of its features is place 'extra'`);
+  });
+  if (!groups.has('extra')) fail(`pickables: no 'extra' group (More tools)`);
+  ALWAYS_ON_FEATURES.forEach(id => { if (placeOf[id] !== 'front') fail(`always-on '${id}' should be place 'front'`); });
+}
+
 if (problems.length) {
   console.error(`check-pickables: ${problems.length} problem(s)`);
   problems.forEach(p => console.error('  - ' + p));

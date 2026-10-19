@@ -1,5 +1,8 @@
 // src/screens/TrainingNav.js
-// The Training tab: the games screen, with Classes stacked on it.
+// The Training tab, shown as "Learn" since 2026-10-18: the games screen
+// (Classes first on it, games as Practice), with Classes stacked on it. The
+// games screen stays the root: the pet finds coins there (useCoinRewards),
+// so it must be mounted from launch.
 //
 // Classes used to live in the Library (Library → Knowledge → Academy
 // Classes). Learning sits with the games and drills now, so the app keeps
@@ -31,7 +34,7 @@ export default function TrainingNav() {
       UNSTABLE_router={rootStackRouter}
       screenOptions={{ headerShown: false, gestureEnabled: true, ...TransitionPresets.SlideFromRightIOS }}
     >
-      <Stack.Screen name="TrainingHome" component={GamesScreen} options={{ title: 'Training' }} />
+      <Stack.Screen name="TrainingHome" component={GamesScreen} options={{ title: 'Learn' }} />
       <Stack.Screen name="ClassesStack" component={ClassesStack} />
     </Stack.Navigator>
   );

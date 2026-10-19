@@ -42,6 +42,19 @@
 //   why         shown on the lock — what you get, in plain words.
 //   social      only worth showing once there are people on it. Hidden
 //               while app_config 'social_on' is off (featureAccess.js).
+//   place       where it sits in the app since the 2026-10-18 refocus
+//               (docs/refocus-plan-2026-10-18.md): the app is for finding,
+//               learning and doing; everything else supports that.
+//                 'front'       the tabs, Home, the pitch
+//                 'background'  no big card: a slim row in Library → Tools,
+//                               and wherever a flow needs it
+//                 'extra'       off until wanted: My features → More tools
+//                               (or your path opens it). Never in "All in"
+//                               unless ticked
+//                 'off'         v2 (schools, teams, people). Not offered;
+//                               a settingKey (Educator Mode) still opens it
+//               Nothing is ever locked by its place: a goal step or a link
+//               that opens one of these screens still opens it.
 
 // Social screens outside this catalog, hidden by the same switch.
 export const SOCIAL_SCREENS = ['Leaderboard'];
@@ -50,6 +63,7 @@ export const FEATURES = [
   /* ── Always open ─────────────────────────────────────────────────────── */
   {
     id: 'home-desk',
+    place: 'front',
     label: 'Home',
     screen: 'Home',
     icon: 'home-outline',
@@ -60,9 +74,10 @@ export const FEATURES = [
   },
   {
     id: 'training',
-    label: 'Training',
+    place: 'front',
+    label: 'Practice games',
     screen: 'Training',
-    icon: 'barbell-outline',
+    icon: 'game-controller-outline',
     gate: 'open',
     depth: 'first-step',
     purposes: ['learn', 'habits', 'money'],
@@ -70,6 +85,7 @@ export const FEATURES = [
   },
   {
     id: 'capture',
+    place: 'background',
     label: 'Capture Inbox',
     screen: 'CaptureInbox',
     icon: 'create-outline',
@@ -80,6 +96,7 @@ export const FEATURES = [
   },
   {
     id: 'life-areas',
+    place: 'front',
     label: 'Life Areas',
     screen: 'LibraryScreen',
     icon: 'compass-outline',
@@ -90,6 +107,7 @@ export const FEATURES = [
   },
   {
     id: 'workshop',
+    place: 'background',
     label: 'The Workshop',
     screen: 'ProjectsScreen',
     icon: 'hammer-outline',
@@ -100,6 +118,7 @@ export const FEATURES = [
   },
   {
     id: 'idea-garden',
+    place: 'extra',
     label: 'Idea Garden',
     screen: 'IdeaGardenScreen',
     icon: 'leaf-outline',
@@ -110,6 +129,7 @@ export const FEATURES = [
   },
   {
     id: 'knowledge-vault',
+    place: 'front',
     label: 'Knowledge Vault',
     screen: 'KnowledgeScreen',
     icon: 'library-outline',
@@ -120,6 +140,7 @@ export const FEATURES = [
   },
   {
     id: 'planner',
+    place: 'background',
     label: 'Planner',
     screen: 'PlannerScreen',
     icon: 'calendar-outline',
@@ -130,6 +151,7 @@ export const FEATURES = [
   },
   {
     id: 'classes',
+    place: 'front',
     label: 'Academy Classes',
     screen: 'ClassesStack',
     icon: 'ribbon-outline',
@@ -140,6 +162,7 @@ export const FEATURES = [
   },
   {
     id: 'compass',
+    place: 'front',
     // Shown as "App Nav" since 2026-10-10 (user: "compass should say APP
     // NAV"). The id and route stay 'compass' / 'Compass': saved progress
     // and every navigate() use them.
@@ -155,6 +178,7 @@ export const FEATURES = [
   /* ── Locked — earned by finishing an objective, or tested out of ──────── */
   {
     id: 'portfolio',
+    place: 'background',
     label: 'Portfolio Archives',
     screen: 'PortfolioScreen',
     icon: 'briefcase-outline',
@@ -168,6 +192,7 @@ export const FEATURES = [
   },
   {
     id: 'career-map',
+    place: 'front',
     label: 'Career Explorer',
     screen: 'CareerExplorationScreen',
     icon: 'map-outline',
@@ -181,6 +206,7 @@ export const FEATURES = [
   },
   {
     id: 'weekly-review',
+    place: 'background',
     label: 'Weekly Review',
     screen: 'WeeklyReviewScreen',
     icon: 'stats-chart-outline',
@@ -194,6 +220,7 @@ export const FEATURES = [
   },
   {
     id: 'work-mode',
+    place: 'background',
     label: 'Work Mode',
     screen: 'WorkModeScreen',
     icon: 'timer-outline',
@@ -210,6 +237,7 @@ export const FEATURES = [
   },
   {
     id: 'import-hub',
+    place: 'extra',
     label: 'Bring stuff in',
     screen: 'ImportScreen',
     icon: 'download-outline',
@@ -223,6 +251,7 @@ export const FEATURES = [
   },
   {
     id: 'discover',
+    place: 'off',
     social: true,
     label: 'Community',
     screen: 'DiscoverScreen',
@@ -237,6 +266,7 @@ export const FEATURES = [
   },
   {
     id: 'lesson-builder',
+    place: 'off',
     label: 'Lesson Plan Builder',
     screen: 'LessonBuilder',
     icon: 'school-outline',
@@ -251,6 +281,7 @@ export const FEATURES = [
   },
   {
     id: 'savings-investing',
+    place: 'extra',
     label: 'Savings & Investing',
     screen: 'SavingsInvestingScreen',
     icon: 'trending-up-outline',
@@ -264,6 +295,7 @@ export const FEATURES = [
   },
   {
     id: 'debt-credit',
+    place: 'extra',
     label: 'Debt & Credit',
     screen: 'DebtCreditScreen',
     icon: 'card-outline',
@@ -279,6 +311,7 @@ export const FEATURES = [
   /* ── Experimental — real, rough, opt-in ───────────────────────────────── */
   {
     id: 'labs',
+    place: 'off',
     social: true,
     label: 'Labs',
     screen: 'LabsScreen',
@@ -291,6 +324,7 @@ export const FEATURES = [
   },
   {
     id: 'mentors',
+    place: 'off',
     social: true,
     label: 'Mentors & Experts',
     screen: 'MentorsScreen',
@@ -303,6 +337,7 @@ export const FEATURES = [
   },
   {
     id: 'community-feed',
+    place: 'off',
     social: true,
     label: 'Community Feed',
     screen: 'CommunityFeedScreen',
@@ -315,6 +350,7 @@ export const FEATURES = [
   },
   {
     id: 'fellow-scholars',
+    place: 'off',
     social: true,
     label: 'Fellow Scholars',
     screen: 'FellowScholarsScreen',
@@ -329,6 +365,7 @@ export const FEATURES = [
   /* ── Paid — the deep end ──────────────────────────────────────────────── */
   {
     id: 'organization',
+    place: 'off',
     label: 'Organizations & Cohorts',
     screen: 'Organization',
     icon: 'business-outline',
@@ -343,6 +380,7 @@ export const FEATURES = [
   // below. Free for now; whether it moves into Plus is the founder's call.
   {
     id: 'insights',
+    place: 'background',
     label: 'Insights',
     screen: 'Stats',
     icon: 'analytics-outline',

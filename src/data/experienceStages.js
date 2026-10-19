@@ -86,11 +86,15 @@ const tail = (sixth) => [
   },
 ];
 
+// The Idea Garden is an extra since 2026-10-18 (featureCatalog `place`):
+// projects already start at an Idea stage, so the stage path no longer
+// pushes a second place for ideas on everyone. Entrepreneurs still start
+// with it, and anyone can switch it on in My features → More tools.
 const BUILD = {
   key: 'build',
-  label: 'The Workshop and Idea Garden',
-  blurb: 'Somewhere to grow ideas and build them into projects.',
-  features: ['workshop', 'idea-garden'],
+  label: 'The Workshop',
+  blurb: 'Somewhere to build ideas into real projects.',
+  features: ['workshop'],
 };
 
 const VAULT = {
@@ -215,7 +219,7 @@ export const PATHS = {
       widgets: ['checkins', 'orgSnapshot'],
       fab: ['note', 'inbox'],
     },
-    ...tail({ ...VAULT, features: ['knowledge-vault', 'idea-garden'], label: 'The Knowledge Vault and Idea Garden' }),
+    ...tail(VAULT),
   ],
 
   ENTREPRENEUR: [
@@ -277,8 +281,11 @@ export const MAX_STAGE = PATHS.PERSONAL.length;
 // planning the day and staying on a task. Holding these back meant the
 // "Build a project" aim had no Planner and every account met a lock screen
 // behind the Work button on its first project (ship test, 2026-10-07).
+// Classes since 2026-10-18: learning is what the app is for now
+// (docs/refocus-plan-2026-10-18.md), so the Learn tab opens on them for
+// every account, not from a later stage.
 export const CORE_OPENS = {
-  features: ['planner', 'work-mode'],
+  features: ['planner', 'work-mode', 'classes'],
 };
 
 export const AIM_OPENS = {
@@ -296,14 +303,14 @@ export const AIM_OPENS = {
     screens: ['WayfinderScreen'],
     widgets: ['wayfinder'],
   },
-  // Someone who came to see what's in here gets the whole Library at once.
-  // Holding tools back from a person whose goal is finding tools would be
-  // working against them.
+  // "Discover useful tools" means real-world tools and know-how since
+  // 2026-10-18: Finds (the Vault's Discover catalogs, and Today's Find on
+  // Home), sorted by life area. Not a tour of this app's own tools, so no
+  // 'all-tools' dump any more.
   explore: {
-    features: ['capture', 'planner', 'knowledge-vault'],
-    widgets: ['desk', 'activities', 'ideas'],
-    fab: ['note', 'inbox'],
-    caps: ['all-tools'],
+    features: ['knowledge-vault', 'life-areas'],
+    widgets: ['wisdom', 'lifeAreas'],
+    fab: ['note'],
   },
   areas: {
     features: ['life-areas', 'planner'],

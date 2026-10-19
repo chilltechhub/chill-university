@@ -52,7 +52,7 @@ export const TOUR_STEPS = [
     id: 'nav-tabbar',
     go: 'Home',
     title: 'The bar at the bottom',
-    body: "**Library** = your tools. **Home** = your day. **Training** = quick games.",
+    body: "**Library** = your tools. **Home** = your day. **Learn** = classes and practice.",
   },
   {
     id: 'fab',

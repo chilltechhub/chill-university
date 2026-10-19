@@ -37,6 +37,9 @@ export const SETTING_KEYS = {
   DREAM_LATER_UNTIL: 'dreamLaterUntil',
   // "Not me" on the editor's Wayfinder draft, so it isn't offered again.
   DREAM_DRAFT_DISMISSED: 'dreamDraftDismissed',
+  // Today's Find on Home (src/components/TodaysFind.js): what's been tried,
+  // waved off, and today's count. Shape: src/logic/todaysFind.js.
+  TODAYS_FIND: 'todaysFind',
   // "Your pet is getting hungry" (notificationScheduler.syncPetReminder).
   // On by default; the pet's feed sheet and Settings both switch it.
   PET_REMINDERS: 'petReminders',

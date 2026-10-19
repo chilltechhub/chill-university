@@ -10,7 +10,7 @@
 import { PATHS, MAX_STAGE, EXPLORING_WIDGET, STAGED_SCREENS, FIRST_GOALS, AIM_OPENS, CORE_OPENS } from '../data/experienceStages';
 import { getPurpose, getObjective } from '../data/objectives';
 import { getFeature } from '../data/featureCatalog';
-import { ALWAYS_ON_FEATURES, BASE_WIDGETS, contributionsOf, hiddenBy } from '../data/pickables';
+import { ALWAYS_ON_FEATURES, BASE_WIDGETS, FULL_START_PICKS, contributionsOf, hiddenBy } from '../data/pickables';
 
 // How someone starts, picked in onboarding and changed in Make it yours
 // (src/data/pickables.js has the long version):
@@ -94,7 +94,7 @@ export function nextStageNeeds({ stage, persona, aim = null, exploring = false }
   if (isNews) return base;
   const feature = features.map(getFeature).find(Boolean);
   if (feature) return { ...base, label: feature.label, blurb: feature.blurb };
-  if (games.length) return { ...base, label: `${games.length} new game${games.length === 1 ? '' : 's'} in Training`, blurb: null };
+  if (games.length) return { ...base, label: `${games.length} new game${games.length === 1 ? '' : 's'} in Learn`, blurb: null };
   if (widgets.length) return { ...base, label: `${widgets.length} new card${widgets.length === 1 ? '' : 's'} on Home`, blurb: null };
   return base;
 }
@@ -173,7 +173,9 @@ export function openedForTrack({
   }
   if (track === 'full') {
     const all = openedAt(persona, MAX_STAGE, { exploring, aim });
-    return chosen ? withHidden(all, hiddenBy(chosen)) : all;
+    // "All in" is everything the app is for, not every extra: with nothing
+    // unticked yet, More tools (place 'extra') still waits to be ticked.
+    return withHidden(all, hiddenBy(chosen || FULL_START_PICKS));
   }
   // Level up: the path as it stands, plus anything they asked for early.
   const out = openedAt(persona, stage, { exploring, aim });

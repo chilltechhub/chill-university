@@ -37,13 +37,17 @@ export const ALWAYS_ON_FEATURES = ['home-desk', 'compass'];
 export const BASE_WIDGETS = ['hq', 'focus', 'compass', 'goalSteps'];
 
 export const PICK_GROUPS = [
+  // Learning and your life first: what the app is for (2026-10-18).
+  { key: 'learn',  label: 'Learn and practice', icon: 'school-outline' },
+  { key: 'life',   label: 'Your life',       icon: 'leaf-outline' },
   { key: 'plan',   label: 'Plan your days',  icon: 'calendar-outline' },
   { key: 'save',   label: 'Save and sort',   icon: 'file-tray-full-outline' },
   { key: 'build',  label: 'Build things',    icon: 'hammer-outline' },
-  { key: 'learn',  label: 'Learn and play',  icon: 'school-outline' },
-  { key: 'life',   label: 'Your life',       icon: 'leaf-outline' },
   { key: 'people', label: 'People',          icon: 'people-outline' },
-  { key: 'more',   label: 'Extras',          icon: 'sparkles-outline' },
+  { key: 'more',   label: 'Other',           icon: 'sparkles-outline' },
+  // place 'extra' in featureCatalog.js: off until ticked, on every track,
+  // "All in" included (FULL_START_PICKS below). Listed last on purpose.
+  { key: 'extra',  label: 'More tools',      icon: 'construct-outline' },
 ];
 
 export const PICKABLES = [
@@ -77,7 +81,7 @@ export const PICKABLES = [
     features: ['knowledge-vault'],
   },
   {
-    id: 'import-hub', group: 'save', icon: 'cloud-upload-outline',
+    id: 'import-hub', group: 'extra', icon: 'cloud-upload-outline',
     label: 'Bring stuff in', blurb: 'Lists, links and files in bulk, or messy notes with any chatbot.',
     features: ['import-hub'],
   },
@@ -89,7 +93,7 @@ export const PICKABLES = [
     features: ['workshop'], widgets: ['builds'], extraWidgets: ['desk'], fab: ['project'],
   },
   {
-    id: 'idea-garden', group: 'build', icon: 'leaf-outline',
+    id: 'idea-garden', group: 'extra', icon: 'leaf-outline',
     label: 'Idea Garden', blurb: 'Grow ideas before they become projects.',
     features: ['idea-garden'], widgets: ['ideas'],
   },
@@ -112,7 +116,7 @@ export const PICKABLES = [
   },
   {
     id: 'training', group: 'learn', icon: 'game-controller-outline',
-    label: 'Training games', blurb: 'Short skill games and daily drills.',
+    label: 'Practice games', blurb: 'Short games on what you learn, and daily drills.',
     features: ['training'], games: 'all', extraWidgets: ['dailyDrills'],
   },
   {
@@ -138,12 +142,12 @@ export const PICKABLES = [
     features: ['career-map'],
   },
   {
-    id: 'savings-investing', group: 'life', icon: 'trending-up-outline',
+    id: 'savings-investing', group: 'extra', icon: 'trending-up-outline',
     label: 'Savings & Investing', blurb: 'How saving and investing grow.',
     features: ['savings-investing'],
   },
   {
-    id: 'debt-credit', group: 'life', icon: 'card-outline',
+    id: 'debt-credit', group: 'extra', icon: 'card-outline',
     label: 'Debt & Credit', blurb: 'What you owe and what to pay first.',
     features: ['debt-credit'],
   },
@@ -281,6 +285,10 @@ export function nextSuggestion({ picks = [], declined = [], earnedFeatures = [],
   ];
   return order.find(id => id && !skip.has(id) && allowed(BY_ID[id])) || null;
 }
+
+// What "All in" starts with when nothing has been unticked yet: everything
+// except More tools, which waits to be asked for (2026-10-18 refocus).
+export const FULL_START_PICKS = PICKABLES.filter(p => p.group !== 'extra').map(p => p.id);
 
 export const TRACKS = ['picks', 'auto', 'full'];
 export const normalizeTrack = (t) => (TRACKS.includes(t) ? t : 'auto');

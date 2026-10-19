@@ -12,8 +12,8 @@
 //                 themselves — for steps with no single button to press
 //
 // `path` is how to get there without the guide, said in the bubble before
-// it takes them. Keep it true to the Library's pages (Life / Build /
-// Knowledge, LIBRARY_HUBS in LibraryScreen.js) and the tab bar.
+// it takes them. Keep it true to the Library's pages (Life / Find /
+// Tools, LIBRARY_HUBS in LibraryScreen.js) and the tab bar (Library, Home, Learn).
 //
 // `more` (optional, for a step with a signalCount) is added to the short
 // "1 of 3, two more to go" note after each one that counts.
@@ -25,7 +25,7 @@
 //
 // No imports on purpose: plain data.
 
-const DRILL = (say) => ({ go: 'Training', spot: 'training-enter', mode: 'tap', path: "Training → Enter Training", say });
+const DRILL = (say) => ({ go: 'Training', spot: 'training-enter', mode: 'tap', path: "Learn → Practice", say });
 
 export const FIRST_GOAL_GUIDE = {
   'first-steps': {
@@ -36,7 +36,7 @@ export const FIRST_GOAL_GUIDE = {
     },
     habit: {
       go: 'PlannerScreen', spot: 'planner-add', mode: 'tap',
-      path: "Library → Knowledge → Planner",
+      path: "Library → Tools → Planner",
       say: "Tap **Add**, type one small habit (a glass of water counts), set it to **Daily**, and save.",
     },
     drill: DRILL("Tap here and play **one round**. It ticks itself when the round ends."),
@@ -57,13 +57,13 @@ export const FIRST_GOAL_GUIDE = {
   'first-study-session': {
     class: {
       go: 'ClassesMain', mode: 'point',
-      path: "Training → Classes",
+      path: "Learn → Classes",
       say: "Pick **any subject**, then open one topic.",
     },
     drill: DRILL("Tap here and play **one round**. It ticks itself when the round ends."),
     block: {
       go: 'PlannerScreen', spot: 'planner-add', mode: 'tap',
-      path: "Library → Knowledge → Planner",
+      path: "Library → Tools → Planner",
       say: "Tap **Add** and plan one **20-minute** study block.",
     },
   },
@@ -75,7 +75,7 @@ export const FIRST_GOAL_GUIDE = {
     },
     routine: {
       go: 'PlannerScreen', spot: 'planner-add', mode: 'tap',
-      path: "Library → Knowledge → Planner",
+      path: "Library → Tools → Planner",
       say: "Tap **Add**: one routine that repeats (payroll, a restock). Set it to **Weekly**.",
     },
     drill: DRILL("Tap here and play **a round**. Try **Register Ready** or **Shift Manager**."),
@@ -83,12 +83,12 @@ export const FIRST_GOAL_GUIDE = {
   'first-founder-step': {
     seed: {
       go: 'IdeaGardenScreen', spot: 'ideas-list', mode: 'tap',
-      path: "Library → Knowledge → Idea Garden",
+      path: "Library → Tools → Idea Garden",
       say: "Tap the lit-up **+** and plant your idea in **one line**. Rough is fine.",
     },
     project: {
       go: 'ProjectsScreen', spot: 'projects-add', mode: 'tap',
-      path: "Library → Build → The Workshop",
+      path: "Library → Tools → The Workshop",
       say: "Tap **New Project** and give your idea a name.",
     },
     drill: DRILL("Tap here and play **a round**. Try **Budget Balance** or **Survive the Month**."),
@@ -98,47 +98,47 @@ export const FIRST_GOAL_GUIDE = {
   'first-build': {
     seed: {
       go: 'IdeaGardenScreen', spot: 'ideas-list', mode: 'tap',
-      path: "Library → Knowledge → Idea Garden",
+      path: "Library → Tools → Idea Garden",
       say: "Tap the lit-up **+** and plant your idea in **one line**. Rough is fine.",
     },
     project: {
       go: 'ProjectsScreen', spot: 'projects-add', mode: 'tap',
-      path: "Library → Build → The Workshop",
+      path: "Library → Tools → The Workshop",
       say: "Tap **New Project**. Fill in **Next step** too: the real next move, not \"work on it\".",
     },
     step: {
       go: 'ProjectsScreen', spot: 'projects-list', mode: 'point',
-      path: "Library → Build → The Workshop",
+      path: "Library → Tools → The Workshop",
       say: "Open your project and write its **next step**, like \"sketch the home screen\".",
     },
   },
   'first-direction': {
     map: {
       go: 'WayfinderScreen', params: { stage: 'core' }, mode: 'point',
-      path: "Library → Build → Wayfinder",
+      path: "Library → Find → Wayfinder",
       say: "**Three short question sets**: what you've done, what pulls you, what matters. No wrong answers. You get a **map** at the end.",
     },
     try: {
       go: 'WayfinderScreen', params: { stage: 'map' }, mode: 'point',
-      path: "Library → Build → Wayfinder",
+      path: "Library → Find → Wayfinder",
       say: "Pick a path on your map and try **one small experiment** this week. Come back after and say how it felt.",
     },
   },
   'first-toolkit': {
-    capture: {
-      go: 'CaptureInbox', spot: 'inbox-capture', mode: 'tap',
-      path: "+ → Capture Inbox",
-      say: "Your **inbox**: drop a thought before you lose it. Tap the lit-up **+**. Sort it later.",
+    open: {
+      go: 'Home', spot: 'home-todays-find', mode: 'tap',
+      path: "Home",
+      say: "This is **today's Find**: one useful tool or idea, picked for you. Tap **Open it**.",
     },
-    plan: {
-      go: 'PlannerScreen', spot: 'planner-add', mode: 'tap',
-      path: "Library → Knowledge → Planner",
-      say: "Your **Planner**: days, habits, to-dos. Tap **Add** and plan one real thing.",
+    try: {
+      go: 'Home', spot: 'home-todays-find', mode: 'point',
+      path: "Home",
+      say: "Give it **ten minutes**. Then tap **I tried it**. It saves to your **Vault**.",
     },
-    vault: {
-      go: 'KnowledgeScreen', spot: 'notes-input', mode: 'tap',
-      path: "Library → Knowledge → Knowledge Vault",
-      say: "Your **Vault** keeps notes and links. Type a note here and tap **+**.",
+    browse: {
+      go: 'KnowledgeScreen', params: { initialTab: 'discover' }, mode: 'point',
+      path: "Library → Find → Finds",
+      say: "**More Finds**, sorted by life area. Tap an **area** you care about.",
     },
   },
   // The person picks the area: that's the point of "improve parts of my
@@ -156,7 +156,7 @@ export const FIRST_GOAL_GUIDE = {
     },
     plan: {
       go: 'PlannerScreen', spot: 'planner-add', mode: 'tap',
-      path: "Library → Knowledge → Planner",
+      path: "Library → Tools → Planner",
       say: "Tap **Add**, pick the same **life area**, and plan one small thing.",
     },
   },
@@ -175,7 +175,7 @@ export const FIRST_GOAL_GUIDE = {
     },
     situation: {
       go: 'WayfinderScreen', params: { stage: 'situation' }, mode: 'point',
-      path: "Library → Build → Wayfinder",
+      path: "Library → Find → Wayfinder",
       say: "Pick what fits **right now**, then tap **See my plan**.",
     },
   },
@@ -187,7 +187,7 @@ export const FIRST_GOAL_GUIDE = {
     },
     note: {
       go: 'KnowledgeScreen', spot: 'notes-input', mode: 'tap',
-      path: "Library → Knowledge → Knowledge Vault",
+      path: "Library → Tools → Knowledge Vault",
       say: "The **Vault** keeps things for good. Type a note here and tap **+**.",
     },
     sort: {
@@ -199,7 +199,7 @@ export const FIRST_GOAL_GUIDE = {
   'first-rhythm': {
     habit: {
       go: 'PlannerScreen', spot: 'planner-add', mode: 'tap',
-      path: "Library → Knowledge → Planner",
+      path: "Library → Tools → Planner",
       say: "Tap **Add**, type one small habit, set it to **Daily**, and save.",
     },
     capture: {
@@ -228,7 +228,7 @@ export const FIRST_GOAL_GUIDE = {
     // it" could be twenty swipes.
     game: {
       go: 'Play', params: { gameId: 'budget' }, mode: 'point',
-      path: "Training → Enter Training → Budget Balance",
+      path: "Learn → Practice → Budget Balance",
       say: "**Budget Balance**: keep, swap or cut costs until the month **balances**. One round is enough. Tap **X** when done.",
     },
   },
@@ -277,7 +277,7 @@ export function autoScript(objective) {
     // is earned in Training.
     if (!st.screen) {
       out[st.id] = st.auto
-        ? { go: 'Training', spot: 'training-enter', mode: 'tap', path: 'Training', say: st.hint || 'Play a round. **Ticks itself.**' }
+        ? { go: 'Training', spot: 'training-enter', mode: 'tap', path: 'Learn → Practice', say: st.hint || 'Play a round. **Ticks itself.**' }
         : { go: 'Home', spot: 'home-compass', mode: 'point', path: 'your goal card on Home', say: `${st.hint ? `${st.hint} ` : ''}Then **tick it** on your goal card.` };
       return;
     }

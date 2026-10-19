@@ -44,10 +44,10 @@ import PlayerCharacter from '../../components/PlayerCharacter';
 import { OUTFITS } from '../../data/characterOptions';
 import { personasFor, defaultPersonaFor, getPersona } from '../../data/personas';
 import { firstGoalFor, openedAt } from '../../logic/experienceStage';
-import { PICKABLES, recommendedFrom } from '../../data/pickables';
+import { PICKABLES, FULL_START_PICKS, recommendedFrom } from '../../data/pickables';
 import FeaturePicker, { pickableAvailable } from '../../components/FeaturePicker';
 import { useAccess } from '../../../context/AccessContext';
-import { getObjective, getPurpose, ONBOARDING_AIMS, AIM_PERSONA } from '../../data/objectives';
+import { getObjective, getPurpose, ONBOARDING_AIMS, MORE_AIMS, AIM_PERSONA } from '../../data/objectives';
 
 const { width: SW } = Dimensions.get('window');
 
@@ -154,7 +154,9 @@ export function pickFocusHub(data) {
     .filter(Boolean).join(' ').toLowerCase();
   for (const entry of HUB_INTEREST_MAP) {
     if (entry.keywords.some(kw => haystack.includes(kw))) {
-      const hubItem = LIBRARY_HUBS.flatMap(h => h.items).find(i => i.screen === entry.screen);
+      // The plain entry for a screen, not a shortcut into it (Finds opens the
+      // Vault on Discover).
+      const hubItem = LIBRARY_HUBS.flatMap(h => h.items).find(i => i.screen === entry.screen && !i.params);
       if (hubItem) return { screen: hubItem.screen, label: hubItem.label, reason: entry.reason(hubItem.label) };
     }
   }
@@ -177,7 +179,7 @@ const FEATURE_RECS = [
   { pattern: 'reflecting', icon: 'leaf-outline',               title: 'Idea Garden',           body: 'Plant loose thoughts and let them grow over time.' },
   { pattern: 'planning',   icon: 'calendar-outline',          title: 'Planner',               body: 'Daily, weekly, and monthly views — Library → Planner.' },
   { pattern: 'planning',   icon: 'file-tray-full-outline',    title: 'Capture Inbox',         body: 'Jot anything fast, decide where it belongs later.' },
-  { pattern: 'breaks',     icon: 'game-controller-outline',    title: 'Training',              body: 'Quick games across any subject — the PLAY button on Home.' },
+  { pattern: 'breaks',     icon: 'game-controller-outline',    title: 'Practice games',        body: 'Quick games on what you learn, in the Learn tab.' },
 ];
 
 export function buildRecommendations(data) {
@@ -317,7 +319,7 @@ export function WelcomeStep({ theme }) {
 // The picked tile shows the first goal's steps underneath, so the answer
 // comes back as "here's exactly what we'll do", not a confirmation tick.
 // The life area an aim is plainly about, added to the account type's
-// defaults. "Sort out my money" on a Personal account pre-picked Physical,
+// defaults. "Get my money right" (was "Sort out my money") on a Personal account pre-picked Physical,
 // Mental and Social, and the first goal's first step is to rate Financial.
 const AIM_AREA = { money: 'financial' };
 export function areasForAim(aim, defaults) {
@@ -345,6 +347,37 @@ export function AimStep({ data, set, theme, isMinor, ageBand }) {
     if (!data.areas_touched) set('active_life_areas', areasForAim(key, PERSONA_AREA_DEFAULTS[persona] || []));
   };
 
+  // The other reasons stay one tap away. Open already if one of them is the
+  // answer (coming back to this card after picking it).
+  const [showMore, setShowMore] = useState(() => MORE_AIMS.includes(data.aim));
+
+  const tile = (key) => {
+    const p = getPurpose(key);
+    if (!p) return null;
+    const sel = data.aim === key;
+    const accent = c[p.accentKey] || c.teal;
+    return (
+      <TouchableOpacity
+        key={key}
+        onPress={() => choose(key)}
+        accessibilityRole="radio"
+        accessibilityState={{ checked: sel }}
+        accessibilityLabel={p.ask}
+        style={{
+          width: '48.5%', minHeight: 58, flexDirection: 'row', alignItems: 'center', gap: 8,
+          paddingVertical: 10, paddingHorizontal: 10, marginBottom: 8, borderRadius: 12,
+          borderWidth: sel ? 1.5 : 1, borderColor: sel ? accent : c.border,
+          backgroundColor: sel ? accent + '18' : c.bg0,
+        }}
+      >
+        <Text style={{ fontSize: 20 }}>{p.emoji}</Text>
+        <Text style={{ flex: 1, fontSize: 13.5, lineHeight: 17, fontWeight: sel ? '700' : '600', color: sel ? accent : c.text1 }}>
+          {p.ask}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <View style={st.stepContent}>
       <Text style={st.stepTitle}>What did you come here for?</Text>
@@ -353,33 +386,20 @@ export function AimStep({ data, set, theme, isMinor, ageBand }) {
       </Text>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
-        {ONBOARDING_AIMS.map(key => {
-          const p = getPurpose(key);
-          if (!p) return null;
-          const sel = data.aim === key;
-          const accent = c[p.accentKey] || c.teal;
-          return (
-            <TouchableOpacity
-              key={key}
-              onPress={() => choose(key)}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: sel }}
-              accessibilityLabel={p.ask}
-              style={{
-                width: '48.5%', minHeight: 58, flexDirection: 'row', alignItems: 'center', gap: 8,
-                paddingVertical: 10, paddingHorizontal: 10, marginBottom: 8, borderRadius: 12,
-                borderWidth: sel ? 1.5 : 1, borderColor: sel ? accent : c.border,
-                backgroundColor: sel ? accent + '18' : c.bg0,
-              }}
-            >
-              <Text style={{ fontSize: 20 }}>{p.emoji}</Text>
-              <Text style={{ flex: 1, fontSize: 13.5, lineHeight: 17, fontWeight: sel ? '700' : '600', color: sel ? accent : c.text1 }}>
-                {p.ask}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+        {ONBOARDING_AIMS.map(tile)}
+        {showMore && MORE_AIMS.map(tile)}
       </View>
+      {!showMore && (
+        <TouchableOpacity
+          onPress={() => setShowMore(true)}
+          accessibilityRole="button"
+          accessibilityLabel="More reasons"
+          style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 4, paddingVertical: 6, marginBottom: 6 }}
+        >
+          <Ionicons name="chevron-down" size={14} color={c.text2} />
+          <Text style={{ fontSize: 13, fontWeight: '700', color: c.text2 }}>More reasons</Text>
+        </TouchableOpacity>
+      )}
 
       {chosen && first ? (
         <View style={{ marginTop: 6, padding: 14, borderRadius: 12, backgroundColor: c.bg1, borderWidth: 1, borderColor: c.border }}>
@@ -562,7 +582,8 @@ export function recommendedPicksFor(data) {
 export function picksForData(data, { plusOnSale = false, socialOn = false } = {}) {
   if (data.picks_touched && Array.isArray(data.picks)) return data.picks;
   if (data.experience_mode === 'full') {
-    return PICKABLES.filter(p => !p.labs && pickableAvailable(p, { plusOnSale, socialOn })).map(p => p.id);
+    // Everything except More tools, which waits to be ticked.
+    return PICKABLES.filter(p => FULL_START_PICKS.includes(p.id) && !p.labs && pickableAvailable(p, { plusOnSale, socialOn })).map(p => p.id);
   }
   return recommendedPicksFor(data);
 }
@@ -708,7 +729,7 @@ export function CharacterStep({ data, set, theme }) {
   return (
     <View style={st.stepContent}>
       <Text style={st.stepTitle}>Meet Your Character</Text>
-      <Text style={st.stepSubtitle}>Your <Text style={{ fontWeight: '700' }}>traveler</Text> walks around Home and Training. New gear <Text style={{ fontWeight: '700' }}>unlocks as you level up</Text>.</Text>
+      <Text style={st.stepSubtitle}>Your <Text style={{ fontWeight: '700' }}>traveler</Text> walks around Home and Learn. New gear <Text style={{ fontWeight: '700' }}>unlocks as you level up</Text>.</Text>
 
       {ready && (
         <LandscapeBackground background={background} height={130} style={{ marginBottom: s.md }}>

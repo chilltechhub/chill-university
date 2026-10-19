@@ -203,15 +203,15 @@ for (const entry of TOPIC_CATALOG) {
 // hides the thing they came for.
 {
   const { AIM_OPENS, STAGED_SCREENS } = await load('src/data/experienceStages.js');
-  const { PURPOSES, ONBOARDING_AIMS, AIM_PERSONA, OBJECTIVE_BY_ID } = await load('src/data/objectives.js');
+  const { PURPOSES, ONBOARDING_AIMS, MORE_AIMS = [], AIM_PERSONA, OBJECTIVE_BY_ID } = await load('src/data/objectives.js');
   const { FEATURES } = await load('src/data/featureCatalog.js');
   const { FIRST_GOAL_GUIDE } = await load('src/data/firstGoalGuide.js');
   const purposeKeys = new Set(PURPOSES.map(p => p.key));
   const featureByScreen = Object.fromEntries(FEATURES.map(f => [f.screen, f]));
   const featureById = Object.fromEntries(FEATURES.map(f => [f.id, f]));
 
-  for (const key of ONBOARDING_AIMS) {
-    if (!purposeKeys.has(key)) problems.push(`objectives.js: ONBOARDING_AIMS lists '${key}', which is not a purpose`);
+  for (const key of [...ONBOARDING_AIMS, ...MORE_AIMS]) {
+    if (!purposeKeys.has(key)) problems.push(`objectives.js: aim '${key}' (ONBOARDING_AIMS or MORE_AIMS) is not a purpose`);
     if (!AIM_OPENS[key]) problems.push(`experienceStages.js: aim '${key}' has no AIM_OPENS entry`);
   }
   for (const [key, type] of Object.entries(AIM_PERSONA)) {
