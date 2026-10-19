@@ -3,7 +3,7 @@
 // CalmLibrary.js): the dark accent-tinted panel, its headline, its pill
 // buttons, its two cards, and the link back to the full view under it.
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
@@ -50,17 +50,27 @@ export function useCalmPalette() {
 // the Library are both mounted at once.
 export function CalmPanel({ id, pal, children }) {
   const { spacing: s } = useTheme();
+  // On iOS a "100%" Svg keeps the size it first drew at, so the gradient
+  // stopped short once the cards loaded and the panel grew. Size it from
+  // the panel's layout, with the bottom color behind it meanwhile.
+  const [size, setSize] = useState(null);
+  const onLayout = (e) => {
+    const { width, height } = e.nativeEvent.layout;
+    setSize(p => (p && p.width === width && p.height === height ? p : { width, height }));
+  };
   return (
-    <View style={{ borderRadius: 28, overflow: 'hidden', padding: s.lg, paddingTop: s.lg + 2 }}>
-      <Svg style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} width="100%" height="100%" preserveAspectRatio="none">
-        <Defs>
-          <LinearGradient id={id} x1="0" y1="0" x2="0.35" y2="1">
-            <Stop offset="0" stopColor={pal.top} />
-            <Stop offset="1" stopColor={pal.bottom} />
-          </LinearGradient>
-        </Defs>
-        <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${id})`} />
-      </Svg>
+    <View onLayout={onLayout} style={{ borderRadius: 28, overflow: 'hidden', backgroundColor: pal.bottom, padding: s.lg, paddingTop: s.lg + 2 }}>
+      {size && (
+        <Svg style={{ position: 'absolute', top: 0, left: 0 }} width={size.width} height={size.height}>
+          <Defs>
+            <LinearGradient id={id} x1="0" y1="0" x2="0.35" y2="1">
+              <Stop offset="0" stopColor={pal.top} />
+              <Stop offset="1" stopColor={pal.bottom} />
+            </LinearGradient>
+          </Defs>
+          <Rect x="0" y="0" width={size.width} height={size.height} fill={`url(#${id})`} />
+        </Svg>
+      )}
       {children}
     </View>
   );
