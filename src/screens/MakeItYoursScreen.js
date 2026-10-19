@@ -147,6 +147,9 @@ export default function MakeItYoursScreen() {
           <Row icon="apps-outline" title="My features"
             value={track === 'full' && !pickCount ? "**Everything.** Untick what you don’t want" : pickCount ? `**${pickCount} picked.** Add or remove any part of the app` : '**Add or remove** any part of the app'}
             onPress={() => navigation.navigate('MyFeatures')} />
+          <Row icon="git-network-outline" title="Connected apps"
+            value="**Calendar, Reminders, share, files.** Bring in what you do in other apps"
+            onPress={() => navigation.navigate('ConnectedApps')} />
           <Row icon="layers-outline" title="How you start" value={TRACK_VALUE[track]} />
           <Segments label="How you start" value={track}
             options={[['picks', 'Just my picks'], ['auto', 'Level up'], ['full', 'All in']]}

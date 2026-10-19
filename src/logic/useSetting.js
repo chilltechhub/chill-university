@@ -40,6 +40,10 @@ export const SETTING_KEYS = {
   // Today's Find on Home (src/components/TodaysFind.js): what's been tried,
   // waved off, and today's count. Shape: src/logic/todaysFind.js.
   TODAYS_FIND: 'todaysFind',
+  // "Request this app" on Connected apps (src/screens/ConnectedAppsScreen.js):
+  // the ids already asked for, so the button says Requested. The vote itself
+  // is kept on the profile (src/connectors/index.js requestApp).
+  APP_REQUESTS: 'appRequests',
   // "Your pet is getting hungry" (notificationScheduler.syncPetReminder).
   // On by default; the pet's feed sheet and Settings both switch it.
   PET_REMINDERS: 'petReminders',

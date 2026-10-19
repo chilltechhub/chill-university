@@ -17,12 +17,15 @@ export default ({ config }) => {
       // Phone calendar sync (src/api/phoneCalendar.js): reads the phone's
       // calendars (Apple, and Google accounts on the phone) into the Planner,
       // and can copy plans into a "Deskartes" calendar. Off until the person
-      // turns it on in the Planner; reminders aren't touched.
+      // turns it on in the Planner.
       [
         'expo-calendar',
         {
           calendarPermission: 'Deskartes shows your calendar events in your Planner, and can add your plans to your calendar if you turn that on.',
-          remindersPermission: false,
+          // Connected apps → Apple Reminders (src/connectors/appleReminders.js):
+          // read-only, the lists the person picks, into the Inbox. iPhone only;
+          // takes effect with the next phone build.
+          remindersPermission: 'Deskartes can bring open reminders from the lists you pick into your Inbox, if you connect Apple Reminders.',
         },
       ],
       // Share INTO the app: "Deskartes" shows in the phone's share sheet for
