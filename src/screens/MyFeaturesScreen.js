@@ -11,7 +11,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useAccess } from '../../context/AccessContext';
 import { useProfiles } from '../../context/ProfileAccountsContext';
 import FeaturePicker, { pickableAvailable } from '../components/FeaturePicker';
-import { PICKABLES, recommendedFrom } from '../data/pickables';
+import { PICKABLES, FULL_START_PICKS, recommendedFrom } from '../data/pickables';
 import { openedAt } from '../logic/experienceStage';
 
 const TITLES = {
@@ -27,9 +27,10 @@ export default function MyFeaturesScreen() {
   const { activeType } = useProfiles();
   const track = ['picks', 'auto', 'full'].includes(experienceMode) ? experienceMode : 'auto';
   const recommended = recommendedFrom(openedAt(activeType || 'PERSONAL', 1, { aim: purposeKey }));
-  // "All in" with nothing unticked yet has no saved list: everything is on.
+  // "All in" with nothing unticked yet has no saved list: everything is on,
+  // except More tools, which waits to be ticked (FULL_START_PICKS).
   const shown = picks || (track === 'full'
-    ? PICKABLES.filter(p => (!p.labs || experimentalOn) && pickableAvailable(p, { plusOnSale, socialOn })).map(p => p.id)
+    ? PICKABLES.filter(p => FULL_START_PICKS.includes(p.id) && (!p.labs || experimentalOn) && pickableAvailable(p, { plusOnSale, socialOn })).map(p => p.id)
     : []);
 
   return (

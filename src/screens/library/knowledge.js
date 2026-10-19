@@ -29,6 +29,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { supabase } from '../../api/profileScopedClient';
 import { cacheRead, cacheWrite, isOnline, offlineWrite } from '../../api/offlineCache';
+import { findFromRow } from '../../api/findsCatalog';
 import { fetchContentPool } from '../../api/remoteConfigService';
 import { isVaultRow } from '../../api/captureService';
 import { useTheme } from '../../../context/ThemeContext';
@@ -51,7 +52,7 @@ import { openTarget } from '../../logic/openTarget';
 import { todayStr } from '../../logic/dateUtils';
 import { successHaptic } from '../../logic/haptics';
 import { parseTags } from '../../logic/tags';
-import { usesOf, planNotesFor, planTitleFor } from '../../api/knowledgeUse';
+import { usesOf, planNotesFor, planTitleFor, recordUse } from '../../api/knowledgeUse';
 
 // ─── Item kinds ────────────────────────────────────────────────────────────
 // Saving here files a thing: status 'active', the same as sorting it into
@@ -845,17 +846,8 @@ export default function KnowledgeScreen() {
   // resolves, or forever if it fails/is empty.
   useEffect(() => {
     fetchContentPool('featured_resource').then((rows) => {
-      if (rows.length) {
-        setCatalog(rows.map((row) => ({
-          id: row.id, areaId: row.key, emoji: row.meta?.emoji, title: row.title, url: row.meta?.url, desc: row.body,
-          legacyId: row.meta?.legacy_id, ageBands: row.meta?.age_bands,
-          // Optional on the remote rows, so an entry added from the
-          // dashboard before anyone fills these in just shows the short
-          // description, exactly as every entry did before.
-          tags: Array.isArray(row.meta?.tags) ? row.meta.tags : null,
-          summary: row.meta?.summary || null,
-        })));
-      }
+      // Same mapping as Today's Find on Home (src/api/findsCatalog.js).
+      if (rows.length) setCatalog(rows.map(findFromRow));
     });
   }, []);
 
@@ -1184,6 +1176,23 @@ export default function KnowledgeScreen() {
     setPlanFor({ title: `Try ${cat.title}`, target: { kind: 'vault', id }, targetLabel: cat.title, area: cat.areaId || 'professional' });
   };
 
+  // "I tried it": the same check-in as Today's Find on Home. Saves it (once)
+  // and records a use, so the Vault card shows Used N×.
+  const triedCatalogItem = async (cat, research) => {
+    const id = savedIdForUrl(cat.url);
+    if (id) {
+      const uses = await recordUse(id, { note: 'Tried it' });
+      if (uses) {
+        const row = entries.find((e) => e.id === id);
+        patchLocal(id, { url_meta: { ...(row?.url_meta || {}), uses } });
+      }
+    } else {
+      const payload = research ? researchPayload(cat) : resourcePayload(cat);
+      await insertItem({ ...payload, urlMeta: { ...payload.urlMeta, uses: [{ at: new Date().toISOString(), note: 'Tried it' }] } });
+    }
+    signalAction('find-tried');
+  };
+
   // ── Derived lists ─────────────────────────────────────────────────────────
   const decorated = useMemo(
     () => entries.map((e) => ({ ...e, __kind: rowKind(e), __area: getItemAreaId(e) })),
@@ -1336,12 +1345,20 @@ export default function KnowledgeScreen() {
           open ? (
             <>
               <Text style={styles.discoverSummary}>{item.summary}</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               <TouchableOpacity onPress={() => planCatalogItem(item, discoverSource === 'research')}
                 style={[styles.tryBtn, { borderColor: accentColor }]} accessibilityRole="button"
                 accessibilityLabel={`Plan time to try ${item.title}`}>
                 <Ionicons name="calendar-outline" size={15} color={accentColor} />
                 <Text style={[styles.tryBtnText, { color: accentColor }]}>Plan time to try it</Text>
               </TouchableOpacity>
+              <TouchableOpacity onPress={() => triedCatalogItem(item, discoverSource === 'research')}
+                style={[styles.tryBtn, { borderColor: accentColor }]} accessibilityRole="button"
+                accessibilityLabel={`I tried ${item.title}`}>
+                <Ionicons name="checkmark" size={15} color={accentColor} />
+                <Text style={[styles.tryBtnText, { color: accentColor }]}>I tried it</Text>
+              </TouchableOpacity>
+              </View>
             </>
           ) : (
             <TouchableOpacity onPress={() => setExpandedDiscover(key)} accessibilityRole="button">
@@ -1790,7 +1807,11 @@ export default function KnowledgeScreen() {
                       <TouchableOpacity
                         key={area.id}
                         style={[styles.chip, isSelected && { borderColor: area.color, backgroundColor: `${area.color}22` }]}
-                        onPress={() => setAreaFilter(isSelected ? null : area.id)}
+                        onPress={() => {
+                          // Browsing Finds for an area ticks the first goal's last step.
+                          if (!isSelected) signalAction('finds-browsed');
+                          setAreaFilter(isSelected ? null : area.id);
+                        }}
                       >
                         {showEmojis ? <Text style={{ fontSize: 12 }}>{area.emoji}</Text> : <Ionicons name={area.icon} size={12} color={area.color} />}
                         <Text style={[styles.chipText, isSelected && { color: area.color, fontWeight: 'bold' }]}>{area.label}</Text>

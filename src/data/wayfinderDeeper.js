@@ -122,7 +122,7 @@ export const TECHNIQUES = [
     why: 'Pulling something out of your memory strengthens it far more than looking at it again.',
     how: 'After a lesson, close it and write or say what you remember. Then check.',
     byPref: { watch: 'Pause the video every few minutes and explain what just happened before you hit play.', quiz: 'You already like quizzes — use them on purpose, right after learning, not just for fun.', read: 'Close the book at the end of each section and write down the main idea from memory.' },
-    blockers: ['forget'], app: { label: 'Training games', tab: 'Training' },
+    blockers: ['forget'], app: { label: 'Practice games', tab: 'Training' },
   },
   {
     id: 'spacing', title: 'Spread it out',

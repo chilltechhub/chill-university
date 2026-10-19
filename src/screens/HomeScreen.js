@@ -32,6 +32,7 @@ import TodayReview from '../components/TodayReview';
 import RightNowCard from '../components/RightNowCard';
 import CalmHome from '../components/CalmHome';
 import DreamCard from '../components/DreamCard';
+import TodaysFind from '../components/TodaysFind';
 import useDrillPlan from '../logic/useDrillPlan';
 import CalendarModal from '../components/CalendarModal';
 import PlanDetailSheet from '../components/PlanDetailSheet';
@@ -2106,6 +2107,11 @@ export default function HomeScreen() {
              it isn't one card among many, and it can't be hidden by
              accident while rearranging. ── */}
         {!editingWidgets && <DreamCard userId={userId} />}
+
+        {/* ── Today's Find: one useful tool or idea a day, under the dream
+             (docs/refocus-plan-2026-10-18.md). Like the Dream, not a widget:
+             it's the app's front door, not a card to rearrange away. ── */}
+        {!editingWidgets && <TodaysFind userId={userId} />}
 
         {/* ── Getting Started — the deferred half of onboarding, plus the
              tour offer. Deliberately NOT a widget: it's temporary, it

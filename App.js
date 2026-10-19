@@ -120,7 +120,9 @@ const Tab   = createBottomTabNavigator();
 
 const TAB_ICONS = {
   Home:     { active: 'home',    inactive: 'home-outline' },
-  Training: { active: 'barbell', inactive: 'barbell-outline' },
+  // Shown as "Learn" (2026-10-18): classes first, games as practice. The
+  // route stays 'Training' so tours, the guide and the pet keep working.
+  Training: { active: 'school', inactive: 'school-outline' },
   Library:  { active: 'book',    inactive: 'book-outline' },
 };
 
@@ -227,7 +229,7 @@ function MainTabs() {
       <Tab.Screen
         name="Training"
         component={TrainingNav}
-        options={{ lazy: false, ...(trainingTab ? null : { tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }) }}
+        options={{ lazy: false, tabBarLabel: 'Learn', title: 'Learn', ...(trainingTab ? null : { tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }) }}
         listeners={({ navigation, route }) => ({
           tabPress: (e) => {
             const inner = route.state;

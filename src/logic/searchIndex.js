@@ -96,7 +96,7 @@ export function getDestinations() {
       title: item.label,
       subtitle: item.desc,
       icon: item.icon,
-      route: library(item.screen),
+      route: library(item.screen, item.params),
     }));
   });
 
@@ -169,8 +169,16 @@ export function getDestinations() {
     route: root('Play', { gameId: game.key }),
   }));
 
-  cached = out;
-  return out;
+  // One row per destination: a screen can be listed twice (a standalone
+  // entry and a Library hub item, say). Same group, title and screen = same.
+  const seen = new Set();
+  cached = out.filter((row) => {
+    const key = `${row.group}|${row.title}|${row.route?.screen || row.route?.tab || ''}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return cached;
 }
 
 // ─── Which rows show ────────────────────────────────────────────────────────

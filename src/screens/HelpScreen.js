@@ -44,7 +44,7 @@ const FAQ = [
   },
   {
     q: 'How do I start a project?',
-    a: 'Tap **+** → **New Project**. Or **Library → Build → The Workshop → New Project**.',
+    a: 'Tap **+** → **New Project**. Or **Library → Tools → The Workshop → New Project**.',
   },
   {
     q: 'Can I use Deskartes offline?',

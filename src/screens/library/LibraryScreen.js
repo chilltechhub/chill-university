@@ -58,8 +58,11 @@ const CAREER_TAG     = 'CareerExplorer';
 // LIBRARY_TAB_ORDER exists.
 const TABS = [
   { key: 'domains',   label: 'Life' },
-  { key: 'build',     label: 'Build' },
-  { key: 'knowledge', label: 'Knowledge' },
+  // Shown as Find and Tools since 2026-10-18 (docs/refocus-plan-2026-10-18.md):
+  // what the app is for up front, the tools that support it behind. The keys
+  // stay 'build' / 'knowledge' (tour steps and saved tab orders use them).
+  { key: 'build',     label: 'Find' },
+  { key: 'knowledge', label: 'Tools' },
 ];
 const DEFAULT_TAB_ORDER = TABS.map(t => t.key);
 const TABS_BY_KEY = Object.fromEntries(TABS.map(t => [t.key, t]));
@@ -69,20 +72,22 @@ const TABS_BY_KEY = Object.fromEntries(TABS.map(t => [t.key, t]));
 // keeping their own copy that could drift out of sync — both flatten every
 // hub's `items` regardless of `tab`, so that field doesn't affect them.
 // `tab` says which of the three sub-views (see TABS above) a hub's cards
-// render under.
+// render under. Hub ids stay as they were: tours light `hub-section-<id>`.
+//
+// An item can carry `params` (opened with them) and `spot` (its TourSpot is
+// `hub-<spot>` instead of `hub-<screen>`, when two items open one screen). `compact` draws a hub as a slim
+// list instead of cards: the supporting tools, there when you want them.
 export const LIBRARY_HUBS = [
   {
     id: 'academic',
     tab: 'build',
-    title: 'Build',
-    tagline: 'Your projects and where they lead',
-    icon: 'hammer-outline',
+    title: 'Find',
+    tagline: 'Useful tools and know-how, and where you fit',
+    icon: 'compass-outline',
     accentKey: 'teal',
     items: [
-      { label: 'The Workshop', screen: 'ProjectsScreen', icon: 'hammer-outline', desc: 'Your projects, from idea to done', featured: true },
-      { label: 'Portfolio Archives', screen: 'PortfolioScreen', icon: 'briefcase-outline', desc: 'What you have finished' },
-      // For the step before any of the above: not knowing yet what you want
-      // to build, or be. Sits next to Career Expeditions, which it links into.
+      { label: 'Finds', screen: 'KnowledgeScreen', params: { initialTab: 'discover' }, spot: 'Finds', icon: 'sparkles-outline', desc: 'Tools and know-how that save you time or money', featured: true },
+      // For not knowing yet what you want to build, or be.
       { label: 'Wayfinder', screen: 'WayfinderScreen', icon: 'navigate-circle-outline', desc: 'Figure out what fits you' },
       { label: 'Career Explorer', screen: 'CareerExplorationScreen', icon: 'compass-outline', desc: 'Careers that could fit you' },
     ],
@@ -90,20 +95,25 @@ export const LIBRARY_HUBS = [
   {
     id: 'knowledge',
     tab: 'knowledge',
-    title: 'Knowledge',
-    tagline: 'Learn, save and plan',
-    icon: 'bulb-outline',
+    title: 'Tools',
+    tagline: 'Where you plan, build and keep things',
+    icon: 'construct-outline',
     accentKey: 'gold',
+    compact: true,
     items: [
-      // Academy Classes moved to the Training tab (src/screens/TrainingNav.js).
-      { label: 'Idea Garden', screen: 'IdeaGardenScreen', icon: 'leaf-outline', desc: 'Grow ideas into projects' },
-      // One entry, three former ones: Notes Desk, the Research Vault, and
-      // Resources & Instruments were all reading and writing the same
-      // `captures` rows, so they're now type filters inside one screen.
-      { label: 'Knowledge Vault', screen: 'KnowledgeScreen', icon: 'library-outline', desc: 'Notes, links and tools you keep' },
+      { label: 'The Workshop', screen: 'ProjectsScreen', icon: 'hammer-outline', desc: 'Your projects, from idea to done' },
       { label: 'Planner', screen: 'PlannerScreen', icon: 'calendar-outline', desc: 'Your days, habits and to-dos' },
-      // Was a registered route with help copy and tour steps written for it
-      // but no entry point anywhere in the app until it landed in this hub.
+      // One entry for Notes Desk, the Research Vault and Resources &
+      // Instruments: the same `captures` rows, as type filters.
+      { label: 'Knowledge Vault', screen: 'KnowledgeScreen', icon: 'library-outline', desc: 'Your saved Finds, notes and links' },
+      { label: 'Portfolio Archives', screen: 'PortfolioScreen', icon: 'briefcase-outline', desc: 'What you have finished' },
+      // Extras (featureCatalog `place: 'extra'`): listed only once switched
+      // on in My features → More tools, or opened by your path.
+      { label: 'Idea Garden', screen: 'IdeaGardenScreen', icon: 'leaf-outline', desc: 'Grow ideas into projects' },
+      { label: 'Bring stuff in', screen: 'ImportScreen', icon: 'cloud-upload-outline', desc: 'Notes, links and bookmarks from other apps' },
+      { label: 'Savings & Investing', screen: 'SavingsInvestingScreen', icon: 'trending-up-outline', desc: 'Savings goals and how investing works' },
+      { label: 'Debt & Credit', screen: 'DebtCreditScreen', icon: 'card-outline', desc: 'Payoff plans and how credit works' },
+      // Waits for people (app_config 'social_on').
       { label: 'Community', screen: 'DiscoverScreen', icon: 'people-outline', desc: 'People, mentors and shared work' },
     ],
   },
@@ -723,15 +733,16 @@ export default function LibraryScreen() {
         </View>
         </TourSpot>
 
-        {/* Asymmetric grid — featured item takes full width */}
-        <View style={styles.gridContainer}>
+        {/* Asymmetric grid — featured item takes full width. A compact hub
+            is one card holding a list. */}
+        <View style={hub.compact ? styles.compactList : styles.gridContainer}>
           {visibleItems.map(({ item, feature, access }, idx) => {
             const open = access ? access.available : true;
             // Everything not in the catalog behaves exactly as it did before —
             // open, and navigating straight through.
             const go = () => (feature
-              ? gatedNavigate(feature.id, () => navigation.navigate(item.screen))
-              : navigation.navigate(item.screen));
+              ? gatedNavigate(feature.id, () => navigation.navigate(item.screen, item.params))
+              : navigation.navigate(item.screen, item.params));
             const hint = access && !open ? unlockHint(access) : '';
 
             // Dynamic, real-data subtext for the three cards the redesign
@@ -747,13 +758,37 @@ export default function LibraryScreen() {
               desc = trophies.length > 0 ? `${trophies.length} Completed Project${trophies.length === 1 ? '' : 's'} & Case Studies` : item.desc;
             } else if (item.screen === 'CareerExplorationScreen') {
               desc = targetCareer ? `Target: ${targetCareer.title}` : item.desc;
-            } else if (item.screen === 'KnowledgeScreen') {
+            } else if (item.screen === 'KnowledgeScreen' && !item.params) {
               desc = vaultCount > 0 ? `${vaultCount}${vaultCount >= 100 ? '+' : ''} saved: notes, links, tools` : item.desc;
+            }
+
+            // Supporting tools: one slim row each, not a grid of cards.
+            if (hub.compact) {
+              return (
+                <TourSpot key={idx} id={`hub-${item.spot || item.screen}`} style={{ width: '100%' }}>
+                  <TouchableOpacity
+                    style={[styles.compactRow, idx === visibleItems.length - 1 && { borderBottomWidth: 0 }]}
+                    onPress={go}
+                    activeOpacity={0.75}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${item.label}. ${hint || desc}`}
+                  >
+                    <Ionicons name={item.icon} size={18} color={open ? c.text2 : c.text4} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.compactLabel, !open && styles.dimLabel]}>{item.label}</Text>
+                      {showSubtext && <Text style={styles.compactDesc} numberOfLines={1}>{hint || desc}</Text>}
+                    </View>
+                    {open
+                      ? <Ionicons name="chevron-forward" size={16} color={c.text4} />
+                      : (access && <LockBadge access={access} size="xs" showLabel={false} />)}
+                  </TouchableOpacity>
+                </TourSpot>
+              );
             }
 
             if (item.featured) {
               return (
-                <TourSpot key={idx} id={`hub-${item.screen}`} style={{ width: '100%' }}>
+                <TourSpot key={idx} id={`hub-${item.spot || item.screen}`} style={{ width: '100%' }}>
                   <TouchableOpacity
                     style={[styles.featuredCard, { borderLeftColor: open ? accent : c.border }]}
                     onPress={go}
@@ -775,7 +810,7 @@ export default function LibraryScreen() {
             }
 
             return (
-              <TourSpot key={idx} id={`hub-${item.screen}`} style={styles.standardGridSpot}>
+              <TourSpot key={idx} id={`hub-${item.spot || item.screen}`} style={styles.standardGridSpot}>
                 <TouchableOpacity
                   style={styles.standardGridCard}
                   onPress={go}
@@ -1147,133 +1182,10 @@ export default function LibraryScreen() {
           );
         })()}
 
-        {/* ── Build previews ── Each only where its own tool is on show. */}
-        {activeTab === 'build' && (
-          <>
-            {isScreenVisible('ProjectsScreen') && (
-            <PreviewSection
-              title="Active projects"
-              action="Workshop →"
-              onAction={() => navigation.navigate('ProjectsScreen')}
-              styles={styles}
-            >
-              {activeProjects.length === 0 ? (
-                <View>
-                  <Text style={styles.previewEmpty}>No projects in progress yet. An idea with a first step is enough to start one.</Text>
-                  <Button
-                    label="Start a project"
-                    icon="add"
-                    size="sm"
-                    variant="secondary"
-                    fullWidth={false}
-                    style={{ alignSelf: 'flex-start', marginTop: s.sm }}
-                    onPress={() => navigation.navigate('ProjectsScreen', { autoOpen: true })}
-                  />
-                </View>
-              ) : (
-                <View style={styles.previewCard}>
-                  {activeProjects.slice(0, 5).map((p, i, arr) => (
-                    <PreviewRow
-                      key={p.id}
-                      emoji={p.emoji || '🏗️'}
-                      title={p.title}
-                      sub={p.next_action ? `Next: ${p.next_action}` : 'No next step set'}
-                      onPress={() => navigation.navigate('ProjectDetail', { project: p })}
-                      isLast={i === Math.min(arr.length, 5) - 1}
-                      styles={styles}
-                      c={c}
-                    />
-                  ))}
-                </View>
-              )}
-            </PreviewSection>
-            )}
-
-            {trophies.length > 0 && isScreenVisible('PortfolioScreen') && (
-              <PreviewSection
-                title="Recently finished"
-                action="Portfolio →"
-                onAction={() => navigation.navigate('PortfolioScreen')}
-                styles={styles}
-              >
-                <View style={styles.previewCard}>
-                  {trophies.slice(0, 4).map((tr, i, arr) => (
-                    <PreviewRow
-                      key={tr.id}
-                      emoji={tr.emoji || '🏆'}
-                      title={tr.title}
-                      meta={tr.updated_at ? new Date(tr.updated_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : ''}
-                      onPress={() => navigation.navigate('PortfolioScreen')}
-                      isLast={i === Math.min(arr.length, 4) - 1}
-                      styles={styles}
-                      c={c}
-                    />
-                  ))}
-                </View>
-              </PreviewSection>
-            )}
-          </>
-        )}
-
-        {/* ── Knowledge previews ── */}
-        {activeTab === 'knowledge' && (
-          <>
-            {isScreenVisible('KnowledgeScreen') && (
-            <PreviewSection
-              title="Recent in your vault"
-              action="Vault →"
-              onAction={() => navigation.navigate('KnowledgeScreen')}
-              styles={styles}
-            >
-              {recentCaptures.length === 0 ? (
-                <Text style={styles.previewEmpty}>Nothing captured yet — use Capture up top to save your first note or link.</Text>
-              ) : (
-                <View style={styles.previewCard}>
-                  {recentCaptures.map((cp, i, arr) => {
-                    const meta = CAPTURE_TYPE_MAP[cp.type] || CAPTURE_TYPE_MAP.note;
-                    return (
-                      <PreviewRow
-                        key={cp.id}
-                        icon={meta.icon}
-                        iconColor={meta.color}
-                        title={cp.title || 'Untitled'}
-                        meta={timeAgo(cp.created_at)}
-                        onPress={() => navigation.navigate('KnowledgeScreen')}
-                        isLast={i === arr.length - 1}
-                        styles={styles}
-                        c={c}
-                      />
-                    );
-                  })}
-                </View>
-              )}
-            </PreviewSection>
-            )}
-
-            {gardenIdeas.length > 0 && isScreenVisible('IdeaGardenScreen') && (
-              <PreviewSection
-                title="Latest ideas"
-                action="Idea Garden →"
-                onAction={() => navigation.navigate('IdeaGardenScreen')}
-                styles={styles}
-              >
-                <View style={styles.previewCard}>
-                  {gardenIdeas.map((idea, i, arr) => (
-                    <PreviewRow
-                      key={idea.id}
-                      emoji={PLANT_EMOJI[idea.plant_type] || '🌱'}
-                      title={idea.title}
-                      onPress={() => navigation.navigate('IdeaGardenScreen')}
-                      isLast={i === arr.length - 1}
-                      styles={styles}
-                      c={c}
-                    />
-                  ))}
-                </View>
-              </PreviewSection>
-            )}
-          </>
-        )}
+        {/* The old Build / Knowledge previews (active projects, recent in the
+            vault, latest ideas) left with the 2026-10-18 refocus: Find is
+            about what's out there, and Tools is a slim list whose rows
+            already carry the live line (next project step, vault count). */}
         </>)}
       </Animated.ScrollView>
 
@@ -1502,6 +1414,10 @@ const makeStyles = (c, t, s, r, ui, accent) =>
     hubTagline: { fontSize: 11, color: c.text3 },
     gridContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
     /* Featured full-width card */
+    compactList: { backgroundColor: c.bg1, borderRadius: 14, borderWidth: 0.5, borderColor: c.border, overflow: 'hidden' },
+    compactRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 14, borderBottomWidth: 0.5, borderBottomColor: c.border },
+    compactLabel: { fontSize: 15, fontWeight: '600', color: c.text1 },
+    compactDesc: { fontSize: 12, color: c.text3, marginTop: 1 },
     featuredCard: {
       width: '100%',
       backgroundColor: c.bg1,

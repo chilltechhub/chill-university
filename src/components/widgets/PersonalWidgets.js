@@ -192,7 +192,7 @@ export function DailyDrillsWidget({ onOpenTraining, onOpenDrills, onPlay }) {
       action="All drills →" onAction={onOpenDrills || onOpenTraining}
       empty={total === 0 ? {
         text: "Today's drills haven't been set yet. They appear the next time the app loads.",
-        cta: 'Open Training', onPress: onOpenTraining,
+        cta: 'Practice', onPress: onOpenTraining,
       } : null}
     >
       <StatRow label="Done today" value={`${doneCount} of ${total}`} color={doneCount === total ? c.success : c.text1} />

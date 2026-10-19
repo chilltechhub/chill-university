@@ -19,6 +19,7 @@ import { resumeFirstGoalGuide } from '../logic/useGuidedFirstGoal';
 import { useRightNow } from './RightNowCard';
 import CalmWeek from './CalmWeek';
 import DreamCard from './DreamCard';
+import TodaysFind from './TodaysFind';
 import { useCalmPalette, CalmPanel, CalmHeadline, CalmPill as Pill, CalmTiles, CalmShowAll, calmEyebrow as eyebrow, plural, ago } from './CalmKit';
 import { supabase } from '../api/profileScopedClient';
 import { isVaultRow } from '../api/captureService';
@@ -261,6 +262,7 @@ export default function CalmHome({
 
         {/* The life they want, above the next step (docs/north-star.md) */}
         <DreamCard userId={userId} variant="calm" pal={pal} />
+        <TodaysFind userId={userId} variant="calm" pal={pal} />
 
         {/* The one next step */}
         <CalmHeadline pal={pal} onPress={openHero}

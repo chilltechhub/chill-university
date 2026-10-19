@@ -41,6 +41,7 @@ const SCREEN_FEATURES = {
   PlayGame: PLAY_STEPS,
   Home: [
     { title: "Today's Focus", body: "The **one thing** that matters today. Tap the date box for your calendar.", id: 'home-focus-input' },
+    { title: "Today's Find", body: "**One** useful tool or idea a day. **Open it**, try it, then tap **I tried it**.", id: 'home-todays-find' },
     { title: 'On the Desk', body: "What to **pick up next** from your projects, notes and ideas. Tap **+ Add** to pin one.", id: 'home-desk' },
     { title: "Today's Activities", body: "Everything **scheduled today**, in time order.", id: 'home-today-activities' },
     { title: 'Study & Play', body: "**Study** opens Daily Drills. **Play** opens a game.", id: 'home-study-play' },
@@ -50,7 +51,7 @@ const SCREEN_FEATURES = {
     { title: 'Where the points come from', body: "Your **points** and **streak**. Fun to watch. Your **goals** are the real score.", id: 'training-stats' },
     { title: 'Daily Drills & Challenges', body: "**Daily Drills**: three small targets, new each day. **Challenges**: the bigger weekly ones.", id: 'training-games' },
     { title: 'Classes', body: "**Lessons** by subject, with quizzes and quests. The games test what they teach.", id: 'training-classes' },
-    { title: 'Pick a subject', body: "Tap **Enter Training** to pick a subject and play.", id: 'training-enter' },
+    { title: 'Practice', body: "Tap **Practice** for a game on what you learn.", id: 'training-enter' },
     { title: 'Try one now', body: "One round takes **two minutes**, and helps the app suggest the right things.", id: 'training-enter' },
   ],
   // The Library is three sub-views behind one tab bar, and a hub's cards only
@@ -68,19 +69,19 @@ const SCREEN_FEATURES = {
     },
     {
       title: 'Three views, one Library',
-      body: "**Life**: how it's going. **Build**: what you're making. **Knowledge**: what you're learning and planning.",
+      body: "**Life**: how it's going. **Find**: useful tools and where you fit. **Tools**: where you plan, build and keep things.",
       id: 'library-life-areas',
       librarySubTab: 'domains',
     },
     {
-      title: 'Build',
-      body: "**Workshop**: your projects. **Portfolio**: what you've finished. **Wayfinder** and **Careers**: where it could go.",
+      title: 'Find',
+      body: "**Finds**: tools and know-how that save you time or money. **Wayfinder** and **Careers**: where you could fit.",
       id: 'hub-section-academic',
       librarySubTab: 'build',
     },
     {
-      title: 'Knowledge',
-      body: "**Idea Garden** for ideas. **Vault** for notes and links. **Planner** for your days. Classes are in **Training**.",
+      title: 'Tools',
+      body: "**Workshop** for projects. **Planner** for your days. **Vault** for what you saved. More in **My features**. Classes are in **Learn**.",
       id: 'hub-section-knowledge',
       librarySubTab: 'knowledge',
     },
@@ -233,7 +234,7 @@ const SCREEN_FEATURES = {
   ],
   Profile: [
     { title: 'Your rank', body: "Level, points and streak, **shared by all your profiles**.", id: 'profile-rank' },
-    { title: 'Your character', body: "Your **traveler** walks around Home and Training. New gear unlocks as you level up.", id: 'profile-rank' },
+    { title: 'Your character', body: "Your **traveler** walks around Home and Learn. New gear unlocks as you level up.", id: 'profile-rank' },
   ],
   PortfolioScreen: [
     { title: 'Your stats', body: "XP, projects, skills and streak **at a glance**.", id: 'portfolio-stats' },
@@ -313,7 +314,7 @@ function personalize(routeName, steps, personalization) {
 // to explain something the user had already done to get there. Gone.
 const NAV_STEP_TAB = {
   title: 'Getting around',
-  body: "**Library** = your tools. **Home** = today. **Training** = games and drills. Always at the bottom.",
+  body: "**Library** = your tools. **Home** = today. **Learn** = classes and practice. Always at the bottom.",
   // The real bar now (App.js wraps it in a TourSpot); navHint stays as the
   // fallback rectangle if it hasn't measured yet.
   id: 'nav-tabbar',
@@ -356,7 +357,7 @@ const STARTER_FEATURES = {
       librarySubTab: 'domains',
     },
     { title: 'Capture', body: "Tap **Capture** (top right) to save a thought now. **Sort it later.**", id: 'library-capture', librarySubTab: 'domains' },
-    { title: 'Three pages', body: "**Life**, **Build** and **Knowledge**. Tap one, or swipe.", id: 'library-views' },
+    { title: 'Three pages', body: "**Life**, **Find** and **Tools**. Tap one, or swipe.", id: 'library-views' },
     { title: 'More on the way', body: "**More opens** as you finish goals and level up.", growth: true },
   ],
 };
@@ -374,7 +375,7 @@ const FULL_TUTORIAL_AT = { Home: 'dashboard', LibraryScreen: 'all-tools' };
 const FIRST_VISIT = {
   Compass: APP_NAV_STEPS,
   LibraryScreen: [
-    { title: 'Three pages', body: "Three pages: **Life**, **Build**, **Knowledge**. Tap one to switch.", id: 'library-views', librarySubTab: 'domains' },
+    { title: 'Three pages', body: "Three pages: **Life**, **Find**, **Tools**. Tap one to switch.", id: 'library-views', librarySubTab: 'domains' },
     { title: 'Your life areas', body: "Each circle is a **part of your life**. **Tap** to open it.", id: 'library-life-areas', librarySubTab: 'domains' },
   ],
   LifeAreaScreen: [
@@ -382,7 +383,7 @@ const FIRST_VISIT = {
     { title: 'Getting back', body: "Tap the **arrow** (top left) or **swipe right** to go back.", id: 'lifearea-back' },
   ],
   Training: [
-    { title: 'Training', body: "Quick games that earn points. Tap **Enter Training**. **Swipe** to switch games, **X** to leave.", id: 'training-enter' },
+    { title: 'Practice', body: "Quick games on what you learn. Tap **Practice**. **Swipe** to switch games, **X** to leave.", id: 'training-enter' },
   ],
   Play: [PLAY_STEPS[0], PLAY_STEPS[2]],
   PlayGame: [PLAY_STEPS[0], PLAY_STEPS[2]],

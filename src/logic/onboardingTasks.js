@@ -135,7 +135,7 @@ const ACTION_BY_USAGE = {
   building:   { label: 'Start your first project',    cta: 'Open Workshop',  target: { tab: 'Library', screen: 'ProjectsScreen' } },
   learning:   { label: 'Pick your first class',     cta: 'Open Academy',   target: { tab: 'Training', screen: 'ClassesStack' } },
   reflecting: { label: 'Plant your first idea',     cta: 'Open Garden',    target: { tab: 'Library', screen: 'IdeaGardenScreen' } },
-  breaks:     { label: 'Play your first round',     cta: 'Open Training',  target: { tab: 'Training' } },
+  breaks:     { label: 'Play your first round',     cta: 'Practice',       target: { tab: 'Training' } },
 };
 
 const ACTION_BY_PERSONA = {

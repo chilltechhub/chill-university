@@ -70,6 +70,9 @@ const TABS = ['Overview', 'Training', 'Progress'];
 // need a per-game grade table and a leaderboard yet, and the Overview's own
 // chips already show points, streak and tier.
 const STARTER_TABS = ['Overview', 'Training'];
+// What the inner tabs say. The keys stay (activeTab checks, tutorials);
+// the games list reads as Games now the tab itself is called Learn.
+const TAB_LABEL = { Training: 'Games' };
 
 // Order matters here — it's the order the "Type" filter chips render in.
 const MECHANIC_FILTERS = ['All', 'quiz', 'matching', 'building', 'strategy', 'thinking', 'fun', 'racing', 'puzzle', 'survival', 'cards', 'sports'];
@@ -137,7 +140,7 @@ export default function GamesScreen() {
   );
   const [activeTab, setActiveTab] = useState('Overview');
   // Coming back to Training (out of a game, or from another tab) lands on
-  // the Overview: the "folder" level, with Enter Training and today's
+  // the Overview: the "folder" level, with Classes, Practice and today's
   // drills, rather than wherever in the game list it was left.
   useFocusEffect(useCallback(() => { setActiveTab('Overview'); }, []));
   // Dropping back (switching "show me everything" off) while on a tab the
@@ -200,7 +203,7 @@ export default function GamesScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* ── Header ── */}
       <View style={styles.header}>
-        <Text style={styles.eyebrow}>TRAINING CENTER</Text>
+        <Text style={styles.eyebrow}>LEARN</Text>
         <Text style={styles.name}>{displayName}</Text>
         <View style={styles.tabs}>
           {tabs.map(tab => (
@@ -210,7 +213,7 @@ export default function GamesScreen() {
               onPress={() => setActiveTab(tab)}
             >
               <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                {tab}
+                {TAB_LABEL[tab] || tab}
               </Text>
               {activeTab === tab && <View style={styles.tabDot} />}
             </TouchableOpacity>
@@ -289,26 +292,48 @@ export default function GamesScreen() {
             </View>
             </TourSpot>
 
-            {/* Enter Training */}
-            <TourSpot id="training-enter">
-            <TouchableOpacity
-              style={styles.playBtn}
-              // A different game each time, not whichever came first in
-              // the list (2026-10-10: "games should be randomized, even on
-              // startup").
-              onPress={() => {
-                const pick = GAMES.length ? GAMES[Math.floor(Math.random() * GAMES.length)] : null;
-                navigation.navigate('Play', pick ? { gameId: pick.key } : { index: 0 });
-              }}
-              activeOpacity={0.85}
-            >
-              <Ionicons name="play" size={16} color="#fff" />
-              <Text style={styles.playText}>ENTER TRAINING</Text>
-            </TouchableOpacity>
+            {/* Learn first (2026-10-18): Classes is the big button, the
+                games are Practice for what the classes teach. Classes live
+                in this tab (src/screens/TrainingNav.js). */}
+            {isFeatureShown('classes') && (
+              <TourSpot id="training-classes">
+              <TouchableOpacity
+                style={[styles.playBtn, { backgroundColor: c.purple }]}
+                onPress={() => navigation.navigate('ClassesStack')}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Classes: lessons and quests by subject"
+              >
+                <Ionicons name="school" size={16} color="#fff" />
+                <Text style={styles.playText}>CLASSES</Text>
+              </TouchableOpacity>
+              </TourSpot>
+            )}
+
+            {/* Practice: a game, to remember what you learned */}
+            <TourSpot id="training-enter" style={{ width: '100%', alignItems: 'center', marginTop: s.sm }}>
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                style={styles.actionBtn}
+                // A different game each time, not whichever came first in
+                // the list (2026-10-10: "games should be randomized, even on
+                // startup").
+                onPress={() => {
+                  const pick = GAMES.length ? GAMES[Math.floor(Math.random() * GAMES.length)] : null;
+                  navigation.navigate('Play', pick ? { gameId: pick.key } : { index: 0 });
+                }}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Practice: play a game"
+              >
+                <Ionicons name="play" size={18} color={c.gold} />
+                <Text style={styles.actionText}>Practice</Text>
+              </TouchableOpacity>
+            </View>
             </TourSpot>
 
             {/* Objectives + Drills */}
-            <TourSpot id="training-games" style={{ width: '100%', alignItems: 'center' }}>
+            <TourSpot id="training-games" style={{ width: '100%', alignItems: 'center', marginTop: s.sm }}>
             <View style={styles.actionRow}>
               <TouchableOpacity
                 style={styles.actionBtn}
@@ -328,24 +353,6 @@ export default function GamesScreen() {
               </TouchableOpacity>
             </View>
             </TourSpot>
-
-            {/* Classes live in this tab (src/screens/TrainingNav.js): the
-                lessons behind the games, one tap from them. */}
-            {isFeatureShown('classes') && (
-              <TourSpot id="training-classes" style={{ width: '100%', alignItems: 'center', marginTop: s.sm }}>
-              <View style={styles.actionRow}>
-                <TouchableOpacity
-                  style={[styles.actionBtn, styles.actionBtnPurple]}
-                  onPress={() => navigation.navigate('ClassesStack')}
-                  accessibilityRole="button"
-                  accessibilityLabel="Classes: lessons and quests by subject"
-                >
-                  {showEmojis ? <Text style={styles.actionEmoji}>📚</Text> : <Ionicons name="ribbon-outline" size={18} color={c.purple} />}
-                  <Text style={[styles.actionText, { color: c.purple }]}>Classes</Text>
-                </TouchableOpacity>
-              </View>
-              </TourSpot>
-            )}
             {reviewsDue > 0 && (
               <View style={styles.reviewNote} accessible>
                 <Ionicons name="refresh-circle-outline" size={18} color={c.teal} />

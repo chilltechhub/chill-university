@@ -37,9 +37,9 @@ const VIA_COPY = {
 // Where each of the four big openings (CAPS in experienceStages.js) lives,
 // for "Take me to…": they open a whole class of thing rather than one tool.
 const CAP_TARGETS = {
-  'all-games': { screen: 'Training', label: 'Training', body: '**Every game is open.** Use the **filters** in Training to find one.' },
+  'all-games': { screen: 'Training', label: 'Learn', body: '**Every game is open.** Use the **filters** in Learn → Games to find one.' },
   'dashboard': { screen: 'Home', label: 'Home', body: '**Home is yours to arrange.** Tap **Edit** (top right) to move, hide or add cards.' },
-  'all-tools': { screen: 'LibraryScreen', label: 'the Library', body: '**Every tool is open.** Look through **Life**, **Build** and **Knowledge**.' },
+  'all-tools': { screen: 'LibraryScreen', label: 'the Library', body: '**Every tool is open.** Look through **Life**, **Find** and **Tools**.' },
   'doors':     { screen: 'Compass', label: 'App Nav', body: 'Locked tools now show **what opens them**. **App Nav** lists them all.' },
 };
 
@@ -186,7 +186,7 @@ export default function UnlockNotification() {
       : feature
         ? { title: feature.label, blurb: feature.blurb }
         : games.length
-          ? { title: 'New games in Training', blurb: games.join(', ') }
+          ? { title: 'New games in Learn', blurb: games.join(', ') }
           : { title: 'New on your Home screen', blurb: `${freshWidgets.length || 'A few'} new card${freshWidgets.length === 1 ? '' : 's'} on Home. I'll show you each.` };
     const cap = (fresh ? fresh.caps : stages.flatMap(st => st.caps || [])).map(id => CAP_TARGETS[id]).find(Boolean);
     // A tool the finished goal earned comes before new games: it's what the
@@ -201,7 +201,7 @@ export default function UnlockNotification() {
       : earned
       ? { screen: earned.screen, label: earned.label, what: { title: earned.label, body: earned.blurb }, earnedId: earned.id }
       : games.length
-        ? { screen: 'Training', label: 'the new games', what: { title: games.join(', '), body: `New: **${games.join(', ')}**. Tap **Enter Training**, then swipe to find them.` } }
+        ? { screen: 'Training', label: 'the new games', what: { title: games.join(', '), body: `New: **${games.join(', ')}**. Tap **Practice**, then swipe to find them.` } }
         : { screen: 'Home', label: 'what’s new', what: null };
     const close = () => { dismissStageEvent(); dismissAllUnlockEvents?.(); dismissAllProgressEvents?.(); };
     const show = () => {
@@ -212,7 +212,7 @@ export default function UnlockNotification() {
       ...freshFeatures.slice(1).map(f => ({ key: 'n-' + f.id, label: f.label })),
       ...unlockedFeatures.filter(f => f.id !== target.earnedId).map(f => ({ key: 'f-' + f.id, label: f.label })),
       // The games still get a line when the button goes elsewhere.
-      ...(target.earnedId && games.length ? [{ key: 'games', label: `new games in Training (${games.join(', ')})` }] : []),
+      ...(target.earnedId && games.length ? [{ key: 'games', label: `new games in Learn (${games.join(', ')})` }] : []),
     ];
     return (
       <Modal transparent animationType="fade" visible onRequestClose={close}>

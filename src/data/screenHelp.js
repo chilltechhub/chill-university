@@ -23,8 +23,8 @@ export const SCREEN_HELP = {
     body: 'Your last four weeks: things done each day, habits kept, focus time from Work Mode, and how much of what you saved you used. Then your games: accuracy, times and subject progress.',
   },
   Training: {
-    title: 'Training',
-    body: 'Skill games that build real-world abilities while you play. Progress here feeds your rank and points.',
+    title: 'Learn',
+    body: 'Classes first: lessons and quests by subject. Then practice what they teach with short games and daily drills.',
   },
   LibraryScreen: {
     title: 'Library',
