@@ -39,7 +39,7 @@ A Build runs all four pillars in one place:
 | **A beat** | Tempo (BPM) · Drums (pattern) · Notes (scale) · Sound (wave) | A looping beat with a step grid |
 | **A small business** | Headline (outcomes) · How you charge (model) · Why trust you · Next step (one CTA) | A one-page offer. Links to Business Foundations |
 
-**Where:** Library → Find → **Studio**.
+**Where:** Library → **Make** → **Studio**.
 
 | File | Job |
 |---|---|
@@ -84,7 +84,7 @@ The founder's belief (docs/north-star.md) runs through the Studio:
 
 ### Taught, shown, practised, done: Software for You
 
-Words aren't enough, so the belief is a path: **Library → Find → Studio → Software for You** (also on Learn, and a goal under "Discover useful tools").
+Words aren't enough, so the belief is a path: **Library → Make → Software for You** (also on Learn, and a goal under "Discover useful tools").
 
 | Mission | Learn (cards, one at a time) | See it (live) | Practise (instant feedback + why) | Do it for real (recorded) |
 |---|---|---|---|---|

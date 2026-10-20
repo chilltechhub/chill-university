@@ -61,7 +61,9 @@ export default function StudioCard({ variant = 'card', pal }) {
     );
   }
 
+  // Same side margins as the Dream and Today's Find above and below it.
   return (
+    <View style={{ marginHorizontal: s.lg }}>
     <Card>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <Eyebrow>Studio</Eyebrow>
@@ -85,5 +87,6 @@ export default function StudioCard({ variant = 'card', pal }) {
       </View>
       <Button label={action.label} icon={action.icon} size="sm" onPress={action.go} style={{ marginTop: s.md }} />
     </Card>
+    </View>
   );
 }

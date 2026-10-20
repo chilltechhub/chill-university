@@ -68,8 +68,8 @@ const SCREEN_FEATURES = {
       librarySubTab: 'domains',
     },
     {
-      title: 'Three views, one Library',
-      body: "**Life**: how it's going. **Find**: useful tools and where you fit. **Tools**: where you plan, build and keep things.",
+      title: 'Four views, one Library',
+      body: "**Life**: how it's going. **Find**: useful tools and where you fit. **Make**: what you build. **Tools**: where you plan and keep things.",
       id: 'library-life-areas',
       librarySubTab: 'domains',
     },
@@ -80,8 +80,14 @@ const SCREEN_FEATURES = {
       librarySubTab: 'build',
     },
     {
+      title: 'Make',
+      body: "**Studio**: the app makes it with you. **Workshop**: your own projects. **Portfolio**: what you finished.",
+      id: 'hub-section-make',
+      librarySubTab: 'make',
+    },
+    {
       title: 'Tools',
-      body: "**Workshop** for projects. **Planner** for your days. **Vault** for what you saved. More in **My features**. Classes are in **Learn**.",
+      body: "**Planner** for your days. **Vault** for what you saved. More in **My features**. Classes are in **Learn**.",
       id: 'hub-section-knowledge',
       librarySubTab: 'knowledge',
     },
@@ -95,7 +101,7 @@ const SCREEN_FEATURES = {
       title: 'Portfolio Archives',
       body: "Finish a project or class and it **lands here** on its own. Your record to show people.",
       id: 'hub-PortfolioScreen',
-      librarySubTab: 'build',
+      librarySubTab: 'make',
     },
     { title: 'Capture', body: "Tap **Capture** (top right) to save a thought now. **Sort it later.**", id: 'library-capture', librarySubTab: 'domains' },
   ],
@@ -357,7 +363,7 @@ const STARTER_FEATURES = {
       librarySubTab: 'domains',
     },
     { title: 'Capture', body: "Tap **Capture** (top right) to save a thought now. **Sort it later.**", id: 'library-capture', librarySubTab: 'domains' },
-    { title: 'Three pages', body: "**Life**, **Find** and **Tools**. Tap one, or swipe.", id: 'library-views' },
+    { title: 'Four pages', body: "**Life**, **Find**, **Make** and **Tools**. Tap one, or swipe.", id: 'library-views' },
     { title: 'More on the way', body: "**More opens** as you finish goals and level up.", growth: true },
   ],
 };
@@ -375,7 +381,7 @@ const FULL_TUTORIAL_AT = { Home: 'dashboard', LibraryScreen: 'all-tools' };
 const FIRST_VISIT = {
   Compass: APP_NAV_STEPS,
   LibraryScreen: [
-    { title: 'Three pages', body: "Three pages: **Life**, **Find**, **Tools**. Tap one to switch.", id: 'library-views', librarySubTab: 'domains' },
+    { title: 'Four pages', body: "Four pages: **Life**, **Find**, **Make**, **Tools**. Tap one to switch.", id: 'library-views', librarySubTab: 'domains' },
     { title: 'Your life areas', body: "Each circle is a **part of your life**. **Tap** to open it.", id: 'library-life-areas', librarySubTab: 'domains' },
   ],
   LifeAreaScreen: [

@@ -17,7 +17,8 @@ if (Platform.OS !== 'web') {
   WebView = require('react-native-webview').WebView;
 }
 
-export default function BuildPreview({ html, height = 340, style }) {
+// `scroll` off only for things that take touch drags themselves (the game).
+export default function BuildPreview({ html, height = 340, scroll = true, style }) {
   const { colors: c, radius: r } = useTheme();
   const frame = { height, borderRadius: r.lg, overflow: 'hidden', borderWidth: 0.5, borderColor: c.border, backgroundColor: c.bg0 };
 
@@ -43,7 +44,7 @@ export default function BuildPreview({ html, height = 340, style }) {
         // The beat's Play button is the gesture that starts its audio.
         mediaPlaybackRequiresUserAction={false}
         allowsInlineMediaPlayback
-        scrollEnabled={false}
+        scrollEnabled={scroll}
         // Links in a made thing are placeholders; never leave the preview.
         onShouldStartLoadWithRequest={(req) => !/^(https?|mailto|tel|intent):/i.test(req.url)}
         style={{ backgroundColor: 'transparent' }}

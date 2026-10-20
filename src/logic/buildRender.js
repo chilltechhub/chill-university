@@ -230,12 +230,13 @@ function renderBeat(build) {
 body{background:#14101f;color:#f3eefc;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:20px;min-height:100%}
 h1{font-size:28px;text-align:center}
 .meta{color:#a99cc7;font-size:14px;text-align:center}
-.grid{display:grid;grid-template-columns:52px repeat(16,1fr);gap:4px;width:min(560px,100%)}
+.grid{display:grid;grid-template-columns:40px repeat(16,minmax(0,1fr));gap:3px;width:min(560px,100%)}
 .grid b{font-size:12px;color:#a99cc7;font-weight:600;align-self:center}
 .grid i{aspect-ratio:1;border-radius:4px;background:#2a2340}
 .grid i.on{background:#7b61ff}.grid i.mel.on{background:#ff8fb1}
 .grid i.now{outline:2px solid #fff}
 button{font:700 18px system-ui,sans-serif;padding:14px 34px;border-radius:999px;border:0;background:#ff8fb1;color:#1d1029}
+@media (max-height:300px){body{gap:10px;padding:10px}h1{font-size:20px}.meta{display:none}button{padding:10px 26px;font-size:16px}}
 `;
   const body = `<h1>${esc(cfg.title)}</h1>
 <p class="meta">${esc(String(cfg.bpm))} BPM · ${esc(scale.label || '')} · ${esc(sound.label || '')}</p>

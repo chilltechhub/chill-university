@@ -115,7 +115,7 @@ export default function BuildScreen() {
           </RichText>
         )}
 
-        <BuildPreview html={html} height={kind.id === 'business' || kind.id === 'page' ? 380 : 340} />
+        <BuildPreview html={html} height={kind.id === 'business' || kind.id === 'page' || kind.id === 'ai' ? 380 : 340} scroll={kind.id !== 'game'} />
 
         {(() => {
           const rc = receipt(build);

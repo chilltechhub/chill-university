@@ -13,6 +13,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { FAB_CLEARANCE } from '../../context/FabPositionContext';
 import { useUIPrefs } from '../../context/UIPrefsContext';
 import { RANK_LABELS, FONTS } from '../theme';
+import { textOn } from '../logic/contrast';
 import LevelRing from '../components/LevelRing';
 import MissionsScreen from './MissionsScreen';
 import useDrillPlan from '../logic/useDrillPlan';
@@ -305,8 +306,9 @@ export default function GamesScreen() {
               accessibilityRole="button"
               accessibilityLabel="Make something: a page, a game, a beat or a business, and learn how it works"
             >
-              <Ionicons name="color-wand" size={16} color="#fff" />
-              <Text style={styles.playText}>MAKE SOMETHING</Text>
+              {/* textOn: white on the light theme's teal, dark on the dark theme's bright mint. */}
+              <Ionicons name="color-wand" size={16} color={textOn(c.teal)} />
+              <Text style={[styles.playText, { color: textOn(c.teal) }]}>MAKE SOMETHING</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => {
@@ -333,8 +335,8 @@ export default function GamesScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Classes: lessons and quests by subject"
               >
-                <Ionicons name="school" size={16} color="#fff" />
-                <Text style={styles.playText}>CLASSES</Text>
+                <Ionicons name="school" size={16} color={textOn(c.purple)} />
+                <Text style={[styles.playText, { color: textOn(c.purple) }]}>CLASSES</Text>
               </TouchableOpacity>
               </TourSpot>
             )}

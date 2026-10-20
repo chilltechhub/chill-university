@@ -62,6 +62,9 @@ const TABS = [
   // what the app is for up front, the tools that support it behind. The keys
   // stay 'build' / 'knowledge' (tour steps and saved tab orders use them).
   { key: 'build',     label: 'Find' },
+  // Make since 2026-10-20 (docs/consolidation-plan-2026-10-20.md): everything
+  // you make, in one place: the Studio, your own projects, what you finished.
+  { key: 'make',      label: 'Make' },
   { key: 'knowledge', label: 'Tools' },
 ];
 const DEFAULT_TAB_ORDER = TABS.map(t => t.key);
@@ -87,31 +90,44 @@ export const LIBRARY_HUBS = [
     accentKey: 'teal',
     items: [
       { label: 'Finds', screen: 'KnowledgeScreen', params: { initialTab: 'discover' }, spot: 'Finds', icon: 'sparkles-outline', desc: 'Tools and know-how that save you time or money', featured: true },
-      // Make something real with the app, then learn it by taking it apart.
-      { label: 'Studio', screen: 'StudioScreen', icon: 'color-wand-outline', desc: 'Make a page, a game, a beat or a business' },
       // For not knowing yet what you want to build, or be.
       { label: 'Wayfinder', screen: 'WayfinderScreen', icon: 'navigate-circle-outline', desc: 'Figure out what fits you' },
       { label: 'Career Explorer', screen: 'CareerExplorationScreen', icon: 'compass-outline', desc: 'Careers that could fit you' },
     ],
   },
   {
+    // Everything you make, from "the app makes it with you" to "your own
+    // project" to "finished, and shown". Was split across Find and Tools.
+    id: 'make',
+    tab: 'make',
+    title: 'Make',
+    tagline: 'Make something real, then make it yours',
+    icon: 'color-wand-outline',
+    accentKey: 'purple',
+    items: [
+      { label: 'Studio', screen: 'StudioScreen', icon: 'color-wand-outline', desc: 'A page, a game, a beat, a business or an AI helper', featured: true },
+      { label: 'Software for You', screen: 'SoftwarePathScreen', icon: 'rocket-outline', desc: 'What software can do for you, for free' },
+      { label: 'The Workshop', screen: 'ProjectsScreen', icon: 'hammer-outline', desc: 'Your own projects, from idea to done' },
+      { label: 'Portfolio Archives', screen: 'PortfolioScreen', icon: 'briefcase-outline', desc: 'What you have made and finished' },
+      // Extra (featureCatalog `place: 'extra'`): projects have an Idea stage.
+      { label: 'Idea Garden', screen: 'IdeaGardenScreen', icon: 'leaf-outline', desc: 'Grow ideas into projects' },
+    ],
+  },
+  {
     id: 'knowledge',
     tab: 'knowledge',
     title: 'Tools',
-    tagline: 'Where you plan, build and keep things',
+    tagline: 'Where you plan and keep things',
     icon: 'construct-outline',
     accentKey: 'gold',
     compact: true,
     items: [
-      { label: 'The Workshop', screen: 'ProjectsScreen', icon: 'hammer-outline', desc: 'Your projects, from idea to done' },
       { label: 'Planner', screen: 'PlannerScreen', icon: 'calendar-outline', desc: 'Your days, habits and to-dos' },
       // One entry for Notes Desk, the Research Vault and Resources &
       // Instruments: the same `captures` rows, as type filters.
       { label: 'Knowledge Vault', screen: 'KnowledgeScreen', icon: 'library-outline', desc: 'Your saved Finds, notes and links' },
-      { label: 'Portfolio Archives', screen: 'PortfolioScreen', icon: 'briefcase-outline', desc: 'What you have finished' },
       // Extras (featureCatalog `place: 'extra'`): listed only once switched
       // on in My features → More tools, or opened by your path.
-      { label: 'Idea Garden', screen: 'IdeaGardenScreen', icon: 'leaf-outline', desc: 'Grow ideas into projects' },
       { label: 'Bring stuff in', screen: 'ImportScreen', icon: 'cloud-upload-outline', desc: 'Notes, links and bookmarks from other apps' },
       { label: 'Savings & Investing', screen: 'SavingsInvestingScreen', icon: 'trending-up-outline', desc: 'Savings goals and how investing works' },
       { label: 'Debt & Credit', screen: 'DebtCreditScreen', icon: 'card-outline', desc: 'Payoff plans and how credit works' },

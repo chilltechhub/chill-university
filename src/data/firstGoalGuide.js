@@ -13,7 +13,7 @@
 //
 // `path` is how to get there without the guide, said in the bubble before
 // it takes them. Keep it true to the Library's pages (Life / Find /
-// Tools, LIBRARY_HUBS in LibraryScreen.js) and the tab bar (Library, Home, Learn).
+// Make / Tools, LIBRARY_HUBS in LibraryScreen.js) and the tab bar (Library, Home, Learn).
 //
 // `more` (optional, for a step with a signalCount) is added to the short
 // "1 of 3, two more to go" note after each one that counts.
@@ -83,12 +83,12 @@ export const FIRST_GOAL_GUIDE = {
   'first-founder-step': {
     seed: {
       go: 'IdeaGardenScreen', spot: 'ideas-list', mode: 'tap',
-      path: "Library → Tools → Idea Garden",
+      path: "Library → Make → Idea Garden",
       say: "Tap the lit-up **+** and plant your idea in **one line**. Rough is fine.",
     },
     project: {
       go: 'ProjectsScreen', spot: 'projects-add', mode: 'tap',
-      path: "Library → Tools → The Workshop",
+      path: "Library → Make → The Workshop",
       say: "Tap **New Project** and give your idea a name.",
     },
     drill: DRILL("Tap here and play **a round**. Try **Budget Balance** or **Survive the Month**."),
@@ -98,34 +98,34 @@ export const FIRST_GOAL_GUIDE = {
   'first-make': {
     make: {
       go: 'StudioScreen', spot: 'studio-kinds', mode: 'tap',
-      path: "Library → Find → Studio",
+      path: "Library → Make → Studio",
       say: "Pick **one thing to make**. Answer a question and the app makes it for you.",
     },
     apart: {
       go: 'StudioScreen', spot: 'studio-builds', mode: 'tap',
-      path: "Library → Find → Studio",
+      path: "Library → Make → Studio",
       say: "Open what you made and **tap a part** to see how it works.",
     },
     own: {
       go: 'StudioScreen', spot: 'studio-builds', mode: 'tap',
-      path: "Library → Find → Studio",
+      path: "Library → Make → Studio",
       say: "Open a part and **answer its one question**. Right opens the upgrades.",
     },
   },
   'first-build': {
     seed: {
       go: 'IdeaGardenScreen', spot: 'ideas-list', mode: 'tap',
-      path: "Library → Tools → Idea Garden",
+      path: "Library → Make → Idea Garden",
       say: "Tap the lit-up **+** and plant your idea in **one line**. Rough is fine.",
     },
     project: {
       go: 'ProjectsScreen', spot: 'projects-add', mode: 'tap',
-      path: "Library → Tools → The Workshop",
+      path: "Library → Make → The Workshop",
       say: "Tap **New Project**. Fill in **Next step** too: the real next move, not \"work on it\".",
     },
     step: {
       go: 'ProjectsScreen', spot: 'projects-list', mode: 'point',
-      path: "Library → Tools → The Workshop",
+      path: "Library → Make → The Workshop",
       say: "Open your project and write its **next step**, like \"sketch the home screen\".",
     },
   },

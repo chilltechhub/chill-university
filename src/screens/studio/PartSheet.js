@@ -55,7 +55,7 @@ export default function PartSheet({ visible, build, part, html, petName, onSigna
           <TouchableOpacity onPress={onClose} accessibilityLabel="Close" hitSlop={8}><Ionicons name="close" size={22} color={c.text3} /></TouchableOpacity>
         </View>
         <ScrollView contentContainerStyle={{ paddingHorizontal: s.lg, paddingBottom: s.xxl }}>
-          <BuildPreview html={html} height={220} />
+          <BuildPreview html={html} height={220} scroll={build.kind !== 'game'} />
 
           <RichText style={{ fontSize: t.md, color: c.text2, marginTop: s.lg, lineHeight: 22 }} boldStyle={{ color: c.text1 }}>
             {part.lesson.says}
