@@ -13,7 +13,11 @@ const dataUrl = asUrl(await src('src/data/builds.js'));
 const logicUrl = asUrl((await src('src/logic/builds.js')).replace("'../data/builds'", `"${dataUrl}"`));
 const renderUrl = asUrl((await src('src/logic/buildRender.js')).replace("'./builds'", `"${logicUrl}"`));
 const studioUrl = asUrl((await src('src/logic/studio.js')).replace("'../data/builds'", `"${dataUrl}"`).replace("'./builds'", `"${logicUrl}"`));
+const pathDataUrl = asUrl(await src('src/data/softwarePath.js'));
+const pathUrl = asUrl((await src('src/logic/softwarePath.js')).replace("'../data/softwarePath'", `"${pathDataUrl}"`));
 const D = await import(dataUrl);
+const PD = await import(pathDataUrl);
+const P = await import(pathUrl);
 const B = await import(logicUrl);
 const R = await import(renderUrl);
 const S = await import(studioUrl);
@@ -160,6 +164,55 @@ for (const kind of D.BUILD_KINDS) {
 for (const k of D.BUILD_KINDS) {
   check(`free: ${k.id} has free tools`, Array.isArray(k.freeTools) && k.freeTools.length > 0);
   for (const ft of k.freeTools || []) check(`free: ${k.id}.${ft.name} is whole`, !!ft.name && !!ft.what && /^https:\/\//.test(ft.url));
+}
+
+// ── Software for You: teach, show, practise, do ─────────────────────────
+{
+  const M = PD.SOFTWARE_PATH.missions;
+  check('path: four missions', M.length === 4);
+  for (const m of M) {
+    const at = `path ${m.id}`;
+    check(`${at}: 2-3 teach cards`, m.teach.length >= 2 && m.teach.length <= 3);
+    for (const card of m.teach) {
+      const words = card.replace(/\*\*/g, '').split(/\s+/).length;
+      check(`${at}: card under 40 words`, words <= 40, words);
+      check(`${at}: card bolds one idea`, (card.match(/\*\*/g) || []).length >= 2);
+    }
+    check(`${at}: shows something`, !!(m.show.build || m.show.compare || m.show.own) && !!m.show.line);
+    if (m.show.build) {
+      check(`${at}: demo kind exists`, !!D.BUILD_KIND_MAP[m.show.build]);
+      const html = R.renderBuild(B.newBuild(m.show.build, m.show.answers, T));
+      check(`${at}: demo renders`, /^<!doctype html>/.test(html) && !/undefined/.test(html));
+    }
+    check(`${at}: 3-4 practice questions`, m.practice.length >= 3 && m.practice.length <= 4);
+    for (const q of m.practice) {
+      check(`${at}: answer in range`, Number.isInteger(q.answer) && q.answer >= 0 && q.answer < q.options.length);
+      check(`${at}: has a why`, !!q.why);
+      const sh = P.shuffledOptions(q, m.id);
+      check(`${at}: shuffle keeps every option and one right`, sh.length === q.options.length && sh.filter(o => o.right).length === 1 && sh.find(o => o.right).label === q.options[q.answer]);
+      check(`${at}: shuffle is stable`, JSON.stringify(sh) === JSON.stringify(P.shuffledOptions(q, m.id)));
+    }
+    check(`${at}: a real step`, ['build', 'try', 'export'].includes(m.doIt.type) && !!m.doIt.label && !!m.doIt.how);
+    if (m.doIt.type === 'build') check(`${at}: step kind exists`, !!D.BUILD_KIND_MAP[m.doIt.kind]);
+  }
+  check('path: answers aren\'t always first after shuffling', M.flatMap(m => m.practice.map(q => P.shuffledOptions(q, m.id).findIndex(o => o.right))).some(i => i > 0));
+
+  // Done means practised AND really done. Seeing the cards isn't required.
+  const what = PD.PATH_MISSION_MAP.what;
+  let pr = P.emptyProgress();
+  check('path: fresh is nothing done', P.pathSummary(pr, []).done === 0 && P.pathSummary(pr, []).next.id === 'what');
+  pr = P.recordPractice(pr, 'what', 2);
+  check('path: practised alone is not done', !P.missionState(what, pr, []).done);
+  const page = B.newBuild('page', { name: 'Sam' }, T);
+  check('path: practised + a page made = done', P.missionState(what, pr, [page]).done);
+  check('path: newly done names it', P.newlyDone(P.emptyProgress(), pr, [page]).join() === 'what');
+  check('path: best score kept', P.recordPractice(pr, 'what', 1).missions.what.score === 2);
+  const free = PD.PATH_MISSION_MAP.free;
+  check('path: try step needs a try', !P.stepDone(free, pr, []) && P.stepDone(free, P.markTried(pr, 'free', 'fs1'), []));
+  check('path: export step', !P.stepDone(PD.PATH_MISSION_MAP.own, pr, []) && P.stepDone(PD.PATH_MISSION_MAP.own, P.markExported(pr), []));
+  const junk = P.normalizeProgress({ missions: { what: { practiced: 1, score: 99 }, nope: { practiced: true } }, exported: 'yes' });
+  check('path: normalize clamps and drops unknowns', junk.missions.what.score === what.practice.length && !junk.missions.nope && junk.exported === true, junk);
+  check('path: normalize junk', JSON.stringify(P.normalizeProgress('x')) === JSON.stringify(P.emptyProgress()));
 }
 
 // ── Every kind × option renders, escapes and parses ─────────────────────

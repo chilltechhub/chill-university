@@ -41,6 +41,8 @@ const MIGRATED = [
   'src/components/StudioStage.js',
   'src/components/StudioCard.js',
   'src/components/StudioShowcase.js',
+  'src/screens/studio/SoftwarePathScreen.js',
+  'src/screens/studio/MissionScreen.js',
 ];
 
 const RULES = [

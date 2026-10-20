@@ -19,6 +19,7 @@ import BuildAskSheet from '../../components/BuildAskSheet';
 import PetCompanion from '../../components/PetCompanion';
 import PartSheet from './PartSheet';
 import { saveBuild, deleteBuild } from '../../api/buildService';
+import { recordExport } from '../../api/pathService';
 import useStudio from '../../logic/useStudio';
 import { useAccess } from '../../../context/AccessContext';
 import {
@@ -69,6 +70,9 @@ export default function BuildScreen() {
   const takeHome = async () => {
     try {
       await shareFile({ filename: buildFilename(build), content: html, mimeType: 'text/html', uti: 'public.html', dialogTitle: buildTitle(build) });
+      // Software for You's last mission: you took something home that you own.
+      recordExport(userId);
+      signalAction('build-exported', { kind: build.kind });
     } catch (e) {
       notify('Could not export', e?.message || 'Try again.');
     }

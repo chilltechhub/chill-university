@@ -82,6 +82,21 @@ The founder's belief (docs/north-star.md) runs through the Studio:
 - **"No license, no subscription, no account. Yours to keep."** under Take it home.
 - **Free instead of paid** Finds: 12 free tools, each saying what it stands in for (`supabase/migrations/20261020120000_free_instead_of_paid.sql`, bundled as `fs1`-`fs12`).
 
+### Taught, shown, practised, done: Software for You
+
+Words aren't enough, so the belief is a path: **Library → Find → Studio → Software for You** (also on Learn, and a goal under "Discover useful tools").
+
+| Mission | Learn (cards, one at a time) | See it (live) | Practise (instant feedback + why) | Do it for real (recorded) |
+|---|---|---|---|---|
+| **What software can do for you** | Instructions that work all day and copy free; the hard parts are written | A real page made in one second | Mail merge, who can build, reusable blocks | **Make your own page** |
+| **Free, and actually good** | Open source; who pays; the honest catch | A paid photo editor beside GIMP: what both do | Free or fee? | **Try one free tool** (it saves to the Vault) |
+| **AI you can use today** | Predicts words; can be sure and wrong; instructions beat paid plans | An AI helper made on the spot | Good job for AI? When to check? | **Make your AI helper** and use it once |
+| **Yours to keep** | Renting vs owning; open formats | Your own Builds, as files | Own it or rent it? | **Take a Build home** |
+
+A mission is done when it's **practised and really done**: the step is checked against what they actually have (a Build exists, a tool was tried, a file was exported), never a tick-box. Each finished mission ticks the **Software for You** goal. The same ideas come back in **Tech Lab** (7 new questions), so practice repeats over time.
+
+Files: `src/data/softwarePath.js` (content), `src/logic/softwarePath.js` (rules), `src/api/pathService.js` (device storage), `src/screens/studio/SoftwarePathScreen.js`, `MissionScreen.js`, `usePath.js`.
+
 ## Guardrails
 
 - **Under-18s:** export only. No public publishing (`allowed.js` already blocks publishing as a minor). Pages ask for a **first name** only.

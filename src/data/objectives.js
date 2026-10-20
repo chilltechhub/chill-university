@@ -217,7 +217,7 @@ export const PURPOSES = [
     blurb: 'Tools and know-how that save you time or money, explained plainly. Try one today.',
     leads: ['knowledge-vault', 'life-areas', 'classes'],
     firstGoal: 'first-toolkit',
-    path: ['learn-one-skill', 'clear-the-inbox', 'ship-first-build'],
+    path: ['software-for-you', 'learn-one-skill', 'clear-the-inbox', 'ship-first-build'],
     matches: { goals: [], motivations: ['all'], usage: [] },
   },
   {
@@ -591,7 +591,27 @@ export const OBJECTIVES = [
       { id: 'browse', label: 'Find one more for a life area',    hint: 'Library, Find, Finds. Pick an area you care about.', screen: 'KnowledgeScreen', signal: 'finds-browsed' },
     ],
     unlocks: [],
-    next: 'clear-the-inbox',
+    next: 'software-for-you',
+  },
+
+  // The founder's belief, taught, shown, practised and done
+  // (src/data/softwarePath.js, docs/north-star.md). Each step ticks when
+  // that mission is finished: practised, and its real step done.
+  {
+    id: 'software-for-you',
+    purpose: 'explore',
+    label: 'Software for You',
+    promise: 'See what software can do for you, for free. Then do it for real.',
+    why: 'You don’t need to be an engineer, or pay license fees, to have software work for you.',
+    estimate: 'About 40 minutes, over a few days',
+    steps: [
+      { id: 'what', label: 'What software can do for you', hint: 'Learn it, see it, practise it, and make your own page.', screen: 'SoftwarePathScreen', signal: 'software-mission:what' },
+      { id: 'free', label: 'Free, and actually good',      hint: 'Open source, honestly. Then **try one free tool.**', screen: 'SoftwarePathScreen', signal: 'software-mission:free' },
+      { id: 'ai',   label: 'AI you can use today',         hint: 'What it’s good at, where it’s wrong, and your own AI helper.', screen: 'SoftwarePathScreen', signal: 'software-mission:ai' },
+      { id: 'own',  label: 'Yours to keep',                hint: 'Renting versus owning. Then **take a Build home.**', screen: 'SoftwarePathScreen', signal: 'software-mission:own' },
+    ],
+    unlocks: [],
+    next: 'learn-one-skill',
   },
 
   {

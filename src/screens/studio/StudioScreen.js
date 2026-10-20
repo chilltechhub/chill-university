@@ -25,6 +25,7 @@ import { ART } from '../../data/sceneArt';
 import { newBuild, buildTitle, receiptLine, kindOf, isMastered } from '../../logic/builds';
 import { sparks, sparkLine, trophyArts, companionLine } from '../../logic/studio';
 import { todayStr } from '../../logic/dateUtils';
+import { SOFTWARE_PATH } from '../../data/softwarePath';
 
 const plain = (md) => md.replace(/\*\*/g, '');
 
@@ -69,6 +70,18 @@ export default function StudioScreen() {
         <ScreenTitle title="Studio" subtitle="Make something real, free. Then see how every part works." />
 
         <StudioStage studio={studio} line={line} />
+
+        {/* The founder's belief, as a path: learn, see, practise, do. */}
+        <Card tone="accent" onPress={() => navigation.navigate('SoftwarePathScreen')} accessibilityLabel="Software for You: four missions" style={{ marginTop: s.lg }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md }}>
+            <Ionicons name="rocket-outline" size={24} color={accent.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>{SOFTWARE_PATH.title}</Text>
+              <Text style={{ fontSize: t.sm, color: c.text2 }}>What software can do for you, for free. Learn it, see it, practise it, do it.</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={c.text3} />
+          </View>
+        </Card>
 
         {mySparks.length > 0 && (
           <>

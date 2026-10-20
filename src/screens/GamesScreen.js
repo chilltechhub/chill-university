@@ -308,6 +308,18 @@ export default function GamesScreen() {
               <Ionicons name="color-wand" size={16} color="#fff" />
               <Text style={styles.playText}>MAKE SOMETHING</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                navigation.navigate('Library');
+                setTimeout(() => navigation.navigate('Library', { screen: 'SoftwarePathScreen' }), 0);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Software for You: what software can do for you, for free"
+              style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: s.md }}
+            >
+              <Ionicons name="rocket-outline" size={15} color={c.teal} />
+              <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.teal }}>Software for You · 4 missions</Text>
+            </TouchableOpacity>
 
             {/* Learn first (2026-10-18): Classes is the big button, the
                 games are Practice for what the classes teach. Classes live
