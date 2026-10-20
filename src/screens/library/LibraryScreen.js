@@ -87,6 +87,8 @@ export const LIBRARY_HUBS = [
     accentKey: 'teal',
     items: [
       { label: 'Finds', screen: 'KnowledgeScreen', params: { initialTab: 'discover' }, spot: 'Finds', icon: 'sparkles-outline', desc: 'Tools and know-how that save you time or money', featured: true },
+      // Make something real with the app, then learn it by taking it apart.
+      { label: 'Studio', screen: 'StudioScreen', icon: 'color-wand-outline', desc: 'Make a page, a game, a beat or a business' },
       // For not knowing yet what you want to build, or be.
       { label: 'Wayfinder', screen: 'WayfinderScreen', icon: 'navigate-circle-outline', desc: 'Figure out what fits you' },
       { label: 'Career Explorer', screen: 'CareerExplorationScreen', icon: 'compass-outline', desc: 'Careers that could fit you' },

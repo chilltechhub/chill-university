@@ -35,6 +35,8 @@ import MentorsScreen        from './discover/MentorsScreen';
 // Knowledge Hub
 import IdeaGardenScreen    from './ideagarden';
 import KnowledgeScreen     from './knowledge';
+import StudioScreen        from '../studio/StudioScreen';
+import BuildScreen         from '../studio/BuildScreen';
 
 import AreaSectionScreen from './AreaSectionScreen';
 
@@ -143,6 +145,9 @@ export default function LibraryNavigator() {
       <Stack.Screen name="AIBridgeScreen" component={AIBridgeScreen} options={{ headerShown: false, title: 'Fill with AI' }} />
 
       {/* Academic & Career */}
+      {/* The Studio: make something real, then take it apart (docs/studio-plan.md). */}
+      <Stack.Screen name="StudioScreen" component={StudioScreen} options={{ title: 'Studio' }} />
+      <Stack.Screen name="BuildScreen" component={BuildScreen} options={{ title: 'Build' }} />
       <Stack.Screen name="ProjectsScreen"          component={ProjectsScreen}          options={{ title: 'The Workshop' }} />
       <Stack.Screen name="ProjectDetail" component={ProjectDetailScreen} options={{ title: 'Build' }} />
       <Stack.Screen name="ProjectOverview" component={ProjectOverviewScreen} options={{ title: 'About this project' }} />

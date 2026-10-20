@@ -1,0 +1,195 @@
+// src/screens/studio/BuildScreen.js
+// One Studio Build: the real thing, live, on top; its parts below. Tap a
+// part to take it apart (src/screens/studio/PartSheet.js): a 30-second
+// "see it, change it" lesson that hands over control of that part. Take
+// it home exports the exact file the preview shows.
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { useTheme } from '../../../context/ThemeContext';
+import { Button, SectionLabel } from '../../components/ui';
+import RichText from '../../components/RichText';
+import BuildPreview from '../../components/BuildPreview';
+import BuildAskSheet from '../../components/BuildAskSheet';
+import PartSheet from './PartSheet';
+import { supabase } from '../../api/supabaseClient';
+import { loadBuilds, saveBuild, deleteBuild, cachedBuilds, onBuildsChange } from '../../api/buildService';
+import {
+  kindOf, optionOf, partLevel, buildTitle, buildFilename, receiptLine, nextPart, setAnswers, isMastered,
+  LEVEL_NAMES, LEVEL_MADE, LEVEL_MASTERED,
+} from '../../logic/builds';
+import { renderBuild } from '../../logic/buildRender';
+import { shareFile } from '../../logic/shareFile';
+import { confirmAsync, notify } from '../../logic/confirm';
+
+const LEVEL_ICONS = ['sparkles-outline', 'hand-left-outline', 'ribbon-outline'];
+
+export default function BuildScreen() {
+  const navigation = useNavigation();
+  const route = useRoute();
+  const { buildId, fresh } = route.params || {};
+  const { colors: c, typography: t, spacing: s, radius: r, accent } = useTheme();
+  const [userId, setUserId] = useState(undefined); // undefined until known
+  const [build, setBuild] = useState(() => (cachedBuilds(null) || []).find(b => b.id === buildId) || null);
+  const [openPart, setOpenPart] = useState(null);
+  const [editingWords, setEditingWords] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    supabase.auth.getSession()
+      .then(({ data }) => { if (alive) setUserId(data?.session?.user?.id || null); })
+      .catch(() => { if (alive) setUserId(null); });
+    return () => { alive = false; };
+  }, []);
+
+  useEffect(() => {
+    if (userId === undefined) return undefined;
+    let alive = true;
+    const pick = (list) => { if (alive) setBuild(list.find(b => b.id === buildId) || null); };
+    const cached = cachedBuilds(userId);
+    if (cached) pick(cached);
+    loadBuilds(userId).then(pick);
+    const off = onBuildsChange((uid, list) => { if ((uid || null) === (userId || null)) pick(list); });
+    return () => { alive = false; off(); };
+  }, [userId, buildId]);
+
+  // Saves on every change; the screen shows the change at once.
+  const update = useCallback((next) => {
+    if (!next || next === build) return;
+    setBuild(next);
+    saveBuild(userId ?? null, next);
+  }, [build, userId]);
+
+  const kind = kindOf(build);
+  const html = useMemo(() => (build ? renderBuild(build) : ''), [build]);
+  const next = build ? nextPart(build) : null;
+
+  if (!build || !kind) {
+    return (
+      <View style={{ flex: 1, backgroundColor: c.bg0, padding: s.lg, justifyContent: 'center' }}>
+        <Text style={{ fontSize: t.md, color: c.text3, textAlign: 'center' }}>Opening your build…</Text>
+      </View>
+    );
+  }
+
+  const takeHome = async () => {
+    try {
+      await shareFile({ filename: buildFilename(build), content: html, mimeType: 'text/html', uti: 'public.html', dialogTitle: buildTitle(build) });
+    } catch (e) {
+      notify('Could not export', e?.message || 'Try again.');
+    }
+  };
+
+  const remove = async () => {
+    if (!(await confirmAsync(`Delete ${buildTitle(build)}?`, 'This can’t be undone.', 'Delete'))) return;
+    await deleteBuild(userId ?? null, build.id);
+    navigation.goBack();
+  };
+
+  const part = openPart ? kind.parts.find(p => p.id === openPart) : null;
+
+  return (
+    <View style={{ flex: 1, backgroundColor: c.bg0 }}>
+      <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 120 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: s.md }}>
+          <TouchableOpacity
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('StudioScreen'))}
+            accessibilityRole="button" accessibilityLabel="Back to the Studio"
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 }}
+          >
+            <Ionicons name="chevron-back" size={22} color={accent.primary} />
+            <Text style={{ fontSize: t.md, color: accent.primary, fontWeight: t.semibold }}>Studio</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setEditingWords(true)} accessibilityRole="button" accessibilityLabel="Change the words" hitSlop={8} style={{ padding: 6 }}>
+            <Ionicons name="create-outline" size={20} color={c.text3} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={remove} accessibilityRole="button" accessibilityLabel="Delete this build" hitSlop={8} style={{ padding: 6 }}>
+            <Ionicons name="trash-outline" size={20} color={c.text3} />
+          </TouchableOpacity>
+        </View>
+
+        <Text style={{ fontSize: t.xs, fontWeight: t.semibold, color: c.text3 }}>{kind.medium}</Text>
+        <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1, marginBottom: s.md }}>{buildTitle(build)}</Text>
+
+        {fresh && partLevel(build, kind.parts[0].id) === LEVEL_MADE && (
+          <RichText style={{ fontSize: t.sm, color: c.text2, marginBottom: s.md }} boldStyle={{ color: c.text1 }}>
+            **Made for you, and it works.** Try it. Then open its parts below and make it yours.
+          </RichText>
+        )}
+
+        <BuildPreview html={html} height={kind.id === 'business' || kind.id === 'page' ? 380 : 340} />
+
+        <RichText style={{ fontSize: t.sm, color: c.text2, marginTop: s.md }} boldStyle={{ color: c.text1 }}>
+          {receiptLine(build)}
+        </RichText>
+
+        <SectionLabel label="Take it apart" />
+        {kind.parts.map(p => {
+          const lv = partLevel(build, p.id);
+          const current = optionOf(p, build.picks[p.id]);
+          const isNext = next?.id === p.id;
+          return (
+            <TouchableOpacity
+              key={p.id}
+              onPress={() => setOpenPart(p.id)}
+              accessibilityRole="button"
+              accessibilityLabel={`${p.label}: ${current?.label}. ${LEVEL_NAMES[lv]}. Open to see how it works`}
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: s.md, padding: s.lg, marginBottom: s.sm,
+                borderRadius: r.lg, backgroundColor: c.bg1, borderWidth: isNext ? 1.5 : 0.5,
+                borderColor: isNext ? accent.primary : c.border,
+              }}
+            >
+              <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: accent.primaryLight, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name={p.icon} size={18} color={accent.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: t.md, fontWeight: t.semibold, color: c.text1 }}>{p.label}</Text>
+                <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>
+                  {current?.label}{isNext ? ' · start here' : ''}
+                </Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: r.full, backgroundColor: lv === LEVEL_MASTERED ? accent.primaryLight : c.bg2 }}>
+                <Ionicons name={LEVEL_ICONS[lv]} size={12} color={lv === LEVEL_MADE ? c.text3 : accent.primary} />
+                <Text style={{ fontSize: t.xs, fontWeight: t.semibold, color: lv === LEVEL_MADE ? c.text3 : c.text1 }}>{LEVEL_NAMES[lv]}</Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+
+        <Button label="Take it home" icon="download-outline" onPress={takeHome} style={{ marginTop: s.lg }} />
+        <Text style={{ fontSize: t.xs, color: c.text3, marginTop: s.sm, textAlign: 'center' }}>
+          {isMastered(build) ? 'One file. Opens in any browser. You understand every part of it.' : 'One file. Opens in any browser, on any device.'}
+        </Text>
+
+        {!!kind.deeper && (
+          <Button
+            label={`Go deeper: ${kind.deeper.label}`}
+            variant="ghost"
+            icon="school-outline"
+            onPress={() => navigation.navigate(kind.deeper.route, kind.deeper.params)}
+            style={{ marginTop: s.md }}
+          />
+        )}
+      </ScrollView>
+
+      <PartSheet
+        visible={!!part}
+        build={build}
+        part={part}
+        html={html}
+        onChange={update}
+        onClose={() => setOpenPart(null)}
+      />
+      <BuildAskSheet
+        visible={editingWords}
+        editing
+        kindId={build.kind}
+        initial={build.answers}
+        onClose={() => setEditingWords(false)}
+        onDone={(answers) => { update(setAnswers(build, answers)); setEditingWords(false); }}
+      />
+    </View>
+  );
+}

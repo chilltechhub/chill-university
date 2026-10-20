@@ -33,6 +33,11 @@ const MIGRATED = [
   'src/components/widgets/QuestWidget.js',
   'src/components/DreamCard.js',
   'src/components/DreamSheet.js',
+  'src/components/BuildPreview.js',
+  'src/components/BuildAskSheet.js',
+  'src/screens/studio/StudioScreen.js',
+  'src/screens/studio/BuildScreen.js',
+  'src/screens/studio/PartSheet.js',
 ];
 
 const RULES = [
