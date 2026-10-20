@@ -7,6 +7,8 @@
 //
 // Items unlock by level (sceneArt.js DECOR). Locked ones show in the tray
 // with the level they open at, so there's something to look forward to.
+// Trophies open from the Studio instead: master every part of a Build and
+// its trophy is yours to place (src/logic/studio.js).
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, StyleSheet, ScrollView, PanResponder } from 'react-native';
@@ -16,7 +18,7 @@ import LandscapeBackground from './LandscapeBackground';
 import PixelArt from './PixelArt';
 import { ART, DECOR, DECOR_GROUPS, decorById } from '../data/sceneArt';
 import {
-  seedLayout, groundFor, decorAllowed, clamp, MAX_DECOR, SCALE_MIN, SCALE_MAX, DEFAULT_BOWL_X,
+  seedLayout, groundFor, decorAllowed, trophyEarned, clamp, MAX_DECOR, SCALE_MIN, SCALE_MAX, DEFAULT_BOWL_X,
 } from '../logic/stageDecor';
 import { FONTS } from '../theme';
 
@@ -79,7 +81,8 @@ export default function DecorateSheet({ visible, onClose, background, level = 1,
   const [items, setItems] = useState([]);
   const [bowlX, setBowlX] = useState(DEFAULT_BOWL_X);
   const [picked, setPicked] = useState(null);   // an item's index, or 'bowl'
-  const [group, setGroup] = useState(DECOR_GROUPS[0]);
+  // Trophies first once they have one; Furniture until then.
+  const [group, setGroup] = useState(() => (DECOR.some(d => d.build && trophyEarned(d.id)) ? 'Trophies' : 'Furniture'));
   const [box, setBox] = useState(null);
   const [note, setNote] = useState(null);
 
@@ -240,11 +243,11 @@ export default function DecorateSheet({ visible, onClose, background, level = 1,
                   onPress={() => add(d)}
                   disabled={!open}
                   accessibilityRole="button"
-                  accessibilityLabel={open ? `Add ${d.name}` : `${d.name}, unlocks at level ${d.level}`}
+                  accessibilityLabel={open ? `Add ${d.name}` : d.build ? `${d.name}, earned by mastering a Studio build` : `${d.name}, unlocks at level ${d.level}`}
                   accessibilityState={{ disabled: !open }}
                 >
                   <View style={s.thumb}><PixelArt art={a} scale={k} /></View>
-                  <Text style={s.cellName} numberOfLines={1}>{open ? d.name : `Lv ${d.level}`}</Text>
+                  <Text style={s.cellName} numberOfLines={1}>{open ? d.name : d.build ? 'Studio' : `Lv ${d.level}`}</Text>
                 </TouchableOpacity>
               );
             })}

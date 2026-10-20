@@ -95,6 +95,23 @@ export const FIRST_GOAL_GUIDE = {
   },
 
   // ── First goals by aim (onboarding's "What did you come here for?") ──
+  'first-make': {
+    make: {
+      go: 'StudioScreen', spot: 'studio-kinds', mode: 'tap',
+      path: "Library → Find → Studio",
+      say: "Pick **one thing to make**. Answer a question and the app makes it for you.",
+    },
+    apart: {
+      go: 'StudioScreen', spot: 'studio-builds', mode: 'tap',
+      path: "Library → Find → Studio",
+      say: "Open what you made and **tap a part** to see how it works.",
+    },
+    own: {
+      go: 'StudioScreen', spot: 'studio-builds', mode: 'tap',
+      path: "Library → Find → Studio",
+      say: "Open a part and **answer its one question**. Right opens the upgrades.",
+    },
+  },
   'first-build': {
     seed: {
       go: 'IdeaGardenScreen', spot: 'ideas-list', mode: 'tap',

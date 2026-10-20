@@ -93,16 +93,18 @@ export const PURPOSES = [
   },
   {
     key: 'build',
-    ask: 'Start something',
-    you: 'start something',
-    label: 'Ship something real',
+    // Since 2026-10-20 (docs/studio-plan.md): make something with the app
+    // first, in the Studio, then grow it into your own project.
+    ask: 'Make something',
+    you: 'make something',
+    label: 'Make something real',
     short: 'Build',
     emoji: '🏗️',
     accentKey: 'gold',
-    blurb: 'You have an idea. The aim is that it exists by the end of the month.',
+    blurb: 'A page, a game, a beat or a business. Make it with the app, then make it yours.',
     leads: ['workshop', 'idea-garden', 'capture'],
     starterObjective: 'ship-first-build',
-    firstGoal: 'first-build',
+    firstGoal: 'first-make',
     matches: {
       goals:       ['Start a project', 'Learn new skills'],
       motivations: ['creativity'],
@@ -514,6 +516,23 @@ export const OBJECTIVES = [
     ],
     unlocks: [],
     next: 'ship-first-build',
+  },
+
+  {
+    id: 'first-make',
+    purpose: 'build',
+    intro: true,
+    label: 'Make Your First Thing',
+    promise: 'The app makes something real with you. Then you take one part apart.',
+    why: 'Interest follows doing. You find out what you like by making it.',
+    estimate: 'About 5 minutes',
+    steps: [
+      { id: 'make',  label: 'Make something in the Studio', hint: 'A page, a game, a beat or a business. **It works in a minute.**', screen: 'StudioScreen', signal: 'build-made' },
+      { id: 'apart', label: 'Take one part apart',          hint: 'Open a part, see how it works, change it.', screen: 'StudioScreen', signal: 'build-part-looked' },
+      { id: 'own',   label: 'Master one part',              hint: 'Answer its one question. **A wrong answer costs nothing.**', screen: 'StudioScreen', signal: 'build-part-mastered' },
+    ],
+    unlocks: [],
+    next: 'first-build',
   },
 
   /* ── First goals by aim ──────────────────────────────────────────────────

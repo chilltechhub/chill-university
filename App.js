@@ -30,6 +30,7 @@ import { initPlanReminders } from './src/logic/planReminderActions';
 import { initHubNotifications, flushPendingTarget } from './src/logic/hubNotifications';
 import ShareIntentListener from './src/components/ShareIntentListener';
 import { flushQueue } from './src/api/offlineCache';
+import { loadMyBuilds } from './src/api/buildService';
 import { onActiveProfileChange } from './src/logic/activeProfile';
 import { notify } from './src/logic/confirm';
 import * as ScreenOrientation from 'expo-screen-orientation';
@@ -318,6 +319,8 @@ function AppInner() {
   React.useEffect(() => {
     loadRemotePets();
     loadRemoteBackgrounds();
+    // Studio Builds: their trophies dress every stage, not just the Studio.
+    loadMyBuilds();
     ensureAndroidChannel(); // silent — no permission prompt, just registers the channel
 
     // Plan-aware reminders — registers the Done/Snooze/Reschedule action

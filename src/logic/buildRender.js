@@ -6,6 +6,10 @@
 // No network, no external fonts or scripts: the file works offline, on any
 // device, years from now. Everything they typed goes through esc().
 //
+// `me` personalises it: { pet: petLook() result, dream: their Dream }.
+// Both optional; without them it falls back to the option's own look.
+// The file carries a copy, so it still reads right if they change pets.
+//
 // Pure, so scripts/check-builds.mjs renders every kind × option in Node.
 import { kindOf, optionOf, partOf, partLevel, buildTitle, LEVEL_MASTERED } from './builds';
 
@@ -46,7 +50,15 @@ ${script ? `<script>\n${script}\n</script>` : ''}
 
 /* ── Page ─────────────────────────────────────────────────────────────── */
 
-function pageBlock(build, kind, block) {
+function pageBlock(build, kind, block, me) {
+  if (block === 'dream') {
+    // Their own words from the Dream layer; a plain line until they write one.
+    const d = me?.dream || {};
+    const parts = (d.parts || []).map(p => p?.label || p).filter(Boolean).slice(0, 3);
+    const rows = parts.length ? parts.map(p => `<li>${esc(p)}</li>`).join('') : '<li>Something of my own</li>';
+    const becoming = d.becoming ? `<p class="becoming">Becoming ${esc(d.becoming)}.</p>` : '';
+    return `<section class="block dream"><h2>Where I’m headed</h2><ul>${rows}</ul>${becoming}</section>`;
+  }
   if (block === 'quote') {
     return `<section class="block quote"><p>“Most people never start. I did.”</p></section>`;
   }
@@ -64,17 +76,19 @@ function pageBlock(build, kind, block) {
 </section>`;
 }
 
-function renderPage(build, kind) {
+function renderPage(build, kind, me) {
   const name = build.answers.name || 'Your name';
   const line = build.answers.line || 'One line about you.';
   const c = pickOf(build, 'colors');
   const f = pickOf(build, 'type');
   const layout = build.picks.layout;
-  const block = pageBlock(build, kind, build.picks.block);
+  const block = pageBlock(build, kind, build.picks.block, me);
+  const pet = me?.pet ? `<p class="pet">${esc(me.pet.emoji)} with ${esc(me.pet.name)}</p>` : '';
   const intro = `<section class="intro">
 <div class="avatar" aria-hidden="true">${esc(name.charAt(0).toUpperCase())}</div>
 <h1>${esc(name)}</h1>
 <p class="line">${esc(line)}</p>
+${pet}
 </section>`;
 
   let main;
@@ -98,6 +112,11 @@ h2{font-size:15px;color:${c.soft};margin-bottom:10px}
 .block{margin-top:28px}
 .links a{display:block;color:${c.accent};text-decoration:none;font-weight:600;padding:10px 0;border-top:1px solid ${c.soft}33}
 .quote p{font-family:${f.head};font-size:22px;border-left:4px solid ${c.accent};padding-left:14px}
+.pet{margin-top:10px;font-size:14px;color:${c.soft}}
+.dream ul{list-style:none}
+.dream li{padding:8px 0 8px 22px;position:relative;font-weight:600}
+.dream li:before{content:'';position:absolute;left:0;top:15px;width:10px;height:10px;border-radius:50%;background:${c.accent}}
+.becoming{margin-top:8px;color:${c.soft};font-style:italic}
 .skills ul{list-style:none}
 .skills li{display:flex;align-items:center;gap:12px;padding:6px 0;font-size:14px}
 .skills li span:first-child{width:90px}
@@ -120,8 +139,10 @@ h2{font-size:15px;color:${c.soft};margin-bottom:10px}
 
 /* ── Game ─────────────────────────────────────────────────────────────── */
 
-function renderGame(build) {
-  const hero = pickOf(build, 'hero');
+function renderGame(build, kind, me) {
+  const pick = pickOf(build, 'hero');
+  // "Your pet": their companion stars, catching its own favourite thing.
+  const hero = pick.fromPet && me?.pet ? { emoji: me.pet.emoji, catches: me.pet.treat } : pick;
   const speed = pickOf(build, 'speed');
   const ch = pickOf(build, 'challenge');
   const goal = pickOf(build, 'goal');
@@ -302,10 +323,10 @@ a.cta{display:block;text-align:center;background:#2f6f5e;color:#fff;text-decorat
 
 const RENDERERS = { page: renderPage, game: renderGame, beat: renderBeat, business: renderBusiness };
 
-export function renderBuild(build) {
+export function renderBuild(build, me = null) {
   const kind = kindOf(build);
   const render = kind && RENDERERS[kind.id];
-  return render ? render(build, kind) : shell('Build', '', '<p>Nothing to show yet.</p>');
+  return render ? render(build, kind, me) : shell('Build', '', '<p>Nothing to show yet.</p>');
 }
 
 export const RENDERED_KINDS = Object.keys(RENDERERS);

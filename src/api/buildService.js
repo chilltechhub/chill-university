@@ -8,16 +8,24 @@
 // have used it (docs/studio-plan.md); once it earns a `builds` table, the
 // sync goes here the way dreamService does it, and nothing above changes.
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from './supabaseClient';
 import { normalizeBuild } from '../logic/builds';
+import { trophyArts } from '../logic/studio';
+import { setEarnedTrophies } from '../logic/stageDecor';
 
 const localKey = (userId) => `@cth_builds_${userId || 'guest'}`;
 const keyOf = (userId) => userId || 'guest';
 
 const cache = {};          // userId|'guest' -> Build[] (newest first)
 const listeners = new Set();
+let latest = null;         // the last list loaded, whoever's it was
 
+// The trophies follow whoever's Builds loaded last: the person using the
+// app (a profile switch reloads them).
 function announce(userId, list) {
   cache[keyOf(userId)] = list;
+  latest = list;
+  setEarnedTrophies(trophyArts(list));
   listeners.forEach(fn => { try { fn(userId, list); } catch {} });
 }
 
@@ -27,6 +35,10 @@ export function onBuildsChange(fn) {
 }
 
 export const cachedBuilds = (userId) => cache[keyOf(userId)] || null;
+
+// Before a screen knows who's signed in: the list loaded last (at launch,
+// the person using the app), so it doesn't flash empty.
+export const latestBuilds = () => latest;
 
 const newestFirst = (a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''));
 
@@ -41,6 +53,14 @@ export async function loadBuilds(userId) {
   }
   announce(userId, list);
   return list;
+}
+
+// For launch (App.js) and anywhere without a userId to hand: whoever is
+// signed in, or the guest.
+export async function loadMyBuilds() {
+  let userId = null;
+  try { userId = (await supabase.auth.getSession())?.data?.session?.user?.id || null; } catch {}
+  return loadBuilds(userId);
 }
 
 async function write(userId, list) {

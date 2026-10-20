@@ -292,6 +292,23 @@ export default function GamesScreen() {
             </View>
             </TourSpot>
 
+            {/* Make first (2026-10-20, docs/studio-plan.md): the Studio
+                builds a real thing with you and teaches it by taking it
+                apart. Classes are the "go deeper" for what it opens up. */}
+            <TouchableOpacity
+              style={[styles.playBtn, { backgroundColor: c.teal, marginBottom: s.sm }]}
+              onPress={() => {
+                navigation.navigate('Library');
+                setTimeout(() => navigation.navigate('Library', { screen: 'StudioScreen' }), 0);
+              }}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Make something: a page, a game, a beat or a business, and learn how it works"
+            >
+              <Ionicons name="color-wand" size={16} color="#fff" />
+              <Text style={styles.playText}>MAKE SOMETHING</Text>
+            </TouchableOpacity>
+
             {/* Learn first (2026-10-18): Classes is the big button, the
                 games are Practice for what the classes teach. Classes live
                 in this tab (src/screens/TrainingNav.js). */}

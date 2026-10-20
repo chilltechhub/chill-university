@@ -21,6 +21,11 @@
 //   lesson    { says, tryIt, check: { q, options, answer } }
 //             `says` is under 40 words. **bold** is the one idea to keep.
 //   deeper    an optional "go deeper" link into the rest of the app.
+//   trophy    the room item (src/data/sceneArt.js) that mastering every
+//             part of a Build of this kind puts in their Decorate tray.
+//   option.fromPet  the player's own pet stands in (src/logic/studio.js
+//             petLook): the app makes it with YOUR companion in it.
+//   option.fromDream  filled from their Dream when they have one.
 //
 // Nothing here is read from the network yet. When the Studio proves
 // itself, this moves to app_content like the Finds so it can change
@@ -37,6 +42,7 @@ export const BUILD_KINDS = [
     medium: 'Web',
     icon: 'globe-outline',
     blurb: 'Your own web page. A real file that opens in any browser.',
+    trophy: { art: 'trophyPage', name: 'Page Tome' },
     asks: [
       { key: 'name', label: 'Your first name', max: 40, placeholder: 'e.g. Sam', hint: 'A first name is plenty.' },
       { key: 'line', label: 'One line about you', max: 90, placeholder: 'e.g. Learning to fix bikes. Building a repair shop.', fromDream: 'becoming' },
@@ -89,6 +95,7 @@ export const BUILD_KINDS = [
         options: [
           { id: 'links', label: 'Links', level: 1 },
           { id: 'quote', label: 'A quote', level: 1 },
+          { id: 'dream', label: 'Where I’m headed', level: 1, fromDream: true },
           { id: 'skills', label: 'What I’m learning', level: 2 },
         ],
         lesson: {
@@ -106,14 +113,16 @@ export const BUILD_KINDS = [
     label: 'A game',
     medium: 'Game',
     icon: 'game-controller-outline',
-    blurb: 'A catch game you can play, change and send to a friend.',
+    blurb: 'A catch game starring your pet. Play it, change it, send it.',
+    trophy: { art: 'trophyGame', name: 'Game Key' },
     asks: [
       { key: 'name', label: 'Name your game', max: 40, placeholder: 'e.g. Snack Attack' },
     ],
     parts: [
       {
-        id: 'hero', label: 'Player', icon: 'happy-outline', start: 'cat',
+        id: 'hero', label: 'Player', icon: 'happy-outline', start: 'pet',
         options: [
+          { id: 'pet', label: 'Your pet', level: 1, fromPet: true, emoji: '🐱', catches: '🐟' },
           { id: 'cat', label: '🐱 Cat', level: 1, emoji: '🐱', catches: '🐟' },
           { id: 'rocket', label: '🚀 Rocket', level: 1, emoji: '🚀', catches: '⭐' },
           { id: 'basket', label: '🧺 Basket', level: 1, emoji: '🧺', catches: '🍎' },
@@ -175,6 +184,7 @@ export const BUILD_KINDS = [
     medium: 'Music',
     icon: 'musical-notes-outline',
     blurb: 'A looping beat with drums and a melody. Change how it feels.',
+    trophy: { art: 'trophyBeat', name: 'Beat Elixir' },
     asks: [
       { key: 'name', label: 'Name your track', max: 40, placeholder: 'e.g. Late Bus Home' },
     ],
@@ -243,6 +253,7 @@ export const BUILD_KINDS = [
     medium: 'Business',
     icon: 'storefront-outline',
     blurb: 'A one-page offer for something you could sell. Test it on real people.',
+    trophy: { art: 'trophyBusiness', name: 'First Coin Purse' },
     asks: [
       { key: 'idea', label: 'What could you sell?', max: 60, placeholder: 'e.g. Bike repairs' },
       { key: 'who', label: 'Who is it for?', max: 60, placeholder: 'e.g. students on campus' },

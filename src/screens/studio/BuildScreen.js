@@ -3,7 +3,11 @@
 // part to take it apart (src/screens/studio/PartSheet.js): a 30-second
 // "see it, change it" lesson that hands over control of that part. Take
 // it home exports the exact file the preview shows.
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+//
+// It's made with you in it: your pet stars in the game and sits on your
+// page, your Dream can fill a page block (src/logic/useStudio.js `me`), and
+// your pet comments on how it's going.
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -12,13 +16,16 @@ import { Button, SectionLabel } from '../../components/ui';
 import RichText from '../../components/RichText';
 import BuildPreview from '../../components/BuildPreview';
 import BuildAskSheet from '../../components/BuildAskSheet';
+import PetCompanion from '../../components/PetCompanion';
 import PartSheet from './PartSheet';
-import { supabase } from '../../api/supabaseClient';
-import { loadBuilds, saveBuild, deleteBuild, cachedBuilds, onBuildsChange } from '../../api/buildService';
+import { saveBuild, deleteBuild } from '../../api/buildService';
+import useStudio from '../../logic/useStudio';
+import { useAccess } from '../../../context/AccessContext';
 import {
-  kindOf, optionOf, partLevel, buildTitle, buildFilename, receiptLine, nextPart, setAnswers, isMastered,
+  kindOf, optionOf, partLevel, buildTitle, buildFilename, receiptLine, nextPart, setAnswers, isMastered, receipt,
   LEVEL_NAMES, LEVEL_MADE, LEVEL_MASTERED,
 } from '../../logic/builds';
+import { companionLine } from '../../logic/studio';
 import { renderBuild } from '../../logic/buildRender';
 import { shareFile } from '../../logic/shareFile';
 import { confirmAsync, notify } from '../../logic/confirm';
@@ -30,39 +37,25 @@ export default function BuildScreen() {
   const route = useRoute();
   const { buildId, fresh } = route.params || {};
   const { colors: c, typography: t, spacing: s, radius: r, accent } = useTheme();
-  const [userId, setUserId] = useState(undefined); // undefined until known
-  const [build, setBuild] = useState(() => (cachedBuilds(null) || []).find(b => b.id === buildId) || null);
+  const studio = useStudio();
+  const { signalAction } = useAccess();
+  const { userId, me, pet, petName } = studio;
+  // The latest local edit wins over the stored copy until the save lands.
+  const [local, setLocal] = useState(null);
+  const stored = studio.builds.find(b => b.id === buildId) || null;
+  const build = local && local.id === buildId && (!stored || String(local.updatedAt) >= String(stored.updatedAt)) ? local : stored;
   const [openPart, setOpenPart] = useState(null);
   const [editingWords, setEditingWords] = useState(false);
-
-  useEffect(() => {
-    let alive = true;
-    supabase.auth.getSession()
-      .then(({ data }) => { if (alive) setUserId(data?.session?.user?.id || null); })
-      .catch(() => { if (alive) setUserId(null); });
-    return () => { alive = false; };
-  }, []);
-
-  useEffect(() => {
-    if (userId === undefined) return undefined;
-    let alive = true;
-    const pick = (list) => { if (alive) setBuild(list.find(b => b.id === buildId) || null); };
-    const cached = cachedBuilds(userId);
-    if (cached) pick(cached);
-    loadBuilds(userId).then(pick);
-    const off = onBuildsChange((uid, list) => { if ((uid || null) === (userId || null)) pick(list); });
-    return () => { alive = false; off(); };
-  }, [userId, buildId]);
 
   // Saves on every change; the screen shows the change at once.
   const update = useCallback((next) => {
     if (!next || next === build) return;
-    setBuild(next);
-    saveBuild(userId ?? null, next);
+    setLocal(next);
+    saveBuild(userId, next);
   }, [build, userId]);
 
   const kind = kindOf(build);
-  const html = useMemo(() => (build ? renderBuild(build) : ''), [build]);
+  const html = useMemo(() => (build ? renderBuild(build, me) : ''), [build, me]);
   const next = build ? nextPart(build) : null;
 
   if (!build || !kind) {
@@ -83,7 +76,7 @@ export default function BuildScreen() {
 
   const remove = async () => {
     if (!(await confirmAsync(`Delete ${buildTitle(build)}?`, 'This can’t be undone.', 'Delete'))) return;
-    await deleteBuild(userId ?? null, build.id);
+    await deleteBuild(userId, build.id);
     navigation.goBack();
   };
 
@@ -120,7 +113,20 @@ export default function BuildScreen() {
 
         <BuildPreview html={html} height={kind.id === 'business' || kind.id === 'page' ? 380 : 340} />
 
-        <RichText style={{ fontSize: t.sm, color: c.text2, marginTop: s.md }} boldStyle={{ color: c.text1 }}>
+        {(() => {
+          const rc = receipt(build);
+          const moment = isMastered(build) ? 'done' : rc.changed > 0 ? 'changed' : rc.mastered > 0 ? 'mastered' : 'fresh';
+          return (
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: s.sm, marginTop: s.md }}>
+              {!!pet && <PetCompanion pet={pet} size={44} />}
+              <View style={{ flex: 1, padding: s.md, borderRadius: r.lg, backgroundColor: c.bg1, borderWidth: 0.5, borderColor: c.border }}>
+                <Text style={{ fontSize: t.xs, fontWeight: t.semibold, color: c.text3, marginBottom: 2 }}>{pet ? petName : 'Your guide'}</Text>
+                <RichText style={{ fontSize: t.sm, color: c.text2 }} boldStyle={{ color: c.text1 }}>{companionLine(moment, build.id)}</RichText>
+              </View>
+            </View>
+          );
+        })()}
+        <RichText style={{ fontSize: t.sm, color: c.text2, marginTop: s.sm }} boldStyle={{ color: c.text1 }}>
           {receiptLine(build)}
         </RichText>
 
@@ -179,6 +185,8 @@ export default function BuildScreen() {
         build={build}
         part={part}
         html={html}
+        petName={pet ? petName : null}
+        onSignal={signalAction}
         onChange={update}
         onClose={() => setOpenPart(null)}
       />

@@ -15,7 +15,7 @@ import {
   lookAtPart, pickOption, answerCheck, isOptionOpen, partLevel, LEVEL_MADE, LEVEL_MASTERED,
 } from '../../logic/builds';
 
-export default function PartSheet({ visible, build, part, html, onChange, onClose }) {
+export default function PartSheet({ visible, build, part, html, petName, onSignal, onChange, onClose }) {
   const { colors: c, typography: t, spacing: s, radius: r, accent } = useTheme();
   const [result, setResult] = useState(null); // null | 'right' | 'wrong'
   const [chosen, setChosen] = useState(null);
@@ -25,7 +25,10 @@ export default function PartSheet({ visible, build, part, html, onChange, onClos
     if (!visible || !part) return;
     setResult(null);
     setChosen(null);
-    if (partLevel(build, part.id) === LEVEL_MADE) onChange(lookAtPart(build, part.id));
+    if (partLevel(build, part.id) === LEVEL_MADE) {
+      onChange(lookAtPart(build, part.id));
+      onSignal?.('build-part-looked', { kind: build.kind, part: part.id });
+    }
   }, [visible, part?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!part || !build) return null;
@@ -36,7 +39,10 @@ export default function PartSheet({ visible, build, part, html, onChange, onClos
     setChosen(i);
     const out = answerCheck(build, part.id, i);
     setResult(out.right ? 'right' : 'wrong');
-    if (out.right) onChange(out.build);
+    if (out.right) {
+      if (partLevel(build, part.id) < LEVEL_MASTERED) onSignal?.('build-part-mastered', { kind: build.kind, part: part.id });
+      onChange(out.build);
+    }
   };
 
   return (
@@ -62,6 +68,7 @@ export default function PartSheet({ visible, build, part, html, onChange, onClos
             {part.options.map(o => {
               const open = isOptionOpen(build, part.id, o.id);
               const on = build.picks[part.id] === o.id;
+              const label = o.fromPet && petName ? `Your pet · ${petName}` : o.label;
               return (
                 <TouchableOpacity
                   key={o.id}
@@ -69,7 +76,7 @@ export default function PartSheet({ visible, build, part, html, onChange, onClos
                   onPress={() => onChange(pickOption(build, part.id, o.id))}
                   accessibilityRole="radio"
                   accessibilityState={{ selected: on, disabled: !open }}
-                  accessibilityLabel={open ? o.label : `${o.label}, opens when you pass the check`}
+                  accessibilityLabel={open ? label : `${label}, opens when you pass the check`}
                   style={{
                     flexDirection: 'row', alignItems: 'center', gap: 6,
                     paddingHorizontal: 12, paddingVertical: 8, borderRadius: r.full, borderWidth: 1,
@@ -79,7 +86,7 @@ export default function PartSheet({ visible, build, part, html, onChange, onClos
                   }}
                 >
                   {!open && <Ionicons name="lock-closed-outline" size={12} color={c.text3} />}
-                  <Text style={{ fontSize: t.sm, fontWeight: on ? t.bold : t.medium, color: on ? c.text1 : c.text2 }}>{o.label}</Text>
+                  <Text style={{ fontSize: t.sm, fontWeight: on ? t.bold : t.medium, color: on ? c.text1 : c.text2 }}>{label}</Text>
                 </TouchableOpacity>
               );
             })}

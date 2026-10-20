@@ -12,9 +12,11 @@ const asUrl = (code) => 'data:text/javascript,' + encodeURIComponent(code);
 const dataUrl = asUrl(await src('src/data/builds.js'));
 const logicUrl = asUrl((await src('src/logic/builds.js')).replace("'../data/builds'", `"${dataUrl}"`));
 const renderUrl = asUrl((await src('src/logic/buildRender.js')).replace("'./builds'", `"${logicUrl}"`));
+const studioUrl = asUrl((await src('src/logic/studio.js')).replace("'../data/builds'", `"${dataUrl}"`).replace("'./builds'", `"${logicUrl}"`));
 const D = await import(dataUrl);
 const B = await import(logicUrl);
 const R = await import(renderUrl);
+const S = await import(studioUrl);
 
 const problems = [];
 let count = 0;
@@ -96,6 +98,48 @@ for (const kind of D.BUILD_KINDS) {
   check('file: slug', B.buildFilename(B.newBuild('game', { name: 'Snack Attack!!' })) === 'snack-attack.html');
   check('file: empty name still a file', B.buildFilename(B.newBuild('game', {})) === 'a-game.html');
   check('missing: lists empty asks', B.missingAsks('business', { idea: 'x' }).join() === 'who');
+}
+
+// ── Your pet, your sparks, your trophies (src/logic/studio.js) ─────────
+{
+  check('pet: none is null', S.petLook(null) === null);
+  const mochi = S.petLook({ id: 'mochi', name: 'Mochi' });
+  check('pet: a cat looks like a cat', mochi.emoji === '🐱' && mochi.treat === '🐟', mochi);
+  check('pet: nickname wins', S.petLook({ id: 'dog', name: 'Dog' }, 'Biscuit').name === 'Biscuit');
+  check('pet: robots are robots', S.petLook({ id: 'gorillaunit', name: 'Gorilla Unit' }).emoji === '🤖');
+  check('pet: unknown gets a paw', S.petLook({ id: 'xyz', name: 'Blob' }).emoji === '🐾');
+
+  check('sparks: none yet', S.sparks([]).length === 0 && /Make one thing/.test(S.sparkLine([])));
+  const master = (b) => { for (const p of B.kindOf(b).parts) b = B.answerCheck(b, p.id, p.lesson.check.answer, T).build; return b; };
+  const beat1 = master(B.newBuild('beat', { name: 'a' }, T));
+  const beat2 = B.newBuild('beat', { name: 'b' }, T);
+  const page = B.newBuild('page', { name: 'Sam' }, T);
+  check('sparks: one medium says try another', /Try a different one/.test(S.sparkLine([beat2])), S.sparkLine([beat2]));
+  check('sparks: too early to call a lean', S.leaningMedium([beat2, page]) === null);
+  check('sparks: one Build, even mastered, is not a lean', S.leaningMedium([beat1]) === null && !/coming back/.test(S.sparkLine([beat1])));
+  const list = S.sparks([beat1, beat2, page]);
+  check('sparks: ranked by doing', list[0].kind === 'beat' && list[0].builds === 2 && list[0].mastered === 1, list);
+  check('sparks: a clear lean is named', S.leaningMedium([beat1, beat2, page])?.medium === 'Music');
+  check('sparks: line names it', /coming back to \*\*Music/.test(S.sparkLine([beat1, beat2, page])), S.sparkLine([beat1, beat2, page]));
+
+  check('trophy: none until mastered', S.trophyArts([beat2, page]).size === 0);
+  check('trophy: mastered beat earns its trophy', S.trophyArts([beat1]).has('trophyBeat'));
+  check('companion: same seed, same line', S.companionLine('fresh', 'x') === S.companionLine('fresh', 'x'));
+  for (const k of D.BUILD_KINDS) check(`trophy: ${k.id} has one`, !!k.trophy?.art);
+}
+
+// ── Personalised: your pet stars, your Dream fills in ───────────────────
+{
+  const me = { pet: { name: '<b>Mochi</b>', emoji: '🐱', treat: '🐟' }, dream: { parts: [{ label: 'the <farm>' }], becoming: 'someone who finishes' } };
+  const game = R.renderBuild(B.newBuild('game', { name: 'G' }, T), me);
+  check('me: game starts with your pet', game.includes('"hero":"🐱"') && game.includes('"item":"🐟"'));
+  check('me: no pet falls back', R.renderBuild(B.newBuild('game', { name: 'G' }, T)).includes('"hero":"🐱"'));
+  let page = B.newBuild('page', { name: 'Sam' }, T);
+  page = B.pickOption(B.lookAtPart(page, 'block', T), 'block', 'dream', T);
+  const html = R.renderBuild(page, me);
+  check('me: page shows your pet, escaped', html.includes('with &lt;b&gt;Mochi&lt;/b&gt;'));
+  check('me: dream block, escaped', html.includes('the &lt;farm&gt;') && html.includes('Becoming someone who finishes'));
+  check('me: dream block without a dream', R.renderBuild(page).includes('Something of my own'));
 }
 
 // ── Every kind × option renders, escapes and parses ─────────────────────

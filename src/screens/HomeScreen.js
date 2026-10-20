@@ -32,6 +32,7 @@ import TodayReview from '../components/TodayReview';
 import RightNowCard from '../components/RightNowCard';
 import CalmHome from '../components/CalmHome';
 import DreamCard from '../components/DreamCard';
+import StudioCard from '../components/StudioCard';
 import TodaysFind from '../components/TodaysFind';
 import useDrillPlan from '../logic/useDrillPlan';
 import CalendarModal from '../components/CalendarModal';
@@ -2107,6 +2108,10 @@ export default function HomeScreen() {
              it isn't one card among many, and it can't be hidden by
              accident while rearranging. ── */}
         {!editingWidgets && <DreamCard userId={userId} />}
+
+        {/* ── The Studio: under the dream, the app's main thing to do is
+             make something real (docs/studio-plan.md). Not a widget. ── */}
+        {!editingWidgets && <StudioCard />}
 
         {/* ── Today's Find: one useful tool or idea a day, under the dream
              (docs/refocus-plan-2026-10-18.md). Like the Dream, not a widget:

@@ -49,9 +49,29 @@ A Build runs all four pillars in one place:
 | `src/api/buildService.js` | Device storage (local-first, like the Dream) |
 | `src/screens/studio/` | Studio list, Build screen, Part sheet |
 | `src/components/BuildPreview.js` | WebView on phones, sandboxed iframe on web |
-| `scripts/check-builds.mjs` | 444 checks: every rule, every kind × option renders, escapes and parses |
+| `src/logic/studio.js` | Your pet in a Build, sparks, trophies, your pet's lines. Pure |
+| `src/logic/useStudio.js` | One hook: your Builds, character, pet, room and Dream |
+| `src/components/StudioStage.js`, `StudioCard.js`, `StudioShowcase.js` | The Studio's room, the Home card, the Portfolio shelf |
+| `scripts/check-builds.mjs` | 478 checks: every rule, sparks, trophies, personalised renders, and every kind × option renders, escapes and parses |
 
 **Templates, not AI.** Builds are assembled from tested parts: free to run, works offline, never makes up code. AI comes later as a **Plus** extra (personal wording, suggestions) through a server-side function like `parse-import`.
+
+## How it ties into the whole app (2026-10-20)
+
+The Studio is the spine: **Discover → Educate → Implement → Execute** all run through making something, and everything else points at it.
+
+| Where | What it does now |
+|---|---|
+| **Onboarding** | "What did you come here for?" → **Make something**. Its first goal, **Make Your First Thing**, walks them through making a Build, taking a part apart and mastering one (the guide lights each step) |
+| **Home** | Under the Dream: **the Studio card**. Nothing made yet → "Make one thing today". After that → the last Build and its next part |
+| **Today's Find** | After "I tried it": **Make something with it**, opening the Build that fits the Find's area (creative → a beat, money/work → a business, digital/social → a page) |
+| **Learn** | **Make something** sits above Classes: make first, go deeper second |
+| **Your pet** | Stars in your game (catching its own favourite thing), sits on your page, and talks you through the Studio in the mentor voice |
+| **Your character + room** | Walk around the top of the Studio, in your own backdrop and decor |
+| **Your Dream** | Fills the page's "Where I'm headed" block, in your own words, and drafts "One line about you" |
+| **Your room** | Master every part of a Build → its **trophy** (Page Tome, Game Key, Beat Elixir, First Coin Purse) goes in Profile → Decorate → **Trophies** |
+| **Portfolio** | **Made in the Studio**: every Build with its own receipt |
+| **Finding yourself** | **What you're drawn to**: the mediums you come back to, in your numbers. Two or more Builds in one medium, clearly ahead, and the app names it. Never a verdict, only what you keep doing |
 
 ## Guardrails
 
@@ -71,11 +91,11 @@ If yes → grow it. If no → fix the first minute before adding anything.
 
 ## Next (only after the test)
 
-1. **Desk trophies.** A mastered Build puts an object on your desk (`sceneArt.js` DECOR, unlocked by Build instead of level).
-2. **Account sync.** A `builds` table, the same pattern as `dreams`.
-3. **Tier 2 per kind.** The same Build, the app does less: you write one part yourself (real CSS, a real game variable).
-4. **More kinds.** An AI helper, a money sheet, a resume, a short story. Then hardware (the app makes the wiring + code; your hands do the rest).
-5. **Bridge picks.** "You finished a beat. Try a game." Simple rules, no machine learning.
-6. **Content goes live.** Move `builds.js` to `app_content` so it changes without an app update.
+1. **Account sync.** A `builds` table, the same pattern as `dreams`.
+2. **Tier 2 per kind.** The same Build, the app does less: you write one part yourself (real CSS, a real game variable).
+3. **More kinds.** An AI helper, a money sheet, a resume, a short story. Then hardware (the app makes the wiring + code; your hands do the rest).
+4. **Bridge picks.** "You finished a beat. Try a game." Simple rules, no machine learning.
+5. **Content goes live.**
+6. **Your pet's real sprite in the file.** Today an emoji stands in (an HTML file can't carry the pixel art without embedding it). Move `builds.js` to `app_content` so it changes without an app update.
 
 **Parked:** simulators, WebGL engines, 1-click hosting, GitHub sync.
