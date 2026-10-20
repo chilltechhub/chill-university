@@ -28,6 +28,9 @@ export function findFromRow(row) {
     // before anyone fills these in just shows the short description.
     tags: Array.isArray(row.meta?.tags) ? row.meta.tags : null,
     summary: row.meta?.summary || null,
+    // Free software standing in for something people usually pay license
+    // fees for: "a paid photo editor".
+    insteadOf: row.meta?.instead_of || null,
   };
 }
 

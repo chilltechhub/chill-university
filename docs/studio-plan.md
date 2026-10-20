@@ -73,6 +73,15 @@ The Studio is the spine: **Discover → Educate → Implement → Execute** all 
 | **Portfolio** | **Made in the Studio**: every Build with its own receipt |
 | **Finding yourself** | **What you're drawn to**: the mediums you come back to, in your numbers. Two or more Builds in one medium, clearly ahead, and the app names it. Never a verdict, only what you keep doing |
 
+## Software's power, without the license costs
+
+The founder's belief (docs/north-star.md) runs through the Studio:
+
+- **An AI helper** is the fifth kind: Role, Tone, Answer shape, Honesty rule. It makes a page with ready-made instructions and a Copy button, for any free AI chat. Adults see free chats by name; under-18s are told to use one they're allowed to (each service has its own age rules).
+- **Go further, free** on every Build: free, mostly open-source tools for the next step (VS Code + GitHub Pages, Godot + Krita, LMMS + Audacity, LibreOffice + Inkscape, Ollama).
+- **"No license, no subscription, no account. Yours to keep."** under Take it home.
+- **Free instead of paid** Finds: 12 free tools, each saying what it stands in for (`supabase/migrations/20261020120000_free_instead_of_paid.sql`, bundled as `fs1`-`fs12`).
+
 ## Guardrails
 
 - **Under-18s:** export only. No public publishing (`allowed.js` already blocks publishing as a minor). Pages ask for a **first name** only.

@@ -117,6 +117,7 @@ export const ART = {
   trophyGame:     box('items', 9, 714, 18, 10),    // 23.a gold key
   trophyBeat:     box('items', 106, 648, 11, 17),  // 21.d blue potion
   trophyBusiness: box('items', 106, 777, 10, 15),  // 25.d coin purse
+  trophyAi:       box('items', 200, 678, 17, 20),  // 22.g scroll 2
 };
 
 // Animated extras. Frame counts checked by scanning every cell of each strip
@@ -153,6 +154,7 @@ export const DECOR = [
   trophy('trophyGame', 'Game Key', 'game'),
   trophy('trophyBeat', 'Beat Elixir', 'beat'),
   trophy('trophyBusiness', 'First Coin Purse', 'business'),
+  trophy('trophyAi', 'Prompt Scroll', 'ai'),
 
   d('windowCream', 'Window', 'Furniture', 1, 0.95, true),
   d('plantPainting', 'Plant Print', 'Furniture', 3, 0.85, true),

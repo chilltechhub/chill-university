@@ -43,7 +43,7 @@ const AREA_LABEL = {
 
 // Which Studio Build a Find leads to, by its life area. Areas with no
 // natural thing to make (yet) offer none.
-const MAKE_FOR_AREA = { creative: 'beat', professional: 'business', financial: 'business', digital: 'page', social: 'page' };
+const MAKE_FOR_AREA = { creative: 'beat', professional: 'business', financial: 'business', digital: 'page', social: 'page', general: 'ai' };
 
 export default function TodaysFind({ userId, variant = 'card', pal }) {
   const navigation = useNavigation();
@@ -137,6 +137,9 @@ export default function TodaysFind({ userId, variant = 'card', pal }) {
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, lineHeight: 24 }}>{find.title}</Text>
               {!!find.desc && <Text style={{ fontSize: t.sm, color: c.text2, marginTop: 2 }}>{find.desc}</Text>}
+              {!!find.insteadOf && (
+                <Text style={{ fontSize: t.xs, fontWeight: t.semibold, color: c.text2, marginTop: 4 }}>Free instead of {find.insteadOf}</Text>
+              )}
             </View>
           </View>
           {!!find.summary && !triedToday && (

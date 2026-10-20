@@ -142,6 +142,26 @@ for (const kind of D.BUILD_KINDS) {
   check('me: dream block without a dream', R.renderBuild(page).includes('Something of my own'));
 }
 
+// ── The AI helper: free, honest, age-aware ──────────────────────────────
+{
+  let ai = B.newBuild('ai', { task: 'plan cheap dinners.', name: 'Dinner Buddy' }, T);
+  const prompt = R.aiPrompt(ai);
+  check('ai: prompt has role, task, tone, shape and honesty',
+    /practical planner/.test(prompt) && /I want help with: plan cheap dinners\./.test(prompt) && /plain words/.test(prompt) && /numbered steps/.test(prompt) && /Never make things up/.test(prompt), prompt);
+  check('ai: a change shows in the prompt', /patient tutor/.test(R.aiPrompt(B.pickOption(B.lookAtPart(ai, 'role', T), 'role', 'tutor', T))));
+  const adult = R.renderBuild(ai, { adult: true });
+  const minor = R.renderBuild(ai, { adult: false });
+  check('ai: adults see free chats', adult.includes('https://chatgpt.com') && adult.includes('https://claude.ai'));
+  check('ai: under-18s see no named service', !/chatgpt|claude\.ai|gemini/i.test(minor) && /age rules/.test(minor));
+  check('ai: title', B.buildTitle(ai) === 'Dinner Buddy');
+}
+
+// ── Free tools: every kind has somewhere free to go next ────────────────
+for (const k of D.BUILD_KINDS) {
+  check(`free: ${k.id} has free tools`, Array.isArray(k.freeTools) && k.freeTools.length > 0);
+  for (const ft of k.freeTools || []) check(`free: ${k.id}.${ft.name} is whole`, !!ft.name && !!ft.what && /^https:\/\//.test(ft.url));
+}
+
 // ── Every kind × option renders, escapes and parses ─────────────────────
 const EVIL = '<script>alert(1)</script>"\'&';
 function scriptsParse(html, where) {
@@ -163,7 +183,8 @@ for (const kind of D.BUILD_KINDS) {
       if (!/^<!doctype html>/.test(html) || !/<\/html>\s*$/.test(html)) problems.push(`${where}: not a whole page`);
       check(`${where}: typed text escaped`, !html.includes('<script>alert(1)'));
       check(`${where}: no undefined`, !/undefined|NaN|\[object Object\]/.test(html));
-      check(`${where}: no network`, !/\b(src|href)=["']https?:/i.test(html) && !/@import|url\(http/i.test(html));
+      // Links out are fine (the AI helper names free chats); loading anything isn't.
+      check(`${where}: loads nothing from the network`, !/\bsrc=["']https?:/i.test(html) && !/<link\b/i.test(html) && !/@import|url\(http/i.test(html));
       scriptsParse(html, where);
     }
   }

@@ -150,6 +150,7 @@ export function buildTitle(build) {
   const a = build.answers || {};
   if (kind.id === 'page') return a.name ? `${a.name}'s page` : 'My page';
   if (kind.id === 'business') return a.idea || 'My business';
+  if (kind.id === 'ai') return a.name || 'My AI helper';
   return a.name || kind.label;
 }
 

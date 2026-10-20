@@ -66,7 +66,7 @@ export default function StudioScreen() {
           <Text style={{ fontSize: t.md, color: accent.primary, fontWeight: t.semibold }}>Back</Text>
         </TouchableOpacity>
 
-        <ScreenTitle title="Studio" subtitle="Make something real. Then see how every part works." />
+        <ScreenTitle title="Studio" subtitle="Make something real, free. Then see how every part works." />
 
         <StudioStage studio={studio} line={line} />
 

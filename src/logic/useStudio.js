@@ -14,9 +14,10 @@ import useCharacterLoadout from './useCharacterLoadout';
 import usePetCare from './usePetCare';
 import useDream from './useDream';
 import { petLook } from './studio';
+import { ageBandFor, isMinorBand } from './profileResolver';
 
 export default function useStudio() {
-  const { level, points, rank, streakDays } = useUserProgress();
+  const { level, points, rank, streakDays, profile } = useUserProgress();
   const [userId, setUserId] = useState(undefined); // undefined until known
   const [builds, setBuilds] = useState(() => latestBuilds() || []);
   const loadout = useCharacterLoadout({ level, points, rank, streakDays });
@@ -42,7 +43,10 @@ export default function useStudio() {
   }, [userId]));
 
   const petName = petCare.nickname || loadout.pet?.name || null;
-  const me = useMemo(() => ({ pet: petLook(loadout.pet, petCare.nickname), dream }), [loadout.pet, petCare.nickname, dream]);
+  // Outside services (free AI chats, some tools) have their own age rules;
+  // a guest or unknown age counts as under 18 (ageBandFor).
+  const adult = !isMinorBand(ageBandFor(profile));
+  const me = useMemo(() => ({ pet: petLook(loadout.pet, petCare.nickname), dream, adult }), [loadout.pet, petCare.nickname, dream, adult]);
 
   return {
     ready: userId !== undefined,

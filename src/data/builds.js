@@ -26,6 +26,15 @@
 //   option.fromPet  the player's own pet stands in (src/logic/studio.js
 //             petLook): the app makes it with YOUR companion in it.
 //   option.fromDream  filled from their Dream when they have one.
+//   freeTools where to take it next WITHOUT paying: free (mostly open-source)
+//             software that does what people usually pay license fees for.
+//             { name, what, url, adult? }. `adult` hides one from under-18s
+//             (its own terms say so).
+//
+// The belief behind freeTools (docs/north-star.md, in the founder's words):
+// "non-engineer people can finally witness what awesome things software
+// can do for them if they don't have to pay extensive money and license
+// costs for it."
 //
 // Nothing here is read from the network yet. When the Studio proves
 // itself, this moves to app_content like the Finds so it can change
@@ -43,6 +52,10 @@ export const BUILD_KINDS = [
     icon: 'globe-outline',
     blurb: 'Your own web page. A real file that opens in any browser.',
     trophy: { art: 'trophyPage', name: 'Page Tome' },
+    freeTools: [
+      { name: 'VS Code', what: 'A free code editor. Open your page’s file and change anything in it.', url: 'https://code.visualstudio.com' },
+      { name: 'GitHub Pages', what: 'Free hosting: put a page like yours on the web for anyone to visit.', url: 'https://pages.github.com' },
+    ],
     asks: [
       { key: 'name', label: 'Your first name', max: 40, placeholder: 'e.g. Sam', hint: 'A first name is plenty.' },
       { key: 'line', label: 'One line about you', max: 90, placeholder: 'e.g. Learning to fix bikes. Building a repair shop.', fromDream: 'becoming' },
@@ -115,6 +128,10 @@ export const BUILD_KINDS = [
     icon: 'game-controller-outline',
     blurb: 'A catch game starring your pet. Play it, change it, send it.',
     trophy: { art: 'trophyGame', name: 'Game Key' },
+    freeTools: [
+      { name: 'Godot', what: 'A free, open-source game engine. Real games ship with it. No royalties, ever.', url: 'https://godotengine.org' },
+      { name: 'Krita', what: 'Free, open-source painting. Draw your own sprites.', url: 'https://krita.org' },
+    ],
     asks: [
       { key: 'name', label: 'Name your game', max: 40, placeholder: 'e.g. Snack Attack' },
     ],
@@ -185,6 +202,10 @@ export const BUILD_KINDS = [
     icon: 'musical-notes-outline',
     blurb: 'A looping beat with drums and a melody. Change how it feels.',
     trophy: { art: 'trophyBeat', name: 'Beat Elixir' },
+    freeTools: [
+      { name: 'LMMS', what: 'Free, open-source music making: patterns, synths and a full mixer.', url: 'https://lmms.io' },
+      { name: 'Audacity', what: 'A free, open-source audio editor. Record your voice, cut and clean sound.', url: 'https://www.audacityteam.org' },
+    ],
     asks: [
       { key: 'name', label: 'Name your track', max: 40, placeholder: 'e.g. Late Bus Home' },
     ],
@@ -254,6 +275,10 @@ export const BUILD_KINDS = [
     icon: 'storefront-outline',
     blurb: 'A one-page offer for something you could sell. Test it on real people.',
     trophy: { art: 'trophyBusiness', name: 'First Coin Purse' },
+    freeTools: [
+      { name: 'LibreOffice', what: 'A free office suite: documents, spreadsheets, slides. Opens Word and Excel files.', url: 'https://www.libreoffice.org' },
+      { name: 'Inkscape', what: 'Free, open-source drawing. Make your own logo.', url: 'https://inkscape.org' },
+    ],
     asks: [
       { key: 'idea', label: 'What could you sell?', max: 60, placeholder: 'e.g. Bike repairs' },
       { key: 'who', label: 'Who is it for?', max: 60, placeholder: 'e.g. students on campus' },
@@ -310,6 +335,81 @@ export const BUILD_KINDS = [
           says: 'Every page needs **one** next step, the call to action. Two buttons is like no buttons: people freeze and leave.',
           tryIt: 'Change the next step and picture tapping it.',
           check: { q: 'How many main buttons should an offer page have?', options: ['One', 'Three', 'Five'], answer: 0 },
+        },
+      },
+    ],
+  },
+
+  /* ── An AI helper ───────────────────────────────────────────────────── */
+  // What AI can do for you, on free tools: a ready-to-use instruction set
+  // for any chatbot, built from the parts that make AI useful (and honest).
+  {
+    id: 'ai',
+    label: 'An AI helper',
+    medium: 'AI',
+    icon: 'sparkles-outline',
+    blurb: 'Your own AI assistant for one job. Works in any free AI chat.',
+    trophy: { art: 'trophyAi', name: 'Prompt Scroll' },
+    asks: [
+      { key: 'task', label: 'What should it help you with?', max: 90, placeholder: 'e.g. plan cheap, healthy dinners for a week' },
+      { key: 'name', label: 'Name your helper', max: 30, placeholder: 'e.g. Dinner Buddy' },
+    ],
+    freeTools: [
+      { name: 'Ollama', what: 'Free and open source. Runs AI models on your own computer: no account, no subscription.', url: 'https://ollama.com' },
+    ],
+    parts: [
+      {
+        id: 'role', label: 'Role', icon: 'person-outline', start: 'planner',
+        options: [
+          { id: 'planner', label: 'Practical planner', level: 1, say: 'You are a practical planner who turns goals into small, doable steps.' },
+          { id: 'tutor', label: 'Patient tutor', level: 1, say: 'You are a patient tutor. Explain things simply and check that I follow.' },
+          { id: 'coach', label: 'Honest coach', level: 1, say: 'You are an honest coach. Tell me the truth kindly, even when it is not what I want to hear.' },
+          { id: 'critic', label: 'Friendly critic', level: 2, say: 'You are a friendly critic. Push back on my ideas and point out what could go wrong.' },
+        ],
+        lesson: {
+          says: 'Telling an AI **who to be** changes everything it says. A tutor explains, a coach pushes, a planner makes steps. Same AI, different job.',
+          tryIt: 'Switch the role and read the instructions change.',
+          check: { q: 'What does giving an AI a role do?', options: ['Makes it run faster', 'Shapes its answers', 'Unlocks paid features'], answer: 1 },
+        },
+      },
+      {
+        id: 'tone', label: 'Tone', icon: 'chatbubble-ellipses-outline', start: 'plain',
+        options: [
+          { id: 'plain', label: 'Plain words', level: 1, say: 'Use plain words. No jargon.' },
+          { id: 'short', label: 'Short and direct', level: 1, say: 'Keep answers short and direct.' },
+          { id: 'warm', label: 'Encouraging', level: 1, say: 'Be encouraging, but never flatter me.' },
+          { id: 'twelve', label: 'Like I’m 12', level: 2, say: 'Explain things like I am 12, with one everyday example.' },
+        ],
+        lesson: {
+          says: 'AI copies the **tone** you ask for. Ask for plain words and you get plain words. If it rambles, usually nobody told it not to.',
+          tryIt: 'Pick a tone you’d actually want to read every day.',
+          check: { q: 'An AI keeps rambling. What’s the fix?', options: ['Ask for short answers', 'Restart your phone', 'Pay for a bigger plan'], answer: 0 },
+        },
+      },
+      {
+        id: 'format', label: 'Answer shape', icon: 'list-outline', start: 'steps',
+        options: [
+          { id: 'steps', label: 'Numbered steps', level: 1, say: 'Answer as numbered steps I can follow.' },
+          { id: 'bullets', label: 'Short list', level: 1, say: 'Answer as a short bullet list.' },
+          { id: 'table', label: 'Compare in a table', level: 2, say: 'When there are options, compare them in a small table: cost, time and the catch.' },
+        ],
+        lesson: {
+          says: 'The **format** is the shape of the answer: steps, a list, a table. Pick the shape you’ll actually use, and the answer becomes something you can do.',
+          tryIt: 'Choose the shape that fits your task.',
+          check: { q: 'What’s the best format for a recipe?', options: ['One long paragraph', 'Numbered steps', 'A poem about food'], answer: 1 },
+        },
+      },
+      {
+        id: 'honesty', label: 'Honesty rule', icon: 'shield-checkmark-outline', start: 'unsure',
+        options: [
+          { id: 'unsure', label: 'Say when unsure', level: 1, say: 'If you are not sure, say so. Never make things up.' },
+          { id: 'askfirst', label: 'Ask me first', level: 1, say: 'Before you answer, ask me two or three questions so you get it right.' },
+          { id: 'check', label: 'Tell me what to check', level: 2, say: 'Tell me which parts of your answer I should double-check, and where to check them.' },
+        ],
+        lesson: {
+          says: 'AI can **sound sure and still be wrong**. It predicts likely words; it doesn’t check facts. Asking it to admit doubt keeps you safe.',
+          tryIt: 'Pick the rule that would catch a mistake on your task.',
+          check: { q: 'Why double-check what an AI tells you?', options: ['It can be wrong but sound sure', 'It is secretly lying on purpose', 'Free AI always gives fake facts'], answer: 0 },
         },
       },
     ],

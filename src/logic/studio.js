@@ -113,7 +113,11 @@ const LINES = {
   fresh: ['**It works already.** Now let’s see how.', 'The app made it. **Tap a part** and it starts being yours.'],
   changed: ['**You changed that.** It’s yours now.', 'See that? **One change**, whole new feel.'],
   mastered: ['**You get it.** The upgrades are open.', 'That part’s **yours for good.**'],
-  done: ['**You built this.** Take it home and show someone.', 'Every part, understood. **Most people never get here.**'],
+  done: [
+    '**You built this.** Take it home and show someone.',
+    'Every part, understood. **Most people never get here.**',
+    '**No license. No subscription.** You made it, and it’s yours.',
+  ],
 };
 
 // Same moment → same line on the same day, so it doesn't flicker.

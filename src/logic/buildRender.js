@@ -6,7 +6,8 @@
 // No network, no external fonts or scripts: the file works offline, on any
 // device, years from now. Everything they typed goes through esc().
 //
-// `me` personalises it: { pet: petLook() result, dream: their Dream }.
+// `me` personalises it: { pet: petLook() result, dream: their Dream,
+// adult: whether outside AI services can be named (their age rules) }.
 // Both optional; without them it falls back to the option's own look.
 // The file carries a copy, so it still reads right if they change pets.
 //
@@ -321,7 +322,63 @@ a.cta{display:block;text-align:center;background:#2f6f5e;color:#fff;text-decorat
   return shell(cap(idea), style, body);
 }
 
-const RENDERERS = { page: renderPage, game: renderGame, beat: renderBeat, business: renderBusiness };
+/* ── AI helper ────────────────────────────────────────────────────────── */
+
+// The instructions they'll paste into a chatbot, part by part.
+export function aiPrompt(build) {
+  const task = build.answers.task || 'something I am working on';
+  return [
+    pickOf(build, 'role').say,
+    `I want help with: ${task.replace(/[.\s]+$/, '')}.`,
+    [pickOf(build, 'tone').say, pickOf(build, 'format').say, pickOf(build, 'honesty').say].join(' '),
+  ].join('\n\n');
+}
+
+// Free tiers, named only for adults: each service sets its own age rules.
+const FREE_CHATS = [
+  ['ChatGPT', 'https://chatgpt.com'],
+  ['Claude', 'https://claude.ai'],
+  ['Gemini', 'https://gemini.google.com'],
+];
+
+function renderAi(build, kind, me) {
+  const name = build.answers.name || 'My AI helper';
+  const prompt = aiPrompt(build);
+  const where = me?.adult
+    ? `<p class="where">Paste it into a free AI chat:</p><div class="chats">${FREE_CHATS.map(([n, u]) => `<a href="${u}" target="_blank" rel="noopener">${n}</a>`).join('')}</div>`
+    : '<p class="where">Paste it into an AI chat you’re allowed to use. Most have age rules, so check first.</p>';
+  const style = `
+body{background:#f4f2fb;color:#1e1b2e;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.5}
+main{max-width:620px;margin:0 auto;padding:36px 20px}
+.tag{display:inline-block;font-size:13px;font-weight:700;color:#5b45c9;background:#5b45c91a;padding:4px 10px;border-radius:999px}
+h1{font-size:clamp(28px,7vw,40px);line-height:1.1;margin:14px 0 6px;letter-spacing:-0.01em}
+.sub{color:#5a5670}
+pre{white-space:pre-wrap;word-wrap:break-word;background:#fff;border-radius:16px;padding:18px;margin:22px 0 12px;font:15px/1.55 ui-monospace,Menlo,Consolas,monospace;box-shadow:0 4px 18px #0000000d}
+button{font:700 16px system-ui,sans-serif;padding:12px 22px;border-radius:999px;border:0;background:#5b45c9;color:#fff}
+.where{margin-top:22px;font-weight:600}
+.chats{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.chats a{color:#5b45c9;background:#fff;border-radius:999px;padding:8px 14px;text-decoration:none;font-weight:600}
+.note{margin-top:26px;font-size:13px;color:#5a5670}
+`;
+  const body = `<main>
+<span class="tag">AI helper</span>
+<h1>${esc(name)}</h1>
+<p class="sub">Your own instructions. Paste them in once, then just talk.</p>
+<pre id="p">${esc(prompt)}</pre>
+<button id="copy">Copy instructions</button>
+${where}
+<p class="note">No subscription needed. The free versions are enough for this. Double-check anything that matters: AI can sound sure and still be wrong.</p>
+</main>`;
+  const script = `
+document.getElementById('copy').onclick=function(){var t=document.getElementById('p').textContent,b=this;
+ function done(){b.textContent='Copied ✓';setTimeout(function(){b.textContent='Copy instructions';},1600);}
+ if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done,sel);}else sel();
+ function sel(){var r=document.createRange();r.selectNodeContents(document.getElementById('p'));var s=window.getSelection();s.removeAllRanges();s.addRange(r);try{document.execCommand('copy');done();}catch(e){b.textContent='Selected: copy it';}}};
+`;
+  return shell(name, style, body, script);
+}
+
+const RENDERERS = { page: renderPage, game: renderGame, beat: renderBeat, business: renderBusiness, ai: renderAi };
 
 export function renderBuild(build, me = null) {
   const kind = kindOf(build);

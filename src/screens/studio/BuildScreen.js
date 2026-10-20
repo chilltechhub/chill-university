@@ -8,7 +8,7 @@
 // page, your Dream can fill a page block (src/logic/useStudio.js `me`), and
 // your pet comments on how it's going.
 import React, { useCallback, useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../../context/ThemeContext';
@@ -165,9 +165,41 @@ export default function BuildScreen() {
         })}
 
         <Button label="Take it home" icon="download-outline" onPress={takeHome} style={{ marginTop: s.lg }} />
-        <Text style={{ fontSize: t.xs, color: c.text3, marginTop: s.sm, textAlign: 'center' }}>
-          {isMastered(build) ? 'One file. Opens in any browser. You understand every part of it.' : 'One file. Opens in any browser, on any device.'}
-        </Text>
+        <RichText style={{ fontSize: t.xs, color: c.text3, marginTop: s.sm, textAlign: 'center' }} boldStyle={{ color: c.text2 }}>
+          {isMastered(build)
+            ? 'One file. **No license, no subscription, no account.** Yours to keep, and you understand every part of it.'
+            : 'One file. **No license, no subscription, no account.** Opens in any browser, yours to keep.'}
+        </RichText>
+
+        {/* Where to take it next without paying for it (docs/north-star.md:
+            software's power, without the license costs). */}
+        {(() => {
+          const tools = (kind.freeTools || []).filter(ft => !ft.adult || me.adult);
+          if (!tools.length) return null;
+          return (
+            <>
+              <SectionLabel label="Go further, free" />
+              <Text style={{ fontSize: t.sm, color: c.text2, marginBottom: s.sm }}>
+                The pros often pay license fees for tools like these. These ones are free.
+              </Text>
+              {tools.map(ft => (
+                <TouchableOpacity
+                  key={ft.name}
+                  onPress={() => Linking.openURL(ft.url).catch(() => {})}
+                  accessibilityRole="link"
+                  accessibilityLabel={`${ft.name}: ${ft.what} Opens the site`}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, padding: s.md, marginBottom: s.sm, borderRadius: r.lg, backgroundColor: c.bg1, borderWidth: 0.5, borderColor: c.border }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: t.md, fontWeight: t.semibold, color: c.text1 }}>{ft.name}</Text>
+                    <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>{ft.what}</Text>
+                  </View>
+                  <Ionicons name="open-outline" size={16} color={c.text3} />
+                </TouchableOpacity>
+              ))}
+            </>
+          );
+        })()}
 
         {!!kind.deeper && (
           <Button
