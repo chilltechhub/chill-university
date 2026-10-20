@@ -20,10 +20,12 @@ import PetCompanion from '../../components/PetCompanion';
 import PartSheet from './PartSheet';
 import { saveBuild, deleteBuild } from '../../api/buildService';
 import { recordExport } from '../../api/pathService';
+import { growIntoProject } from '../../api/buildProjects';
+import { openTarget } from '../../logic/openTarget';
 import useStudio from '../../logic/useStudio';
 import { useAccess } from '../../../context/AccessContext';
 import {
-  kindOf, optionOf, partLevel, buildTitle, buildFilename, receiptLine, nextPart, setAnswers, isMastered, receipt,
+  kindOf, optionOf, partLevel, buildTitle, buildFilename, receiptLine, nextPart, setAnswers, isMastered, receipt, withProject,
   LEVEL_NAMES, LEVEL_MADE, LEVEL_MASTERED,
 } from '../../logic/builds';
 import { companionLine } from '../../logic/studio';
@@ -75,6 +77,29 @@ export default function BuildScreen() {
       signalAction('build-exported', { kind: build.kind });
     } catch (e) {
       notify('Could not export', e?.message || 'Try again.');
+    }
+  };
+
+  // From "the app made it with me" to "I'm making it": one of their own
+  // Workshop projects, with the kind's first real step as its next action.
+  const [growing, setGrowing] = useState(false);
+  const grow = async () => {
+    if (build.projectId) {
+      if (await openTarget(navigation, { kind: 'project', id: build.projectId })) return;
+      // The project was deleted: let them grow a new one.
+      update(withProject(build, null));
+    }
+    if (!userId) { notify('Sign in to grow it', 'Projects save to your account, so sign in first. Your Build stays here either way.'); return; }
+    setGrowing(true);
+    try {
+      const project = await growIntoProject(userId, build);
+      update(withProject(build, project.id));
+      signalAction('project-started');
+      openTarget(navigation, { kind: 'project', id: project.id });
+    } catch (e) {
+      notify('Could not start the project', e?.message || 'Try again.');
+    } finally {
+      setGrowing(false);
     }
   };
 
@@ -174,6 +199,21 @@ export default function BuildScreen() {
             ? 'One file. **No license, no subscription, no account.** Yours to keep, and you understand every part of it.'
             : 'One file. **No license, no subscription, no account.** Opens in any browser, yours to keep.'}
         </RichText>
+
+        <Button
+          label={build.projectId ? 'Open your project' : 'Grow it into a project'}
+          icon={build.projectId ? 'hammer' : 'hammer-outline'}
+          variant="secondary"
+          busy={growing}
+          onPress={grow}
+          style={{ marginTop: s.md }}
+          accessibilityLabel={build.projectId ? 'Open the Workshop project this grew into' : 'Grow it into your own Workshop project'}
+        />
+        {!build.projectId && !!kind.growNext && (
+          <Text style={{ fontSize: t.xs, color: c.text3, marginTop: s.sm, textAlign: 'center' }}>
+            Your own project in the Workshop. First step: {kind.growNext.charAt(0).toLowerCase() + kind.growNext.slice(1)}.
+          </Text>
+        )}
 
         {/* Where to take it next without paying for it (docs/north-star.md:
             software's power, without the license costs). */}

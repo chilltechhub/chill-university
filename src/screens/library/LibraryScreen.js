@@ -106,9 +106,9 @@ export const LIBRARY_HUBS = [
     accentKey: 'purple',
     items: [
       { label: 'Studio', screen: 'StudioScreen', icon: 'color-wand-outline', desc: 'A page, a game, a beat, a business or an AI helper', featured: true },
-      { label: 'Software for You', screen: 'SoftwarePathScreen', icon: 'rocket-outline', desc: 'What software can do for you, for free' },
+      { label: 'Missions', screen: 'SoftwarePathScreen', icon: 'rocket-outline', desc: 'Software for You, and ten-minute missions' },
       { label: 'The Workshop', screen: 'ProjectsScreen', icon: 'hammer-outline', desc: 'Your own projects, from idea to done' },
-      { label: 'Portfolio Archives', screen: 'PortfolioScreen', icon: 'briefcase-outline', desc: 'What you have made and finished' },
+      { label: 'Showcase', screen: 'PortfolioScreen', icon: 'briefcase-outline', desc: 'What you have made and finished' },
       // Extra (featureCatalog `place: 'extra'`): projects have an Idea stage.
       { label: 'Idea Garden', screen: 'IdeaGardenScreen', icon: 'leaf-outline', desc: 'Grow ideas into projects' },
     ],

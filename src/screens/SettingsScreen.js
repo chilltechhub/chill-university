@@ -522,7 +522,7 @@ export default function SettingsScreen() {
                 <Text style={{ fontSize: 30 }}>{rankInfo.emoji}</Text>
               </LevelRing>
               <Text style={{ fontSize: t.xl, fontFamily: ui.titleFont, fontWeight: t.bold, color: c.text1, marginBottom: 2 }}>
-                {profile.display_name || 'Commander'}
+                {profile.display_name || 'You'}
               </Text>
               <Text style={{ fontSize: t.xs, fontFamily: ui.numberFont, fontWeight: t.semibold, color: c.gold, marginBottom: 4 }}>
                 LV {profile.level || 1} · {rankInfo.label}

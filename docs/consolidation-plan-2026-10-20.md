@@ -2,6 +2,15 @@
 
 *2026-10-20. A pass over the whole app after the Studio, Software for You and the free-software work. Checked against the [North Star](north-star.md) and the [Studio plan](studio-plan.md).*
 
+## Phase 2, done (2026-10-20)
+
+- **Names:** App Nav → **Goals**, Academy Classes → **Classes**, Portfolio Archives → **Showcase**, Practice games → **Practice**, "Commander" → **You** (until you set a name). Ids and routes are unchanged, so saved progress and links keep working. *App Nav was the founder's own name (2026-10-10); switching back is one label in featureCatalog.js.*
+- **Missions:** one list (Library → Make → Missions; Learn; Home's card) with **Software for You** first and the ten-minute **quick missions** (were Quests) after. Quick missions open in Classes' screen and come back to Missions.
+- **Grow it into a project:** on every Build. Makes a Workshop project with the kind's first real step as its next action, a "Grown from a Studio Build" milestone, and the link both ways (the Build then says "Open your project").
+- **One Today card:** the Focus slot draws focus, Right now, what's on, the next thing on the desk and one check-in. Who gets which part (stages, picks, saved layouts) is untouched; Edit layout still shows them apart.
+- **One card rule:** tinted = yours (Dream), edge = in progress (goal, a Build halfway, Right now), plain = everything else. Persona cards, You and Wisdom lost their decorative edges.
+- **Home's order** for new layouts: Dream → Studio → Today's Find → **your goal** → **Today** → You. Saved layouts keep theirs.
+
 ## The short version
 
 The app grew in layers. Each layer added its own way to **tell you what to do next**, its own place to **make things**, and its own **name**. Now the spine is clear (**Discover → Learn → Make → Do**, through the Studio), so the older layers can fold into it.
@@ -138,5 +147,5 @@ Community, Mentors, Feed, Fellow Scholars, Labs, Lesson Builder, Organizations: 
 | Phase | What | Risk |
 |---|---|---|
 | **1 (done)** | Make page in the Library; paths and tours updated; the visual fixes in §11; a syntax check so a typo in any screen fails `npm run check` | Low |
-| **2** | Renames (§9) · Quests + Software for You = Missions · "Grow it into a project" · one Today card | Medium: touches tours, saved layouts |
+| **2 (done)** | Renames (§9: Goals, Classes, Showcase, Practice, your name) · Quests + Software for You = **Missions** · **Grow it into a project** · one **Today** card · one card rule · Home's order: goal → Today → You | Medium |
 | **3** | Make tab (§10) · You page · Saved with Inbox · Receipts · retire Challenges and Idea Garden | Higher: navigation and habits change. Test with real people first |

@@ -11,17 +11,17 @@
 // database error they can't act on.
 
 // ─── defaultWidgets ─────────────────────────────────────────────────────────
-// Every type opens the same four, in this order, and differs after that:
+// Every type opens the same five, in this order, and differs after that:
 //
-//   hq          who you are — name, rank, and the Study/Play buttons
-//   stageSteps  where you are in the app and the two things that open more
-//   focus       today's focus, with the small calendar beside it
-//   compass     the goal in flight, then its steps under it
+//   compass     the goal in flight: the one next step (its steps and the
+//               stage card step aside while it shows)
+//   focus       Today: focus, Right now, what's on, the next thing on the
+//               desk and a check-in, in one card (TodayCard.js)
+//   hq          who you are: name, level, and the Study/Play buttons
 //
-// It used to lead with the Compass. The stage card now comes first because
-// it answers the question that was actually being asked — "why can I only
-// see some of this?" — and quotes the goal's own next step while it does,
-// so nothing is lost by the Compass sitting one card lower.
+// Since 2026-10-20 (docs/consolidation-plan-2026-10-20.md §5): the next
+// step first, then today, then who you are. It used to open with who you
+// are and put the goal third, under two cards that weren't a next step.
 //
 // Stats, quotes and rings come after the things to do, as before.
 // The ORDERED list of Home widgets a new profile of this type gets, by key.
@@ -55,11 +55,11 @@ export const PERSONAS = [
     // persona filter in Classes.js.
     changes: [
       'Home adds your habit rings, life areas and today’s drills',
-      'Academy shows the general and wellbeing subjects',
+      'Classes shows the general and wellbeing subjects',
       'Sectors start as Physical, Mental and Social',
     ],
     adultOnly: false,
-    defaultWidgets: ['hq', 'focus', 'compass', 'goalSteps', 'stageSteps', 'desk', 'activities', 'lifeAreas', 'habitRings', 'dailyDrills', 'quests', 'wayfinder', 'wisdom'],
+    defaultWidgets: ['compass', 'goalSteps', 'stageSteps', 'focus', 'hq', 'desk', 'activities', 'lifeAreas', 'habitRings', 'dailyDrills', 'quests', 'wayfinder', 'wisdom'],
   },
   {
     key: 'STUDENT',
@@ -71,11 +71,11 @@ export const PERSONAS = [
     questLine: 'Knowledge Tree',
     changes: [
       'Home adds study blocks, subject progress and today’s drills',
-      'Academy shows the full grade-level coursework',
+      'Classes shows the full grade-level coursework',
       'Sectors start as Mental, Professional and Social',
     ],
     adultOnly: false,
-    defaultWidgets: ['hq', 'focus', 'compass', 'goalSteps', 'stageSteps', 'desk', 'activities', 'studyBlocks', 'dailyDrills', 'classProgress', 'quests', 'wayfinder', 'checkins'],
+    defaultWidgets: ['compass', 'goalSteps', 'stageSteps', 'focus', 'hq', 'desk', 'activities', 'studyBlocks', 'dailyDrills', 'classProgress', 'quests', 'wayfinder', 'checkins'],
   },
   {
     key: 'BUSINESS',
@@ -87,11 +87,11 @@ export const PERSONAS = [
     questLine: 'Empire Builder',
     changes: [
       'Home adds recurring ops, a systems check and your organization',
-      'Academy adds the business-operations subjects',
+      'Classes adds the business-operations subjects',
       'Sectors start as Professional, Financial and Digital',
     ],
     adultOnly: true,
-    defaultWidgets: ['hq', 'focus', 'compass', 'goalSteps', 'stageSteps', 'desk', 'activities', 'recurringOps', 'systemsCheck', 'builds', 'quests', 'orgSnapshot', 'checkins'],
+    defaultWidgets: ['compass', 'goalSteps', 'stageSteps', 'focus', 'hq', 'desk', 'activities', 'recurringOps', 'systemsCheck', 'builds', 'quests', 'orgSnapshot', 'checkins'],
   },
   {
     key: 'ENTREPRENEUR',
@@ -103,11 +103,11 @@ export const PERSONAS = [
     questLine: "Founder's Quest",
     changes: [
       'Home adds the founder quest, your vault and your targets',
-      'Academy adds the entity, credit and funding tracks',
+      'Classes adds the entity, credit and funding tracks',
       'Sectors start as Financial, Professional and Creative',
     ],
     adultOnly: true,
-    defaultWidgets: ['hq', 'focus', 'compass', 'goalSteps', 'stageSteps', 'desk', 'activities', 'founderQuest', 'builds', 'vaultStatus', 'targetsReadiness', 'quests', 'ideas', 'checkins'],
+    defaultWidgets: ['compass', 'goalSteps', 'stageSteps', 'focus', 'hq', 'desk', 'activities', 'founderQuest', 'builds', 'vaultStatus', 'targetsReadiness', 'quests', 'ideas', 'checkins'],
   },
 ];
 

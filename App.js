@@ -551,7 +551,7 @@ function AppInner() {
               locked / experimental / Plus rosters. Reachable from Home's
               card, Settings, the Library header and every unlock sheet,
               so it lives on the root stack rather than inside a tab. */}
-          <Stack.Screen name="Compass"           component={CompassScreen} options={{ title: 'App Nav' }} />
+          <Stack.Screen name="Compass"           component={CompassScreen} options={{ title: 'Goals' }} />
           <Stack.Screen name="Stats"               component={GatedStats} options={{ title: 'Insights' }} />
           <Stack.Screen name="WorkMode"            component={GatedWorkMode} />
           {/* The paywall / "your plan" page. Slides up rather than across,

@@ -30,9 +30,9 @@ const PLAY_STEPS = [
 // App Nav (route 'Compass'). The guide sends people here once their first
 // goal is done (src/logic/useGuidedFirstGoal.js), and this is what greets them.
 const APP_NAV_STEPS = [
-  { title: 'App Nav', body: "Your **map** of the app. Every **stage**: ✓ open, 🔒 still to come.", id: 'appnav-stages' },
+  { title: 'Goals', body: "Your **goal**, and every **stage** of the app: ✓ open, 🔒 still to come.", id: 'appnav-stages' },
   { title: 'How stages open', body: "**Finish a goal** or **gain a level**. Each one opens the next stage." },
-  { title: 'Getting back', body: "Tap the **arrow** (top left) for Home. **App Nav** is always on your goal card." },
+  { title: 'Getting back', body: "Tap the **arrow** (top left) for Home. **Goals** is always on your goal card." },
 ];
 
 const SCREEN_FEATURES = {
@@ -50,7 +50,7 @@ const SCREEN_FEATURES = {
   Training: [
     { title: 'Where the points come from', body: "Your **points** and **streak**. Fun to watch. Your **goals** are the real score.", id: 'training-stats' },
     { title: 'Daily Drills & Challenges', body: "**Daily Drills**: three small targets, new each day. **Challenges**: the bigger weekly ones.", id: 'training-games' },
-    { title: 'Classes', body: "**Lessons** by subject, with quizzes and quests. The games test what they teach.", id: 'training-classes' },
+    { title: 'Classes', body: "**Lessons** by subject, with quizzes and missions. The games test what they teach.", id: 'training-classes' },
     { title: 'Practice', body: "Tap **Practice** for a game on what you learn.", id: 'training-enter' },
     { title: 'Try one now', body: "One round takes **two minutes**, and helps the app suggest the right things.", id: 'training-enter' },
   ],
@@ -98,7 +98,7 @@ const SCREEN_FEATURES = {
       // LibraryScreen.js). No TourSpot ever had that id, so this step
       // rendered with no highlight at all, describing a screen the user
       // couldn't see. Now points at the card that actually holds it.
-      title: 'Portfolio Archives',
+      title: 'Showcase',
       body: "Finish a project or class and it **lands here** on its own. Your record to show people.",
       id: 'hub-PortfolioScreen',
       librarySubTab: 'make',
@@ -352,7 +352,7 @@ export function hasScreenTutorial(routeName) {
 const STARTER_FEATURES = {
   Home: [
     { title: 'Your first goal', body: "**The one thing to do now.** Each step has an **Open** button that takes you there.", id: 'home-compass' },
-    { title: "What's next", body: "The app opens **in stages**. Finish a goal or gain a level for the next one. **App Nav** shows them all.", id: 'home-appnav' },
+    { title: "What's next", body: "The app opens **in stages**. Finish a goal or gain a level for the next one. **Goals** shows them all.", id: 'home-appnav' },
     { title: 'Play', body: "**Play** starts a game picked for you. **Press and hold** to choose one.", id: 'home-study-play' },
   ],
   LibraryScreen: [
@@ -419,7 +419,7 @@ const FIRST_VISIT = {
     { title: 'Your ideas', body: "Each idea is a **plant**. Tap **+** to add one. Ready? **Make it a project.**", id: 'ideas-list' },
   ],
   ClassesMain: [
-    { title: 'Classes', body: "Pick a **subject**. **Quests** at the top take ten minutes.", id: 'classes-list' },
+    { title: 'Classes', body: "Pick a **subject**. **Quick missions** at the top take ten minutes.", id: 'classes-list' },
   ],
 };
 const FIRST_VISIT_STEPS = 2;

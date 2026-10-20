@@ -75,7 +75,7 @@ export const FEATURES = [
   {
     id: 'training',
     place: 'front',
-    label: 'Practice games',
+    label: 'Practice',
     screen: 'Training',
     icon: 'game-controller-outline',
     gate: 'open',
@@ -152,7 +152,7 @@ export const FEATURES = [
   {
     id: 'classes',
     place: 'front',
-    label: 'Academy Classes',
+    label: 'Classes',
     screen: 'ClassesStack',
     icon: 'ribbon-outline',
     gate: 'open',
@@ -163,10 +163,11 @@ export const FEATURES = [
   {
     id: 'compass',
     place: 'front',
-    // Shown as "App Nav" since 2026-10-10 (user: "compass should say APP
-    // NAV"). The id and route stay 'compass' / 'Compass': saved progress
-    // and every navigate() use them.
-    label: 'App Nav',
+    // "Goals" since 2026-10-20 (docs/consolidation-plan-2026-10-20.md §9:
+    // it's where your goal and the stages live). Was "App Nav" from
+    // 2026-10-10 (user: "compass should say APP NAV"). The id and route stay
+    // 'compass' / 'Compass': saved progress and every navigate() use them.
+    label: 'Goals',
     screen: 'Compass',
     icon: 'navigate-outline',
     gate: 'open',
@@ -179,7 +180,7 @@ export const FEATURES = [
   {
     id: 'portfolio',
     place: 'background',
-    label: 'Portfolio Archives',
+    label: 'Showcase',
     screen: 'PortfolioScreen',
     icon: 'briefcase-outline',
     gate: 'locked',

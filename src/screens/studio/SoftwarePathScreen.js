@@ -1,8 +1,16 @@
 // src/screens/studio/SoftwarePathScreen.js
-// Software for You: four missions that teach, show, practise and do what
-// software can do for someone who isn't an engineer, for free
-// (src/data/softwarePath.js, docs/north-star.md).
-import React from 'react';
+// Missions: everything that teaches by doing, in one list
+// (docs/consolidation-plan-2026-10-20.md §1). Two kinds, one shape: learn it,
+// see or research it, check it, do one real thing.
+//
+//   Software for You  four missions on what software can do for someone
+//                     who isn't an engineer, for free (src/data/softwarePath.js)
+//   Quick missions    ten-minute ones on a single idea (src/data/quests.js,
+//                     "Quests" until 2026-10-20). They open in Classes'
+//                     Quest screen, which comes back here.
+//
+// The route keeps its name: the Software for You goal's steps point at it.
+import React, { useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -12,6 +20,11 @@ import RichText from '../../components/RichText';
 import PetCompanion from '../../components/PetCompanion';
 import usePath from './usePath';
 import { SOFTWARE_PATH } from '../../data/softwarePath';
+import { questsInOrder } from '../../data/quests';
+import { useQuestProgress } from '../../logic/questProgress';
+import { goToScreen } from '../../logic/appRoutes';
+import { useAccess } from '../../../context/AccessContext';
+import { useProfiles } from '../../../context/ProfileAccountsContext';
 
 const BEATS = [
   ['seen', 'Learn'],
@@ -23,6 +36,14 @@ export default function SoftwarePathScreen() {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s, radius: r, accent } = useTheme();
   const { studio, summary } = usePath();
+  const { purposeKey } = useAccess();
+  const { activeType } = useProfiles();
+  const questState = useQuestProgress();
+  // Unfinished first, then done (same order as Classes and Home).
+  const quick = useMemo(() => {
+    const ordered = questsInOrder(activeType, purposeKey);
+    return [...ordered.filter(q => !questState.finished.has(q.id)), ...ordered.filter(q => questState.finished.has(q.id))];
+  }, [activeType, purposeKey, questState.finished]);
 
   const line = summary.done === summary.total
     ? '**All four done.** You’ve seen it, practised it and done it. That’s yours now.'
@@ -42,7 +63,10 @@ export default function SoftwarePathScreen() {
           <Text style={{ fontSize: t.md, color: accent.primary, fontWeight: t.semibold }}>Back</Text>
         </TouchableOpacity>
 
-        <ScreenTitle title={SOFTWARE_PATH.title} subtitle={SOFTWARE_PATH.promise} />
+        <ScreenTitle title="Missions" subtitle="Learn it, see it, practise it, then do one real thing." />
+
+        <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1 }}>{SOFTWARE_PATH.title}</Text>
+        <Text style={{ fontSize: t.sm, color: c.text3, marginBottom: s.md }}>{SOFTWARE_PATH.promise}</Text>
 
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: s.sm, marginBottom: s.lg }}>
           {!!studio.pet && <PetCompanion pet={studio.pet} size={44} />}
@@ -89,6 +113,39 @@ export default function SoftwarePathScreen() {
             </TouchableOpacity>
           );
         })}
+
+        {quick.length > 0 && (
+          <>
+            <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginTop: s.xl }}>Quick missions</Text>
+            <Text style={{ fontSize: t.sm, color: c.text3, marginBottom: s.md }}>
+              Ten minutes each: an idea, your own research, a quick check, one real thing to do.
+            </Text>
+            {quick.map(q => {
+              const done = questState.finished.has(q.id);
+              const started = !done && questState.byId[q.id]?.step && questState.byId[q.id].step !== 'spark';
+              return (
+                <TouchableOpacity
+                  key={q.id}
+                  onPress={() => goToScreen(navigation, 'Quest', { questId: q.id, from: 'Missions' })}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${q.title}. ${done ? 'Done' : started ? 'In progress' : `${q.minutes} minutes`}`}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, padding: s.md, marginBottom: s.sm, borderRadius: r.lg, backgroundColor: c.bg1, borderWidth: done ? 1.5 : 0.5, borderColor: done ? accent.primary : c.border }}
+                >
+                  <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: accent.primaryLight, alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name={done ? 'checkmark' : q.icon} size={18} color={accent.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: t.md, fontWeight: t.semibold, color: c.text1 }} numberOfLines={2}>{q.title}</Text>
+                    <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>
+                      {done ? 'Done' : started ? 'In progress' : `${q.subjectLabel} · ${q.minutes} min`}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={c.text3} />
+                </TouchableOpacity>
+              );
+            })}
+          </>
+        )}
       </ScrollView>
     </View>
   );

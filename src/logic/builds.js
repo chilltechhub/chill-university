@@ -56,10 +56,14 @@ export function normalizeBuild(raw) {
     answers,
     picks,
     levels,
+    // The Workshop project it grew into ("Grow it into a project"), if any.
+    projectId: typeof raw.projectId === 'string' && raw.projectId ? raw.projectId : null,
     createdAt: raw.createdAt || null,
     updatedAt: raw.updatedAt || null,
   };
 }
+
+export const withProject = (build, projectId, now) => touch(build, { projectId }, now);
 
 // The app makes it: their answers, its picks.
 export function newBuild(kindId, answers = {}, now) {

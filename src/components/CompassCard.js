@@ -342,11 +342,11 @@ function WhatsNext({ live = false }) {
         <TourSpot id="home-appnav" radius={8}>
           <TouchableOpacity
             onPress={() => navigation.navigate('Compass')}
-            accessibilityRole="button" accessibilityLabel="Open App Nav"
+            accessibilityRole="button" accessibilityLabel="Open Goals"
             hitSlop={8}
             style={{ borderWidth: 1, borderColor: accent.primary, borderRadius: r.sm, paddingHorizontal: 10, paddingVertical: 4 }}
           >
-            <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: accent.primary }}>App Nav</Text>
+            <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: accent.primary }}>Goals</Text>
           </TouchableOpacity>
         </TourSpot>
       </View>

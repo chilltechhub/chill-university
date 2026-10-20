@@ -85,7 +85,7 @@ const APP = {
   review:     { label: 'Weekly Review', screen: 'WeeklyReviewScreen', icon: 'calendar-clear-outline' },
   workMode:   { label: 'Work Mode focus timer', screen: 'WorkModeScreen', icon: 'timer-outline' },
   portfolio:  { label: 'Portfolio', screen: 'PortfolioScreen', icon: 'briefcase-outline' },
-  academy:    { label: 'Academy classes', screen: 'ClassesStack', icon: 'ribbon-outline' },
+  academy:    { label: 'Classes', screen: 'ClassesStack', icon: 'ribbon-outline' },
   mental:     { label: 'Mental life area', screen: 'LifeAreaScreen', params: { areaId: 'mental' }, icon: 'happy-outline' },
   physical:   { label: 'Physical life area', screen: 'LifeAreaScreen', params: { areaId: 'physical' }, icon: 'fitness-outline' },
   social:     { label: 'Social life area', screen: 'LifeAreaScreen', params: { areaId: 'social' }, icon: 'people-outline' },

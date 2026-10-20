@@ -26,6 +26,8 @@
 //   option.fromPet  the player's own pet stands in (src/logic/studio.js
 //             petLook): the app makes it with YOUR companion in it.
 //   option.fromDream  filled from their Dream when they have one.
+//   growNext  the first real step once it grows into their own Workshop
+//             project ("Grow it into a project" on the Build screen).
 //   freeTools where to take it next WITHOUT paying: free (mostly open-source)
 //             software that does what people usually pay license fees for.
 //             { name, what, url, adult? }. `adult` hides one from under-18s
@@ -52,6 +54,7 @@ export const BUILD_KINDS = [
     icon: 'globe-outline',
     blurb: 'Your own web page. A real file that opens in any browser.',
     trophy: { art: 'trophyPage', name: 'Page Tome' },
+    growNext: 'Add one real link to your page: something you made or care about',
     freeTools: [
       { name: 'VS Code', what: 'A free code editor. Open your page’s file and change anything in it.', url: 'https://code.visualstudio.com' },
       { name: 'GitHub Pages', what: 'Free hosting: put a page like yours on the web for anyone to visit.', url: 'https://pages.github.com' },
@@ -128,6 +131,7 @@ export const BUILD_KINDS = [
     icon: 'game-controller-outline',
     blurb: 'A catch game starring your pet. Play it, change it, send it.',
     trophy: { art: 'trophyGame', name: 'Game Key' },
+    growNext: 'Get one friend to play it and write down what they said',
     freeTools: [
       { name: 'Godot', what: 'A free, open-source game engine. Real games ship with it. No royalties, ever.', url: 'https://godotengine.org' },
       { name: 'Krita', what: 'Free, open-source painting. Draw your own sprites.', url: 'https://krita.org' },
@@ -202,6 +206,7 @@ export const BUILD_KINDS = [
     icon: 'musical-notes-outline',
     blurb: 'A looping beat with drums and a melody. Change how it feels.',
     trophy: { art: 'trophyBeat', name: 'Beat Elixir' },
+    growNext: 'Record ten seconds of your own sound in Audacity',
     freeTools: [
       { name: 'LMMS', what: 'Free, open-source music making: patterns, synths and a full mixer.', url: 'https://lmms.io' },
       { name: 'Audacity', what: 'A free, open-source audio editor. Record your voice, cut and clean sound.', url: 'https://www.audacityteam.org' },
@@ -275,6 +280,7 @@ export const BUILD_KINDS = [
     icon: 'storefront-outline',
     blurb: 'A one-page offer for something you could sell. Test it on real people.',
     trophy: { art: 'trophyBusiness', name: 'First Coin Purse' },
+    growNext: 'Show the offer to one real person and ask what they would pay',
     freeTools: [
       { name: 'LibreOffice', what: 'A free office suite: documents, spreadsheets, slides. Opens Word and Excel files.', url: 'https://www.libreoffice.org' },
       { name: 'Inkscape', what: 'Free, open-source drawing. Make your own logo.', url: 'https://inkscape.org' },
@@ -350,6 +356,7 @@ export const BUILD_KINDS = [
     icon: 'sparkles-outline',
     blurb: 'Your own AI assistant for one job. Works in any free AI chat.',
     trophy: { art: 'trophyAi', name: 'Prompt Scroll' },
+    growNext: 'Use your helper for one real task this week, and note what it got wrong',
     asks: [
       { key: 'task', label: 'What should it help you with?', max: 90, placeholder: 'e.g. plan cheap, healthy dinners for a week' },
       { key: 'name', label: 'Name your helper', max: 30, placeholder: 'e.g. Dinner Buddy' },

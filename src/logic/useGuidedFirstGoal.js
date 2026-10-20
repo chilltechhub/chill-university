@@ -354,7 +354,7 @@ export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
     const pick = offered || (!firstDone && asked ? { id: 'first', label: 'Your first goal' } : null);
     if (!showAppNav && !pick && asked) {
       setAsked(false);
-      startLesson([{ go: 'Home', title: "What's next", body: "**No goal waiting** right now. **App Nav** shows every stage and what's open.", id: 'home-appnav', passthrough: true, skipLabel: 'OK' }]);
+      startLesson([{ go: 'Home', title: "What's next", body: "**No goal waiting** right now. **Goals** shows every stage and what's open.", id: 'home-appnav', passthrough: true, skipLabel: 'OK' }]);
       return undefined;
     }
     if (!showAppNav && (!pick || (!asked && startPointedRef.current === pick.id))) return undefined;
@@ -366,8 +366,8 @@ export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
         betweenRef.current = 'appnav';
         startLesson([{
           go: 'Home',
-          title: 'App Nav',
-          body: "Nice. This is **App Nav**: every **stage** of the app, and **what's next**. Tap it.",
+          title: 'Goals',
+          body: "Nice. This is **Goals**: your goal, every **stage** of the app, and **what's next**. Tap it.",
           id: 'home-appnav',
           passthrough: true,
           skipLabel: 'Later',

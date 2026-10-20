@@ -64,7 +64,8 @@ export default function StudioCard({ variant = 'card', pal }) {
   // Same side margins as the Dream and Today's Find above and below it.
   return (
     <View style={{ marginHorizontal: s.lg }}>
-    <Card>
+    {/* An edge while a Build is halfway: it's in progress (Home's card rule). */}
+    <Card accentEdge={!!last && !isMastered(last)}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <Eyebrow>Studio</Eyebrow>
         {!!last && (

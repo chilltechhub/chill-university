@@ -111,12 +111,12 @@ export const PICKABLES = [
   },
   {
     id: 'quests', group: 'learn', icon: 'flag-outline',
-    label: 'Quests', blurb: 'Ten-minute challenges that end in a real task.',
+    label: 'Quick missions', blurb: 'Ten minutes each, ending in one real thing to do.',
     widgets: ['quests'],
   },
   {
     id: 'training', group: 'learn', icon: 'game-controller-outline',
-    label: 'Practice games', blurb: 'Short games on what you learn, and daily drills.',
+    label: 'Practice', blurb: 'Short games on what you learn, and daily drills.',
     features: ['training'], games: 'all', extraWidgets: ['dailyDrills'],
   },
   {

@@ -2,7 +2,7 @@
 //
 // Shared chrome for the persona dashboard widgets. Home's original nine
 // widgets each hand-rolled this same card (bg1, r.lg, s.lg padding, hairline
-// border, a coloured top edge) inline in HomeScreen's render; the eleven
+// border) inline in HomeScreen's render; the eleven
 // persona widgets share it from here instead, so they can't drift apart.
 //
 // The `empty` prop matters more than it looks. Most of these widgets are
@@ -18,7 +18,10 @@ import { useTheme } from '../../../context/ThemeContext';
 
 export default function WidgetCard({
   title,
-  accent,            // colour of the top edge; defaults to the theme's teal
+  // Colour of the icon and the action link. Not an edge since 2026-10-20:
+  // Home's one card rule (docs/consolidation-plan-2026-10-20.md §11) is
+  // tinted = yours, edge = in progress, plain = everything else.
+  accent,
   icon,              // optional Ionicons name shown next to the title
   action,            // optional right-hand label, e.g. "Planner →"
   onAction,
@@ -33,7 +36,6 @@ export default function WidgetCard({
     <View style={{
       backgroundColor: c.bg1, borderRadius: ui.cardRadius, padding: s.lg,
       marginHorizontal: s.lg, borderWidth: ui.borderWidth, borderColor: c.border,
-      borderTopWidth: 2, borderTopColor: edge,
     }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: s.md }}>
         {/* flexShrink + two lines at most: a long title ("Stage 3 of 10 · Three more

@@ -183,7 +183,7 @@ export default function GamesScreen() {
   // is just the email's local-part set at signup (see LoginScreen.js) and
   // never updated after that, so leading with it here showed the raw
   // signup email as this screen's header instead of the chosen name.
-  const displayName = profile?.traveler_name || profile?.display_name || profile?.username || 'Commander'; // same fallback as Home and Profile
+  const displayName = profile?.traveler_name || profile?.display_name || profile?.username || 'You'; // same fallback as Home and Profile
 
   // Refresh saved skill levels whenever this screen regains focus, so a
   // level picked mid-game shows up here as soon as you back out.
@@ -316,11 +316,11 @@ export default function GamesScreen() {
                 setTimeout(() => navigation.navigate('Library', { screen: 'SoftwarePathScreen' }), 0);
               }}
               accessibilityRole="button"
-              accessibilityLabel="Software for You: what software can do for you, for free"
+              accessibilityLabel="Missions: learn it, see it, then do one real thing"
               style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: s.md }}
             >
               <Ionicons name="rocket-outline" size={15} color={c.teal} />
-              <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.teal }}>Software for You · 4 missions</Text>
+              <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.teal }}>Missions · learn it, then do it</Text>
             </TouchableOpacity>
 
             {/* Learn first (2026-10-18): Classes is the big button, the

@@ -30,6 +30,7 @@ import TourSpot from '../components/TourSpot';
 import RememberThis from '../components/RememberThis';
 import TodayReview from '../components/TodayReview';
 import RightNowCard from '../components/RightNowCard';
+import TodayCard from '../components/TodayCard';
 import CalmHome from '../components/CalmHome';
 import DreamCard from '../components/DreamCard';
 import StudioCard from '../components/StudioCard';
@@ -161,9 +162,12 @@ function fmtActivityTime(t24) {
 // so a Student who wants the Vault on their dashboard can just un-hide it.
 // The account type decides the DEFAULT layout, not what's permitted.
 const WIDGET_DEFS = [
-  { key: 'hq',         title: 'Commander' },
+  { key: 'hq',         title: 'You' },
   { key: 'wisdom',      title: "Today's Wisdom" },
-  { key: 'focus',       title: 'Focus & Calendar' },
+  // 'focus' is drawn as the Today card since 2026-10-20: focus, Right now,
+  // and whichever of activities / desk / checkins this Home has, in one
+  // card (src/components/TodayCard.js). The keys stay for stages and picks.
+  { key: 'focus',       title: 'Today' },
   { key: 'activities',  title: "Today's Activities" },
   { key: 'desk',        title: 'On the Desk' },
   { key: 'ideas',       title: 'Latest Ideas' },
@@ -196,16 +200,18 @@ const WIDGET_DEFS = [
   { key: 'targetsReadiness', title: 'Targets & Readiness' },
   // Every type: the next quest (src/data/quests.js). Joins Home at each
   // type's third stage, alongside the next three games.
-  { key: 'quests',           title: 'Quests' },
+  { key: 'quests',           title: 'Missions' },
 ];
 const WIDGET_KEYS = WIDGET_DEFS.map(w => w.key);
+// Drawn inside the Today card ('focus') outside Edit layout.
+const TODAY_PARTS = ['activities', 'desk', 'checkins'];
 
 // One line on what each widget shows, for the "new widget" offer. A title on
 // its own ("Systems Check") doesn't tell anyone whether they'd want it.
 const WIDGET_BLURBS = {
   hq:               'Your name, level and the Play button.',
   wisdom:           'Your takeaways, brought back so they stick. A quote and your affirmation otherwise.',
-  focus:            "Today's one focus and a jump into your calendar.",
+  focus:            "Today in one card: your focus, what's on, the next thing to pick up, and a check-in when one's due.",
   activities:       'Everything scheduled for today, in time order.',
   desk:             'The next thing to pick up from your projects, notes and ideas.',
   ideas:            'The newest ideas in your Idea Garden.',
@@ -322,7 +328,7 @@ function CommanderCard({ profile, rank, progress, c, t, onPress }) {
   const { style: ui, accent } = useTheme();
   const crestColor = CREST_COLORS[profile?.suit_color] || c.gold;
   const badgeEmoji = BADGE_EMOJIS[profile?.badge] || null;
-  const name       = profile?.traveler_name || profile?.display_name || 'Commander';
+  const name       = profile?.traveler_name || profile?.display_name || 'You';
   const rankInfo   = RANK_LABELS[rank] || RANK_LABELS[20];
   const level      = profile?.level || 1;
 
@@ -2131,7 +2137,7 @@ export default function HomeScreen() {
 
         {/* Right now: the one thing that matters at this minute, from
             today's schedule and quiet hours (RightNowCard.js). */}
-        {!editingWidgets && (
+        {!editingWidgets && !boardShows('focus') && (
           <RightNowCard
             activities={todayList()}
             desk={todos}
@@ -2153,20 +2159,22 @@ export default function HomeScreen() {
         <WidgetBoard
           // Settings → "Hide cards once they're done": finished cards step
           // aside until tomorrow (never while editing the layout).
-          layout={hideDone && !editingWidgets
+          layout={(hideDone && !editingWidgets
             ? shownBoardLayout.filter(l => !(
               (l.key === 'activities' && todayList().length === 0 && deskLoaded) ||
               (l.key === 'checkins' && checkInDue.length === 0 && deskLoaded) ||
               (l.key === 'dailyDrills' && drillPlanHome.total > 0 && drillPlanHome.doneCount >= drillPlanHome.total)))
-            : shownBoardLayout}
+            : shownBoardLayout
+          // One Today card: outside Edit layout, these three are drawn inside it.
+          ).filter(l => editingWidgets || !boardShows('focus') || !TODAY_PARTS.includes(l.key))}
           editing={editingWidgets && canEditWidgets}
           onChangeLayout={changeBoardLayout}
           c={c} t={t} s={s} r={r}
           widgets={[
             {
-              key: 'hq', title: 'Commander',
+              key: 'hq', title: 'You',
               render: () => (
-                <View style={{ backgroundColor: c.bg1, borderRadius: ui.cardRadius, padding: s.lg, marginHorizontal: s.lg, borderWidth: ui.borderWidth, borderColor: c.border, borderTopWidth: 2, borderTopColor: c.gold }}>
+                <View style={{ backgroundColor: c.bg1, borderRadius: ui.cardRadius, padding: s.lg, marginHorizontal: s.lg, borderWidth: ui.borderWidth, borderColor: c.border }}>
                   <CommanderCard
                     profile={profile}
                     rank={rank}
@@ -2203,7 +2211,7 @@ export default function HomeScreen() {
               key: 'wisdom', title: "Today's Wisdom",
               render: () => (
                 <TourSpot id="home-focus">
-                <View style={{ backgroundColor: c.bg1, borderRadius: ui.cardRadius, padding: s.lg, marginHorizontal: s.lg, borderLeftWidth: 3, borderLeftColor: c.teal, borderWidth: ui.borderWidth, borderColor: c.border }}>
+                <View style={{ backgroundColor: c.bg1, borderRadius: ui.cardRadius, padding: s.lg, marginHorizontal: s.lg, borderWidth: ui.borderWidth, borderColor: c.border }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: s.sm }}>
                     <Text style={{ fontSize: ui.name === 'plain' ? 12 : 10, color: c.teal, ...ui.eyebrow }}>{showEmojis ? '✦ ' : ''}Today's Wisdom</Text>
                     <TouchableOpacity accessibilityLabel="Add" accessibilityRole="button" onPress={() => setEditAffirm(true)}>
@@ -2230,8 +2238,31 @@ export default function HomeScreen() {
               ),
             },
             {
-              key: 'focus', title: 'Focus & Calendar',
-              render: () => (
+              key: 'focus', title: 'Today',
+              render: () => (!editingWidgets ? (
+                <TodayCard
+                  date={today}
+                  focus={todayFocus}
+                  onEditFocus={() => { setFocusDraft(todayFocus || ''); setEditFocus(true); }}
+                  onCalendar={() => setShowCalendar(true)}
+                  activities={todayList()}
+                  desk={deskList()}
+                  show={{ activities: boardShows('activities'), desk: boardShows('desk'), checkins: boardShows('checkins') }}
+                  onOpenActivity={(item) => (item._src === 'planner' ? setOpenPlan(item.raw)
+                    : item._src === 'due' && item.raw?.projectId ? openTarget(navigation, { kind: 'project', id: item.raw.projectId })
+                    : setSelectedActivity(item))}
+                  onPlan={() => goToLibraryScreen('PlannerScreen')}
+                  onOpenDesk={setSelectedDeskItem}
+                  onAddDesk={() => setShowTodoInput(true)}
+                  adding={showTodoInput} addText={todoInput} onAddText={setTodoInput} onAddSubmit={addTodo}
+                  checkInDue={checkInDue}
+                  onCheckIn={({ area, rating, lastCheck }) => navigation.navigate('Library', { screen: 'LifeAreaScreen', params: { areaId: area.id, rating, lastCheck } })}
+                  onNowOpen={(ref, kind) => (kind === 'desk' ? setSelectedDeskItem(ref) : setSelectedActivity(ref))}
+                  onNowDone={(ref) => (ref._src === 'task' ? completeActivityTask(ref) : completeActivityRoutine(ref))}
+                  onNowFocus={(ref, kind) => (kind === 'desk' ? focusOnDeskItem(ref) : navigation.navigate('WorkMode', { presetTitle: ref.title }))}
+                  formatTime={fmtActivityTime}
+                />
+              ) : (
                 <TourSpot id="home-focus-input">
                 <View style={{ paddingHorizontal: s.lg, flexDirection: 'row', gap: s.sm }}>
                   <TouchableOpacity
@@ -2252,7 +2283,7 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                 </View>
                 </TourSpot>
-              ),
+              )),
             },
             {
               key: 'activities', title: "Today's Activities",
@@ -2529,12 +2560,13 @@ export default function HomeScreen() {
               ),
             },
             {
-              key: 'quests', title: 'Quests',
+              key: 'quests', title: 'Missions',
               render: () => (
                 <QuestWidget
                   type={activeType} aim={purposeKey}
                   onOpenQuest={(questId) => goToLibraryScreen('ClassesStack', { screen: 'Quest', params: { questId, from: 'Home' } })}
-                  onOpenAll={() => goToLibraryScreen('ClassesStack')}
+                  // All missions: Software for You and the quick ones, in one list.
+                  onOpenAll={() => goToLibraryScreen('SoftwarePathScreen')}
                 />
               ),
             },

@@ -111,7 +111,8 @@ export default function DreamCard({ userId, variant = 'card', pal }) {
 
   return (
     <View style={{ marginHorizontal: s.lg }}>
-      <Card accentEdge onPress={() => setOpen(true)} accessibilityLabel={`${DREAM_NAME}: ${dream.life || partsLine.join(', ')}. Edit`}>
+      {/* Tinted: it's theirs, in their words (Home's card rule). */}
+      <Card tone="accent" onPress={() => setOpen(true)} accessibilityLabel={`${DREAM_NAME}: ${dream.life || partsLine.join(', ')}. Edit`}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Eyebrow style={{ flex: 1 }}>{DREAM_NAME}</Eyebrow>
           <Ionicons name="pencil" size={14} color={c.text3} />

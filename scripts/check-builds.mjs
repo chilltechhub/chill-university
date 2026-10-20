@@ -77,6 +77,10 @@ for (const kind of D.BUILD_KINDS) {
   const junk = B.normalizeBuild({ ...b, levels: { colors: 9, layout: -3, type: 'x' } });
   check('normalize: levels clamp', junk.levels.colors === 2 && junk.levels.layout === 0 && junk.levels.type === 0, junk.levels);
   check('normalize: junk is null', B.normalizeBuild('nope') === null && B.normalizeBuild(null) === null);
+  check('project: none to start', b.projectId === null);
+  const grown = B.withProject(b, 'p1', T);
+  check('project: kept through normalize', B.normalizeBuild(grown).projectId === 'p1');
+  check('project: junk dropped', B.normalizeBuild({ ...b, projectId: 42 }).projectId === null);
 }
 
 // ── Receipt ─────────────────────────────────────────────────────────────
@@ -163,6 +167,7 @@ for (const kind of D.BUILD_KINDS) {
 // ── Free tools: every kind has somewhere free to go next ────────────────
 for (const k of D.BUILD_KINDS) {
   check(`free: ${k.id} has free tools`, Array.isArray(k.freeTools) && k.freeTools.length > 0);
+  check(`grow: ${k.id} has a first real step`, typeof k.growNext === 'string' && k.growNext.length > 10);
   for (const ft of k.freeTools || []) check(`free: ${k.id}.${ft.name} is whole`, !!ft.name && !!ft.what && /^https:\/\//.test(ft.url));
 }
 
