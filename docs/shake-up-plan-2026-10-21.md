@@ -20,7 +20,7 @@ Deskartes becomes **a calm school in your pocket for making it on your own**, bu
    - **Learn** is your course: the path map, units, Finds, classes and practice.
    - **Make** is your work: deliverables, the Studio, projects, Saved and the Showcase.
    - **You** is a full-screen sheet that drops down from the top bar. It holds your ikigai, your receipts, your room and your settings.
-3. Every unit ends in **a deliverable you can show**, and it can collect feedback from real people. Progress means **your own receipts**. Levels and points stay quietly underneath, with **no bait, no guilt and no idle rewards**.
+3. Every unit ends in **a deliverable you can show**, and it can collect feedback from real people. Progress means **your own receipts**. Levels and points stay quietly underneath, with **no bait and no guilt**. The **pet system stays as it is**.
 4. **Calm is kept, and it is the default view for new accounts.** Full stays available. *(Vision §11 said Calm becomes the only Home. The founder now wants Calm kept as the default with Full available. This plan follows the founder.)*
 5. **Build order follows the vision:** guardrails first, then the welcome and "A page about you", then the 5-person test, then the surfaces.
 
@@ -45,11 +45,13 @@ Deskartes becomes **a calm school in your pocket for making it on your own**, bu
 | 💡 | **Calm becomes app-wide** and is the **default for new accounts**, written explicitly at account creation. Existing users keep what they see now | Calm was a main point of the rewrite. The first screen should say one thing |
 | 💡 | **Path → Unit → Deliverable** is the school model. A unit is an objective with 4 beats: **Learn · See it · Practise · Do it** | Reuses the objective engine and the MissionScreen beats. "Unit" avoids a clash with the existing "experience stages" |
 | 💡 | Keep the **one active objective** SQL rule, read as **one active unit**. Many deliverables can run beside it | Matches "one path at a time" (vision §9) and needs no SQL change |
-| 💡 | **Receipts are the visible progress.** XP and level stay as a quiet server ledger. Rank, tiers, the points pill, idle coins, bonus items, pet hunger, pet food, the leaderboard and XP Challenges leave the UI | North Star: levels and points sit below the dream, with no bait and no guilt |
+| 💡 | **Receipts are the visible progress.** XP and level stay as a quiet server ledger. Rank, tiers, the points pill, the leaderboard and XP Challenges leave the UI | North Star: levels and points sit below the dream, with no bait and no guilt |
+| ✅ | **The pet system stays as it is** (founder, 2026-10-21): pet care, hunger, feeding, pet food bought with points, the pet finding coins, bonus collectibles and the daily gift. Spendable points stay as the pet's currency, shown in the pet sheet, not the top bar | Founder's call |
+| ✅ | **The Screen Tutorial is replaced with relevant info** (founder, 2026-10-21): the old per-screen tours go; each screen gets fresh **"About this page"** info written for the new app (§7.3) | Founder's call |
 | 💡 | **Everyday cosmetics become free for everyone.** Only trophies are earned, from finished work | "A lock only holds back control, never the result." Opening everything also means nothing can re-lock |
 | 💡 | **Room placement** setting `roomPlace`: `'you'` (default), `'today'` or `'off'`. It covers **Today and You only**. One `Room` component, one editor | Requirement 3. Keeps Today uncluttered unless the person opts in |
 | 💡 | **One guide system** in three layers: Welcome, then Mentor notes (keyed by surface), then the generated guided first unit. **Your own character** is the guide | Replaces 7+ competing tutorial voices |
-| 💡 | **Sharing v1 is a file** (an HTML page or a picture card) and works for everyone. **Feedback v1 needs no accounts**: you write down what people told you, on the deliverable. **Links and in-app reviews are 18+ only and come later**. Under-18s get export only | Studio plan guardrail and the minor rules, while still making work collaborative from day one |
+| ✅ | **Share links are kept and ship in P8** (founder, 2026-10-21), alongside files and picture cards. **Feedback v1 needs no accounts**: you write down what people told you, on the deliverable. **Links are 18+** (the existing `allowed.js` rule: minors can't publish), so under-18s get export only. In-app reviews come with the school (P11) | Founder's call, inside the minor rules |
 | 💡 | Collaboration with accounts (cohorts, assignments, in-app feedback) is **built on the existing institutional SQL** but **stays off until the first meetup** | Vision §8: switch features on only when real people need them |
 
 ---
@@ -100,7 +102,7 @@ Deskartes becomes **a calm school in your pocket for making it on your own**, bu
 | 4 | **Receipts**: made, tried, mastered, shown, feedback received, then vs now. Level appears in small type at the bottom | `src/logic/builds.js receipt()`, `InsightsPanel`, Stats |
 | 5 | **Showcase** shelf (short; the full page is in Make) | `src/screens/library/portfolio.js`, `StudioShowcase` |
 | 6 | **My class** / **Family** (only when one is linked and switched on) | Organization, CohortRoster, Family |
-| 7 | **Footer:** **What's next?** (the old FAB `next` action) · ProfileSwitcher · Work Mode · Notifications · Make it yours · Settings · Help on this page · Show me around · Sign in / **Save my progress** (guests) | TopBar, CrestMenu (TopBar 34-71), FloatingActionButton `next` |
+| 7 | **Footer:** **What's next?** (the old FAB `next` action) · ProfileSwitcher · Work Mode · Notifications · Make it yours · Settings · **About this page** · Show me around · Sign in / **Save my progress** (guests) | TopBar, CrestMenu (TopBar 34-71), FloatingActionButton `next` |
 
 ### 2.3 The top bar (`src/components/TopBar.js`, rebuilt)
 
@@ -399,7 +401,8 @@ The Ground fix is one short unit per life area, so the "keep basic life needs" p
 | When | Share | Collaborate | Under 18 |
 |---|---|---|---|
 | **v1 (P8)** | **"Take it home"**: the single-file HTML from `buildRender.js` for any deliverable. **"Share my work"**: new `renderShowcase()` makes one offline HTML page of your deliverables and receipts, **with no level, XP or streak at the top**. A **picture card** (image + one line) through `shareFile`. `portfolio.js` share (351-370) leads with the work | **"Ask for feedback"**: shares the file plus a prompt (*"3 things I'd like you to look at"*) through `shareText`. **"Feedback I got"** on every deliverable: *who* (free text, e.g. "my aunt"), *what they said*, *what I'll change*, and later a tick for **"I changed it"**. No accounts needed. Stored locally and on the `deliverables.feedback` column. It shows on the card, in the Showcase file (opt-in) and in Receipts (*"3 people looked at your work · you changed 2 things"*). "I changed it" counts toward the **then vs now** line | ✅ Export only. Feedback notes are private and never published |
-| **After the meetup (P11)** | Read-only **share link** `/s/<token>` (table `share_links`: token, owner, target, revoked_at), rendering the snapshot or the Showcase on the Expo web build | `cohort_assignments` gains `path_key, unit_key, deliverable_kind` (new migration). An assignment **becomes a deliverable** on the board and in "Due this week". New `assignment_submissions` and `deliverable_feedback` (kinds `looks_good` / `try_this`, **no grades**), moderated through `allowed.js`. `deliverable_feedback` **replaces manual entry** for people inside the app; manual notes stay for everyone else. The **teacher grid** in `CohortRosterScreen` is students × units, with cells To do / Doing / Handed in / Reviewed | Links only to a **linked parent or their class**. `communityAccess()` rules apply. Mentors still refuse minors |
+| **v1 too (P8) ✅** | Read-only **share link** `/s/<token>` (table `share_links`: token, owner, target, revoked_at), rendering the snapshot or the Showcase on the Expo web build. **18+ only**; revoke any time | — | ✅ No links (export only) |
+| **After the meetup (P11)** | — | `cohort_assignments` gains `path_key, unit_key, deliverable_kind` (new migration). An assignment **becomes a deliverable** on the board and in "Due this week". New `assignment_submissions` and `deliverable_feedback` (kinds `looks_good` / `try_this`, **no grades**), moderated through `allowed.js`. `deliverable_feedback` **replaces manual entry** for people inside the app; manual notes stay for everyone else. The **teacher grid** in `CohortRosterScreen` is students × units, with cells To do / Doing / Handed in / Reviewed | Links only to a **linked parent or their class**. `communityAccess()` rules apply. Mentors still refuse minors |
 | **Family v2** | — | `get_my_children` v2 returns path, unit and the last deliverable handed in (with the teen's consent toggle) instead of level/XP/points/streak | Consent toggle |
 
 ### 4.6 Every screen ends in one action
@@ -442,30 +445,30 @@ All of it renders for guests from local data (§2.2).
 | | |
 |---|---|
 | **Setting** | `SETTING_KEYS.ROOM_PLACE = 'roomPlace'`: `'you'` (default) · `'today'` · `'off'`. It uses the `@cth_setting_` prefix, so `src/logic/prefsSync.js` syncs it across devices |
-| **Scope** | `roomPlace` covers **Today and You only**. **Learn → Practice keeps no walking pet.** The Studio and the welcome keep their own stage |
+| **Scope** | `roomPlace` covers **Today and You only**. **Learn → Practice keeps its walking pet as today** (the pet finds coins there). The Studio and the welcome keep their own stage |
 | **Where you set it** | The room's own ⋯ ("Show on Today / Show on You / Hide"), Make it yours → Your room, and one welcome/guide step |
 | **One component** | `src/components/Room.js` wraps `LandscapeBackground` + `CharacterWalker` + the ambient mode from `StudioStage`, with props `size` and `calm`. **One size per place:** a 160px header on You, a 120px `room` widget on Today, and the existing sizes in Studio and the welcome |
 | **Calm** | A still frame with no walking (StudioStage style) |
 | **Off** | Only the avatar in the top bar |
 | **Wallpaper** | `HOME_BACKGROUND 'player'` (`PlayerMatchBackground`) becomes the sub-option **"Room as Today's background"**. It applies only when the room is on Today, and only in Full |
-| **One editor** | **Edit room** opens `src/components/RoomEditorSheet.js`, with tabs **Wardrobe · Decorate · Pet · Trophies** (moved from `src/screens/ProfileScreen.js` 282-420: `WardrobeModal`, `DecorateSheet`, `PetCareSheet` minus feeding). It opens from either placement |
+| **One editor** | **Edit room** opens `src/components/RoomEditorSheet.js`, with tabs **Wardrobe · Decorate · Pet · Trophies** (moved from `src/screens/ProfileScreen.js` 282-420: `WardrobeModal`, `DecorateSheet`, `PetCareSheet` **with feeding**). It opens from either placement |
 | **Storage** | `useCharacterLoadout` and its key **`@cth_cache_characterLoadout`** are **unchanged** (it is in the prefsSync `EXACT` list) |
-| **Pet** | Your **study buddy**. It speaks the mentor lines (`companionLine`), appears in Builds, and stands beside the guide. **No hunger and no coins** (§6). Everyone has a pet from the start: the `petsOpen` gate and its *"Play 1 game to get a pet"* copy (`src/data/petOptions.js` 81-87, 236) go |
-| **Coupling removed** | Today `useCoinRewards` / `useBonusRewards` mount on `GamesScreen` (the Learn root) and `ProfileScreen`, with `TrainingNav.js` and `CharacterWalker.js` wired to them. Remove them from **both screens** and drop the coin/bonus props in `CharacterWalker`. With idle coins gone, `Training` no longer needs `lazy:false` (App.js 226-234). Drop it, the comment above it, and the `RewardToast hideCoins={currentRouteName === 'Training'}` prop (App.js 584) in the same PR that turns coins off |
+| **Pet** | Your **study buddy**. It speaks the mentor lines (`companionLine`), appears in Builds, and stands beside the guide. ✅ **The whole pet system stays as it is today**: care, hunger, feeding, pet food, coins, bonus collectibles, the daily gift and the `petsOpen` gate (`src/data/petOptions.js`). Only its copy is checked for the mentor voice (no guilt lines) |
+| **Coins keep working** | Today `useCoinRewards` / `useBonusRewards` mount on `GamesScreen` (the Learn root) and `ProfileScreen`, with `TrainingNav.js` and `CharacterWalker.js` wired to them. **Keep them.** When `GamesScreen` moves to the `Practice` route (§2.1), keep the coin hook mounted at app launch (the reason `Training` has `lazy:false`, App.js 226-234) so the pet still finds coins on any screen. Keep `RewardToast hideCoins` (App.js 584). If the room is on Today, the pet's coins show there too |
 
 ---
 
 ## 6. Points and XP, reworked: receipts, not a score
 
-**Rule:** the **server ledger stays** as it is (`increment_user_progress`, `_award_progress`, `level_for_xp`, the claim tables, the `profiles_protect_server_fields` trigger). The rework changes **what shows** and **what pays**. Nothing is a currency. Nothing decays. Nothing is rare.
+**Rule:** the **server ledger stays** as it is (`increment_user_progress`, `_award_progress`, `level_for_xp`, the claim tables, the `profiles_protect_server_fields` trigger). The rework changes **what shows** and **what pays**. Nothing is rare. **The one currency is the pet's** (points for pet food), kept as it is today.
 
 | Today | Becomes | Why |
 |---|---|---|
 | XP → Level 1-20 | **Quiet.** Shown only at the bottom of Receipts as *"Level 6 · builder"*. Never in the chrome | North Star: levels sit below the dream |
 | Points → Rank 1-20 → 5 Tiers | **Gone from the UI.** The column keeps accumulating (the ledger). `rankUtils` is kept for the leaderboard, which is parked | Seven scales is too many |
-| Spendable points, pet food | **Gone from the UI.** `feed_pet` and `point_spends` stay in SQL, unused | Points only fed a daily loop |
-| Pet coins (1 per 3 min), bonus collectibles, the daily pet gift | **Cut.** Stop mounting `useCoinRewards` and `useBonusRewards` (§5.2) | They reward presence, not doing |
-| Pet hunger, hunger reminders | **Cut** from the UI and notifications | *"To bring people back daily"* pulls a string |
+| Spendable points, pet food | ✅ **Kept** as the pet's currency (`feed_pet`, `point_spends`, `useSpendablePoints`). Shown in the pet sheet and the room editor, **not** in the top bar | Founder's call: keep the pet stuff |
+| Pet coins (1 per 3 min), bonus collectibles, the daily pet gift | ✅ **Kept** as today (§5.2) | Founder's call |
+| Pet hunger, hunger reminders | ✅ **Kept.** Copy is checked for the mentor voice: a hungry pet is a nudge, never a scolding, and a comeback is *"Welcome back"* | Founder's call; the North Star's no-guilt rule shapes the words |
 | Pet bond 1-5 | Kept as shown. 💡 It grows from **units done**, never goes down (small new migration, optional in P6) | Companion, not a leash |
 | Streak + *"Do one thing today to keep it"* (HomeScreen 2079-2090, CalmHome 231-259) | **Momentum:** *"You did something on 3 days this week."* No missed-day count, no at-risk copy. A comeback says *"Welcome back. The next step is ready."* It is computed from the same rest-day logic (UserProgressContext 491-503). Shown in Full Receipts only, with a switch to hide it | No guilt |
 | XP Challenges (`claim_mission_reward`, MissionsScreen drills, the `quests` widget) | **Retired.** First rewrite the Compass "Finish a daily drill" step: `src/data/objectives.js:322`, step id `'mission'`, currently `auto: { stat: 'missions', value: 1 }`, fed by the daily-drill counter in `context/AccessContext.js` (~268, `missionsToday`). **Keep the id `'mission'`** (objectives.js never renames ids) and change only its `auto` stat to count **Practice drills done**, not daily mission rows. The daily-mission refill in UserProgressContext (330-345, comment at 353) can stop once nothing reads it | Rewards activity, not work |
@@ -502,7 +505,7 @@ The existing kinds stay. Game XP stays capped at 100 a day, and only inside Prac
 
 ### 6.3 Cosmetics without bait
 
-1. **All outfits, held items, pets, backdrops and level-gated decor are open to everyone** from the first minute. Gate checks in `src/data/characterOptions.js` (92-98), `src/data/petOptions.js` (`petsOpen`, 81-87; copy at 236) and `src/data/backgroundOptions.js` (32) return open. The `unlockLabel` copy goes.
+1. **All outfits, held items, backdrops and level-gated decor are open to everyone** from the first minute. Gate checks in `src/data/characterOptions.js` (92-98) and `src/data/backgroundOptions.js` (32) return open. The `unlockLabel` copy goes. **Pets keep their own system unchanged** (§5.2), including `petsOpen` in `src/data/petOptions.js`.
    - **Why:** nothing can re-lock, so no `owned_cosmetics` migration is needed, and `findUnlocked` can never fall back.
 2. **Earned by real work:** Build trophies (`stageDecor.setEarnedTrophies`, already working) plus **one trophy per unit done** (new decor entries in `sceneArt.js`, P6). These are earned. They are not bait.
 3. **Remove the "Not yet" level teasers** in the onboarding outfit picker.
@@ -524,7 +527,7 @@ The existing kinds stay. Game XP stays capped at 100 a day, and only inside Prac
 | Layer | When | How | Replaces |
 |---|---|---|---|
 | **1. Welcome** | First launch, signed out | Full-screen cards, no spotlight (§7.2) | `MultiStepOnboarding`'s 8 cards, the welcome tour (`tourSteps.js`), GettingStartedCard |
-| **2. Mentor notes** | The first time you see a **surface**. **At most 1 automatic note per session** | One card in place: *"This is your week. Tap a day to plan it."* Buttons **Got it** and **Show me** (Show me runs a ≤3-step spotlight). Manual triggers: **"Help on this page"** and **"Show me around"** in the You footer | `useFirstVisitTutorial`, `src/logic/screenTutorials.js`, widget intros, the new-widget offer, TopBar "Screen Tutorial", Settings "Replay Tutorial" (reworded) |
+| **2. Mentor notes** | The first time you see a **surface**. **At most 1 automatic note per session** | One card in place: *"This is your week. Tap a day to plan it."* Buttons **Got it** and **Show me** (Show me runs a ≤3-step spotlight). Manual trigger: **"About this page"** (§7.3) | `useFirstVisitTutorial`, widget intros, the new-widget offer, Settings "Replay Tutorial" (reworded) |
 | **3. Guided first unit** (teach by doing) | The first unit of your path, and each unit's first time | `passthrough` + `completeAction` + `prefill` + signals, **generated from unit data** by `autoScript`. The framing is the deliverable: *"Let's make your money sheet. Tap Add."* It ends with **one check-for-understanding quiz step** (the existing quiz block) | `useGuidedFirstGoal`'s hand-written walks. The 14 `FIRST_GOAL_GUIDE` scripts stay for old goals until those goals retire |
 
 **Engine (kept)**
@@ -558,7 +561,20 @@ The existing kinds stay. Game XP stays capped at 100 a day, and only inside Prac
 - No guide copy mentions points, levels, streaks, rank or the old tab names. That includes `src/logic/screenTutorials.js` 243 (*"Your traveler walks around Home and Learn. New gear unlocks as you level up."*, step `profile-rank`), which is rewritten in P5.
 - First-day walk (Today, 4 steps): next step → `planner-add` → `planner-views` → `topbar-avatar` (*"Your ikigai lives up here"*).
 - Content lives in `src/logic/guide/lessons/`.
-- `screenHelp.js` is re-keyed by surface for "Help on this page".
+- `screenHelp.js` folds into `src/data/pageInfo.js` for **"About this page"** (§7.3).
+
+### 7.3 "About this page" replaces the Screen Tutorial ✅
+
+The founder's call (2026-10-21): **replace the current Screen Tutorial with relevant info.** The old per-screen tours (`src/logic/screenTutorials.js`, opened from TopBar "Screen Tutorial", TopBar.js 42 / 119) teach the **old** app (points, rank, old tab names). They are **not ported**. Each surface gets **fresh info written for the new app**.
+
+| | |
+|---|---|
+| **Where** | The top bar menu item **"Screen Tutorial" becomes "About this page"**, plus the same link in the You footer. Same spot, so habits keep working |
+| **What it shows** | One sheet per **surface** (`src/logic/guide/surfaces.js`), four short parts: **What this is for** (one line) · **How it helps you** (which ikigai circle or the ground, and your path) · **What you can do here** (the 2–3 main actions, each a button that does it) · **Show me** (the ≤3-step spotlight, optional) |
+| **Tailored** | The "How it helps you" line and the actions follow your starting point and path (§8). A GED user's Learn page says *"Your practice tests live here"* |
+| **Content** | New file **`src/data/pageInfo.js`**, keyed by surface id. `screenHelp.js` folds into it. Plain words, under 60 words per sheet, no points / rank / streak / old tab names |
+| **Guard** | `check-tour-spots.mjs` checks every surface has a `pageInfo` entry and every action button targets a registered route or alias |
+| **Kill switch** | The `SCREEN_TUTORIALS_ENABLED` setting keeps controlling the **automatic** notes only. "About this page" always works |
 
 **Guard**
 
@@ -694,21 +710,22 @@ The 10-second boot timeout and the error path also check `guest: true` before fa
 | Item | Fate |
 |---|---|
 | LV/PTS pill, tier crest, tier strip, gift button, "Commander", rank chips | **Cut from the UI** (ledger kept) |
-| Idle pet coins, bonus collectibles, daily pet gift, pet hunger, pet food, hunger reminders, the "Play 1 game to get a pet" gate | **Cut** (SQL and pure files kept, unused) |
 | Streak and its at-risk copy | **Replaced** by momentum |
 | XP Challenges, `MissionsScreen.js`, the `quests` widget meaning | **Retired** (drills stay as Practice; saved quest links still resolve) |
 | Leaderboard | **Parked** (flag off, route kept) |
 | Level, rank and point cosmetic gates | **Removed** (everything open; trophies earned) |
 | `auto` track, StageStepsWidget "gain a level" | **Retired** |
-| Welcome tour, GettingStartedCard, widget intros, new-widget offer, per-route first-visit tours, Screen Tutorial | **Replaced** by the one guide |
+| Welcome tour, GettingStartedCard, widget intros, new-widget offer, per-route first-visit tours | **Replaced** by the one guide |
+| Screen Tutorial (old per-screen tours) | **Replaced** by **"About this page"**: fresh, relevant info per surface (§7.3) |
+| Pet care, hunger, food, coins, bonus collectibles, daily gift | ✅ **Kept as today** (not parked) |
 | Persona guides (Sage/Quill/Ward/Rook) as the voice | **Fallback only** |
 | Wizard cards aim / persona / start / features / sectors; `LookStep` | **Cut** from the first run |
 | CommanderCard/`hq`, `wisdom`, AffirmationModal, quotes pool, `CalendarModal`, TodayCard on the board, RightNowCard as a card | **Cut / folded** into Today |
 | `libraryView` setting | **Retired** after a one-time read into `homeView`. `CalmLibrary.js` lives on as Calm Make |
 | Idea Garden | **Folded** into Workshop's Idea stage |
 | Community, Feed, Fellow Scholars, Labs, Mentors marketplace, Lesson Builder (K-12 bands) | **Off** until the in-person school exists |
-| Share links, hosting, GitHub sync, WebGL, AI-made content (Plus), collaborative filtering | **Later** (vision §16) |
-| 30+ mini-games | Kept inside **Practice**, not promoted, with no walking pet |
+| Hosting, GitHub sync, WebGL, AI-made content (Plus), collaborative filtering | **Later** (vision §16). Share links are **not** parked: they ship in P8 |
+| 30+ mini-games | Kept inside **Practice**, not promoted, with the walking pet as today |
 | Living on my own, Homeschool, Re-entry, "Never been shown" | **Next content packs**, same engine |
 | Dead code: `BadgePopup.js`, `AgendaItem.js`, `pendingRewards`, the TopBar `{tab:'rewards'}` param, dead search rows, stale "+5 XP" comments (`src/logic/gameXpCap.js`, `src/components/RewardToast.js`) | **Deleted in P0** |
 
@@ -847,7 +864,7 @@ New check scripts this plan adds:
   - No locked screen is reachable unwrapped.
 - **Checks:** `check-search`, `check-tour-spots`, `check-syntax`.
 - **Rollback:** a `TABS_V2` setting restores the old order, the old TopBar and the Profile screen for one release.
-- **Risks:** habits change. `NO_TOPBAR_ROUTES`, `NO_FAB_ROUTES`, `WORKSHOP_SCREENS` sets. Web title formatter. The `RewardToast` `hideCoins` prop (App.js 584) stays until P5.
+- **Risks:** habits change. `NO_TOPBAR_ROUTES`, `NO_FAB_ROUTES`, `WORKSHOP_SCREENS` sets. Web title formatter. The `RewardToast` `hideCoins` prop (App.js 584) stays (coins are kept).
 
 ### P5 · Cut the strings: progress rework + room
 
@@ -855,9 +872,9 @@ New check scripts this plan adds:
 - **Work:**
   - Remove LV/PTS, crest, strip and streak copy. Add momentum.
   - Retire `LevelUpNotification` → quiet mentor-line toast. `UnlockNotification` → "Your map got bigger". Mentor-line `RewardToast`.
-  - Stop mounting coins and bonus items in **`GamesScreen` and `ProfileScreen`**; drop the `CharacterWalker` coin/bonus props. Hunger/food out of the UI and notifications.
-  - Drop `lazy:false` on `Training` and the `hideCoins` prop.
-  - Open all cosmetics, remove `petsOpen` and its copy (`petOptions.js` 81-87, 236).
+  - **Keep the pet system as it is** (care, hunger, feeding, coins, bonus items, daily gift). Move the spendable points display from the top bar into the pet sheet and room editor. Check pet copy for the mentor voice.
+  - Keep `lazy:false` on `Training` and the `hideCoins` prop (coins stay mounted at launch).
+  - Open all outfit, backdrop and decor cosmetics (pets keep `petsOpen`).
   - Remove the point badges (milestones come in P6).
   - Leaderboard flag off.
   - Retire Challenges, after rewriting `objectives.js:322` (id `'mission'` kept, `auto` stat → Practice drills done) and its `AccessContext.js` counter.
@@ -867,16 +884,17 @@ New check scripts this plan adds:
 - **Works before later phases:** yes. Receipts show what exists; hand-in XP waits for P6.
 - **Accept:**
   - No screen shows points, rank or level in the chrome.
-  - A grep for "keep it", "streak", "at risk", "PTS", "level up" and "Play 1 game" in `src/` finds no user-facing copy.
+  - A grep for "keep it", "streak", "at risk", "PTS" and "level up" in `src/` finds no user-facing copy.
+  - The pet still gets hungry, can be fed with points, finds coins and gives its daily gift, exactly as before.
   - A level-12 test account keeps every equipped item.
-  - The room moves Today ↔ You and syncs across devices; Practice shows no walking pet.
+  - The room moves Today ↔ You and syncs across devices; Practice keeps its walking pet.
   - Calm shows a still room.
   - The Compass "Finish a daily drill" step ticks from a Practice drill.
 - **Checks:** `check-pet-hunger` (files untouched, so green), `check-tour-spots`, `check-builds`.
-- **Rollback:** a `PROGRESS_V2` setting restores the TopBar pill and toasts for one release (coins stay off; the SQL never changed).
+- **Rollback:** a `PROGRESS_V2` setting restores the TopBar pill and toasts for one release (the SQL never changed).
 - **Risks:**
   - The `UnlockNotification` level summary.
-  - `useSpendablePoints` readers (TopBar, GamesScreen, Profile, PetCareSheet) must all be removed or neutralised together.
+  - `useSpendablePoints` readers: TopBar loses its display; GamesScreen, Profile and PetCareSheet **keep working** (pet food).
   - `ChildProgressScreen` and the cohort leaderboard still read points, and that is fine until Family v2.
 
 ### P6 · Paths, units, deliverables, Learn, Make, You content
@@ -920,7 +938,8 @@ New check scripts this plan adds:
   - Your character as the guide.
   - Calm TourSpots + Calm notes, and **remove the HomeScreen 1003 rule**.
   - Retire `tourSteps.js`, `src/logic/screenTutorials.js`, `widgetIntros` (update `check-wiring` to stop requiring it), GettingStartedCard, `useWelcomeTour`, `useFirstVisitTutorial`.
-  - Reword Help, Settings "Replay Tutorial" and `screenHelp`.
+  - **"About this page"** (§7.3): `src/data/pageInfo.js` for every surface, the TopBar "Screen Tutorial" item renamed and repointed, `screenHelp.js` folded in.
+  - Reword Help and Settings "Replay Tutorial".
 - **Accept:**
   - A new account gets the first-day walk once.
   - An upgraded account gets **no** re-teaching.
@@ -928,19 +947,22 @@ New check scripts this plan adds:
   - At most 1 automatic note per session.
   - Calm users are never flipped to Full.
   - Every `go` resolves.
-- **Checks:** `check-tour-spots` (ids + routes + surfaces), `check-wiring`.
+  - "About this page" opens on every front surface, with relevant, tailored info and working action buttons; no old tour copy remains.
+- **Checks:** `check-tour-spots` (ids + routes + surfaces + `pageInfo`), `check-wiring`.
 - **Rollback:** `SCREEN_TUTORIALS_ENABLED` off silences all automatic notes; the old tour files stay registered for one release.
 - **Risks:** objective signals that never tick leave the guide waiting forever, so every unit step needs a signal or `auto` rule (checked in `check-deliverables`).
 
-### P8 · Share v1 + feedback v1 (everyone)
+### P8 · Share v1 (files + links) + feedback v1 (everyone)
 
-- **Work:** `renderShowcase()`, "Share my work", picture card, "Ask for feedback", **"Feedback I got"** notes on every deliverable (who / said / change / I changed it), feedback counts on cards and in Receipts, Take it home on every deliverable, `portfolio.js` share text.
+- **Work:** **share links** (`share_links` table as a new hand-applied migration + the read-only `/s/<token>` viewer on the Expo web build, 18+, revocable), `renderShowcase()`, "Share my work", picture card, "Ask for feedback", **"Feedback I got"** notes on every deliverable (who / said / change / I changed it), feedback counts on cards and in Receipts, Take it home on every deliverable, `portfolio.js` share text.
 - **Accept:**
   - The Showcase file opens offline with no level/XP header.
   - It works for under-18s (export only; feedback notes stay private).
+  - An adult's link opens read-only in any browser, and revoking it stops it at once.
+  - A minor cannot create a link.
   - A feedback note saved as a guest survives signup, and "I changed it" shows in then vs now.
-- **Checks:** `check-builds` covers `renderShowcase`; `check-deliverables` covers the feedback shape.
-- **Rollback:** hide the share and feedback buttons; the column stays.
+- **Checks:** `check-builds` covers `renderShowcase`; `check-deliverables` covers the feedback shape; `probe-security` and an RLS review on `share_links`.
+- **Rollback:** hide the share and feedback buttons; revoke all links by setting `revoked_at`; the column stays.
 
 ### P9 · Visual kit on the front screens
 
@@ -962,18 +984,15 @@ New check scripts this plan adds:
 ### P11 · School on (after the first meetup)
 
 - **Work:**
-  - `share_links` + `/s/<token>` viewer (18+).
   - Assignment migration + `assignment_submissions` + `deliverable_feedback` (replaces manual entry for in-app reviewers).
   - Teacher grid.
   - "My class" in You.
   - Family v2 RPC.
   - `organization` from `place:'off'` → `'background'`.
 - **Accept:**
-  - An adult's link opens read-only in any browser.
-  - A minor cannot create a public link.
   - A mentor leaves *looks good / try this*, and the student sees it on Today and in the deliverable's feedback list.
 - **Checks:** `probe-security`, RLS review.
-- **Rollback:** `organization` back to `place:'off'`; revoke all links by setting `revoked_at`.
+- **Rollback:** `organization` back to `place:'off'`.
 - **Risks:** SECURITY DEFINER RPCs as **new** migrations only. Moderation on feedback text.
 
 ---
@@ -1015,7 +1034,7 @@ New check scripts this plan adds:
 3. ❓ **Default room placement:** You (this plan) or Today?
 4. ❓ **Calm as the default for new accounts?** (This plan says yes, with Full kept. Vision §11 had said Calm becomes the only Home.)
 5. ❓ **Brand base:** warm light paper with the Calm panel as the accent (this plan), or Calm-dark?
-6. ❓ **Pet care game:** gone entirely (this plan), or an opt-in "care game" switch for people who like it?
+6. ✅ ~~Pet care game~~ — **kept as it is**, the whole pet system (founder, 2026-10-21).
 7. ❓ **Momentum:** a quiet line in Full Receipts with a switch to hide it (this plan), off by default, or gone?
 8. ❓ **Opening every cosmetic** for everyone: OK, or keep a few items earned by units?
 9. ❓ **Welcome timing:** right after the guardrails (P2, this plan, following ✅ vision §16), or after the new surfaces? Choosing "after" overrides a ✅ decision.
@@ -1023,5 +1042,6 @@ New check scripts this plan adds:
 11. ❓ **"Not sure / something else"** as a fourth starting point that routes to What do I like?
 12. ❓ **Unit lists per path** (§4.2, including the Ground fix) and the welcome's exact words. They need your OK and sourced facts.
 13. ❓ **Deliverable status words:** "Handed in" (school feel) or "Done"?
-14. ❓ **Share links:** wait for the first meetup (this plan), or ship them for adults in P8?
+14. ✅ ~~Share links~~ — **kept, ship in P8**, 18+ (founder, 2026-10-21).
+16. ✅ **Screen Tutorial** — replaced with relevant **"About this page"** info (§7.3) (founder, 2026-10-21).
 15. ❓ **"Always there" core:** pinned on Today for the next step, Dream echo, your day and the Find line, with a lesson and Saved one tap away (this plan). OK?
