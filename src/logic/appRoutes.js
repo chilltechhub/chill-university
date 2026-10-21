@@ -17,6 +17,9 @@
 // direction would close a require cycle right through the provider tree.
 
 import { CLASS_SCREEN_MAP } from '../data/classCatalog';
+import { resolveAlias } from './routeAliases';
+
+export { setAliasGate } from './routeAliases';
 
 // Bottom tabs.
 const TAB_SCREENS = new Set(['Home', 'Training', 'Library']);
@@ -28,6 +31,7 @@ const ROOT_SCREENS = new Set([
   'ChildProgress', 'Organization', 'CohortRoster', 'Help', 'Compass', 'Stats', 'Plus', 'WorkMode',
   'MakeItYours',
   'MyFeatures',
+  'ConnectedApps',
   'Notifications', 'AllProfiles',
 ]);
 
@@ -44,8 +48,10 @@ const CLASS_SCREENS = new Set([
  * to be a Library-stack screen, which is true of the overwhelming majority
  * of this app's routes and degrades to today's behaviour if it isn't.
  */
-export function goToScreen(navigation, screen, params) {
-  if (!navigation || !screen) return;
+export function goToScreen(navigation, target, targetParams) {
+  if (!navigation || !target) return;
+  // An old name lands where it lives now (src/logic/routeAliases.js).
+  const { screen, params } = resolveAlias(target, targetParams, isKnownScreen);
 
   // Every jump returns to a screen that's already open rather than stacking
   // a copy (src/logic/navRules.js enforces the same at the router). Library
@@ -92,9 +98,11 @@ export function isKnownScreen(screen) {
 
 // The name a route goes by for tutorials, the guide and the top bar. The
 // Training tab's first screen is 'TrainingHome' (src/screens/TrainingNav.js)
-// but everything else knows it as 'Training'.
+// but everything else knows it as 'Training'. An old name that now redirects
+// goes by the route that answers for it.
 export function routeLabel(name) {
-  return name === 'TrainingHome' ? 'Training' : name;
+  if (name === 'TrainingHome') return 'Training';
+  return resolveAlias(name, undefined, isKnownScreen).screen;
 }
 
 /**

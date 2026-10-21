@@ -19,9 +19,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../api/supabaseClient';
 
 const EXACT = ['@cth_cache_characterLoadout', '@cth_theme', '@cth_theme_style', '@cth_theme_accent', '@cth_ui_prefs', '@cth_a11y'];
-// Also what's already been shown, so tips, "New on Home" intros and stage
-// cards don't replay after signing back in (some carry the account id).
-const PREFIXES = ['@cth_setting_', '@cth_screen_tutorials_seen', '@cth_widget_', '@cth_experience_stage_seen'];
+// Also what's already been shown, so tips, "New on Home" intros, stage
+// cards and guide notes don't replay after signing back in (some carry the
+// account id). '@cth_guide_seen' is the guide's v2 set (src/logic/guide/seenSet.js).
+const PREFIXES = ['@cth_setting_', '@cth_screen_tutorials_seen', '@cth_widget_', '@cth_experience_stage_seen', '@cth_guide_seen'];
 export const isSyncedPref = (k) => EXACT.includes(k) || PREFIXES.some(p => k.startsWith(p));
 
 let userId = null;

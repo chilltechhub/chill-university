@@ -8,7 +8,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { useTheme } from '../../context/ThemeContext';
-import { useUIPrefs } from '../../context/UIPrefsContext';
 import { useTour } from '../../context/TourContext';
 import { useCommandPalette } from '../../context/CommandPaletteContext';
 import ProfileSwitcher from './ProfileSwitcher';
@@ -96,11 +95,10 @@ function WorkSessionPill({ navigation, c }) {
 }
 
 export default function TopBar({ currentScreen }) {
-  const { user, points: earned, rank, level, progress, loading, pendingRewards } = useUserProgress();
+  const { user, points: earned, rank, level, progress, loading } = useUserProgress();
   // What's left to spend (pet food comes off it). Rank still counts everything earned.
   const points = useSpendablePoints(user?.id, earned);
   const { colors, typography, spacing, shadows, accent, style: ui } = useTheme();
-  const { showEmojis } = useUIPrefs();
   const navigation = useNavigation();
   const { startScreenTour } = useTour();
   const { openPalette } = useCommandPalette();
@@ -192,21 +190,6 @@ export default function TopBar({ currentScreen }) {
           {/* Notification Center — reminders, what needs doing, app news.
               Signed-out people get app news there too, but the bell is for
               an account's own stuff, so it waits for sign-in. */}
-
-          {/* Pending rewards */}
-          {user && pendingRewards?.length > 0 && (
-            <TouchableOpacity
-              style={s.rewardBtn}
-              hitSlop={7}
-              accessibilityLabel={`${pendingRewards.length} rewards waiting`}
-              onPress={() => navigation.navigate('Profile', { tab: 'rewards' })}
-            >
-              {showEmojis ? <Text style={{ fontSize: 20 }}>🎁</Text> : <Ionicons name="gift-outline" size={18} color={colors.gold} />}
-              <View style={s.rewardDot}>
-                <Text style={s.rewardDotText}>{pendingRewards.length}</Text>
-              </View>
-            </TouchableOpacity>
-          )}
         </View>
 
         {/* Progress toward next level — a thin full-width strip below the
@@ -272,12 +255,4 @@ const makeStyles = (c, t, s, sh, accent, ui) => StyleSheet.create({
     paddingHorizontal: s.sm + 2, paddingVertical: 6,
   },
   signInText: { fontSize: t.xs, color: accent.onPrimary, fontWeight: t.semibold },
-  rewardBtn: { marginLeft: s.sm, position: 'relative' },
-  rewardDot: {
-    position: 'absolute', top: -3, right: -3,
-    backgroundColor: c.error, borderRadius: 9,
-    minWidth: 16, height: 16,
-    justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3,
-  },
-  rewardDotText: { color: '#ffffff', fontSize: 9 /* a11y-ok: count badge */, fontWeight: t.bold }, // style-ok: white count on the red badge in both modes
 });

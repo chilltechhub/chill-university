@@ -90,15 +90,74 @@ for (const [type, stages] of Object.entries(PATHS)) {
 // ── Home widgets named by stages and account types ──────────────────────────
 // A key Home doesn't render is silently dropped from the dashboard, so a
 // stage that "opens" it opens nothing.
+// The keys live in src/data/dashboardWidgets.js; what each one draws is
+// HomeScreen's `widgets` list.
+const widgetsSrc = await text('src/data/dashboardWidgets.js');
+const W = await load('src/data/dashboardWidgets.js');
+const widgetKeys = new Set(W.WIDGET_KEYS);
+if (!widgetKeys.size) problems.push('dashboardWidgets.js: could not read WIDGET_DEFS');
 const home = stripComments(await text('src/screens/HomeScreen.js'));
-const defsBody = home.match(/const WIDGET_DEFS = \[([\s\S]*?)\];/)?.[1] || '';
-const widgetKeys = new Set([...defsBody.matchAll(/key:\s*'(\w+)'/g)].map(m => m[1]));
-if (!widgetKeys.size) problems.push('HomeScreen.js: could not read WIDGET_DEFS');
 const rendered = new Set([...home.matchAll(/key:\s*'(\w+)',\s*title:[^\n]*\n\s*render:/g)].map(m => m[1]));
 for (const key of widgetKeys) {
   if (!rendered.has(key)) {
     problems.push(`HomeScreen.js: widget '${key}' is in WIDGET_DEFS but has no render entry`);
   }
+}
+
+// ── Saved layouts survive renames (shake-up plan §3.3) ──────────────────────
+// Every key has a WIDGET_ALIASES entry (itself, its new name, or null), so a
+// key can't be renamed or removed without saying what saved layouts do with
+// it. Targets are real or planned keys. And an old saved layout, read after
+// the renames land, keeps its order.
+{
+  const { WIDGET_ALIASES, PLANNED_WIDGET_KEYS, WIDGET_BLURBS } = W;
+  const planned = new Set(PLANNED_WIDGET_KEYS);
+  if (!widgetsSrc.includes('const WIDGET_DEFS = [') || !widgetsSrc.includes('const WIDGET_KEYS')) {
+    problems.push('dashboardWidgets.js: keep the `const WIDGET_DEFS = [` and `const WIDGET_KEYS` markers');
+  }
+  for (const key of widgetKeys) {
+    if (!Object.hasOwn(WIDGET_ALIASES, key)) problems.push(`dashboardWidgets.js: widget '${key}' has no WIDGET_ALIASES entry`);
+    if (!WIDGET_BLURBS[key]) problems.push(`dashboardWidgets.js: widget '${key}' has no WIDGET_BLURBS line`);
+    if (planned.has(key)) problems.push(`dashboardWidgets.js: '${key}' is built now, so take it out of PLANNED_WIDGET_KEYS`);
+  }
+  for (const [from, to] of Object.entries(WIDGET_ALIASES)) {
+    if (to !== null && !widgetKeys.has(to) && !planned.has(to)) problems.push(`dashboardWidgets.js: alias '${from}' → '${to}', which is neither a widget nor planned`);
+    if (to && to !== from && Object.hasOwn(WIDGET_ALIASES, to) && WIDGET_ALIASES[to] !== to) problems.push(`dashboardWidgets.js: alias '${from}' → '${to}', which is itself renamed`);
+  }
+
+  const dataUrl = 'data:text/javascript,' + encodeURIComponent(widgetsSrc);
+  const layoutSrc = (await text('src/logic/widgetLayout.js')).replace("'../data/dashboardWidgets'", `"${dataUrl}"`);
+  const { reconcileWidgetLayout } = await import('data:text/javascript,' + encodeURIComponent(layoutSrc));
+  const keysOf = (layout) => layout.map(l => `${l.key}${l.hidden ? '·' : ''}`).join(' ');
+  const none = () => { throw new Error('fallback used'); };
+
+  // Today: every key is current, so a saved layout comes back exactly.
+  const today = W.WIDGET_KEYS.map((key, i) => ({ key, hidden: i % 3 === 0 }));
+  const same = reconcileWidgetLayout(today, none);
+  if (keysOf(same) !== keysOf(today)) problems.push('widgetLayout: a current saved layout changed on reconcile');
+
+  // After the renames: the old keys are gone and the planned ones exist.
+  const after = [...new Set([
+    ...Object.values(WIDGET_ALIASES).filter(Boolean),
+    ...PLANNED_WIDGET_KEYS,
+  ])];
+  const old = [
+    { key: 'hq', hidden: false }, { key: 'compass', hidden: false }, { key: 'goalSteps', hidden: false },
+    { key: 'wayfinder', hidden: true }, { key: 'stageSteps', hidden: false }, { key: 'focus', hidden: false },
+    { key: 'activities', hidden: false }, { key: 'wisdom', hidden: false }, { key: 'desk', hidden: true },
+    { key: 'lifeAreas', hidden: false }, { key: 'quests', hidden: false }, { key: 'checkins', hidden: true },
+  ];
+  const got = reconcileWidgetLayout(old, none, after);
+  const want = 'room nextStep unit wayfinder· yourDay deliverable· lifeAreas missions checkin·';
+  const head = keysOf(got.slice(0, 9));
+  if (head !== want) problems.push(`widgetLayout: old layout after renames gave "${head}", want "${want}"`);
+  const tail = got.slice(9);
+  if (tail.some(l => !l.hidden)) problems.push('widgetLayout: widgets the old layout never had should arrive hidden');
+  if (new Set(got.map(l => l.key)).size !== got.length || got.length !== after.length) problems.push('widgetLayout: reconciled layout should hold every widget once');
+
+  // Nothing saved: the fallback, untouched.
+  const fb = [{ key: 'compass', hidden: false }];
+  if (reconcileWidgetLayout([], () => fb) !== fb || reconcileWidgetLayout(null, () => fb) !== fb) problems.push('widgetLayout: an empty save should use the fallback');
 }
 for (const [type, stages] of Object.entries(PATHS)) {
   stages.forEach((stage, i) => {

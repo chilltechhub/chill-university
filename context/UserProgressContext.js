@@ -571,7 +571,6 @@ export function UserProgressProvider({ children }) {
     refreshWeeklyMissions: refreshMissions,
     // guest
     recordGuestEvent,
-    pendingRewards: NO_PENDING_REWARDS,   // placeholder — wire to real data when ready
   }), [
     user, profile, loading, points, xp, level, rank, rankProgress, progress, streakDays, streakState,
     subjectProgress, dailyMissions, weeklyMissions, longtermMissions, gameplayStats,
@@ -586,8 +585,6 @@ export function UserProgressProvider({ children }) {
     </UserProgressContext.Provider>
   );
 }
-
-const NO_PENDING_REWARDS = [];
 
 export function useUserProgress() {
   const ctx = useContext(UserProgressContext);

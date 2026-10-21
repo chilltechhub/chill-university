@@ -777,6 +777,16 @@ New check scripts this plan adds:
   - `isSyncedPref('@cth_guide_seen_v2_x')` is true.
 - **Rollback:** revert the PR; no data written.
 - **Risks:** alias gaps cause silent no-op navigation, so the route check must scan `src/data/objectives.js`, `firstGoalGuide.js`, `openTarget.js`, `src/logic/searchIndex.js`, `src/data/experienceStages.js` and `src/data/featureCatalog.js`.
+- **Built (2026-10-21, branch `feature/shakeup-p0`).** Where the code settled something this plan left open:
+  - **Aliases** live in `src/logic/routeAliases.js` (no imports). One only resolves once its target is registered **and** its `gate` is on, so `PlannerScreen → Home` waits for `setAliasGate('dashboardV2', true)` in P3, and `Profile`/`Stats → You` and `Compass → PathScreen` wait for those routes. A target not yet registered needs a `phase`.
+  - **Route check** (in `check-tour-spots.mjs`) also scans every literal `goToScreen`/`navigate` call, `SCREEN_HELP`, `STARTER_FEATURES`, and keeps `appRoutes.js` `ROOT_SCREENS` equal to App.js's root stack (the ConnectedApps bug class). It found exactly the 3 dead search rows, plus the same 3 dead `STAGED_SCREENS` entries, now removed.
+  - **Widgets:** `WIDGET_DEFS`, `WIDGET_BLURBS`, `NEW_WIDGETS_SHOWN`, `PLANNED_WIDGET_KEYS` and `WIDGET_ALIASES` are in `src/data/dashboardWidgets.js`; the reconcile is pure in `src/logic/widgetLayout.js` (tested in `check-wiring`). `focus` and `activities` alias to **`yourDay`** and `desk` to **`deliverable`**, so their saved places survive; `wisdom` is `null` (retired). A planned key leaves `PLANNED_WIDGET_KEYS` in the PR that adds it to `WIDGET_DEFS`.
+  - **Ids (stored, never rename):** starting points `highSchool · working · ged · unsure`; shakiest `love · goodAt · needs · paid · ground`; paths `like · next · money · career · ground`.
+  - **`derivePersona`:** a business Build wins over the starting point (a choice they made beats where they start), so a working adult who builds a business is `ENTREPRENEUR`. Flip the first line if the founder reads §7.2's table top-down instead.
+  - **"Add plan"** in §8.2's FAB column is the `calendar` action (it opens Today's week to plan).
+  - `tailoring.js` imports only `pathKits.js` and `derivePersona.js`, which import nothing; the check swaps them in (the `check-builds` pattern). `welcomeCards.js`, `derivePersona.js`, `pathKits.js`, `routeAliases.js` and `guide/surfaces.js` have no imports.
+  - **Seen-set v2:** `src/logic/guide/surfaces.js` (`SURFACES`, `ROUTE_TO_SURFACE`, pure `seedGuideSeen`) and `src/logic/guide/seenSet.js` (`@cth_guide_seen_v2_<uid|guest>`, `seedGuideSeenOnce`), not wired. `learn.unit` is the only surface an existing account isn't seeded with.
+  - `npm run check` is now 19 scripts (`check-tailoring.mjs` added).
 
 ### P1 · Planner extraction + one data hook + guest planner
 

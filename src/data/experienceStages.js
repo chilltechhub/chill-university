@@ -363,9 +363,6 @@ export const STAGED_SCREENS = {
   NotesScreen:             'knowledge-vault',
   ResearchScreen:          'knowledge-vault',
   ResourcesToolsScreen:    'knowledge-vault',
-  BreakthroughsScreen:     'discover',
-  TopTalentScreen:         'discover',
-  CommunityProjectsScreen: 'discover',
   ModerationQueueScreen:   'discover',
 };
 

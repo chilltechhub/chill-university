@@ -6,9 +6,9 @@
 // pointed at once, with this: what it shows, then what to do with it. A new
 // card nobody explained is just more screen.
 //
-// Keys are HomeScreen's WIDGET_DEFS keys. Keep each one true to what the
-// widget actually renders: one short sentence, key words in **bold**
-// (TourOverlay renders the markers).
+// Keys are WIDGET_DEFS keys (src/data/dashboardWidgets.js). Keep each one
+// true to what the widget actually renders: one short sentence, key words
+// in **bold** (TourOverlay renders the markers).
 //
 // No imports on purpose: plain data.
 

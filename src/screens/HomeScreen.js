@@ -39,6 +39,8 @@ import useDrillPlan from '../logic/useDrillPlan';
 import CalendarModal from '../components/CalendarModal';
 import PlanDetailSheet from '../components/PlanDetailSheet';
 import WidgetBoard from '../components/WidgetBoard';
+import { WIDGET_DEFS, WIDGET_KEYS, WIDGET_BLURBS } from '../data/dashboardWidgets';
+import { layoutFromWanted, reconcileWidgetLayout as reconcileLayout } from '../logic/widgetLayout';
 import LevelRing from '../components/LevelRing';
 import PlayerMatchBackground from '../components/PlayerMatchBackground';
 import GettingStartedCard from '../components/GettingStartedCard';
@@ -151,89 +153,12 @@ function fmtActivityTime(t24) {
 }
 
 // ─── Dashboard widgets ─────────────────────────────────────────────────────
-// The rearrangeable pieces of Home, iOS-widget-screen style — see
-// WidgetBoard.js for the drag/jiggle mechanics and how `layout` (order +
-// hidden flags) round-trips through user_settings.home_widget_layout.
-// Every widget Home can render, across all account types. Titles here are
-// what shows in the "hidden widgets" tray while editing.
-//
-// The first nine are the originals, available to everyone. The eleven below
-// them are the persona widgets — they're in the same flat list on purpose,
-// so a Student who wants the Vault on their dashboard can just un-hide it.
-// The account type decides the DEFAULT layout, not what's permitted.
-const WIDGET_DEFS = [
-  { key: 'hq',         title: 'You' },
-  { key: 'wisdom',      title: "Today's Wisdom" },
-  // 'focus' is drawn as the Today card since 2026-10-20: focus, Right now,
-  // and whichever of activities / desk / checkins this Home has, in one
-  // card (src/components/TodayCard.js). The keys stay for stages and picks.
-  { key: 'focus',       title: 'Today' },
-  { key: 'activities',  title: "Today's Activities" },
-  { key: 'desk',        title: 'On the Desk' },
-  { key: 'ideas',       title: 'Latest Ideas' },
-  { key: 'builds',      title: 'Active Projects' },
-  { key: 'checkins',    title: 'Check-ins' },
-  // Not tied to one persona — see personas.defaultWidgets and the
-  // `exploring` option on layoutForPersona.
-  { key: 'wayfinder',   title: 'Wayfinder' },
-  // The purpose/objective layer. A widget rather than a pinned card so the
-  // board stays the one system that owns the dashboard — it defaults to
-  // directly under the HQ card, and stays reorderable from there.
-  { key: 'compass',     title: 'Your goal' },
-  // The steps of the goal in flight, ticked or not — the Compass card
-  // shows only the next one.
-  { key: 'goalSteps',   title: 'Your steps' },
-  // Which stage the app is at, what the next one brings, and the two things
-  // that open it. See src/components/StageStepsWidget.js.
-  { key: 'stageSteps',  title: "What's next" },
-  // Persona widgets — src/components/widgets/
-  { key: 'habitRings',       title: 'Habits' },
-  { key: 'lifeAreas',        title: 'Life Areas' },
-  { key: 'dailyDrills',      title: "Today's Drills" },
-  { key: 'studyBlocks',      title: 'Study Blocks' },
-  { key: 'classProgress',    title: 'Subjects' },
-  { key: 'orgSnapshot',      title: 'Organization' },
-  { key: 'systemsCheck',     title: 'Systems Check' },
-  { key: 'recurringOps',     title: 'Recurring Ops' },
-  { key: 'vaultStatus',      title: 'The Vault' },
-  { key: 'founderQuest',     title: 'Founder Quest' },
-  { key: 'targetsReadiness', title: 'Targets & Readiness' },
-  // Every type: the next quest (src/data/quests.js). Joins Home at each
-  // type's third stage, alongside the next three games.
-  { key: 'quests',           title: 'Missions' },
-];
-const WIDGET_KEYS = WIDGET_DEFS.map(w => w.key);
+// What the board can hold (WIDGET_DEFS), their tray blurbs and the saved-
+// layout rules live in src/data/dashboardWidgets.js and
+// src/logic/widgetLayout.js. What each key draws is the `widgets` list
+// passed to <WidgetBoard> below.
 // Drawn inside the Today card ('focus') outside Edit layout.
 const TODAY_PARTS = ['activities', 'desk', 'checkins'];
-
-// One line on what each widget shows, for the "new widget" offer. A title on
-// its own ("Systems Check") doesn't tell anyone whether they'd want it.
-const WIDGET_BLURBS = {
-  hq:               'Your name, level and the Play button.',
-  wisdom:           'Your takeaways, brought back so they stick. A quote and your affirmation otherwise.',
-  focus:            "Today in one card: your focus, what's on, the next thing to pick up, and a check-in when one's due.",
-  activities:       'Everything scheduled for today, in time order.',
-  desk:             'The next thing to pick up from your projects, notes and ideas.',
-  ideas:            'The newest ideas in your Idea Garden.',
-  builds:           'Projects in progress and how far along each is.',
-  checkins:         'Life areas you have not rated in a while.',
-  wayfinder:        'Work out what you want, one small experiment at a time.',
-  compass:          "Your goal in flight, its next step, and what's next in the app.",
-  goalSteps:        'Every step of your current goal, ticked or not.',
-  stageSteps:       "What's next in the app, and how to get there.",
-  habitRings:       'How often you kept each habit over the last week.',
-  lifeAreas:        'Your rating for each life area, most out of date first.',
-  dailyDrills:      "Today's three drills and the game for the next one.",
-  studyBlocks:      "Today's study blocks, done or not.",
-  classProgress:    'How far along you are in each class subject.',
-  orgSnapshot:      "Your school or team's latest, if you're in one.",
-  systemsCheck:     'Your ratings for the work and digital sides of life.',
-  recurringOps:     'Routines that repeat weekly or monthly, and what is due.',
-  vaultStatus:      'What is in your Vault and what needs filing.',
-  founderQuest:     'The next step on the founder track.',
-  targetsReadiness: 'Your targets and how ready the paperwork is.',
-  quests:           'The next ten-minute quest to try.',
-};
 
 // The layout a profile of this type starts with: its persona's ordered
 // widgets visible, everything else present but hidden (one tap away in the
@@ -252,54 +177,13 @@ function layoutForPersona(personaKey, { exploring = false } = {}) {
     const rest = wanted.filter(k => k !== 'wayfinder' && k !== 'compass');
     wanted = [...(wanted.includes('compass') ? ['compass'] : []), 'wayfinder', ...rest];
   }
-  const known = new Set(WIDGET_DEFS.map(w => w.key));
-  const visible = wanted.filter(k => known.has(k));
-  const shown = new Set(visible);
-  return [
-    ...visible.map(key => ({ key, hidden: false })),
-    ...WIDGET_DEFS.filter(w => !shown.has(w.key)).map(w => ({ key: w.key, hidden: true })),
-  ];
+  return layoutFromWanted(wanted);
 }
 
-// Reconciles a saved layout against WIDGET_DEFS — drops widgets that no
-// longer exist (an older save referencing a removed key) and appends any
-// new ones the user's never seen, so an app update that adds a widget
-// doesn't silently hide it from someone with a saved layout already.
-//
-// New widgets are appended HIDDEN rather than visible. That was fine when
-// one widget joined a list of eight; appending eleven persona widgets
-// visible would rearrange the dashboard of every existing user without
-// being asked. Someone with a saved layout keeps exactly what they had.
-// A widget added by an app update is appended HIDDEN, so an update never
-// rearranges a dashboard someone has already set up. These are the
-// exceptions: ones that answer "what do I do next", which are no use
-// sitting switched off in the tray.
-const NEW_WIDGETS_SHOWN = new Set(['goalSteps', 'stageSteps']);
-
+// A saved layout against today's widgets, or this persona's default when
+// nothing is saved (src/logic/widgetLayout.js).
 function reconcileWidgetLayout(stored, personaKey, opts) {
-  if (!Array.isArray(stored) || stored.length === 0) return layoutForPersona(personaKey, opts);
-  const known = new Set(WIDGET_DEFS.map(w => w.key));
-  const kept = stored.filter(l => l && known.has(l.key));
-  const seen = new Set(kept.map(l => l.key));
-  const added = WIDGET_DEFS.filter(w => !seen.has(w.key))
-    .map(w => ({ key: w.key, hidden: !NEW_WIDGETS_SHOWN.has(w.key) }));
-  // 'goalSteps' and 'stageSteps' go straight under the Compass card they
-  // belong to, rather than to the bottom of the board, where the checklist
-  // for the goal in flight — and the card saying what opens next — would sit
-  // below everything they're meant to lead.
-  const NEAR_COMPASS = ['goalSteps', 'stageSteps'];
-  const movers = [];
-  NEAR_COMPASS.forEach(key => {
-    const at = added.findIndex(l => l.key === key);
-    if (at >= 0) movers.push(...added.splice(at, 1));
-  });
-  if (movers.length) {
-    const compassAt = kept.findIndex(l => l.key === 'compass');
-    const out = [...kept];
-    out.splice(compassAt >= 0 ? compassAt + 1 : 0, 0, ...movers);
-    return [...out, ...added];
-  }
-  return [...kept, ...added];
+  return reconcileLayout(stored, () => layoutForPersona(personaKey, opts));
 }
 
 // ─── Default focus presets ────────────────────────────────────────────────────
@@ -993,7 +877,7 @@ export default function HomeScreen() {
 
   const [showCalendar,   setShowCalendar]   = useState(false);
 
-  // Dashboard widget order/visibility — see WIDGET_DEFS above and
+  // Dashboard widget order/visibility — see src/data/dashboardWidgets.js and
   // WidgetBoard.js. Edits are local-only (fast, no network) while editing;
   // the whole layout is written to Supabase once, on "Done" (exitWidgetEdit).
   const [widgetLayout,   setWidgetLayout]   = useState(() => layoutForPersona(activeType));
@@ -1239,7 +1123,7 @@ export default function HomeScreen() {
 
   /* ── "A new widget is available" ──────────────────────────────────────────
      Finishing the steps of a goal opens a stage, and a stage usually brings
-     widgets with it. Those arrive HIDDEN (see NEW_WIDGETS_SHOWN) so an
+     widgets with it. Those arrive HIDDEN (see src/logic/widgetLayout.js) so an
      update never rearranges a dashboard somebody has already set up — which
      is right, and also meant they arrived invisibly: the only hint was a new
      row in the edit tray, which nobody opens looking for something they
@@ -2155,7 +2039,7 @@ export default function HomeScreen() {
         )}
         {/* ── Dashboard widgets — order/visibility from widgetLayout, drag
              handles + jiggle only live while editingWidgets. See
-             WIDGET_DEFS above for what each key renders. ── */}
+             the list below for what each key renders. ── */}
         <WidgetBoard
           // Settings → "Hide cards once they're done": finished cards step
           // aside until tomorrow (never while editing the layout).

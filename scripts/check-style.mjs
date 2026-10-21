@@ -23,6 +23,7 @@ const MIGRATED = [
   'src/components/GettingStartedCard.js',
   'src/components/WidgetBoard.js',
   'src/screens/HomeScreen.js',
+  'src/data/dashboardWidgets.js',
   'src/screens/library/LibraryScreen.js',
   'src/components/widgets/WidgetCard.js',
   'src/components/widgets/WayfinderWidget.js',
