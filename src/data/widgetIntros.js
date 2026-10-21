@@ -36,5 +36,5 @@ export const WIDGET_INTROS = {
   vaultStatus:      "Your **business worksheets**: done and still to do. (Not your notes Vault.)",
   founderQuest:     "Your **next founder step**. Tap to open the lesson.",
   targetsReadiness: "Your **revenue target** or stage, and funding worksheets done.",
-  quests:           "A **ten-minute quest**: an idea, some research, one real thing to do.",
+  quests:           "A **ten-minute mission**: an idea, some research, one real thing to do.",
 };

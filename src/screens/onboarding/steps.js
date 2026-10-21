@@ -173,13 +173,13 @@ const FEATURE_RECS = [
   { pattern: 'habits',     icon: 'checkmark-circle-outline', title: 'Daily Check-in',       body: 'A one-tap log for your life areas — Library → any area → Quick Log.' },
   { pattern: 'habits',     icon: 'notifications-outline',     title: 'Daily Reminders',       body: 'Turn on below: evening nudges for today\'s drills and your next step.' },
   { pattern: 'building',   icon: 'hammer-outline',            title: 'The Workshop',          body: 'Start your first project — Library → The Workshop → New Project.' },
-  { pattern: 'building',   icon: 'briefcase-outline',         title: 'Portfolio Archives',    body: 'Finished builds land here automatically as a running showcase.' },
-  { pattern: 'learning',   icon: 'ribbon-outline',            title: 'Academy Classes',       body: 'Structured coursework across every subject — Library → Academy Classes.' },
+  { pattern: 'building',   icon: 'briefcase-outline',         title: 'Showcase',              body: 'What you make and finish lands here on its own.' },
+  { pattern: 'learning',   icon: 'ribbon-outline',            title: 'Classes',               body: 'Lessons across every subject, in the Learn tab.' },
   { pattern: 'reflecting', icon: 'journal-outline',           title: 'Weekly Reflection',     body: 'A guided prompt on any life area, once a week — good for spotting patterns.' },
   { pattern: 'reflecting', icon: 'leaf-outline',               title: 'Idea Garden',           body: 'Plant loose thoughts and let them grow over time.' },
   { pattern: 'planning',   icon: 'calendar-outline',          title: 'Planner',               body: 'Daily, weekly, and monthly views — Library → Planner.' },
   { pattern: 'planning',   icon: 'file-tray-full-outline',    title: 'Capture Inbox',         body: 'Jot anything fast, decide where it belongs later.' },
-  { pattern: 'breaks',     icon: 'game-controller-outline',    title: 'Practice games',        body: 'Quick games on what you learn, in the Learn tab.' },
+  { pattern: 'breaks',     icon: 'game-controller-outline',    title: 'Practice',              body: 'Quick games on what you learn, in the Learn tab.' },
 ];
 
 export function buildRecommendations(data) {

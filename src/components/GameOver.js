@@ -169,7 +169,7 @@ export default function GameOver({
           <Text style={s.lessonSub}>
             {struggling
               ? `${judgedAccuracy}% on this game — this ${lesson.subjectTitle} lesson covers it`
-              : `In ${lesson.subjectTitle} · Academy Classes`}
+              : `In ${lesson.subjectTitle} · Classes`}
           </Text>
           <Text style={[s.lessonGo, { color: struggling ? G.warning : G.teal }]}>Open lesson →</Text>
         </TouchableOpacity>

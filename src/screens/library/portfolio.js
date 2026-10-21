@@ -17,6 +17,7 @@ import { useUIPrefs } from '../../../context/UIPrefsContext';
 import { useAccess } from '../../../context/AccessContext';
 import TourSpot from '../../components/TourSpot';
 import FillWithAIButton from '../../components/FillWithAIButton';
+import StudioShowcase from '../../components/StudioShowcase';
 
 // ─── Suit/badge maps ──────────────────────────────────────────────────────────
 const SUIT_COLORS = {
@@ -334,7 +335,7 @@ export default function PortfolioScreen() {
   const suitColor     = profile ? (SUIT_COLORS[profile.suit_color] || '#2bb5a0') : '#2bb5a0';
   const helmetEmoji   = profile ? (HELMET_EMOJI[profile.helmet_style] || '🪖')    : '🪖';
   const badgeEmoji    = profile ? (BADGE_EMOJI[profile.badge] || '🧭')             : '🧭';
-  const displayName   = profile?.traveler_name || profile?.display_name || 'Commander';
+  const displayName   = profile?.traveler_name || profile?.display_name || 'You';
   const level         = profile?.level || 1;
   const xp            = profile?.xp || 0;
   const lifeStage     = profile?.life_stage || '';
@@ -440,6 +441,9 @@ export default function PortfolioScreen() {
               </View>
               </TourSpot>
             </View>
+
+            {/* ── What they made: Studio Builds (docs/studio-plan.md) ── */}
+            <StudioShowcase style={{ marginBottom: 16 }} />
 
             {/* ── Life areas strip ── */}
             {(profile?.active_life_areas || []).length > 0 && (

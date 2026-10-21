@@ -102,11 +102,11 @@ export function FounderQuestWidget({ userId, profileId, onOpenClasses }) {
   return (
     <WidgetCard
       title="Founder quest" icon="flag-outline" accent={c.purple}
-      action="Academy →" onAction={onOpenClasses}
+      action="Classes →" onAction={onOpenClasses}
       loading={docs === null}
       empty={levels.length === 0 ? {
-        text: "The ownership curriculum isn't loaded. Check Academy Classes for the entrepreneur track.",
-        cta: 'Open Academy', onPress: onOpenClasses,
+        text: "The ownership curriculum isn't loaded. Check Classes for the entrepreneur track.",
+        cta: 'Open Classes', onPress: onOpenClasses,
       } : null}
     >
       {!started.length && (

@@ -60,6 +60,8 @@ function parseNumber(text) {
 // because the rest is closed", 2026-10-10).
 function leaveQuest(navigation, from) {
   if (from === 'Home') { navigation.navigate('MainTabs', { screen: 'Home' }); return; }
+  // Opened from Missions (Library → Make): back there, not to Classes.
+  if (from === 'Missions') { goToScreen(navigation, 'SoftwarePathScreen'); return; }
   if (navigation.canGoBack()) navigation.goBack();
   else navigation.navigate('ClassesMain');
 }
@@ -82,7 +84,7 @@ export default function QuestScreen() {
   if (!quest) {
     return (
       <View style={{ flex: 1, backgroundColor: c.bg0, padding: s.lg, justifyContent: 'center' }}>
-        <Text style={{ color: c.text2, textAlign: 'center', marginBottom: s.md }}>That quest isn't here any more.</Text>
+        <Text style={{ color: c.text2, textAlign: 'center', marginBottom: s.md }}>That mission isn't here any more.</Text>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ alignSelf: 'center' }}>
           <Text style={{ color: c.teal, fontWeight: t.bold }}>Go back</Text>
         </TouchableOpacity>
@@ -122,7 +124,7 @@ export default function QuestScreen() {
           {/* A reminder to come back and finish — a planner item linked to
               this quest, so the notification opens it right here. */}
           {step !== 'done' && !!user && (
-            <TouchableOpacity onPress={() => setRemindOpen(true)} accessibilityLabel="Remind me to finish this quest"
+            <TouchableOpacity onPress={() => setRemindOpen(true)} accessibilityLabel="Remind me to finish this mission"
               style={{ flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: `${accent}66`, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
               <Ionicons name="alarm-outline" size={13} color={accent} />
               <Text style={{ fontSize: 12, fontWeight: '700', color: accent }}>Remind me</Text>
@@ -589,7 +591,7 @@ function DoItStep({ quest, progress, userId, firstTime, onFinish, ui }) {
       {adding && <ActivityIndicator color={ui.accent} />}
 
       <PrimaryButton
-        label={firstTime && userId ? `Finish the quest · +${QUEST_XP} XP` : 'Finish the quest'}
+        label={firstTime && userId ? `Finish the mission · +${QUEST_XP} XP` : 'Finish the mission'}
         onPress={finish}
         busy={finishing}
         ui={ui}
@@ -622,7 +624,7 @@ function DoneStep({ quest, progress, userId, navigation, from, ui }) {
     <>
       <Card ui={ui} style={{ alignItems: 'center', paddingVertical: s.xl }}>
         <Ionicons name="ribbon-outline" size={34} color={ui.accent} />
-        <Text style={{ fontSize: t.xl, fontWeight: t.bold, color: c.text1, marginTop: 8 }}>Quest complete</Text>
+        <Text style={{ fontSize: t.xl, fontWeight: t.bold, color: c.text1, marginTop: 8 }}>Mission complete</Text>
         {progress.xpEarned ? (
           <Text style={{ fontSize: t.lg, fontWeight: '800', color: c.gold, marginTop: 4 }}>+{progress.xpEarned} XP</Text>
         ) : null}

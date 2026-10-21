@@ -188,9 +188,9 @@ export default function CompassScreen() {
           >
             <Ionicons name="chevron-back" size={22} color={c.teal} />
           </TouchableOpacity>
-          {/* "App Nav" since 2026-10-10 — the user's name for it. The route
-              is still 'Compass'. */}
-          <Text style={s.headerTitle}>App Nav</Text>
+          {/* "Goals" since 2026-10-20 (was "App Nav"). The route is still
+              'Compass'. */}
+          <Text style={s.headerTitle}>Goals</Text>
           {showSubtext && <Text style={s.headerSub}>Every <Text style={{ fontWeight: '700' }}>stage</Text>, the goal you’re on, and <Text style={{ fontWeight: '700' }}>what’s next</Text>.</Text>}
         </View>
 
@@ -209,7 +209,7 @@ export default function CompassScreen() {
             accessibilityState={{ expanded: showExplainer }}
           >
             <Ionicons name="help-circle-outline" size={16} color={c.teal} />
-            <Text style={s.explainerTitle}>What is App Nav?</Text>
+            <Text style={s.explainerTitle}>What is Goals?</Text>
             <Ionicons name={showExplainer ? 'chevron-up' : 'chevron-down'} size={15} color={c.text4} />
           </TouchableOpacity>
           {showExplainer && (

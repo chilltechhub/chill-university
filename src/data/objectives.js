@@ -93,16 +93,18 @@ export const PURPOSES = [
   },
   {
     key: 'build',
-    ask: 'Start something',
-    you: 'start something',
-    label: 'Ship something real',
+    // Since 2026-10-20 (docs/studio-plan.md): make something with the app
+    // first, in the Studio, then grow it into your own project.
+    ask: 'Make something',
+    you: 'make something',
+    label: 'Make something real',
     short: 'Build',
     emoji: '🏗️',
     accentKey: 'gold',
-    blurb: 'You have an idea. The aim is that it exists by the end of the month.',
+    blurb: 'A page, a game, a beat or a business. Make it with the app, then make it yours.',
     leads: ['workshop', 'idea-garden', 'capture'],
     starterObjective: 'ship-first-build',
-    firstGoal: 'first-build',
+    firstGoal: 'first-make',
     matches: {
       goals:       ['Start a project', 'Learn new skills'],
       motivations: ['creativity'],
@@ -215,7 +217,7 @@ export const PURPOSES = [
     blurb: 'Tools and know-how that save you time or money, explained plainly. Try one today.',
     leads: ['knowledge-vault', 'life-areas', 'classes'],
     firstGoal: 'first-toolkit',
-    path: ['learn-one-skill', 'clear-the-inbox', 'ship-first-build'],
+    path: ['software-for-you', 'learn-one-skill', 'clear-the-inbox', 'ship-first-build'],
     matches: { goals: [], motivations: ['all'], usage: [] },
   },
   {
@@ -516,6 +518,23 @@ export const OBJECTIVES = [
     next: 'ship-first-build',
   },
 
+  {
+    id: 'first-make',
+    purpose: 'build',
+    intro: true,
+    label: 'Make Your First Thing',
+    promise: 'The app makes something real with you. Then you take one part apart.',
+    why: 'Interest follows doing. You find out what you like by making it.',
+    estimate: 'About 5 minutes',
+    steps: [
+      { id: 'make',  label: 'Make something in the Studio', hint: 'A page, a game, a beat or a business. **It works in a minute.**', screen: 'StudioScreen', signal: 'build-made' },
+      { id: 'apart', label: 'Take one part apart',          hint: 'Open a part, see how it works, change it.', screen: 'StudioScreen', signal: 'build-part-looked' },
+      { id: 'own',   label: 'Master one part',              hint: 'Answer its one question. **A wrong answer costs nothing.**', screen: 'StudioScreen', signal: 'build-part-mastered' },
+    ],
+    unlocks: [],
+    next: 'first-build',
+  },
+
   /* ── First goals by aim ──────────────────────────────────────────────────
      What onboarding's "What did you come here for?" hands over (each
      purpose's `firstGoal`). The four above are what an account with no
@@ -572,7 +591,27 @@ export const OBJECTIVES = [
       { id: 'browse', label: 'Find one more for a life area',    hint: 'Library, Find, Finds. Pick an area you care about.', screen: 'KnowledgeScreen', signal: 'finds-browsed' },
     ],
     unlocks: [],
-    next: 'clear-the-inbox',
+    next: 'software-for-you',
+  },
+
+  // The founder's belief, taught, shown, practised and done
+  // (src/data/softwarePath.js, docs/north-star.md). Each step ticks when
+  // that mission is finished: practised, and its real step done.
+  {
+    id: 'software-for-you',
+    purpose: 'explore',
+    label: 'Software for You',
+    promise: 'See what software can do for you, for free. Then do it for real.',
+    why: 'You don’t need to be an engineer, or pay license fees, to have software work for you.',
+    estimate: 'About 40 minutes, over a few days',
+    steps: [
+      { id: 'what', label: 'What software can do for you', hint: 'Learn it, see it, practise it, and make your own page.', screen: 'SoftwarePathScreen', signal: 'software-mission:what' },
+      { id: 'free', label: 'Free, and actually good',      hint: 'Open source, honestly. Then **try one free tool.**', screen: 'SoftwarePathScreen', signal: 'software-mission:free' },
+      { id: 'ai',   label: 'AI you can use today',         hint: 'What it’s good at, where it’s wrong, and your own AI helper.', screen: 'SoftwarePathScreen', signal: 'software-mission:ai' },
+      { id: 'own',  label: 'Yours to keep',                hint: 'Renting versus owning. Then **take a Build home.**', screen: 'SoftwarePathScreen', signal: 'software-mission:own' },
+    ],
+    unlocks: [],
+    next: 'learn-one-skill',
   },
 
   {

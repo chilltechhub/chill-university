@@ -49,7 +49,7 @@ export function navigateTo(navigation, route) {
 const STANDALONE = [
   { title: 'Home',            subtitle: 'Today, focus & quick actions',      icon: 'home-outline',            route: tab('Home') },
   { title: 'Training',        subtitle: 'Games & daily drills',              icon: 'barbell-outline',         route: tab('Training') },
-  { title: 'Classes',         subtitle: 'Lessons and quests by subject',     icon: 'ribbon-outline',          route: classes('ClassesMain') },
+  { title: 'Classes',         subtitle: 'Lessons and missions by subject',     icon: 'ribbon-outline',          route: classes('ClassesMain') },
   { title: 'Library',         subtitle: 'Every hub, life area & class',      icon: 'book-outline',            route: tab('Library') },
   { title: 'Capture Inbox',   subtitle: 'Process what you jotted down',      icon: 'file-tray-full-outline',  route: library('CaptureInbox') },
   { title: 'Bring stuff in',  subtitle: 'Import lists, links, files or notes', icon: 'cloud-upload-outline',    route: library('ImportScreen') },
@@ -63,7 +63,7 @@ const STANDALONE = [
   { title: 'Mentors & Experts', subtitle: 'More experienced people',         icon: 'school-outline',          route: library('MentorsScreen') },
   { title: 'Community Projects', subtitle: 'Projects from the community',      icon: 'git-network-outline',     route: library('CommunityProjectsScreen') },
   { title: 'Profile',         subtitle: 'Rank, points, streak & account',    icon: 'person-circle-outline',   route: root('Profile') },
-  { title: 'App Nav',       subtitle: 'Every stage, your goal & what opens next',  icon: 'navigate-outline',        route: root('Compass') },
+  { title: 'Goals',         subtitle: 'Your goal, every stage & what opens next',  icon: 'navigate-outline',        route: root('Compass') },
   { title: 'Insights',        subtitle: 'Done, habits, focus & game stats',  icon: 'analytics-outline',       route: root('Stats') },
   { title: 'Settings',        subtitle: 'Theme, sections, notifications',    icon: 'settings-outline',        route: root('Settings') },
   { title: 'Help',            subtitle: 'What this screen is for',           icon: 'help-circle-outline',     route: root('Help') },

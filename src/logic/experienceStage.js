@@ -295,14 +295,14 @@ export function fabActionsFor(opened) {
 // Home before the 'dashboard' stage: the widgets the path has opened, in the
 // order it opened them, everything else hidden. Never persisted — it's
 // derived, like the persona default.
-// Whatever else a stage has opened, Home opens with the same four, in the
+// Whatever else a stage has opened, Home opens with the same lead, in the
 // same order as every persona default (see defaultWidgets in
 // src/data/personas.js — the two have to agree, or the dashboard silently
-// rearranges itself the day the 'dashboard' stage arrives): who you are,
-// today's focus, the goal in flight, then where you are in the app and the
-// next action. The goal comes before the stage card: on a new account the
-// stage card used to push the one thing to do now below the fold.
-const LEAD_WIDGETS = ['hq', 'focus', 'compass', 'goalSteps', 'stageSteps', 'desk', 'activities'];
+// rearranges itself the day the 'dashboard' stage arrives): the goal in
+// flight (the one next step), Today, then who you are. Since 2026-10-20
+// (docs/consolidation-plan-2026-10-20.md §5); it used to open with who you
+// are and put the goal third.
+const LEAD_WIDGETS = ['compass', 'goalSteps', 'stageSteps', 'focus', 'hq', 'desk', 'activities'];
 
 export function starterWidgetLayout(opened, allKeys) {
   const known = new Set(allKeys);

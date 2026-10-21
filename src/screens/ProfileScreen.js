@@ -195,7 +195,7 @@ export default function ProfileScreen() {
             bowlX={decor?.bowlX}
           />
           <View style={styles.heroLabel}>
-            <Text style={styles.heroName} numberOfLines={1}>{displayName || 'Commander'}</Text>
+            <Text style={styles.heroName} numberOfLines={1}>{displayName || 'You'}</Text>
             {/* The tier's name, not "Rank #20": a number here read as a leaderboard place. */}
             <Text style={styles.heroSub}>Level {level} · {(RANK_LABELS[rank] || RANK_LABELS[20]).label}</Text>
           </View>

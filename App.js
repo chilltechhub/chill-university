@@ -30,6 +30,7 @@ import { initPlanReminders } from './src/logic/planReminderActions';
 import { initHubNotifications, flushPendingTarget } from './src/logic/hubNotifications';
 import ShareIntentListener from './src/components/ShareIntentListener';
 import { flushQueue } from './src/api/offlineCache';
+import { loadMyBuilds } from './src/api/buildService';
 import { onActiveProfileChange } from './src/logic/activeProfile';
 import { notify } from './src/logic/confirm';
 import * as ScreenOrientation from 'expo-screen-orientation';
@@ -318,6 +319,8 @@ function AppInner() {
   React.useEffect(() => {
     loadRemotePets();
     loadRemoteBackgrounds();
+    // Studio Builds: their trophies dress every stage, not just the Studio.
+    loadMyBuilds();
     ensureAndroidChannel(); // silent — no permission prompt, just registers the channel
 
     // Plan-aware reminders — registers the Done/Snooze/Reschedule action
@@ -548,7 +551,7 @@ function AppInner() {
               locked / experimental / Plus rosters. Reachable from Home's
               card, Settings, the Library header and every unlock sheet,
               so it lives on the root stack rather than inside a tab. */}
-          <Stack.Screen name="Compass"           component={CompassScreen} options={{ title: 'App Nav' }} />
+          <Stack.Screen name="Compass"           component={CompassScreen} options={{ title: 'Goals' }} />
           <Stack.Screen name="Stats"               component={GatedStats} options={{ title: 'Insights' }} />
           <Stack.Screen name="WorkMode"            component={GatedWorkMode} />
           {/* The paywall / "your plan" page. Slides up rather than across,

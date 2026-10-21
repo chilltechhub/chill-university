@@ -13,6 +13,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { FAB_CLEARANCE } from '../../context/FabPositionContext';
 import { useUIPrefs } from '../../context/UIPrefsContext';
 import { RANK_LABELS, FONTS } from '../theme';
+import { textOn } from '../logic/contrast';
 import LevelRing from '../components/LevelRing';
 import MissionsScreen from './MissionsScreen';
 import useDrillPlan from '../logic/useDrillPlan';
@@ -182,7 +183,7 @@ export default function GamesScreen() {
   // is just the email's local-part set at signup (see LoginScreen.js) and
   // never updated after that, so leading with it here showed the raw
   // signup email as this screen's header instead of the chosen name.
-  const displayName = profile?.traveler_name || profile?.display_name || profile?.username || 'Commander'; // same fallback as Home and Profile
+  const displayName = profile?.traveler_name || profile?.display_name || profile?.username || 'You'; // same fallback as Home and Profile
 
   // Refresh saved skill levels whenever this screen regains focus, so a
   // level picked mid-game shows up here as soon as you back out.
@@ -292,6 +293,36 @@ export default function GamesScreen() {
             </View>
             </TourSpot>
 
+            {/* Make first (2026-10-20, docs/studio-plan.md): the Studio
+                builds a real thing with you and teaches it by taking it
+                apart. Classes are the "go deeper" for what it opens up. */}
+            <TouchableOpacity
+              style={[styles.playBtn, { backgroundColor: c.teal, marginBottom: s.sm }]}
+              onPress={() => {
+                navigation.navigate('Library');
+                setTimeout(() => navigation.navigate('Library', { screen: 'StudioScreen' }), 0);
+              }}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Make something: a page, a game, a beat or a business, and learn how it works"
+            >
+              {/* textOn: white on the light theme's teal, dark on the dark theme's bright mint. */}
+              <Ionicons name="color-wand" size={16} color={textOn(c.teal)} />
+              <Text style={[styles.playText, { color: textOn(c.teal) }]}>MAKE SOMETHING</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                navigation.navigate('Library');
+                setTimeout(() => navigation.navigate('Library', { screen: 'SoftwarePathScreen' }), 0);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Missions: learn it, see it, then do one real thing"
+              style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: s.md }}
+            >
+              <Ionicons name="rocket-outline" size={15} color={c.teal} />
+              <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.teal }}>Missions · learn it, then do it</Text>
+            </TouchableOpacity>
+
             {/* Learn first (2026-10-18): Classes is the big button, the
                 games are Practice for what the classes teach. Classes live
                 in this tab (src/screens/TrainingNav.js). */}
@@ -304,8 +335,8 @@ export default function GamesScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Classes: lessons and quests by subject"
               >
-                <Ionicons name="school" size={16} color="#fff" />
-                <Text style={styles.playText}>CLASSES</Text>
+                <Ionicons name="school" size={16} color={textOn(c.purple)} />
+                <Text style={[styles.playText, { color: textOn(c.purple) }]}>CLASSES</Text>
               </TouchableOpacity>
               </TourSpot>
             )}

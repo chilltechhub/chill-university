@@ -29,6 +29,8 @@ export const SHEETS = {
   // Made here from bowlBlue: its kibble pixels repainted the bowl's inside
   // colour, so a hungry pet's bowl can show empty (the pack has no empty one).
   bowlEmpty: { source: require('../../assets/scene/bowl-empty.png'), width: 43, height: 37 },
+  // 32rogues items (see SpriteIcon.js for its licence): the Studio trophies.
+  items: { source: require('../../assets/32rogues/items.png'), width: 352, height: 832 },
 };
 
 const box = (sheet, x, y, w, h) => ({ sheet, x, y, w, h });
@@ -108,6 +110,14 @@ export const ART = {
   mealBowl:     box('pochi', 9, 207, 43, 37),
   drumstick:    box('treats', 1, 1, 14, 14),
   steak:        box('treats', 0, 18, 16, 13),
+
+  // Studio trophies (32rogues items, cropped to their pixels): one per
+  // Build kind, earned by mastering every part of one (src/data/builds.js).
+  trophyPage:     box('items', 134, 678, 20, 22),  // 22.e tome
+  trophyGame:     box('items', 9, 714, 18, 10),    // 23.a gold key
+  trophyBeat:     box('items', 106, 648, 11, 17),  // 21.d blue potion
+  trophyBusiness: box('items', 106, 777, 10, 15),  // 25.d coin purse
+  trophyAi:       box('items', 200, 678, 17, 20),  // 22.g scroll 2
 };
 
 // Animated extras. Frame counts checked by scanning every cell of each strip
@@ -136,8 +146,16 @@ export const SLEEPING_CATS = [
 // `scale` its size when first placed (relative to a 300px stage, like scene
 // props), `wall` puts it up on the wall instead of the floor when added.
 const d = (id, name, group, level, scale, wall) => ({ id, name, group, level, scale, wall: !!wall });
-export const DECOR_GROUPS = ['Furniture', 'Plants', 'Nature', 'Food', 'Toys'];
+// A trophy opens from a mastered Build, not a level (stageDecor.js decorAllowed).
+const trophy = (id, name, build) => ({ id, name, group: 'Trophies', level: Infinity, scale: 2.2, wall: false, build });
+export const DECOR_GROUPS = ['Trophies', 'Furniture', 'Plants', 'Nature', 'Food', 'Toys'];
 export const DECOR = [
+  trophy('trophyPage', 'Page Tome', 'page'),
+  trophy('trophyGame', 'Game Key', 'game'),
+  trophy('trophyBeat', 'Beat Elixir', 'beat'),
+  trophy('trophyBusiness', 'First Coin Purse', 'business'),
+  trophy('trophyAi', 'Prompt Scroll', 'ai'),
+
   d('windowCream', 'Window', 'Furniture', 1, 0.95, true),
   d('plantPainting', 'Plant Print', 'Furniture', 3, 0.85, true),
   d('shelf', 'Bookshelf', 'Furniture', 4, 0.95),

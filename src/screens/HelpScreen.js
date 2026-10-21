@@ -44,7 +44,7 @@ const FAQ = [
   },
   {
     q: 'How do I start a project?',
-    a: 'Tap **+** → **New Project**. Or **Library → Tools → The Workshop → New Project**.',
+    a: 'Tap **+** → **New Project**. Or **Library → Make → The Workshop → New Project**.',
   },
   {
     q: 'Can I use Deskartes offline?',
@@ -70,7 +70,7 @@ const FAQ = [
   },
   {
     q: 'Why can’t I see some tools?',
-    a: 'Some open **as you use the app**: **App Nav** lists what opens each one. Some courses and community features are limited by **age**.',
+    a: 'Some open **as you use the app**: **Goals** lists what opens each one. Some courses and community features are limited by **age**.',
   },
   {
     q: 'How do I delete my account or get a copy of my data?',
