@@ -24,6 +24,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useUserProgress } from '../../context/UserProgressContext';
+import { useAccess } from '../../context/AccessContext';
 import { useFeatureGate } from '../components/FeatureGate';
 import { TARGETS, TARGET_BY_KEY, REPEAT_COUNTS, buildPrompt } from '../logic/aiBridgeFormat';
 import { parseReply, resolveChanges, countChanges, FIELD_LABELS } from '../logic/aiBridgeParse';
@@ -126,6 +127,7 @@ export default function AIBridgeScreen() {
   const route = useRoute();
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   const { user, profile } = useUserProgress();
+  const { signalAction } = useAccess();
   const { isOpen, openGate, sheet } = useFeatureGate();
   const userId = user?.id || null;
   const isKid = ageBandFor(profile) === 'kid';
@@ -312,6 +314,10 @@ export default function AIBridgeScreen() {
       // Count what was saved the way the Save button counted it (tasks,
       // notes and sessions inside a project each count), not one per project:
       // a 37-change plan used to say "1 change saved".
+      // A plan made here counts like one made in the Planner, for a goal
+      // step that waits on one (objectives.js 'planner-item-added[:area]').
+      const newPlanAreas = [...new Set(savedOk.filter(ch => ch.target === 'planner' && ch.op === 'create').map(ch => ch.fields?.area || null))];
+      newPlanAreas.forEach(area => signalAction('planner-item-added', { area }));
       const sc = countChanges(review.changes, new Set(savedOk.map(ch => ch.key)));
       const savedCount = sc.create + sc.update + sc.delete;
       const lifeArea = picked.find(ch => ch.target === 'life_areas')?.fields?.area

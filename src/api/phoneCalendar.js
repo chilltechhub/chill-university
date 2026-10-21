@@ -20,6 +20,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './profileScopedClient';
 import { todayStr, addDays, dateStr } from '../logic/dateUtils';
+import { coalesce } from '../logic/coalesce';
 
 const SETTINGS_KEY = '@cth_phone_calendar_v1';
 const COPIES_KEY = '@cth_phone_calendar_copies_v1'; // { [instanceId]: { eventId, sig } }
@@ -232,6 +233,14 @@ export async function syncPlansToPhone(userId) {
   await writeCopies(copies);
   return out;
 }
+
+/**
+ * syncPlansToPhone after a change, gathered: a burst of ticks and edits is
+ * one sync 1.5 s after the last, and never two at once (src/logic/coalesce.js).
+ * Today reads its plans far more often than the Planner did.
+ */
+export const syncPlansToPhoneSoon = coalesce((userId) => syncPlansToPhone(userId)
+  .catch(e => console.warn('[phoneCalendar] sync', e?.message)), 1500);
 
 /** Turns copying off and removes the "Deskartes" calendar it made. */
 export async function stopCopyingPlans() {

@@ -68,7 +68,7 @@ import { RANK_LABELS } from '../theme';
 import { GAMES_MASTER } from './GamesScreen';
 import { LIFE_AREAS } from './library/LifeAreaScreen';
 import { recordAction } from '../logic/gamificationService';
-import { getDueItems } from '../api/deadlinesService';
+import { loadDayPlan } from '../logic/useDayPlan';
 import { advanceNextAction, suggestNextStep } from '../api/nextActionService';
 import { openTarget } from '../logic/openTarget';
 import SleepyCat from '../components/SleepyCat';
@@ -907,9 +907,12 @@ export default function HomeScreen() {
 
   const todaysQuote = getTodaysQuote(quotePool);
 
+  // No account: Today shows the plans a guest made on the phone.
+  const [guest, setGuest] = useState(false);
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) { setUserId(user.id); loadAll(user.id); }
+      else setGuest(true);
     });
   }, []);
 
@@ -944,7 +947,8 @@ export default function HomeScreen() {
 
   useFocusEffect(useCallback(() => {
     if (userId) loadAll(userId);
-  }, [userId]));
+    else if (guest) loadGuestDay();
+  }, [userId, guest]));
 
   // Switching profiles switches dashboards. Without this, the layout state
   // holds whatever the previous profile had until something else forces a
@@ -1283,6 +1287,68 @@ export default function HomeScreen() {
     setDeskLoaded(true);
   };
 
+  // Today's Activities — everything with today's actual date on it, one
+  // merged/sorted list so "what does today look like" is a single glance
+  // instead of four separate rails. No-time items (all-day events, tasks,
+  // assignments) sort after timed ones, earliest first. `plan` is the Calm
+  // view's plan bar and the Habits / Study cards: all of today's Planner
+  // items and tasks due today, done ones included. Built from loadDayPlan
+  // (src/logic/useDayPlan.js), the Planner's own read.
+  const todayFromPlan = (dayPlan, assignments) => {
+    const planRows = dayPlan.instances || [];
+    const dueToday = dayPlan.due || [];
+    const todayTasks = dueToday.filter(d => d.kind === 'task');
+    const activities = [
+      ...(dayPlan.events || []).map(e => ({
+        id: 'evt_' + e.id, title: e.title, time: e.all_day ? null : e.time,
+        type: e.type, color: ACTIVITY_TYPES[e.type]?.color || c.teal,
+        notes: e.description, _src: 'calendar', raw: e,
+      })),
+      ...todayTasks.filter(d => !d.completed).map(d => ({
+        id: 'atask_' + d.id, title: d.title, time: null,
+        type: 'task', color: ACTIVITY_TYPES.task.color, _src: 'task', raw: { id: d.id, title: d.title, due_date: d.date },
+      })),
+      ...planRows.filter(p => !p.completed && !p.skipped).map(item => {
+        const area = PLANNER_AREA_META[item.area] || { emoji: '•', color: c.teal };
+        return {
+          id: 'agenda_' + item.id, title: item.title, time: item.start_time,
+          type: 'planner', color: area.color, emoji: area.emoji, area: item.area,
+          _src: 'planner', raw: item,
+        };
+      }),
+      // Project tasks and project finish dates due today, and anything from
+      // earlier not done yet (deadlinesService.js). Today's plain tasks are
+      // the rows above.
+      ...[...(dayPlan.late || []), ...dueToday.filter(d => d.kind !== 'task' && !d.completed)]
+        .map(d => ({
+          id: 'due_' + d.key,
+          title: d.kind === 'project' ? `Finish: ${d.title}` : d.title,
+          time: null, type: 'task', color: d.date < todayStr ? c.error : ACTIVITY_TYPES.task.color,
+          notes: [d.date < todayStr ? 'Late' : 'Due today', d.kind !== 'project' ? d.projectTitle : null].filter(Boolean).join(' · '),
+          _src: 'due', raw: d,
+        })),
+      ...assignments.filter(a => a.due_date === todayStr).map(a => ({
+        id: 'aassign_' + a.assignment_id, title: a.title, time: null,
+        type: 'assignment', color: ACTIVITY_TYPES.assignment.color,
+        notes: a.cohort_name, _src: 'assignment', raw: a,
+      })),
+    ].sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
+    const plan = [
+      ...planRows.map(p => ({ id: p.id, src: 'planner', completed: !!p.completed, skipped: !!p.skipped, cadence: p.cadence, area: p.area })),
+      ...todayTasks.map(tk => ({ id: tk.id, src: 'task', completed: !!tk.completed, skipped: false })),
+    ];
+    return { activities, plan };
+  };
+
+  // A guest's day: the plans they made in the Planner, kept on the phone.
+  const loadGuestDay = async () => {
+    try {
+      const { activities, plan } = todayFromPlan(await loadDayPlan(null, { from: todayStr }), []);
+      setTodayActivities(activities);
+      setTodayPlan(plan);
+    } catch (e) { console.warn('HomeScreen: guest day', e?.message); }
+  };
+
   const loadAll = async (uid) => {
     const cacheKey = `home_desk_${uid}`;
     // Keeps repeating habits going (the Habits card and today's list read
@@ -1299,9 +1365,8 @@ export default function HomeScreen() {
       const [
         focusRes, tasksRes, projRes, capturesRes,
         ideasRes, settingsRes, assignmentsRes,
-        eventsRes, todayTasksRes, agendaRes,
-        buildsRes, lifeAreaRowsRes, dueRows,
-        planRowsRes, planTasksRes,
+        dayPlan,
+        buildsRes, lifeAreaRowsRes,
       ] = await Promise.all([
         supabase.from('daily_focus').select('focus_text').eq('user_id', uid).eq('focus_date', todayStr).maybeSingle(),
         supabase.from('tasks').select('id, title').eq('user_id', uid).eq('completed', false).order('priority').limit(3),
@@ -1313,14 +1378,18 @@ export default function HomeScreen() {
         // yet (ORG_NOT_CONFIGURED), and that should degrade this one rail
         // source silently rather than blank the whole desk.
         getMyOpenAssignments(5).catch(() => []),
-        // Today's Activities feed — same three sources CalendarModal shows
-        // per-day, just scoped to today instead of a whole week. Daily focus
-        // and open-ended "On the Desk" tasks are deliberately left out: the
-        // focus box above already shows the former, and the desk ticker
-        // above is a ranked pick rather than "what's actually due today".
-        supabase.from('calendar_events').select('*').eq('user_id', uid).eq('date', todayStr),
-        supabase.from('tasks').select('id, title, due_date').eq('user_id', uid).eq('completed', false).eq('due_date', todayStr),
-        supabase.from('agenda_instances').select('*').eq('user_id', uid).eq('date', todayStr).eq('completed', false).eq('skipped', false),
+        // Today's Activities feed and the Calm plan bar: the same read as
+        // the Planner's Day and Calm's week (src/logic/useDayPlan.js), so
+        // the three can't disagree. It brings today's plans, events and
+        // deadlines, plus deadlines from earlier that aren't done yet.
+        // Daily focus and open-ended "On the Desk" tasks are deliberately
+        // left out: the focus box above already shows the former, and the
+        // desk ticker above is a ranked pick rather than "what's actually
+        // due today".
+        loadDayPlan(uid, { from: todayStr, lateFrom: '2000-01-01' }).catch(e => {
+          console.warn('HomeScreen: day plan', e?.message);
+          return { failed: true };
+        }),
         // Active Builds widget — a fuller list than the 3-item OnDesk
         // candidate above, same fields LibraryScreen's Build tab preview
         // already uses.
@@ -1328,17 +1397,10 @@ export default function HomeScreen() {
         // Check-ins Due widget — same per-user life_areas rows
         // LibraryScreen's Domains tab reads, matched by label the same way.
         supabase.from('life_areas').select('label, progress, last_check_date').eq('user_id', uid),
-        // Project tasks and project finish dates due today or already late
-        // (deadlinesService.js). Today's plain tasks come in above.
-        getDueItems(uid, '2000-01-01', todayStr).catch(() => []),
-        // Calm view's plan bar and Habits / Study cards: all of today's
-        // Planner items and tasks due today, done ones included.
-        supabase.from('agenda_instances').select('id, completed, skipped, cadence, area').eq('user_id', uid).eq('date', todayStr),
-        supabase.from('tasks').select('id, completed').eq('user_id', uid).eq('due_date', todayStr),
       ]);
       // Never reached the server: keep the cached desk rather than empty it.
-      if (fetchFailed(focusRes, tasksRes, projRes, capturesRes, ideasRes, settingsRes, eventsRes,
-        todayTasksRes, agendaRes, buildsRes, lifeAreaRowsRes, planRowsRes, planTasksRes)) return;
+      if (fetchFailed(focusRes, tasksRes, projRes, capturesRes, ideasRes, settingsRes,
+        buildsRes, lifeAreaRowsRes) || dayPlan.failed) return;
 
       // Focus
       if (focusRes.data) { setTodayFocus(focusRes.data.focus_text || ''); setFocusDraft(focusRes.data.focus_text || ''); }
@@ -1378,48 +1440,8 @@ export default function HomeScreen() {
       ].sort((a, b) => a.rank - b.rank).slice(0, 6);
       setTodos(merged);
 
-      // Today's Activities — everything with today's actual date on it,
-      // one merged/sorted list so "what does today look like" is a single
-      // glance instead of four separate rails. No-time items (all-day
-      // events, tasks, assignments) sort after timed ones, earliest first.
-      const activities = [
-        ...(eventsRes.data     || []).map(e => ({
-          id: 'evt_' + e.id, title: e.title, time: e.all_day ? null : e.time,
-          type: e.type, color: ACTIVITY_TYPES[e.type]?.color || c.teal,
-          notes: e.description, _src: 'calendar', raw: e,
-        })),
-        ...(todayTasksRes.data || []).map(tk => ({
-          id: 'atask_' + tk.id, title: tk.title, time: null,
-          type: 'task', color: ACTIVITY_TYPES.task.color, _src: 'task', raw: tk,
-        })),
-        ...(agendaRes.data     || []).map(item => {
-          const area = PLANNER_AREA_META[item.area] || { emoji: '•', color: c.teal };
-          return {
-            id: 'agenda_' + item.id, title: item.title, time: item.start_time,
-            type: 'planner', color: area.color, emoji: area.emoji, area: item.area,
-            _src: 'planner', raw: item,
-          };
-        }),
-        ...(dueRows || [])
-          .filter(d => !d.completed && !(d.kind === 'task' && d.date === todayStr))
-          .map(d => ({
-            id: 'due_' + d.key,
-            title: d.kind === 'project' ? `Finish: ${d.title}` : d.title,
-            time: null, type: 'task', color: d.date < todayStr ? c.error : ACTIVITY_TYPES.task.color,
-            notes: [d.date < todayStr ? 'Late' : 'Due today', d.kind !== 'project' ? d.projectTitle : null].filter(Boolean).join(' · '),
-            _src: 'due', raw: d,
-          })),
-        ...(assignmentsRes || []).filter(a => a.due_date === todayStr).map(a => ({
-          id: 'aassign_' + a.assignment_id, title: a.title, time: null,
-          type: 'assignment', color: ACTIVITY_TYPES.assignment.color,
-          notes: a.cohort_name, _src: 'assignment', raw: a,
-        })),
-      ].sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
+      const { activities, plan } = todayFromPlan(dayPlan, assignmentsRes || []);
       setTodayActivities(activities);
-      const plan = [
-        ...(planRowsRes.data || []).map(p => ({ id: p.id, src: 'planner', completed: !!p.completed, skipped: !!p.skipped, cadence: p.cadence, area: p.area })),
-        ...(planTasksRes.data || []).map(tk => ({ id: tk.id, src: 'task', completed: !!tk.completed, skipped: false })),
-      ];
       setTodayPlan(plan);
       setDeskLoaded(true);
 

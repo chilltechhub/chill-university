@@ -9,6 +9,14 @@ import { recordAction } from '../logic/gamificationService';
 import { recordUse, removePlanUse } from './knowledgeUse';
 import { addDaysIso, addMonthsIso } from '../logic/aiBridgeFormat';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isLocalId } from '../logic/agendaRows';
+import { localSelect, localInsert, localUpdate, localDelete, localSeriesFrom } from './localAgenda';
+
+// ── Guests ─────────────────────────────────────────────────────────────────
+// Someone without an account plans on the phone (src/api/localAgenda.js).
+// Reads with no userId, and any row whose id starts 'local-', go there; the
+// functions below otherwise behave exactly as they always have. Server-only
+// extras (XP, a Vault use, a project's log, the series top-up) don't apply.
 
 export const AREAS = {
   physical:     { label: 'Physical',     emoji: '💪', color: AREA_COLORS.physical, preset: 'physical_starter' },
@@ -141,6 +149,13 @@ export async function getInstances(userId, {
   date = null, weekStart = null, weekEnd = null,
   month = null, year = null, area = null, allProfiles = false,
 } = {}) {
+  if (!userId) {
+    const monthRange = month && year ? {
+      from: `${year}-${String(month).padStart(2, '0')}-01`,
+      to: `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`,
+    } : {};
+    return localSelect({ date, from: weekStart, to: weekEnd, area, ...monthRange });
+  }
   // Cache key carries the scope and the active profile, or switching either
   // one serves the other view's rows back from cache.
   const scopeKey = allProfiles ? 'all' : (getActiveProfileId() || 'none');
@@ -202,6 +217,11 @@ export async function createInstance(userId, component, date, startTime = null) 
 }
 
 export async function completeInstance(instanceId, completed = true) {
+  if (isLocalId(instanceId)) {
+    const row = await localUpdate(instanceId, { completed, completed_at: completed ? new Date().toISOString() : null });
+    if (completed) planDoneListeners.forEach(fn => { try { fn(row); } catch { /* a listener's problem, not the save's */ } });
+    return row;
+  }
   const { data, error } = await supabase
     .from('agenda_instances')
     .update({
@@ -260,6 +280,7 @@ export function onPlanDone(fn) {
 }
 
 export async function skipInstance(instanceId) {
+  if (isLocalId(instanceId)) return localUpdate(instanceId, { skipped: true });
   const { data, error } = await supabase
     .from('agenda_instances')
     .update({ skipped: true })
@@ -278,6 +299,7 @@ export async function skipInstance(instanceId) {
 // one-tap "Move" action); pass a date to reschedule further out.
 export async function rescheduleInstance(instanceId, date = null) {
   const targetDate = date || todayStr();
+  if (isLocalId(instanceId)) return localUpdate(instanceId, { date: targetDate });
   const { data, error } = await supabase
     .from('agenda_instances')
     .update({ date: targetDate })
@@ -299,6 +321,7 @@ export async function rescheduleInstance(instanceId, date = null) {
 }
 
 export async function unskipInstance(instanceId) {
+  if (isLocalId(instanceId)) return localUpdate(instanceId, { skipped: false });
   const { data, error } = await supabase
     .from('agenda_instances')
     .update({ skipped: false })
@@ -316,8 +339,48 @@ export async function deleteInstances(ids) {
   // Required here, not imported: planReminderActions imports this file.
   const { cancelPlanReminder } = require('../logic/planReminderActions');
   for (const id of ids) { try { await cancelPlanReminder(id); } catch { /* not scheduled */ } }
-  const { error } = await supabase.from('agenda_instances').delete().in('id', ids);
+  const local = ids.filter(isLocalId);
+  const remote = ids.filter(id => !isLocalId(id));
+  if (local.length) await localDelete(local);
+  if (!remote.length) return;
+  const { error } = await supabase.from('agenda_instances').delete().in('id', remote);
   if (error) throw error;
+}
+
+// ── Writes for the Add sheet and quick add ─────────────────────────────────
+// They used to write agenda_instances themselves; through here, a guest's
+// plans land on the phone instead. Errors are the client's own, so a
+// caller can still tell a missing column (PGRST204) from anything else.
+
+/** New rows; returns them as saved (with ids). */
+export async function insertInstances(userId, rows) {
+  if (!userId) return localInsert(rows);
+  const { data, error } = await supabase.from('agenda_instances').insert(rows).select();
+  if (error) throw error;
+  return data || [];
+}
+
+/** One row changed; returns it as saved, in a list like insertInstances. */
+export async function updateInstance(instanceId, patch) {
+  if (isLocalId(instanceId)) return [await localUpdate(instanceId, patch)];
+  const { data, error } = await supabase.from('agenda_instances').update(patch).eq('id', instanceId).select();
+  if (error) throw error;
+  return data || [];
+}
+
+/** What's already planned on `dates` (title, date, start_time), for the duplicate check. */
+export async function findPlansOn(userId, dates) {
+  if (!userId) return (await localSelect({})).filter(r => dates.includes(r.date));
+  const { data } = await supabase.from('agenda_instances')
+    .select('title, date, start_time').eq('user_id', userId).in('date', dates);
+  return data || [];
+}
+
+/** Up to 200 titles already on the planner, so a suggestion isn't one of them. */
+export async function getScheduledTitles(userId) {
+  if (!userId) return (await localSelect({})).slice(0, 200).map(r => r.title);
+  const { data } = await supabase.from('agenda_instances').select('title').eq('user_id', userId).limit(200);
+  return (data || []).map(row => row.title);
 }
 
 // The later copies of a repeating item, this one included. A repeat is
@@ -325,6 +388,7 @@ export async function deleteInstances(ids) {
 // is: same library component if it came from one, else same title, time and
 // repeat, from this day on and not yet done.
 export async function getSeriesFrom(instance) {
+  if (isLocalId(instance?.id)) return localSeriesFrom(instance);
   let q = supabase.from('agenda_instances')
     .select('id, date, completed')
     .eq('user_id', instance.user_id)
@@ -341,6 +405,7 @@ export async function getSeriesFrom(instance) {
 
 // Rows around today, for the "Remove duplicates" clean-up.
 export async function getInstancesBetween(userId, from, to) {
+  if (!userId) return localSelect({ from, to });
   const { data, error } = await supabase.from('agenda_instances')
     .select('id, title, date, start_time, completed, skipped, created_at')
     .eq('user_id', userId).gte('date', from).lte('date', to);
@@ -349,6 +414,7 @@ export async function getInstancesBetween(userId, from, to) {
 }
 
 export async function addNoteToInstance(instanceId, notes) {
+  if (isLocalId(instanceId)) return localUpdate(instanceId, { notes });
   const { data, error } = await supabase
     .from('agenda_instances')
     .update({ notes })

@@ -79,7 +79,10 @@ import CohortRosterScreen from './src/screens/organization/CohortRosterScreen';
 import { useUserProgress } from './context/UserProgressContext';
 
 // Screens that show SignInPrompt to a guest instead of their content.
-const ACCOUNT_ONLY_SCREENS = new Set(['Profile', 'PlannerScreen']);
+// The Planner left in the shake-up's P1: a guest plans on the phone
+// (plannerService.js). Putting it back here, and SignInPrompt back in
+// PlannerScreen, is the rollback.
+const ACCOUNT_ONLY_SCREENS = new Set(['Profile']);
 import { supabase } from './src/api/supabaseClient';
 import { needsSecondStep } from './src/api/mfa';
 import useFirstVisitTutorial from './src/logic/useFirstVisitTutorial';

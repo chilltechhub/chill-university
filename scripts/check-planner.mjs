@@ -162,6 +162,107 @@ check('isSamePlan: different times differ', !L.isSamePlan({ title: 'Gym', date: 
     Q.describeQuickAdd({ date: '2026-10-15', time: '16:00', cadence: 'weekly' }, now));
 }
 
+// ── One "today" (src/logic/dayPlan.js, read by useDayPlan) ──────────────────
+// The Planner's Day/Week/Month, Home's Today card and Calm's week all merge
+// the same sources here, so they can't disagree about a day.
+{
+  for (const name of ['layoutDay', 'hourRange', 'duplicateIds', 'isSamePlan', 'byTime']) {
+    check(`plannerLayout still exports ${name}`, typeof L[name] === 'function');
+  }
+  const dsrc = await readFile(new URL('../src/logic/dayPlan.js', import.meta.url), 'utf8');
+  const P = await import('data:text/javascript,' + encodeURIComponent(dsrc));
+  const sources = {
+    instances: [
+      { id: 'p1', title: 'Gym', date: '2026-10-21', start_time: '18:00', area: 'physical', completed: false },
+      { id: 'p2', title: 'Read', date: '2026-10-21', start_time: null, area: 'mental', completed: true },
+      { id: 'p3', title: 'Budget', date: '2026-10-22', start_time: '09:00', area: 'financial', skipped: true },
+      { id: 'p4', title: 'Call mum', date: '2026-10-21', start_time: '08:30', area: 'social' },
+    ],
+    due: [{ key: 'task-9', kind: 'task', id: 9, title: 'Essay', date: '2026-10-21', completed: false }],
+    events: [
+      { id: 7, title: 'Dentist', date: '2026-10-21', time: '16:00', all_day: false },
+      { id: 8, title: 'Holiday', date: '2026-10-22', time: '10:00', all_day: true },
+    ],
+  };
+  const items = P.mergeDayPlan(sources);
+  check('day plan: every source in one list', items.length === 7, items.length);
+  check('day plan: by day, then time, untimed last', items.map(i => i.title).join() === 'Call mum,Dentist,Gym,Read,Essay,Budget,Holiday',
+    items.map(i => i.title).join());
+  check('day plan: untimed ties keep source order (plans, deadlines, events)', items.filter(i => i.date === '2026-10-21' && !i.time).map(i => i.src).join() === 'planner,due');
+  check('day plan: an all-day event has no time', items.find(i => i.title === 'Holiday').time === null);
+  check('day plan: done and skipped carried', items.find(i => i.title === 'Read').done === true && items.find(i => i.title === 'Budget').skipped === true);
+  check('day plan: raw rows kept as they were', P.rowsOf(items, 'planner').find(r => r.id === 'p4') === sources.instances[3]);
+  check('day plan: keys are unique across sources', new Set(items.map(i => i.key)).size === items.length);
+  const physical = P.mergeDayPlan(sources, { areas: new Set(['physical']) });
+  check('day plan: an area filter keeps that area only', physical.map(i => i.title).join() === 'Gym', physical.map(i => i.title).join());
+  check('day plan: an area filter leaves deadlines and events out, as the Planner always has',
+    !physical.some(i => i.src !== 'planner'));
+  check('day plan: an empty filter is no filter', P.mergeDayPlan(sources, { areas: new Set() }).length === 7 && P.mergeDayPlan(sources, { areas: [] }).length === 7);
+  const byDay = P.itemsByDate(items);
+  check('day plan: grouped by day in order', Object.keys(byDay).join() === '2026-10-21,2026-10-22' && byDay['2026-10-21'].length === 5);
+  check('day plan: missing sources are empty, not errors', P.mergeDayPlan({}).length === 0 && P.mergeDayPlan().length === 0);
+  check('day plan: deliverables and assignments slot in when they exist',
+    P.mergeDayPlan({ deliverables: [{ id: 'd1', title: 'Money sheet', aimFor: '2026-10-23', status: 'doing' }], assignments: [{ assignment_id: 'a1', title: 'Essay 2', due_date: '2026-10-23' }] })
+      .map(i => i.src).join() === 'deliverable,assignment');
+  const split = P.splitDue([
+    { date: '2026-10-18', completed: false, title: 'old' }, { date: '2026-10-19', completed: true, title: 'done old' },
+    { date: '2026-10-21', completed: true, title: 'today done' }, { date: '2026-10-21', completed: false, title: 'today' },
+  ], '2026-10-21', true);
+  check('day plan: late = earlier and not done; the day keeps its done ones',
+    split.late.map(d => d.title).join() === 'old' && split.due.map(d => d.title).join() === 'today done,today');
+  check('day plan: no late unless asked', P.splitDue([{ date: '2026-10-18', completed: false }], '2026-10-21').late.length === 0);
+}
+
+// ── A guest's planner (src/logic/agendaRows.js, stored by localAgenda.js) ────
+{
+  const asrc = await readFile(new URL('../src/logic/agendaRows.js', import.meta.url), 'utf8');
+  const A = await import('data:text/javascript,' + encodeURIComponent(asrc));
+  let n = 0;
+  const makeId = () => `local-test-${n++}`;
+  let { rows, added } = A.insertRows([], [
+    { user_id: 'someone', title: 'Walk', date: '2026-10-21', area: 'physical', cadence: 'once', start_time: '07:00' },
+    { title: 'Budget', date: '2026-10-21', area: 'financial', cadence: 'once' },
+    { title: 'Stretch', date: '2026-10-22', area: 'physical', cadence: 'daily', start_time: '08:00' },
+    { title: 'Stretch', date: '2026-10-23', area: 'physical', cadence: 'daily', start_time: '08:00' },
+  ], { makeId, now: '2026-10-21T10:00:00Z' });
+  check('guest: new rows get local ids', added.every(r => A.isLocalId(r.id)) && !A.isLocalId('8c1f-uuid') && !A.isLocalId(null));
+  check('guest: rows never carry a user id', added.every(r => r.user_id === null));
+  check('guest: rows start not done, not skipped', added.every(r => r.completed === false && r.skipped === false));
+  check('guest: a day reads in area order like the server', A.selectRows(rows, { date: '2026-10-21' }).map(r => r.title).join() === 'Budget,Walk');
+  check('guest: a range reads', A.selectRows(rows, { from: '2026-10-22', to: '2026-10-23' }).length === 2);
+  check('guest: an area reads', A.selectRows(rows, { area: 'financial' }).map(r => r.title).join() === 'Budget');
+  ({ rows } = A.updateRow(rows, 'local-test-0', { completed: true, user_id: 'x', id: 'hijack' }));
+  const walk = rows.find(r => r.title === 'Walk');
+  check('guest: tick saves', walk.completed === true);
+  check('guest: an update keeps the row\'s id and no user id', walk.id === 'local-test-0' && walk.user_id === null);
+  check('guest: updating a missing row changes nothing', A.updateRow(rows, 'local-nope', { title: 'x' }).row === null);
+  const series = A.seriesFrom(rows, rows.find(r => r.title === 'Stretch'));
+  check('guest: a repeat\'s series is found', series.length === 2, JSON.stringify(series));
+  rows = A.deleteRows(rows, ['local-test-1']);
+  check('guest: delete removes it', !rows.some(r => r.title === 'Budget') && rows.length === 3);
+  check('guest: ids are unique', new Set(Array.from({ length: 50 }, () => A.makeLocalId())).size === 50);
+}
+
+// ── Phone-calendar sync, gathered (src/logic/coalesce.js) ───────────────────
+{
+  const csrc = await readFile(new URL('../src/logic/coalesce.js', import.meta.url), 'utf8');
+  const { coalesce } = await import('data:text/javascript,' + encodeURIComponent(csrc));
+  const sleep = (ms) => new Promise(res => setTimeout(res, ms));
+  const runs = [];
+  const sync = coalesce(async (who) => { runs.push(who); await sleep(80); }, 10);
+  ['a', 'b', 'c', 'd', 'e'].forEach(x => sync(x));
+  await sleep(150); // e: fires at 10, runs to 90
+  check('phone sync: a burst of changes is one sync, with the latest', runs.join() === 'e', runs.join());
+  sync('f'); await sleep(40); sync('g'); // f starts at 10 and is still running when g lands at 40
+  await sleep(250);
+  check('phone sync: a change during a sync gets one more, never two at once', runs.join() === 'e,f,g', runs.join());
+  let overlap = 0, live = 0;
+  const busy = coalesce(async () => { live++; overlap = Math.max(overlap, live); await sleep(20); live--; }, 1);
+  for (let i = 0; i < 6; i++) { busy(); await sleep(7); }
+  await sleep(150);
+  check('phone sync: never two at once', overlap === 1, overlap);
+}
+
 if (problems.length) {
   console.error(`check-planner: ${problems.length} problem(s), ${passed} passed\n`);
   for (const p of problems) console.error(`  ✗ ${p}`);

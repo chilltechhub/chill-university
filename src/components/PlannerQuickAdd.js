@@ -7,7 +7,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../api/profileScopedClient';
+import { findPlansOn, insertInstances } from '../api/plannerService';
 import { parseQuickAdd, describeQuickAdd } from '../logic/quickAdd';
 import { repeatDates } from '../logic/aiBridgeFormat';
 import { isSamePlan } from '../logic/plannerLayout';
@@ -27,7 +27,7 @@ export default function PlannerQuickAdd({ userId, date, area = 'physical', onAdd
   }, [text, pageIso]);
 
   const add = async () => {
-    if (!parsed?.title || busy || !userId) return;
+    if (!parsed?.title || busy) return;
     setBusy(true);
     setNote(null);
     try {
@@ -36,18 +36,16 @@ export default function PlannerQuickAdd({ userId, date, area = 'physical', onAdd
         date: parsed.date, start_time: parsed.time, completed: false, skipped: false,
       };
       const dates = parsed.cadence === 'once' ? [base.date] : repeatDates(base.date, parsed.cadence);
-      // Same duplicate rule as the Add sheet.
-      const { data: existing } = await supabase.from('agenda_instances')
-        .select('title, date, start_time').eq('user_id', userId).in('date', dates);
-      const free = dates.filter(d => !(existing || []).some(x => isSamePlan(x, { ...base, date: d })));
+      // Same duplicate rule as the Add sheet. A guest's plans are on the
+      // phone (plannerService).
+      const existing = await findPlansOn(userId, dates);
+      const free = dates.filter(d => !existing.some(x => isSamePlan(x, { ...base, date: d })));
       if (!free.length) {
         setNote({ kind: 'error', text: `“${base.title}” is already on that day.` });
         setBusy(false);
         return;
       }
-      const { data, error } = await supabase.from('agenda_instances')
-        .insert(free.map(d => ({ ...base, date: d }))).select();
-      if (error) throw error;
+      const data = await insertInstances(userId, free.map(d => ({ ...base, date: d })));
       successHaptic();
       setNote({ kind: 'ok', text: `Added: ${describeQuickAdd(parsed)}` });
       setText('');

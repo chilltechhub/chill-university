@@ -805,6 +805,12 @@ New check scripts this plan adds:
 - **Checks:** `check-planner` extended to `useDayPlan` merging (`layoutDay`, `hourRange`, `duplicateIds`, `isSamePlan` exports unchanged).
 - **Rollback:** the old `PlannerScreen.js` is kept on a branch tag; the guest adapter is behind `ACCOUNT_ONLY_SCREENS` (re-adding the entry turns guests back to SignInPrompt).
 - **Risks:** a big file move. Profile scoping (`useViewScope` `planner` vs `calendar`) must survive.
+- **Built (2026-10-21, branch `feature/shakeup-p1`, on top of P0; tag `planner-pre-split` marks the old file).**
+  - `src/screens/today/` holds the parts (plus `EventsList`, `plannerShared`); `PlannerScreen.js` is the state and wiring (1,911 → ~440 lines).
+  - **One read:** pure `src/logic/dayPlan.js` (normalise, merge, group, `splitDue`) and `src/logic/useDayPlan.js` (`loadDayPlan` + the hook). Day, Week, Month and `CalmWeek` use the hook; **Home calls `loadDayPlan`** and keeps its own cache and instant ticks around it (6 queries became 1). The Planner's Day and Week now show **calendar events** (they never did); Calm's week now shows **project deadlines** (it only had plain tasks). Home still lists earlier not-done deadlines inline as "Late"; the Planner keeps them in its backlog card. Assignments stay off (`[]`) until P11.
+  - **Guests:** `src/logic/agendaRows.js` (pure) + `src/api/localAgenda.js` (`@cth_local_agenda`, serialised writes). plannerService sends no-`userId` reads and `local-` ids there; new `insertInstances`, `updateInstance`, `findPlansOn`, `getScheduledTitles` replace the direct writes in InstanceModal and quick add. A guest's ⋯ hides Add from ideas and Weekly review; Phone calendar opens a sign-in sheet; Fill with AI and the check-in are hidden. Home's Today shows a guest's plans too.
+  - **Signals:** "Add from ideas" and Fill with AI never fired `planner-item-added` before; both do now, so all 5 add flows count for goal steps.
+  - **Phone sync:** `syncPlansToPhoneSoon` (`src/logic/coalesce.js`): a burst is one sync 1.5 s after the last, never two at once.
 
 ### P2 · Welcome before login + slim onboarding + carry-over
 
