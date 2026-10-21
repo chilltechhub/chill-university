@@ -14,7 +14,7 @@
 
 Deskartes becomes **a calm school in your pocket for making it on your own**, built around **ikigai**.
 
-1. You open the app. Before any account exists you get a short **welcome**: the ikigai circles, your age range, **where you're starting from**, and **which circle feels shakiest**. Then you make your **first deliverable**, "A page about you".
+1. You open the app. Before any account exists you get a short **welcome**: the ikigai circles, **where you are in life** (your starting point), and **which circle feels shakiest**. No age question. Then you make your **first deliverable**, "A page about you".
 2. After that the app has **three tabs and one dropdown**:
    - **Today** is the Planner, and it is now the dashboard. It shows one next step, your day, and your path's widgets.
    - **Learn** is your course: the path map, units, Finds, classes and practice.
@@ -40,7 +40,9 @@ Deskartes becomes **a calm school in your pocket for making it on your own**, bu
 | 💡 | **3 bottom tabs: Today · Learn · Make.** The 4th "tab" is **You**, a full-screen dropdown from the top bar | Keeps all four jobs of the vision's Today/Explore/Make/You, keeps Make (the spine) one tap away, and fits the user's 3 tabs + dropdown |
 | 💡 | The second tab stays **Learn** (its label is already "Learn" at App.js 234), not Explore or Path | A school says Learn (answers vision ❓ Explore vs Learn) |
 | 💡 | **Route names stay** (`Home`, `Training`, `Library`). Only labels and tab order change. Old names become aliases | Each name has roughly 45–50 string references across 15–21 files (the count depends on the grep), plus tours, objectives and saved links |
-| 💡 | **The Planner is the dashboard** on route `Home`. The Day view is a board: a **pinned next step** (with a pinned Dream echo), a **pinned plan**, a **pinned Today's Find line**, then widgets | Requirement 5. One next step stays first (vision §9). The core stays on Today |
+| ✅ | **The Planner is the dashboard** on route `Home`. **The Day view is all widgets; nothing is pinned** (founder, 2026-10-21). Next step, Your day, the Today's Find line, the Dream echo and quick add are widgets like any other: movable, hideable, restorable. New accounts get them first in their default layout | Founder's call |
+| ✅ | **"Where are you in life?" replaces the age question** in the welcome (founder, 2026-10-21). It is the starting point question: **Finishing high school · Working, no career yet · Didn't finish school (GED) · Not sure / something else**. Age is asked **only at signup** (the existing birth-date gate, needed for the minor rules) | Founder's call; the legal age gate stays where it already is |
+| ✅ | **A fourth starting point, "Not sure / something else"**, leads to **What do I like?** (founder, 2026-10-21) | Founder's call |
 | 💡 | **One "today" data hook** (`useDayPlan`) replaces 4 separate "today" queries | They can disagree today, and four copies is clutter |
 | 💡 | **Calm becomes app-wide** and is the **default for new accounts**, written explicitly at account creation. Existing users keep what they see now | Calm was a main point of the rewrite. The first screen should say one thing |
 | 💡 | **Path → Unit → Deliverable** is the school model. A unit is an objective with 4 beats: **Learn · See it · Practise · Do it** | Reuses the objective engine and the MissionScreen beats. "Unit" avoids a clash with the existing "experience stages" |
@@ -166,21 +168,24 @@ Add an `ALIASES` map read by `goToScreen`, `routeLabel` and App.js `onUnhandledA
 ┌ TopBar: [avatar ▾]  Money on my own · Unit 2 of 5   🔍 🔔 ┐
 │ Tue 21 Oct ‹ ›   [Day|Week|Month]   ⏷ filter(2)   ◐ Calm   ⋯ │  ← one control row
 ├───────────────────────────────────────────────────────────┤
-│ ▌NEXT STEP (pinned)  "Draft your money sheet · step 2 of 4" │  ← edge = in progress
-│   builds toward: "the farm" · aim for Fri        [Start]    │  ← Dream echo (pinned)
-├ Quick add: "dentist thu 4pm" ......................  [+ Add] ┤  ← TourSpot planner-add
-├ YOUR DAY (pinned)  2 of 5 done   [⏱ grid | ☰ list]  [check-in] ┤
-│   time grid / list · due · phone events                    │
-├ TODAY'S FIND (pinned, one line)  "Ask a tradesperson…" [Try] ┤
-├ Widgets (WidgetBoard, Edit layout in ⋯ or long-press) ─────┤
-│   [This unit's deliverable] [Still open] [Due this week]    │
-│   [Room] …   ≤ 4 on by default per path                     │
+│  ── everything below is a widget (WidgetBoard) ──           │
+│ [nextStep] ▌"Draft your money sheet · step 2 of 4" [Start] │  ← edge = in progress
+│            builds toward: "the farm" · aim for Fri          │  ← Dream echo (a widget option)
+│ [quickAdd] "dentist thu 4pm" .................... [+ Add] │  ← TourSpot planner-add
+│ [yourDay]  2 of 5 done  [⏱ grid | ☰ list]  [check-in]      │
+│            time grid / list · due · phone events            │
+│ [find]     "Ask a tradesperson…" (one line)  [Try]          │
+│ [deliverable] [stillOpen] [dueSoon] [room] …                │
+│  Edit layout: ⋯ or long-press · add, move, hide, restore   │
 └───────────────────────────────────────────────────────────┘
 ```
 
 **Rules**
 
-- **The Day view is one `WidgetBoard`.** **Next step** (with its **Dream echo**), **Your day** and the **Today's Find line** are pinned blocks: they can't be hidden. Everything else is a widget that can be moved, hidden and restored from the tray. `src/components/WidgetBoard.js` already does all of this.
+- **The Day view is one `WidgetBoard`, and nothing is pinned** ✅. **Next step** (`nextStep`, with an optional Dream echo line), **Quick add** (`quickAdd`), **Your day** (`yourDay`, the Planner's day list/grid) and the **Today's Find line** (`find`, one-line or expanded) are widgets like every other: moved, hidden and restored from the tray. `src/components/WidgetBoard.js` already does all of this.
+- **Only the control row is fixed** (date, Day/Week/Month, filter, Calm, ⋯, **+ Add**), because it is how you reach the Planner's features, not content. Adding stays possible with every widget hidden.
+- **Empty board:** if every widget is hidden, Today shows one line, *"Your board is empty"*, and an **Add a widget** button.
+- **Default layout for new accounts:** `nextStep`, `yourDay`, `find`, then the path's widgets (§8.2). Existing saved layouts keep theirs and get the new widgets offered, not forced.
 - **Week and Month carry no widgets.** They replace everything under the next step with `WeeklyView` / `MonthlyView`. Both show **deliverable "aim for" dates** as `Due:` chips and dots, so the calendar feels like a school calendar.
 - **One next step, from one place:** new pure module `src/logic/nextStep.js`. Its priority order:
   1. a deliverable you're halfway through
@@ -196,9 +201,9 @@ Add an `ALIASES` map read by `goToScreen`, `routeLabel` and App.js `onUnhandledA
 
   | Card | Where it goes |
   |---|---|
-  | DreamCard | You. Today keeps a **pinned, unhideable** one-line echo under the next step |
+  | DreamCard | You. On Today, the Dream shows as an **optional echo line** in the `nextStep` widget, or as its own `dream` widget |
   | StudioCard | Make |
-  | TodaysFind | A **pinned one-line slot** on Today Day (Full and Calm). The full card lives in Learn and as the optional expanded `find` widget |
+  | TodaysFind | The **`find` widget** (one-line or expanded) on Today. The full card also lives in Learn |
   | GettingStartedCard | Retired |
   | RightNowCard | Folded into the next step |
   | TodayReview | An optional widget |
@@ -257,7 +262,7 @@ Add an `ALIASES` map read by `goToScreen`, `routeLabel` and App.js `onUnhandledA
 |---|---|
 | `hq` (CommanderCard: level ring, rank) | `room` (no level, no rank) |
 | `focus` + `activities` + `desk` (TodayCard) | Removed from the board, because the plan *is* the day now. `desk` becomes "Next on your project" inside `deliverable` |
-| `compass`, `goalSteps` | Folded into the pinned next step. `goalSteps` survives as `unit` (this unit's 4 beats) |
+| `compass`, `goalSteps` | Folded into the `nextStep` widget. `goalSteps` survives as `unit` (this unit's 4 beats) |
 | `stageSteps` ("gain a level") | `unit` |
 | `wayfinder` | Kept and pickable. Its content also fills the You ikigai **"World needs"** circle. The HomeScreen 252-253 rule that forces it near the top is removed |
 | `quests` (gamified "Missions" drills) | `missions` (Software for You + quests) |
@@ -266,7 +271,7 @@ Add an `ALIASES` map read by `goToScreen`, `routeLabel` and App.js `onUnhandledA
 | `orgSnapshot`, `systemsCheck`, `recurringOps`, `vaultStatus`, `founderQuest`, `targetsReadiness` | Kept in code. **Pickable in Edit layout**, off by default (an "own boss" pack later) |
 | `habitRings`, `lifeAreas`, `dailyDrills`, `studyBlocks`, `classProgress`, `builds`, `ideas` | Kept and pickable. **`lifeAreas` is in every path's pickable set** |
 
-- **New keys:** `deliverable` (this unit's deliverable: status, aim-for date, Open, Plan time, Share, Feedback), `dueSoon`, `stillOpen`, `find` (the expanded Find card; a one-line Find is always pinned), `room`, `money` (money sheet snapshot), `assignments` (only when a class is on), `unit`, `missions`, `checkin`.
+- **New keys:** `nextStep`, `quickAdd`, `yourDay`, `dream`, `deliverable` (this unit's deliverable: status, aim-for date, Open, Plan time, Share, Feedback), `dueSoon`, `stillOpen`, `find` (one-line or expanded Today's Find), `room`, `money` (money sheet snapshot), `assignments` (only when a class is on), `unit`, `missions`, `checkin`.
 - **Defaults come from the path** (§8), **4 at most**. A widget's first appearance gets a mentor note (§7), not a widget-intro tour.
 - `WIDGET_INTROS` (`src/data/widgetIntros.js`) stays until P7 because `check-wiring` needs an entry per key. Add entries for the new keys.
 
@@ -307,7 +312,7 @@ Add an `ALIASES` map read by `goToScreen`, `routeLabel` and App.js `onUnhandledA
 
 | | Calm | Full |
 |---|---|---|
-| **Today – Day** | One `CalmPanel`: weekday · **the next step** + Dream echo · "Today: 3 things" (tick in place) · one quick-add line · **Today's Find line** · up to **2 path tiles** · `CalmWeek` · "Show my desk" | §3.1 |
+| **Today – Day** | One `CalmPanel` rendering **the same widget board in the calm style**: only calm-capable widgets, fewer by default (`nextStep`, `yourDay` as "Today: 3 things", `find`, up to 2 path tiles), each still movable and hideable. Then `CalmWeek` · "Show my desk". Nothing pinned | §3.1 |
 | **Today – Week / Month** | `CalmWeek` expanded, and a dot month in the CalmKit palette. Tapping a day opens Calm Day | Full views |
 | **Controls** | Day/Week/Month and Add stay visible. Filter and ⋯ sit behind one **"Options"** link. **Every feature is still reachable** | All visible |
 | **Learn** | Only the current unit card and its deliverable | Full map + shelves |
@@ -586,18 +591,19 @@ Its file list adds `src/logic/guide/**`. Today a renamed route fails silently, a
 
 ### 7.2 Welcome flow (before login): `src/screens/welcome/`
 
-One new root route **`Welcome`**, added to `NO_TOPBAR_ROUTES`. Pure gating lives in **`src/logic/welcomeCards.js`** (no imports, the same pattern as `onboardingCards.js`). Answers are kept **on the phone only** in `@cth_welcome_v1` (`{ageBand, startPoint, shakiest, pathKey, firstName, done, guest}`), next to `@cth_onboarding_draft`.
+One new root route **`Welcome`**, added to `NO_TOPBAR_ROUTES`. Pure gating lives in **`src/logic/welcomeCards.js`** (no imports, the same pattern as `onboardingCards.js`). Answers are kept **on the phone only** in `@cth_welcome_v1` (`{startPoint, shakiest, pathKey, firstName, done, guest}`; **no age**), next to `@cth_onboarding_draft`.
 
 | # | Screen | Asks / shows | Stored locally |
 |---|---|---|---|
 | W1–W3 | **Ikigai in 30 seconds**: the four circles, then the ground, then *"You're not behind. You're starting from here."* A "where'd this come from?" link. A small **"I already have an account"** link | — | — |
-| W4 | **Age range** (one light question; content is age-banded) | 13–17 · 18–24 · 25–30 · 31+ | `ageBand` |
-| W5 | **"Where are you starting from?"** | Finishing high school · Working, no career yet · Didn't finish school (GED) · 💡 Not sure / something else | `startPoint` |
-| W6 | **"Which feels shakiest right now?"** | Love · Good at · World needs · Getting paid · The ground | `shakiest` |
-| W7 | **"Want to start here?"** One suggested path (§8), changeable in one tap | — | `pathKey` |
-| W8 | **First use: "A page about you."** A Studio `page` Build, prefilled from W5–W7 and the Dream question (*"Describe a normal Tuesday in the life you want"*). The guide walks *change one part, see it live* through a **hand-written lesson on the existing `startLesson`** (`src/logic/guide/lessons/welcomePage.js`); P7 replaces it with the generated version. You pick your character here (outfit picker, `src/screens/onboarding/steps.js` 726-755) and your first name (local). About a minute | `BuildScreen` in guest mode (`@cth_builds_guest`). Dream via the local `saveDream`. Marks path Unit 1 handed in (before P6: a local `unit1Done` flag that P6 converts into a deliverable row) |
-| W9 | **"Want to keep this?"** | **Create account** · *Keep going as a guest* | `done`, `guest` |
+| W4 | **"Where are you in life right now?"** ✅ (replaces the age question; this is the starting point) | Finishing high school · Working, no career yet · Didn't finish school (GED) · Not sure / something else | `startPoint` |
+| W5 | **"Which feels shakiest right now?"** | Love · Good at · World needs · Getting paid · The ground | `shakiest` |
+| W6 | **"Want to start here?"** One suggested path (§8), changeable in one tap | — | `pathKey` |
+| W7 | **First use: "A page about you."** A Studio `page` Build, prefilled from W4–W6 and the Dream question (*"Describe a normal Tuesday in the life you want"*). The guide walks *change one part, see it live* through a **hand-written lesson on the existing `startLesson`** (`src/logic/guide/lessons/welcomePage.js`); P7 replaces it with the generated version. You pick your character here (outfit picker, `src/screens/onboarding/steps.js` 726-755) and your first name (local). About a minute | `BuildScreen` in guest mode (`@cth_builds_guest`). Dream via the local `saveDream`. Marks path Unit 1 handed in (before P6: a local `unit1Done` flag that P6 converts into a deliverable row) |
+| W8 | **"Want to keep this?"** | **Create account** · *Keep going as a guest* | `done`, `guest` |
 | → | **Today**, already tailored, in Calm (`homeView = 'calm'` written). Unit 1 handed in, the next step is Unit 2 (before P6: the next step is the starter objective) | — | — |
+
+**No age before signup.** Guests see **all-ages content**: anything marked adult-only (`DISCOVER_AGE_BANDS` in `src/data/knowledgeCatalogs.js`) stays hidden until a signup birth date says 18+. Guests can't publish or make share links anyway (both need an account).
 
 **Boot** (App.js 446-468, LoginScreen 122-158). Today every signed-out user goes to `Login` (App.js 449-454) and guests reach MainTabs only through LoginScreen's guest button (522-546). The new boot reads `@cth_welcome_v1` before the session check:
 
@@ -619,7 +625,7 @@ The 10-second boot timeout and the error path also check `guest: true` before fa
 3. Done.
 
 `finish()` keeps its order (583-733), reads the welcome answers and adds the claim:
-- `saveOnboardingFields` (`onboarding_completed = true`, and `metadata.start_point / path_key / shakiest / age_band / shakeup_onboarded_at`)
+- `saveOnboardingFields` (`onboarding_completed = true`, and `metadata.start_point / path_key / shakiest / shakeup_onboarded_at` (the age band comes from the birth date, as today))
 - `setExperienceMode('picks')`
 - `saveDream`
 - `choosePurpose(pathPurpose)`
@@ -645,8 +651,8 @@ The 10-second boot timeout and the error path also check `guest: true` before fa
 ## 8. Tailoring by starting point and path
 
 **One pure module, `src/logic/tailoring.js`** (no imports), guarded by **`scripts/check-tailoring.mjs`**.
-- **Input:** `{ageBand, startPoint, shakiest, pathKey}`.
-- **Output:** suggested path, Today default widgets (≤4), Calm tiles, Learn shelves, Make kinds order, FAB actions shown first, which tools show, mentor-note set, and the derived persona.
+- **Input:** `{startPoint, shakiest, pathKey, isMinor}`. `isMinor` comes from the signup birth date (unknown for guests → treated as under 18 for content).
+- **Output:** suggested path, Today default widgets (`nextStep`, `yourDay`, `find` + ≤4 path widgets), Calm tiles, Learn shelves, Make kinds order, FAB actions shown first, which tools show, mentor-note set, and the derived persona.
 - Its data lives in `src/data/pathKits.js`. It **re-keys** `src/data/experienceStages.js` PATHS. Persona PATHS stay as the fallback for old accounts.
 
 ### 8.1 Suggested path
@@ -656,10 +662,11 @@ The 10-second boot timeout and the error path also check `guest: true` before fa
 | **Finishing high school** | What do I like? | What's next for me | What do I like? | Money on my own | **Ground fix** first, then What do I like? |
 | **Working, no career yet** | What do I like? | Job to career | What do I like? | Money on my own | **Ground fix** first, then Job to career |
 | **Didn't finish school (GED)** | What's next for me (GED units first) | What's next (GED) | What's next (GED) | Money on my own | **Ground fix** first, then What's next (GED) |
+| **Not sure / something else** ✅ | What do I like? | What do I like? | What do I like? | Money on my own | **Ground fix** first, then What do I like? |
 
 ### 8.2 What each path shows (strict tailoring: nothing else in sight)
 
-| Path | Today widgets (≤4) | Calm tiles | Learn shelves | Make kinds first | FAB first |
+| Path | Path widgets (≤4, after `nextStep`, `yourDay`, `find`) | Calm tiles | Learn shelves | Make kinds first | FAB first |
 |---|---|---|---|---|---|
 | **What do I like?** | deliverable, find, checkin, room* | find, unit | Sampler map, Today's Find | page, beat, game | What's next?, Note, Add plan |
 | **What's next for me** | deliverable, dueSoon, find, stillOpen | unit, dueSoon | After-school map (trades incl.), Career Explorer, Classes | page, plan | What's next?, Note, Add plan |
@@ -667,15 +674,16 @@ The 10-second boot timeout and the error path also check `guest: true` before fa
 | **Job to career** | deliverable, dueSoon, missions, find | unit, dueSoon | Career map (O\*NET/BLS), skill classes | resume, page, ai | What's next?, Add plan, Project |
 | **Ground fix** | lifeAreas, checkin, deliverable, dueSoon | unit, checkin | That area's lessons, the life area screen | plan | What's next?, Add plan, Reminder |
 
-\* `room` only when `roomPlace = 'today'`. `lifeAreas` is pickable on every path. The Today's Find line is pinned on every path regardless of widgets.
+\* `room` only when `roomPlace = 'today'`. `lifeAreas` is pickable on every path. Every widget, including `nextStep`, `yourDay` and `find`, can be hidden.
 
 | Starting point | Changes the start and the words |
 |---|---|
-| **Finishing high school** | School-year examples, "after graduation" dates, Classes shelf first, under-18 rules (export only), parent-link offer if 13–17 |
+| **Finishing high school** | School-year examples, "after graduation" dates, Classes shelf first, under-18 rules (export only), parent-link offer if the signup birth date is under 18 |
 | **Working, no career yet** | Evening/weekend time defaults, time- and money-saving Finds first, *"learn without going back to school"* copy, Work Mode in Today's ⋯ |
 | **Didn't finish school (GED)** | The GED overlay units, asks **which state** (kept on the phone), Classes = the 4 GED subjects, the lowest reading level, *"no shame"* copy |
+| **Not sure / something else** ✅ | The **What do I like?** sampler first, tastes from every map, *"you don't need to know yet"* copy, and a gentle **"Where are you in life?"** re-ask after a few tastes |
 
-**The core is always there.** On Today (Full and Calm), pinned and unhideable: **the next step, the Dream echo, your day, the Today's Find line.** One tap away from any screen: **a short lesson** (Learn → Continue) and **Saved** (Make → Saved). *(Recorded decision: "always there" means on Today for the first four, one tap for the last two.)*
+**Nothing is forced onto Today** ✅. The core (**next step, Dream echo, your day, Today's Find**) arrives as **default widgets** you can move or hide. One tap away from any screen: **a short lesson** (Learn → Continue) and **Saved** (Make → Saved).
 
 **The map grows, not the features:**
 - A finished unit opens more of the map (new map cards, a new taste, the next path).
@@ -746,7 +754,7 @@ New check scripts this plan adds:
 - `check-tailoring.mjs` (tailoring, pathKits, welcomeCards, derivePersona)
 - `check-deliverables.mjs` (deliverables, receipts, nextStep)
 
-**Order:** P0 → P1 → **P2 welcome** → **meetup gate** → P3 → P4 → P5 → P6 → P7 → P8 → P9 → P10 (optional) → P11. This follows vision §2/§16 ("Now": welcome, "A page about you", You-as-ikigai; "Then": tabs and surfaces). ❓ If the founder wants the surfaces first instead, that **overrides a ✅ decision** and must be recorded as such (Open question 9).
+**Order:** P0 → P1 → **P2 welcome** → **meetup gate** → P3 → P4 → P5 → P6 → P7 → P8 → P9 → P10 (optional) → P11. This follows vision §2/§16 ("Now": welcome, "A page about you", You-as-ikigai; "Then": tabs and surfaces). ❓ If the founder wants the surfaces first instead, that **overrides a ✅ decision** and must be recorded as such (Founder answer 9: kept).
 
 ### P0 · Guardrails (no visible change)
 
@@ -808,7 +816,8 @@ New check scripts this plan adds:
   - New accounts start in Calm; existing accounts' view is unchanged.
   - Existing signed-in users never see the welcome.
   - "I already have an account" works.
-  - The 13–17 band goes through KWS consent before any write.
+  - An under-18 signup birth date goes through KWS consent before any write.
+  - The welcome never asks for age; a guest never sees adult-only Finds.
 - **Checks:** `check-pickables` (new step keys), `check-tailoring` (welcome gating), `check-dream`.
 - **Rollback:** a `WELCOME_V1` setting (default on for fresh installs); off sends signed-out users to Login as today. The old wizard steps stay in the file for one release.
 - **Risks:** COPPA/GDPR. `onboarding_completed` must keep its meaning. `finish()` side effects (`setExperienceMode`, `startFirstGoal`, `createMasterProfile`, `choosePurpose`) must all still run.
@@ -818,7 +827,7 @@ New check scripts this plan adds:
 
 - **Goal:** requirements 5 and 6.
 - **Work:**
-  - `DashboardScreen` on route `Home`: control row, pinned next step + Dream echo (`nextStep.js` + `check-deliverables.mjs` for its pure rules), quick add, pinned "Your day", pinned Today's Find line, `WidgetBoard` widgets, Week/Month with due chips.
+  - `DashboardScreen` on route `Home`: the fixed control row, then **one `WidgetBoard` with nothing pinned**: `nextStep` (+ Dream echo option; `nextStep.js` + `check-deliverables.mjs` for its pure rules), `quickAdd`, `yourDay`, `find`, the path widgets; the empty-board state; Week/Month with due chips.
   - Every row of §3.2, walked through `docs/shake-up-planner-parity.md`.
   - `PlannerScreen` redirect.
   - Fixed cards moved out.
@@ -919,7 +928,7 @@ New check scripts this plan adds:
   - A Money on my own user finishes Unit 2, and the money sheet shows on Make (Handed in), Showcase, Today (Due → done) and Receipts.
   - A "The ground" user rates an area, plans one fix, re-rates, and hands in "My reset plan".
   - XP arrives for hand-ins, and the daily cap holds.
-  - Each path shows ≤4 default widgets and the right shelves.
+  - Each path shows `nextStep`, `yourDay`, `find` + ≤4 path widgets by default, every one hideable, and the right shelves.
   - One active unit at a time.
   - The 4 circles reflect real sparks, receipts, values and careers.
   - The data export includes the new tables.
@@ -1027,21 +1036,23 @@ New check scripts this plan adds:
 
 ---
 
-## Open questions for the founder
+## Founder answers (2026-10-21)
 
-1. ❓ **You as the top-bar dropdown, with Today · Learn · Make as the tabs.** Is that the right fourth "tab", or should You be a tab and Make move into Learn?
-2. ❓ **Tab name:** Learn (this plan, and today's label), Explore, or Path?
-3. ❓ **Default room placement:** You (this plan) or Today?
-4. ❓ **Calm as the default for new accounts?** (This plan says yes, with Full kept. Vision §11 had said Calm becomes the only Home.)
-5. ❓ **Brand base:** warm light paper with the Calm panel as the accent (this plan), or Calm-dark?
+All answered. Kept as planned unless noted.
+
+1. ✅ **You as the top-bar dropdown, with Today · Learn · Make as the tabs.** Is that the right fourth "tab", or should You be a tab and Make move into Learn? — **kept as this plan says** (founder, 2026-10-21).
+2. ✅ **Tab name:** Learn (this plan, and today's label), Explore, or Path? — **kept as this plan says** (founder, 2026-10-21).
+3. ✅ **Default room placement:** You (this plan) or Today? — **kept as this plan says** (founder, 2026-10-21).
+4. ✅ **Calm as the default for new accounts?** (This plan says yes, with Full kept. Vision §11 had said Calm becomes the only Home.) — **kept as this plan says** (founder, 2026-10-21).
+5. ✅ **Brand base:** warm light paper with the Calm panel as the accent (this plan), or Calm-dark? — **kept as this plan says** (founder, 2026-10-21).
 6. ✅ ~~Pet care game~~ — **kept as it is**, the whole pet system (founder, 2026-10-21).
-7. ❓ **Momentum:** a quiet line in Full Receipts with a switch to hide it (this plan), off by default, or gone?
-8. ❓ **Opening every cosmetic** for everyone: OK, or keep a few items earned by units?
-9. ❓ **Welcome timing:** right after the guardrails (P2, this plan, following ✅ vision §16), or after the new surfaces? Choosing "after" overrides a ✅ decision.
-10. ❓ **Age bands** 13–17 · 18–24 · 25–30 · 31+: right cut-offs? Does the welcome need an under-13 exit, or is the signup age gate enough?
-11. ❓ **"Not sure / something else"** as a fourth starting point that routes to What do I like?
-12. ❓ **Unit lists per path** (§4.2, including the Ground fix) and the welcome's exact words. They need your OK and sourced facts.
-13. ❓ **Deliverable status words:** "Handed in" (school feel) or "Done"?
+7. ✅ **Momentum:** a quiet line in Full Receipts with a switch to hide it (this plan), off by default, or gone? — **kept as this plan says** (founder, 2026-10-21).
+8. ✅ **Opening every cosmetic** for everyone: OK, or keep a few items earned by units? — **kept as this plan says** (founder, 2026-10-21).
+9. ✅ **Welcome timing:** right after the guardrails (P2, this plan, following ✅ vision §16), or after the new surfaces? Choosing "after" overrides a ✅ decision. — **kept as this plan says** (founder, 2026-10-21).
+10. ✅ ~~Age bands~~ — replaced by **"Where are you in life?"**; age only at signup (founder, 2026-10-21).
+11. ✅ ~~Fourth starting point~~ — **"Not sure / something else"** added, leads to What do I like? (founder, 2026-10-21).
+12. ✅ **Unit lists and welcome wording** (§4.2, §7.2): the founder reviews them, with sourced facts, **before P6 ships**. Build with the draft text until then.
+13. ✅ **Deliverable status words:** "Handed in" (school feel) or "Done"? — **kept as this plan says** (founder, 2026-10-21).
 14. ✅ ~~Share links~~ — **kept, ship in P8**, 18+ (founder, 2026-10-21).
+15. ✅ ~~"Always there" core~~ — **nothing pinned; Today is all widgets** (founder, 2026-10-21).
 16. ✅ **Screen Tutorial** — replaced with relevant **"About this page"** info (§7.3) (founder, 2026-10-21).
-15. ❓ **"Always there" core:** pinned on Today for the next step, Dream echo, your day and the Find line, with a lesson and Saved one tap away (this plan). OK?
