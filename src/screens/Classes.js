@@ -242,7 +242,7 @@ export default function Classes() {
         >
           <Ionicons name="chevron-back" size={22} color={c.teal} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Academy Classes</Text>
+        <Text style={styles.headerTitle}>Classes</Text>
         {showSubtext && <Text style={styles.headerSubtitle}>Pick a subject and dive in.</Text>}
 
         {showAuthoring && (
@@ -286,7 +286,7 @@ export default function Classes() {
       {/* Quests: learn an idea, research it, check it, do something with
           it. Not tied to a grade band, so they sit above the band picker. */}
       <View style={styles.recSection}>
-        <Text style={styles.recTitle}>Quests</Text>
+        <Text style={styles.recTitle}>Quick missions</Text>
         {showSubtext && (
           <Text style={styles.fromGamesSub}>
             Ten minutes each: an idea, your own research, a quick check, and one real thing to do.

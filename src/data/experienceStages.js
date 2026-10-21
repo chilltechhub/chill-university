@@ -207,7 +207,7 @@ export const PATHS = {
     },
     {
       key: 'classes',
-      label: 'Academy Classes',
+      label: 'Classes',
       blurb: 'The business operations and compliance tracks.',
       features: ['classes'],
     },
@@ -249,7 +249,7 @@ export const PATHS = {
     },
     {
       key: 'classes',
-      label: 'Academy Classes',
+      label: 'Classes',
       blurb: 'The entity, credit and funding tracks.',
       features: ['classes'],
       widgets: ['targetsReadiness'],

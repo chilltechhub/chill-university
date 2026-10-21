@@ -33,6 +33,17 @@ const MIGRATED = [
   'src/components/widgets/QuestWidget.js',
   'src/components/DreamCard.js',
   'src/components/DreamSheet.js',
+  'src/components/BuildPreview.js',
+  'src/components/BuildAskSheet.js',
+  'src/screens/studio/StudioScreen.js',
+  'src/screens/studio/BuildScreen.js',
+  'src/screens/studio/PartSheet.js',
+  'src/components/StudioStage.js',
+  'src/components/StudioCard.js',
+  'src/components/StudioShowcase.js',
+  'src/screens/studio/SoftwarePathScreen.js',
+  'src/screens/studio/MissionScreen.js',
+  'src/components/TodayCard.js',
 ];
 
 const RULES = [

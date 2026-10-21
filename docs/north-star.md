@@ -20,6 +20,26 @@
 | **Lead and teach** | Show **how the world works** (money, work, attention, health) so people can navigate it and **still be themselves**. |
 | **A feeling, not a feature** | People forget features. They remember **how the app made them feel about themselves**. |
 | **Trust is earned** | Faith comes from **kept promises**, **honesty** and making people **stronger**, not hooked. |
+| **Software's power, for everyone** | People who aren't engineers finally get to **see what software can do for them**, without paying **license fees** to find out. Show them by **making it with them**, and point them to the **free** tools that go further. |
+
+---
+
+## Software's power, for everyone
+
+*In the founder's words (2026-10-20):*
+
+> I just like that non-engineer people can finally witness what awesome things software can do for them if they don't have to pay extensive money and license costs for it.
+
+**What it means in the app:**
+
+| | |
+|---|---|
+| **See it work first** | The Studio **makes the thing with you** (a page, a game, a beat, a business, an AI helper). Nobody has to believe software can help: they watch it. |
+| **No license wall** | What they make is **one file, theirs to keep**: no account, no subscription, no license. Said plainly on every Build. |
+| **AI, demystified** | The **AI helper** Build teaches what makes AI useful (a role, a tone, an answer shape) and **honest** (it can sound sure and be wrong). It runs on **free** AI chats. |
+| **Free tools to go further** | Every Build ends with **Go further, free**: open-source and free software that does what people usually pay for (Godot, LMMS, Krita, LibreOffice...). |
+| **Free instead of paid** | Finds include free software, each card saying what it stands in for: *"Free instead of a paid photo editor."* |
+| **Honest about "free"** | Name the catch: a free *tier*, a big learning curve, a computer it needs. Never promise a dollar figure we haven't checked. |
 
 ---
 

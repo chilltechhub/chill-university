@@ -41,10 +41,19 @@ export function seedLayout(background, level = 1) {
   return { items, bowlX: DEFAULT_BOWL_X };
 }
 
-// Unlocked by level, or part of the scene to begin with (at your level: the
-// room's furniture still moves in when it would have).
+// Studio trophies they've earned (src/logic/studio.js trophyArts). Set by
+// buildService whenever their Builds load or change, so every stage and
+// the Decorate tray agree without each one loading Builds itself.
+let earnedTrophies = new Set();
+export function setEarnedTrophies(arts) { earnedTrophies = new Set(arts || []); }
+export const trophyEarned = (art) => earnedTrophies.has(art);
+
+// Unlocked by level, by a mastered Build (trophies), or part of the scene
+// to begin with (at your level: the room's furniture still moves in when
+// it would have).
 export function decorAllowed(art, level, background) {
   const item = decorById(art);
+  if (item?.build) return earnedTrophies.has(art);
   if (item && level >= item.level) return true;
   return !!background?.props?.some(p => p.art === art && (p.minLevel || 1) <= level);
 }

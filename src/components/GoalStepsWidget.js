@@ -35,7 +35,7 @@ export default function GoalStepsWidget() {
         icon="list-outline"
         empty={{
           text: 'No goal running. Start one from your goal card and its steps show up here.',
-          cta: 'Open App Nav',
+          cta: 'Open Goals',
           onPress: () => navigation.navigate('Compass'),
         }}
       />

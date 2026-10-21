@@ -32,14 +32,14 @@ export default function QuestWidget({ type, aim, onOpenQuest, onOpenAll }) {
 
   return (
     <WidgetCard
-      title="Quests" icon="compass-outline" accent={next?.color || c.teal}
-      action="All quests →" onAction={onOpenAll}
+      title="Missions" icon="compass-outline" accent={next?.color || c.teal}
+      action="All missions →" onAction={onOpenAll}
       loading={!ready}
     >
       {/* What a quest is, said once on the card itself. It used to arrive
           as "your first quest" with no word on what one was (2026-10-10). */}
       <Text style={{ fontSize: t.xs, color: c.text3, lineHeight: 17, marginBottom: s.sm }}>
-        A quest is a <Text style={{ fontWeight: t.bold, color: c.text1 }}>10-minute lesson</Text>: an idea, a bit of research, then <Text style={{ fontWeight: t.bold, color: c.text1 }}>one real thing to do</Text>. Tap to start.
+        A quick mission is a <Text style={{ fontWeight: t.bold, color: c.text1 }}>10-minute lesson</Text>: an idea, a bit of research, then <Text style={{ fontWeight: t.bold, color: c.text1 }}>one real thing to do</Text>. Tap to start.
       </Text>
       {next ? (
         <TouchableOpacity onPress={() => onOpenQuest(next.id)} activeOpacity={0.85} accessibilityRole="button">
@@ -59,7 +59,7 @@ export default function QuestWidget({ type, aim, onOpenQuest, onOpenAll }) {
       ) : (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Ionicons name="ribbon-outline" size={18} color={c.success} />
-          <Text style={{ fontSize: t.sm, color: c.text2, flex: 1 }}>Every quest done. More are on the way.</Text>
+          <Text style={{ fontSize: t.sm, color: c.text2, flex: 1 }}>Every mission done. More are on the way.</Text>
         </View>
       )}
       <View style={{ marginTop: s.md }}>

@@ -11,6 +11,8 @@
 //                stays on it for the day: one a day, never a feed
 //   Not for me   the next one, a few times a day; then More Finds
 //   More Finds   the Vault's Discover tab, on this Find's life area
+//   Make with it after trying it: a Studio Build in the medium that fits
+//                the Find's area (docs/studio-plan.md: find → make)
 //
 // variant 'card' is Home's full view; 'calm' is one line inside Calm Home.
 
@@ -38,6 +40,10 @@ const AREA_LABEL = {
   physical: 'Physical', mental: 'Mental', social: 'Social', financial: 'Financial',
   creative: 'Creative', professional: 'Professional', spiritual: 'Spiritual', digital: 'Digital',
 };
+
+// Which Studio Build a Find leads to, by its life area. Areas with no
+// natural thing to make (yet) offer none.
+const MAKE_FOR_AREA = { creative: 'beat', professional: 'business', financial: 'business', digital: 'page', social: 'page', general: 'ai' };
 
 export default function TodaysFind({ userId, variant = 'card', pal }) {
   const navigation = useNavigation();
@@ -88,6 +94,11 @@ export default function TodaysFind({ userId, variant = 'card', pal }) {
     }
   };
   const notForMe = () => setStateRaw(withDecline(state, find, day));
+  const makeKind = MAKE_FOR_AREA[find.areaId] || null;
+  const makeWith = () => {
+    navigation.navigate('Library');
+    setTimeout(() => navigation.navigate('Library', { screen: 'StudioScreen', params: { start: makeKind, at: Date.now() } }), 0);
+  };
   const more = () => navigation.navigate('KnowledgeScreen', {
     initialTab: 'discover', ...(find.areaId && find.areaId !== 'general' ? { initialArea: find.areaId } : {}),
   });
@@ -126,6 +137,9 @@ export default function TodaysFind({ userId, variant = 'card', pal }) {
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, lineHeight: 24 }}>{find.title}</Text>
               {!!find.desc && <Text style={{ fontSize: t.sm, color: c.text2, marginTop: 2 }}>{find.desc}</Text>}
+              {!!find.insteadOf && (
+                <Text style={{ fontSize: t.xs, fontWeight: t.semibold, color: c.text2, marginTop: 4 }}>Free instead of {find.insteadOf}</Text>
+              )}
             </View>
           </View>
           {!!find.summary && !triedToday && (
@@ -138,7 +152,11 @@ export default function TodaysFind({ userId, variant = 'card', pal }) {
                 <Text style={{ fontWeight: t.bold, color: c.text1 }}>Nice. You tried it.</Text>{userId ? " It's in your Vault." : ''} Next Find <Text style={{ fontWeight: t.bold, color: c.text1 }}>tomorrow</Text>.
               </Text>
               <View style={{ flexDirection: 'row', gap: s.sm, marginTop: s.sm }}>
-                <Button label="Open it" icon="open-outline" size="sm" variant="secondary" fullWidth={false} onPress={open} />
+                {makeKind ? (
+                  <Button label="Make something with it" icon="color-wand-outline" size="sm" fullWidth={false} onPress={makeWith} />
+                ) : (
+                  <Button label="Open it" icon="open-outline" size="sm" variant="secondary" fullWidth={false} onPress={open} />
+                )}
                 <Button label="More Finds" size="sm" variant="ghost" fullWidth={false} onPress={more} />
               </View>
             </View>

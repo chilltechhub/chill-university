@@ -65,7 +65,7 @@ const BUILTIN_DAILY = [
   { title: 'Clear Mind',     description: 'Complete 5 mental wellness activities.', criteria: { type: 'questions_answered', subject: 'mental' }, target_value: 5, xp_reward: 25, point_reward: 12 },
   { title: 'People Person',  description: 'Complete 5 social skills activities.', criteria: { type: 'questions_answered', subject: 'social_skills' }, target_value: 5, xp_reward: 25, point_reward: 12 },
   { title: 'Future Ready',   description: 'Complete 5 career activities.',       criteria: { type: 'questions_answered', subject: 'career' }, target_value: 5, xp_reward: 25, point_reward: 12 },
-  { title: 'Lesson Time',    description: 'Complete one Academy Classes topic.', criteria: { type: 'topic_completed' }, target_value: 1, xp_reward: 20, point_reward: 10 },
+  { title: 'Lesson Time',    description: 'Complete one class topic.', criteria: { type: 'topic_completed' }, target_value: 1, xp_reward: 20, point_reward: 10 },
   { title: 'Session Complete', description: 'Finish one training session.',    criteria: { type: 'game_completed' },     target_value: 1,  xp_reward: 20,  point_reward: 10 },
   { title: 'Flawless Run',  description: 'Finish a game with 100% accuracy.', criteria: { type: 'perfect_game' },       target_value: 1,  xp_reward: 40,  point_reward: 20 },
 ];

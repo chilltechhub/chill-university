@@ -133,7 +133,7 @@ const ACTION_BY_USAGE = {
   habits:     { label: 'Schedule your first habit', cta: 'Open Planner',   target: { tab: 'Library', screen: 'PlannerScreen' } },
   planning:   { label: 'Plan out your week',        cta: 'Open Planner',   target: { tab: 'Library', screen: 'PlannerScreen' } },
   building:   { label: 'Start your first project',    cta: 'Open Workshop',  target: { tab: 'Library', screen: 'ProjectsScreen' } },
-  learning:   { label: 'Pick your first class',     cta: 'Open Academy',   target: { tab: 'Training', screen: 'ClassesStack' } },
+  learning:   { label: 'Pick your first class',     cta: 'Open Classes',   target: { tab: 'Training', screen: 'ClassesStack' } },
   reflecting: { label: 'Plant your first idea',     cta: 'Open Garden',    target: { tab: 'Library', screen: 'IdeaGardenScreen' } },
   breaks:     { label: 'Play your first round',     cta: 'Practice',       target: { tab: 'Training' } },
 };

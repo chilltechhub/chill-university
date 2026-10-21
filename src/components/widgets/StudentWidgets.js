@@ -103,10 +103,10 @@ export function ClassProgressWidget({ subjectProgress, onOpenClasses }) {
   return (
     <WidgetCard
       title="Subjects" icon="ribbon-outline" accent={c.tech || c.teal}
-      action="Academy →" onAction={onOpenClasses}
+      action="Classes →" onAction={onOpenClasses}
       empty={subjects.length === 0 ? {
         text: "No progress yet. Finish a lesson or a practice round.",
-        cta: 'Open Academy', onPress: onOpenClasses,
+        cta: 'Open Classes', onPress: onOpenClasses,
       } : null}
     >
       {subjects.map(sp => (

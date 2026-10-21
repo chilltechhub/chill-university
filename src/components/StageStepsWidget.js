@@ -53,7 +53,7 @@ export default function StageStepsWidget() {
   if (!nextStage) {
     return (
       <WidgetCard title="Your stage" icon="layers-outline" accent={accent.primary}
-        action="App Nav →" onAction={() => navigation.navigate('Compass')}>
+        action="Goals →" onAction={() => navigation.navigate('Compass')}>
         <Text style={{ fontSize: t.sm, color: c.text2, lineHeight: 19 }}>
           Stage {stage} of {MAX_STAGE}: <Text style={{ fontWeight: t.bold, color: c.text1 }}>everything is open.</Text>
         </Text>
@@ -105,7 +105,7 @@ export default function StageStepsWidget() {
       title="What's next"
       icon="layers-outline"
       accent={accent.primary}
-      action="App Nav →"
+      action="Goals →"
       onAction={() => navigation.navigate('Compass')}
     >
       {/* What's behind the next door, before what opens it — the reason

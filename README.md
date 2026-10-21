@@ -44,6 +44,11 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=...
   build. Every one falls back to a local default.
 - **Offline.** Reads are cache-first via `src/api/offlineCache.js`; writes made
   offline are queued and flushed on next launch from `App.js`.
+- **Studio.** The spine of the app since 2026-10-20 (`docs/studio-plan.md`): the
+  app makes something real with you (a page, a game, a beat, a business), then
+  you take it apart one part at a time. Kinds live in `src/data/builds.js`; Home,
+  onboarding, Today's Find, Learn, the pet, the room and the Portfolio all point
+  at it. `npm run check` runs `scripts/check-builds.mjs`.
 - **Wayfinder.** The app is large enough that showing all of it at once is the
   same as showing none of it. So each account picks one *purpose*
   (`profiles.purpose_key`) and runs one *objective* at a time

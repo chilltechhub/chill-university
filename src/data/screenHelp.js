@@ -15,7 +15,7 @@ export const SCREEN_HELP = {
     body: 'Today at a glance: your goal and its next step, what is planned, and the cards you picked.',
   },
   Compass: {
-    title: 'App Nav',
+    title: 'Goals',
     body: 'Every stage of the app, where you are, and what is next. Pick the one thing you are here for, and one goal to finish. Everything the app shows you is ordered around that, and finishing a goal is how the deeper screens open. Where a feature has a competence check you can skip the goal by passing it — but only one attempt each, and falling short means doing the goal instead. Experimental features (unfinished work) and Plus features are both listed here too, with what each one actually is.',
   },
   Stats: {
