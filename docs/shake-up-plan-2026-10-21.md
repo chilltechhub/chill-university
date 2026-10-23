@@ -777,6 +777,16 @@ New check scripts this plan adds:
   - `isSyncedPref('@cth_guide_seen_v2_x')` is true.
 - **Rollback:** revert the PR; no data written.
 - **Risks:** alias gaps cause silent no-op navigation, so the route check must scan `src/data/objectives.js`, `firstGoalGuide.js`, `openTarget.js`, `src/logic/searchIndex.js`, `src/data/experienceStages.js` and `src/data/featureCatalog.js`.
+- **Built (2026-10-21, branch `feature/shakeup-p0`).** Where the code settled something this plan left open:
+  - **Aliases** live in `src/logic/routeAliases.js` (no imports). One only resolves once its target is registered **and** its `gate` is on, so `PlannerScreen → Home` waits for `setAliasGate('dashboardV2', true)` in P3, and `Profile`/`Stats → You` and `Compass → PathScreen` wait for those routes. A target not yet registered needs a `phase`.
+  - **Route check** (in `check-tour-spots.mjs`) also scans every literal `goToScreen`/`navigate` call, `SCREEN_HELP`, `STARTER_FEATURES`, and keeps `appRoutes.js` `ROOT_SCREENS` equal to App.js's root stack (the ConnectedApps bug class). It found exactly the 3 dead search rows, plus the same 3 dead `STAGED_SCREENS` entries, now removed.
+  - **Widgets:** `WIDGET_DEFS`, `WIDGET_BLURBS`, `NEW_WIDGETS_SHOWN`, `PLANNED_WIDGET_KEYS` and `WIDGET_ALIASES` are in `src/data/dashboardWidgets.js`; the reconcile is pure in `src/logic/widgetLayout.js` (tested in `check-wiring`). `focus` and `activities` alias to **`yourDay`** and `desk` to **`deliverable`**, so their saved places survive; `wisdom` is `null` (retired). A planned key leaves `PLANNED_WIDGET_KEYS` in the PR that adds it to `WIDGET_DEFS`.
+  - **Ids (stored, never rename):** starting points `highSchool · working · ged · unsure`; shakiest `love · goodAt · needs · paid · ground`; paths `like · next · money · career · ground`.
+  - **`derivePersona`:** a business Build wins over the starting point (a choice they made beats where they start), so a working adult who builds a business is `ENTREPRENEUR`. Flip the first line if the founder reads §7.2's table top-down instead.
+  - **"Add plan"** in §8.2's FAB column is the `calendar` action (it opens Today's week to plan).
+  - `tailoring.js` imports only `pathKits.js` and `derivePersona.js`, which import nothing; the check swaps them in (the `check-builds` pattern). `welcomeCards.js`, `derivePersona.js`, `pathKits.js`, `routeAliases.js` and `guide/surfaces.js` have no imports.
+  - **Seen-set v2:** `src/logic/guide/surfaces.js` (`SURFACES`, `ROUTE_TO_SURFACE`, pure `seedGuideSeen`) and `src/logic/guide/seenSet.js` (`@cth_guide_seen_v2_<uid|guest>`, `seedGuideSeenOnce`), not wired. `learn.unit` is the only surface an existing account isn't seeded with.
+  - `npm run check` is now 19 scripts (`check-tailoring.mjs` added).
 
 ### P1 · Planner extraction + one data hook + guest planner
 
@@ -795,6 +805,12 @@ New check scripts this plan adds:
 - **Checks:** `check-planner` extended to `useDayPlan` merging (`layoutDay`, `hourRange`, `duplicateIds`, `isSamePlan` exports unchanged).
 - **Rollback:** the old `PlannerScreen.js` is kept on a branch tag; the guest adapter is behind `ACCOUNT_ONLY_SCREENS` (re-adding the entry turns guests back to SignInPrompt).
 - **Risks:** a big file move. Profile scoping (`useViewScope` `planner` vs `calendar`) must survive.
+- **Built (2026-10-21, branch `feature/shakeup-p1`, on top of P0; tag `planner-pre-split` marks the old file).**
+  - `src/screens/today/` holds the parts (plus `EventsList`, `plannerShared`); `PlannerScreen.js` is the state and wiring (1,911 → ~440 lines).
+  - **One read:** pure `src/logic/dayPlan.js` (normalise, merge, group, `splitDue`) and `src/logic/useDayPlan.js` (`loadDayPlan` + the hook). Day, Week, Month and `CalmWeek` use the hook; **Home calls `loadDayPlan`** and keeps its own cache and instant ticks around it (6 queries became 1). The Planner's Day and Week now show **calendar events** (they never did); Calm's week now shows **project deadlines** (it only had plain tasks). Home still lists earlier not-done deadlines inline as "Late"; the Planner keeps them in its backlog card. Assignments stay off (`[]`) until P11.
+  - **Guests:** `src/logic/agendaRows.js` (pure) + `src/api/localAgenda.js` (`@cth_local_agenda`, serialised writes). plannerService sends no-`userId` reads and `local-` ids there; new `insertInstances`, `updateInstance`, `findPlansOn`, `getScheduledTitles` replace the direct writes in InstanceModal and quick add. A guest's ⋯ hides Add from ideas and Weekly review; Phone calendar opens a sign-in sheet; Fill with AI and the check-in are hidden. Home's Today shows a guest's plans too.
+  - **Signals:** "Add from ideas" and Fill with AI never fired `planner-item-added` before; both do now, so all 5 add flows count for goal steps.
+  - **Phone sync:** `syncPlansToPhoneSoon` (`src/logic/coalesce.js`): a burst is one sync 1.5 s after the last, never two at once.
 
 ### P2 · Welcome before login + slim onboarding + carry-over
 
@@ -850,6 +866,13 @@ New check scripts this plan adds:
 - **Checks:** `npm run check` (check-wiring, check-pickables, check-tour-spots, check-style on the new files).
 - **Rollback:** `DASHBOARD_V2` off renders the old `HomeScreen` + `PlannerScreen`; both stay registered for one release.
 - **Risks:** the main screen. Keep the HomeScreen 1003 rule (tours force Full) until P7, so old tours still find their spots.
+- **Built (2026-10-22, branch `feature/shakeup-p3`, on top of P2).** Parity walked in `docs/shake-up-planner-parity.md`. Where the code settled something this plan left open:
+  - **Today stays the `Home` route** (no `DashboardScreen`): `HomeScreen.js` renders the old Home or Today on `useDashboardV2()` (`src/logic/useDashboardV2.js`, rule in `welcomeCards.js` `dashboardV2On`). The Planner's state is one hook, `src/screens/today/usePlanner.js`, shared by Today and the old `PlannerScreen` (its sheets in `PlannerSheets`). New: `TodayControls`, `AddSheet`, `TodayWidgets` (Next step, Quick add, Your day, Still open, Due this week).
+  - **Today's layout is its own setting**, `todayLayout:<profileId|guest>`, so Home's saved layout is untouched for the rollback. First open migrates the Home layout (`widgetLayout.js` `todayLayoutFrom`).
+  - **`nextStep.js`** takes `now` (Right now) first, then the plan's order; claim, first goal and path fall back to CompassCard's own UI. `check-deliverables.mjs` covers it (`npm run check` is 20 scripts).
+  - **Calm on Today** is `CalmHome` with `v2` (not yet renamed `CalmToday`): the same keys in the board's order, `CalmWeek` following ‹ ›, a month in Month, and another day's plan when you open one.
+  - **The setting carries its last answer** to screens that mount later, and `PlannerScreen` waits for it, so an old link's params reach Today.
+  - Moved: TodaysFind → Learn, StudioCard → Library (Full), DreamCard → You. "Missed" / "NOT DONE" → "Still open".
 
 ### P4 · Tabs, top bar, You shell
 

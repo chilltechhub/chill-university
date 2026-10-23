@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { supabase } from '../api/supabaseClient';
 import { useTheme } from '../../context/ThemeContext';
-import SignInPrompt from '../components/SignInPrompt';
+import GuestYou from './you/GuestYou';
 import { useUserProgress, SUBJECT_CONFIG } from '../../context/UserProgressContext';
 import useCharacterLoadout from '../logic/useCharacterLoadout';
 import useBonusRewards from '../logic/useBonusRewards';
@@ -40,6 +40,8 @@ import TourSpot from '../components/TourSpot';
 import { textOn } from '../logic/contrast';
 import { RANK_LABELS } from '../theme';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
+import DreamCard from '../components/DreamCard';
+import useDashboardV2 from '../logic/useDashboardV2';
 
 const WARDROBE_TABS = [
   { key: 'outfitId', label: 'Outfit', icon: 'shirt-outline' },
@@ -50,6 +52,7 @@ const WARDROBE_TABS = [
 
 export default function ProfileScreen() {
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
+  const [dashboardV2] = useDashboardV2();
   const styles = makeStyles(c, t, s, r);
   const navigation = useNavigation();
   const progress = useUserProgress();
@@ -148,14 +151,9 @@ export default function ProfileScreen() {
     );
   }
 
-  if (!session) {
-    return (
-      <SignInPrompt
-        title="Make it yours"
-        body="Sign in to keep your level, points, streak and badges, and pick up where you left off on any device."
-      />
-    );
-  }
+  // A guest's You: their Dream, their page, Save my progress (the
+  // shake-up's P2). It was a sign-in wall.
+  if (!session) return <GuestYou />;
 
   const petLevel = bondLevel(petCare.bond).level;
   const badgeCtx = { level, streakDays, points, subjectProgress, gameplayStats, petLevel };
@@ -176,6 +174,9 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+        {/* The Dream lives on You once Today is the Planner (shake-up P3);
+            Today keeps an echo of it on the next step. */}
+        {dashboardV2 && <View style={{ marginHorizontal: -16, marginBottom: 12 }}><DreamCard userId={session?.user?.id || null} /></View>}
         {/* ── Hero: character + pet on a landscape backdrop ─────────────── */}
         <LandscapeBackground background={background} height={200} level={level} decor={decor} style={styles.hero}>
           <CharacterWalker

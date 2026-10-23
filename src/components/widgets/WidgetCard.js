@@ -29,14 +29,14 @@ export default function WidgetCard({
   empty = null,      // { text, cta, onPress } — shown instead of children
   children,
 }) {
-  const { colors: c, typography: t, spacing: s, radius: r, style: ui, accent: themeAccent } = useTheme();
+  const { colors: c, typography: t, spacing: s, radius: r, style: ui, accent: themeAccent, shadows } = useTheme();
   const edge = accent || themeAccent.primary;
 
   return (
-    <View style={{
+    <View style={[{
       backgroundColor: c.bg1, borderRadius: ui.cardRadius, padding: s.lg,
       marginHorizontal: s.lg, borderWidth: ui.borderWidth, borderColor: c.border,
-    }}>
+    }, ui.cardShadow && shadows[ui.cardShadow]]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: s.md }}>
         {/* flexShrink + two lines at most: a long title ("Stage 3 of 10 · Three more
             games and your first quest") used to push past the card's edge

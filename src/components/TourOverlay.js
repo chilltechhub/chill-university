@@ -189,10 +189,19 @@ export default function TourOverlay() {
   const bottomInset = insets.bottom + TAB_BAR_H + MARGIN_V;
   const roomAbove = hole ? (hole.y - 16) - (insets.top + MARGIN_V) : 0;
   const roomBelow = (SH - bottomInset) - (hole ? hole.y + hole.h + 16 : SH * 0.42);
+  // A target taller than the room on either side (the welcome builder's
+  // whole live preview, 2026-10-22) has nowhere to talk beside it. Anchored
+  // to its edge anyway, the bubble ran off the top of the screen and only
+  // its last line showed. Instead the guide stands at the bottom edge, over
+  // the lower part of the target, where the words can all be read.
+  const minBlock = BUBBLE_MIN + 48 + TAIL_H;
+  const over = !!hole && currentStep.placement !== 'top' && roomAbove < minBlock && roomBelow < minBlock;
   // `placement: 'top'` pins a step up top whatever the target: a note shown
   // inside a game, where the bottom half is the answers.
-  const atTop = currentStep.placement === 'top' || (hole ? roomAbove > roomBelow : false);
-  const available = atTop ? (hole ? roomAbove : SH * 0.5) : roomBelow;
+  const atTop = currentStep.placement === 'top' || (hole && !over ? roomAbove > roomBelow : false);
+  const available = over
+    ? Math.min(SH * 0.45, (SH - bottomInset) - (insets.top + MARGIN_V))
+    : atTop ? (hole ? roomAbove : SH * 0.5) : roomBelow;
   // Tight on both sides, or a non-blocking note sitting over live content:
   // a smaller guide, so the words get the room and less of the screen is
   // covered.
@@ -210,7 +219,7 @@ export default function TourOverlay() {
     // the screen with the guide standing over the Play button, pointing at
     // nothing (seen 2026-10-01 on a fresh account). A step pinned to the
     // top, or with no target, keeps the edge.
-    ...(atTop
+    ...(over ? { bottom: bottomInset } : atTop
       ? (hole && currentStep.placement !== 'top' ? { bottom: SH - hole.y + 16 } : { top: insets.top + MARGIN_V })
       : (hole ? { top: hole.y + hole.h + 16 } : { bottom: bottomInset })),
   };
@@ -389,7 +398,7 @@ export default function TourOverlay() {
                 {(!currentStep.passthrough || currentStep.allowNext) && !(currentStep.quiz && quizAnswer === null) && (
                   <TouchableOpacity onPress={nextStep} accessibilityRole="button" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                     <Text style={{ fontSize: 13, color: c.teal, fontWeight: '800' }}>
-                      {isLastStep ? 'Done' : 'Next ›'}
+                      {currentStep.nextLabel || (isLastStep ? 'Done' : 'Next ›')}
                     </Text>
                   </TouchableOpacity>
                 )}

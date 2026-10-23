@@ -49,6 +49,9 @@ import { WORKSHOP_SCREENS, blueprintPaper } from './src/screens/library/blueprin
 import LoginScreen        from './src/screens/LoginScreen';
 import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
 import MultiStepOnboarding from './src/screens/MultiStepOnboarding';
+import WelcomeScreen from './src/screens/welcome/WelcomeScreen';
+import { loadWelcome, isWelcomeOn } from './src/api/welcomeStore';
+import { bootTarget } from './src/logic/welcomeCards';
 import ProfileScreen   from './src/screens/ProfileScreen';
 import SettingsScreen  from './src/screens/SettingsScreen';
 import NotificationCenterScreen from './src/screens/NotificationCenterScreen';
@@ -79,7 +82,11 @@ import CohortRosterScreen from './src/screens/organization/CohortRosterScreen';
 import { useUserProgress } from './context/UserProgressContext';
 
 // Screens that show SignInPrompt to a guest instead of their content.
-const ACCOUNT_ONLY_SCREENS = new Set(['Profile', 'PlannerScreen']);
+// Empty since the shake-up: the Planner left in P1 (a guest plans on the
+// phone, plannerService.js) and Profile in P2 (a guest's You: their Dream,
+// their page, Save my progress). Putting a name back here, with
+// SignInPrompt back on that screen, is the rollback.
+const ACCOUNT_ONLY_SCREENS = new Set([]);
 import { supabase } from './src/api/supabaseClient';
 import { needsSecondStep } from './src/api/mfa';
 import useFirstVisitTutorial from './src/logic/useFirstVisitTutorial';
@@ -153,7 +160,7 @@ const forShiftWeb = ({ current }) => ({
 });
 
 function MainTabs() {
-  const { colors: c } = useTheme();
+  const { colors: c, isDark } = useTheme();
   // Untick Training games AND Classes on "Pick your features" and its tab
   // goes. The screen stays mounted (the pet on it finds coins while the app
   // is open), and a goal step or Home's Play button can still get there.
@@ -191,6 +198,8 @@ function MainTabs() {
           backgroundColor: c.tabBar,
           borderTopWidth: 0.5,
           borderTopColor: c.border,
+          // Lifted over the page, like the top bar (2026-10-21 depth pass).
+          boxShadow: isDark ? '0 -6px 20px rgba(0, 0, 0, 0.35)' : '0 -6px 20px rgba(42, 34, 20, 0.07)',
           paddingBottom: Platform.OS === 'ios' ? 10 : 3,
           paddingTop: 3,
           height: Platform.OS === 'ios' ? 66 : 60, // 52 squeezed the labels to an 8px box on Android/web
@@ -250,7 +259,7 @@ function MainTabs() {
 // (rank/points/sign-in) would just duplicate or clash with them.
 // Plus is a paywall you close with its own X; the HUD and FAB over it would
 // be buttons that lead away mid-decision.
-const NO_TOPBAR_ROUTES = new Set(['Login', 'MultiStepOnboarding', 'ResetPassword', 'Plus']);
+const NO_TOPBAR_ROUTES = new Set(['Welcome', 'Login', 'MultiStepOnboarding', 'ResetPassword', 'Plus']);
 
 // Browser tab title on web. Screens without a title option used to show the
 // raw route name ("WorkModeScreen", "ClassesMain"); spell it out instead.
@@ -430,7 +439,14 @@ function AppInner() {
     // `initialRoute` stays null (a blank splash) until this settles, so it
     // must always settle: a rejection or a hang used to leave the app blank
     // forever. Any failure, or no answer in 10s, starts at Login — which is
-    // recoverable — instead of nowhere.
+    // recoverable — instead of nowhere; a guest who chose to keep going
+    // starts on Today instead.
+    //
+    // Where each case goes is src/logic/welcomeCards.js bootTarget (the
+    // shake-up's §7.2 table, checked in scripts/check-tailoring.mjs):
+    // signed in → Today or onboarding, never the welcome; signed out → the
+    // welcome until it's done, then Today as a guest or Login.
+    const welcomeState = Promise.all([loadWelcome(), isWelcomeOn()]).catch(() => [null, false]);
     let settled = false;
     const startAt = (route) => {
       if (settled) return;
@@ -439,33 +455,42 @@ function AppInner() {
       setShowTopBar(!NO_TOPBAR_ROUTES.has(route));
       setCurrentRouteName(route);
     };
-    const bootTimeout = setTimeout(() => {
-      console.warn('[boot] session check took over 10s — starting at Login');
-      startAt('Login');
-    }, 10000);
+    const startSlow = async (why, e) => {
+      const [welcome, welcomeOn] = await welcomeState;
+      const { route } = bootTarget({ timedOut: true, welcome, welcomeOn });
+      console.warn(`[boot] session check ${why} — starting at ${route}`, e?.message || e || '');
+      startAt(route);
+    };
+    const bootTimeout = setTimeout(() => { startSlow('took over 10s'); }, 10000);
 
     (async () => {
+      const [welcome, welcomeOn] = await welcomeState;
       const { data: { session } } = await supabase.auth.getSession();
-      // No session, or one that hasn't done its two-step code yet (2FA on;
-      // LoginScreen asks for the code): start at Login either way.
-      if (!session || await needsSecondStep().catch(() => false)) {
+      // A session that hasn't done its two-step code yet (2FA on):
+      // LoginScreen asks for the code.
+      if (session && await needsSecondStep().catch(() => false)) {
         startAt('Login');
+        return;
+      }
+      if (!session) {
+        startAt(bootTarget({ hasSession: false, welcome, welcomeOn }).route);
         return;
       }
       // Logged in — check onboarding
       const { data: profile } = await supabase
         .from('profiles')
-        .select('onboarding_completed')
+        .select('onboarding_completed, metadata')
         .eq('id', session.user.id)
         .maybeSingle();
 
-      const needsOnboarding = !profile || profile.onboarding_completed !== true;
-      startAt(needsOnboarding ? 'MultiStepOnboarding' : 'MainTabs');
+      startAt(bootTarget({
+        hasSession: true,
+        onboardingCompleted: profile?.onboarding_completed,
+        hasPathKey: !!profile?.metadata?.path_key,
+        welcome, welcomeOn,
+      }).route);
     })()
-      .catch((e) => {
-        console.warn('[boot] session check failed — starting at Login', e?.message || e);
-        startAt('Login');
-      })
+      .catch((e) => startSlow('failed', e))
       .finally(() => clearTimeout(bootTimeout));
     return () => clearTimeout(bootTimeout);
   }, []);
@@ -526,6 +551,10 @@ function AppInner() {
             // and more intentional than either platform default alone.
             ...TransitionPresets.SlideFromRightIOS,
           }}>
+          {/* flex 1: on web a stack card otherwise grows past the viewport,
+              the page itself scrolls, and the welcome's guide spotlights
+              land off-target. Its own ScrollView scrolls instead. */}
+          <Stack.Screen name="Welcome"             component={WelcomeScreen} options={{ title: 'Welcome', cardStyle: { flex: 1 } }} />
           <Stack.Screen name="Login"               component={LoginScreen} />
           <Stack.Screen name="ResetPassword">
             {() => <ResetPasswordScreen linkInvalid={resetLinkInvalid} />}

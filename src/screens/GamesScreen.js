@@ -33,6 +33,8 @@ import LandscapeBackground from '../components/LandscapeBackground';
 import CharacterWalker from '../components/CharacterWalker';
 import { reviewDueCount, onReviewsChange } from '../logic/questionRotation';
 import { useAccess } from '../../context/AccessContext';
+import TodaysFind from '../components/TodaysFind';
+import useDashboardV2 from '../logic/useDashboardV2';
 
 // Single source of truth: src/services/gameRegistry.js. GamesScreen and
 // GameFeed both read from it now, so a game's id/subject/icon can never
@@ -95,6 +97,9 @@ const SUBJECT_ICON = {
 
 export default function GamesScreen() {
   const { user, profile, points, rank, level, gameplayStats, progress, streakDays, subjectProgress, refreshDailyMissions } = useUserProgress();
+  // With Today as the Planner (shake-up P3), Today's Find is a widget there
+  // and its full card lives here in Learn.
+  const [dashboardV2] = useDashboardV2();
   const { colors: c, typography: t, spacing: s, radius: r, shadows: sh } = useTheme();
   const { showEmojis, showSubtext } = useUIPrefs();
   const navigation = useNavigation();
@@ -229,6 +234,7 @@ export default function GamesScreen() {
       >
         {activeTab === 'Overview' && (
           <>
+            {dashboardV2 && <View style={{ marginBottom: 12 }}><TodaysFind userId={user?.id || null} /></View>}
             {/* Avatar — your actual equipped character, pet, and backdrop
                 (Profile screen's wardrobe), not a fixed placeholder image.
                 Tapping it opens your Profile when that setting's on; when

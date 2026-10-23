@@ -8,7 +8,7 @@
 // Planner items and tasks due today, done over total; the two cards read the
 // same rows Home's persona widgets do (src/components/widgets/).
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -19,7 +19,9 @@ import { resumeFirstGoalGuide } from '../logic/useGuidedFirstGoal';
 import { useRightNow } from './RightNowCard';
 import CalmWeek from './CalmWeek';
 import DreamCard from './DreamCard';
+import PickPathNote from './PickPathNote';
 import StudioCard from './StudioCard';
+import TourSpot from './TourSpot';
 import TodaysFind from './TodaysFind';
 import { useCalmPalette, CalmPanel, CalmHeadline, CalmPill as Pill, CalmTiles, CalmShowAll, calmEyebrow as eyebrow, plural, ago } from './CalmKit';
 import { supabase } from '../api/profileScopedClient';
@@ -48,9 +50,15 @@ export default function CalmHome({
   canOpen = () => true,
   onOpenPick, onDonePick, onOpenGoal, onEditFocus, onOpenScreen, onOpenProfile, onShowAll,
   headerStyle,
+  // Today (DASHBOARD_V2, shake-up P3): Calm draws the same board as Full,
+  // in the calm style. `order` is the Full layout's visible calm-capable
+  // keys (CALM_WIDGETS), in its order; `nextPick` is the shared next step
+  // (src/logic/nextStep.js), so both views name the same one. The Studio
+  // lives in Make now, so it isn't here.
+  v2 = false, order = null, nextPick = null, onActPick,
 }) {
   const { spacing: s } = useTheme();
-  const keys = TILES[personaKey] || TILES.PERSONAL;
+  const keys = useMemo(() => (TILES[personaKey] || TILES.PERSONAL).filter(k => !v2 || k !== 'streak'), [personaKey, v2]);
   const pal = useCalmPalette();
 
   // ── The headline: the one next step ──────────────────────────────────────
@@ -240,9 +248,77 @@ export default function CalmHome({
     // Early on a type's own screens may not be open yet (or a card has
     // nothing to show): the streak, then life areas (rating one is
     // everyone's first goal step), fill in.
-    ['streak', 'checkins'].forEach(k => { if (shown.length < 2 && !shown.includes(k) && ok(k)) shown.push(k); });
+    // Today (v2) shows no streak: Calm's only number is what's done today.
+    (v2 ? ['checkins'] : ['streak', 'checkins']).forEach(k => { if (shown.length < 2 && !shown.includes(k) && ok(k)) shown.push(k); });
     return shown.slice(0, 2).map(k => ({ key: k, ...built[k] }));
   })();
+
+  // ── Today's version of the same pieces (v2) ─────────────────────────────
+  const heroBlock = (h) => (
+    <View key="nextStep">
+      {/* The one next step (the after-welcome tour ends here) */}
+      <TourSpot id="calm-next" style={{ marginTop: s.xl, marginBottom: s.sm }}>
+        <CalmHeadline pal={pal} onPress={h.onPress}
+          label={h.label} title={h.title} a11y={`${h.label}. ${h.title}`} />
+      </TourSpot>
+      <View style={{ flexDirection: 'row', gap: s.sm, marginBottom: s.lg }}>
+        {h.done && <Pill label="Done" icon="checkmark" onPress={h.done} pal={pal} solid a11y={`Mark ${h.title} done`} />}
+        {!!h.onPress && <Pill label={h.action} icon={h.icon} onPress={h.onPress} pal={pal} solid={!h.done} a11y={`${h.action}: ${h.title}`} />}
+      </View>
+    </View>
+  );
+  const pickHero = () => {
+    if (!nextPick) return { label: 'Today', title: 'One clear next step.', action: 'Plan my day', icon: 'arrow-forward', onPress: () => onOpenScreen?.('PlannerScreen') };
+    const ref = nextPick.action?.ref;
+    const canTick = ref && (ref._src === 'planner' || ref._src === 'task');
+    if (nextPick.kind === 'first') return { label: nextPick.label, title: nextPick.title, action: nextPick.action.label, icon: 'play', onPress: startFirst };
+    return { label: nextPick.label, title: nextPick.title, action: nextPick.action.label, icon: 'arrow-forward',
+      onPress: () => onActPick?.(nextPick), done: canTick ? () => onDonePick?.(ref) : null };
+  };
+  const dayBlock = () => (
+    <View key="yourDay" style={{ backgroundColor: pal.glass, borderWidth: 1, borderColor: pal.glassEdge, borderRadius: 22, padding: s.lg, marginBottom: s.md }}>
+      <TouchableOpacity onPress={onEditFocus} activeOpacity={0.8} accessibilityRole="button"
+        accessibilityLabel={focus ? `Today's focus: ${focus}. Change it` : "Set today's focus"}>
+        <Text style={{ ...eyebrow, color: pal.eyebrow }}>Today's focus</Text>
+        <Text numberOfLines={2} style={{ fontSize: 19, lineHeight: 26, fontWeight: '700', color: focus ? pal.text : pal.text2, marginTop: 8 }}>
+          {focus || 'Tap to pick one thing for today'}
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => onOpenScreen?.('PlannerScreen')} activeOpacity={0.8} accessibilityRole="button"
+        accessibilityLabel={planned.length ? `Today: ${planned.length} things, ${planDone} done. Open your day` : 'Nothing planned today. Plan your day'}
+        style={{ marginTop: s.md }}>
+        <Text style={{ fontSize: 13, color: pal.text2 }}>
+          {planned.length
+            ? <><Text style={{ fontWeight: '800', color: pal.text }}>Today: {planned.length} {planned.length === 1 ? 'thing' : 'things'}</Text> · {planDone} done</>
+            : <>Nothing planned today · <Text style={{ fontWeight: '800', color: pal.text }}>Plan →</Text></>}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  if (v2) {
+    const sections = {
+      dream: <DreamCard key="dream" userId={userId} variant="calm" pal={pal} />,
+      find: <TodaysFind key="find" userId={userId} variant="calm" pal={pal} />,
+      nextStep: heroBlock(pickHero()),
+      yourDay: dayBlock(),
+    };
+    return (
+      <View style={{ paddingHorizontal: s.lg, paddingTop: s.xs }}>
+        <CalmPanel id="calmHomePanel" pal={pal}>
+          <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 20 }, headerStyle]}>
+            <Text style={{ fontSize: 13, color: pal.text2, ...eyebrow, fontWeight: '600' }}>{weekday}</Text>
+          </View>
+          <PickPathNote userId={userId} style={{ marginHorizontal: 0 }} />
+          {(order || ['dream', 'nextStep', 'yourDay', 'find']).map(k => sections[k] || null)}
+          {/* Up to two of the path's own tiles */}
+          <CalmTiles tiles={tiles} pal={pal} onOpenScreen={onOpenScreen} />
+        </CalmPanel>
+        <CalmWeek userId={userId} refreshKey={plan} onOpenDay={onOpenDay} openLabel="Open day →" />
+        <CalmShowAll label="Show my desk" a11y="Show every card on Today" onPress={onShowAll} />
+      </View>
+    );
+  }
 
   return (
     <View style={{ paddingHorizontal: s.lg, paddingTop: s.md }}>
@@ -262,15 +338,17 @@ export default function CalmHome({
         </View>
 
         {/* The life they want, above the next step (docs/north-star.md) */}
+        <PickPathNote userId={userId} style={{ marginHorizontal: 0 }} />
         <DreamCard userId={userId} variant="calm" pal={pal} />
         <StudioCard variant="calm" pal={pal} />
         <TodaysFind userId={userId} variant="calm" pal={pal} />
 
-        {/* The one next step */}
-        <CalmHeadline pal={pal} onPress={openHero}
-          label={hero ? hero.label : 'Today'} title={hero ? hero.title : 'One clear next step.'}
-          a11y={hero ? `${hero.label}. ${hero.title}` : 'Nothing planned yet'}
-          style={{ marginTop: s.xl, marginBottom: s.sm }} />
+        {/* The one next step (the after-welcome tour ends here) */}
+        <TourSpot id="calm-next" style={{ marginTop: s.xl, marginBottom: s.sm }}>
+          <CalmHeadline pal={pal} onPress={openHero}
+            label={hero ? hero.label : 'Today'} title={hero ? hero.title : 'One clear next step.'}
+            a11y={hero ? `${hero.label}. ${hero.title}` : 'Nothing planned yet'} />
+        </TourSpot>
         <View style={{ flexDirection: 'row', gap: s.sm, marginBottom: s.lg }}>
           {heroDone && (
             <Pill label="Done" icon="checkmark" onPress={() => onDonePick?.(hero.ref)} pal={pal} solid

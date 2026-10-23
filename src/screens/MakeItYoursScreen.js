@@ -30,6 +30,7 @@ import RichText from '../components/RichText';
 import TourSpot from '../components/TourSpot';
 import AccessibilitySettings from '../components/AccessibilitySettings';
 import { AppearancePicker, LifeAreaChips } from '../components/LookAndFeel';
+import useDashboardV2 from '../logic/useDashboardV2';
 
 const TRACK_VALUE = {
   picks: '**Just my picks.** Only what you chose. Goals suggest more.',
@@ -54,6 +55,9 @@ export default function MakeItYoursScreen() {
   const [homeBg, setHomeBg] = useSetting(SETTING_KEYS.HOME_BACKGROUND, 'plain');
   const [libraryBg, setLibraryBg] = useSetting(SETTING_KEYS.LIBRARY_BACKGROUND, 'plain');
   const [heroTap, setHeroTap] = useSetting(SETTING_KEYS.HERO_TAP_TO_PROFILE, true);
+  // Today as the Planner (shake-up P3): on for new accounts, opt-in here for
+  // everyone else for this release. Off brings the old Home and Planner back.
+  const [dashboardV2, setDashboardV2] = useDashboardV2();
 
   const persona = getPersona(activeType);
   const track = ['picks', 'auto', 'full'].includes(experienceMode) ? experienceMode : 'auto';
@@ -167,14 +171,22 @@ export default function MakeItYoursScreen() {
 
         <Head id="home">Home and Library</Head>
         <View style={card}>
-          <Row icon="leaf-outline" title="Home view"
-            value={homeView === 'calm' ? '**Calm.** One next step + two cards' : '**Full.** Every card you picked'} />
-          <Segments label="Home view" value={homeView === 'calm' ? 'calm' : 'full'}
+          <Row icon="calendar-outline" title="Today as your planner"
+            value={dashboardV2 ? '**On.** Home is your day: the plan, the next step, your cards' : '**Off.** Home and the Planner as before'}
+            right={<Toggle value={!!dashboardV2} onChange={(v) => setDashboardV2(v)} label="Today as your planner" />} />
+          <Row icon="leaf-outline" title={dashboardV2 ? 'View, everywhere' : 'Home view'}
+            value={homeView === 'calm' ? '**Calm.** Fewer cards, the same day' : '**Full.** Every card you picked'} />
+          <Segments label={dashboardV2 ? 'View' : 'Home view'} value={homeView === 'calm' ? 'calm' : 'full'}
             options={[['calm', 'Calm'], ['full', 'Full']]} onChange={setHomeView} />
-          <Row icon="library-outline" title="Library view"
-            value={libraryView === 'calm' ? '**Calm.** One panel per page + a short list' : '**Full.** Every tool card'} />
-          <Segments label="Library view" value={libraryView === 'calm' ? 'calm' : 'full'}
-            options={[['calm', 'Calm'], ['full', 'Full']]} onChange={setLibraryView} />
+          {/* One setting with Today on (homeView means the app's view). */}
+          {!dashboardV2 && (
+            <>
+              <Row icon="library-outline" title="Library view"
+                value={libraryView === 'calm' ? '**Calm.** One panel per page + a short list' : '**Full.** Every tool card'} />
+              <Segments label="Library view" value={libraryView === 'calm' ? 'calm' : 'full'}
+                options={[['calm', 'Calm'], ['full', 'Full']]} onChange={setLibraryView} />
+            </>
+          )}
           <Row icon="grid-outline" title="Home cards" value="**Add, hide or move** the cards on Home"
             onPress={() => navigation.navigate('MainTabs', { screen: 'Home', params: { editWidgets: Date.now() } })} />
           <Row icon="game-controller-outline" title="Study & Play buttons" value="On your profile card on Home"

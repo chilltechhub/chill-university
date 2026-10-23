@@ -1,7 +1,8 @@
 // src/logic/gameXpCap.js
 // Games pay XP up to GAME_XP_PER_DAY a day. Before, one game round could
-// out-earn a whole day of real work (record_action's 5 XP per action), so
-// the app rewarded screen time over doing things. Past the cap, games still
+// out-earn a whole day of real work (record_action paid 5 XP an action; it
+// pays 10-100 since 20261014120000_real_work_xp.sql), so the app rewarded
+// screen time over doing things. Past the cap, games still
 // give points (the prize cards), still count for the streak and still move
 // drills; only the XP stops until tomorrow.
 //

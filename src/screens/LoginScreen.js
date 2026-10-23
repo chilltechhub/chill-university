@@ -1,7 +1,7 @@
 // src/screens/LoginScreen.js
 // Clean auth screen — space traveler theme, handles both login and signup
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, StyleSheet, KeyboardAvoidingView, Platform, Animated, Linking, Image } from 'react-native';
 // Bright-teal variant of the icon mark: these screens are always dark.
 const BRAND_MARK = require('../../assets/splash-icon-dark.png');
@@ -9,7 +9,8 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../api/supabaseClient';
 import { needsSecondStep, verifySignInCode } from '../api/mfa';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, NavigationRouteContext } from '@react-navigation/native';
+import { saveWelcome, SIGNED_IN_BEFORE_KEY } from '../api/welcomeStore';
 import { redeemOrgInviteCode } from '../api/organizationService';
 import { PRIVACY_POLICY_URL, TERMS_URL } from '../config/legal';
 
@@ -19,7 +20,6 @@ import { PRIVACY_POLICY_URL, TERMS_URL } from '../config/legal';
 // goAfterAuth on every successful login, not just signup).
 const PENDING_ORG_CODE_KEY = '@cth_pending_org_code';
 // Set on any successful sign-in; decides which form a fresh launch opens on.
-const SIGNED_IN_BEFORE_KEY = '@cth_signed_in_before';
 
 // Enough to catch a typo before the server does; the server has the last word.
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -57,12 +57,17 @@ async function maybeRedeemPendingOrgCode() {
 
 export default function LoginScreen({ onSuccess, onClose }) {
   const navigation = useNavigation();
+  // The welcome opens this on Create account ('signup') or "I already have
+  // an account" ('login'). As a modal (TopBar, SignInPrompt) there's no
+  // route of its own, and useRoute would throw there.
+  const route = useContext(NavigationRouteContext);
+  const askedMode = !onSuccess && !onClose ? route?.params?.mode : null;
   const [email,       setEmail]       = useState('');
   const [password,    setPassword]    = useState('');
   const [orgCode,     setOrgCode]     = useState('');
   const [showOrg,     setShowOrg]     = useState(false); // signup: the code field, once asked for
   const [loading,     setLoading]     = useState(false);
-  const [mode,        setMode]        = useState('login'); // login | signup | reset
+  const [mode,        setMode]        = useState(askedMode === 'signup' ? 'signup' : 'login'); // login | signup | reset
   const [showPass,    setShowPass]    = useState(false);
   // The keyboard's Next on the email moves here; Go on the password submits.
   const passwordRef = useRef(null);
@@ -86,6 +91,7 @@ export default function LoginScreen({ onSuccess, onClose }) {
   // person read was a greeting for someone else, with signing up a small
   // link under it.
   useEffect(() => {
+    if (askedMode) return undefined; // the welcome already said which
     let alive = true;
     AsyncStorage.getItem(SIGNED_IN_BEFORE_KEY)
       .then(seen => { if (alive && !seen) setMode(m => (m === 'login' ? 'signup' : m)); })
@@ -535,8 +541,11 @@ export default function LoginScreen({ onSuccess, onClose }) {
           <TouchableOpacity
             style={s.guestBtn}
             accessibilityRole="button"
-            onPress={() => {
+            onPress={async () => {
               if (onClose) { onClose(); return; }
+              // Remembered, so the next launch opens on Today as a guest,
+              // not here (App.js boot, welcomeCards.bootTarget).
+              await saveWelcome({ done: true, guest: true }).catch(() => {});
               navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
             }}
           >

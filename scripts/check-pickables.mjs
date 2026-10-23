@@ -5,7 +5,7 @@
 //   - every featureCatalog id belongs to exactly one pickable item (or is
 //     always on: Home and App Nav)
 //   - every staged screen that isn't an alias of a feature is pickable
-//   - every Home card in HomeScreen's WIDGET_DEFS is a base card or belongs
+//   - every Home card in dashboardWidgets.js's WIDGET_DEFS is a base card or belongs
 //     to a pickable item
 //   - every + button action belongs to a pickable item
 //   - every item names a group that exists, and ids are unique
@@ -61,14 +61,12 @@ Object.entries(STAGED_SCREENS).forEach(([screen, rule]) => {
 });
 screenOwners.forEach(s => { if (STAGED_SCREENS[s] !== true) fail(`pickable screen "${s}" isn't a staged screen in experienceStages.js`); });
 
-// Home cards
-const home = await text('src/screens/HomeScreen.js');
-const defs = home.slice(home.indexOf('const WIDGET_DEFS = ['), home.indexOf('const WIDGET_KEYS'));
-const widgetKeys = [...defs.matchAll(/key:\s*'([A-Za-z]+)'/g)].map(m => m[1]);
-if (widgetKeys.length < 10) fail(`couldn't read WIDGET_DEFS from HomeScreen.js (found ${widgetKeys.length})`);
+// Home cards (src/data/dashboardWidgets.js)
+const { WIDGET_KEYS: widgetKeys } = await load('src/data/dashboardWidgets.js');
+if (widgetKeys.length < 10) fail(`couldn't read WIDGET_DEFS from dashboardWidgets.js (found ${widgetKeys.length})`);
 const widgetOwners = new Set([...BASE_WIDGETS, 'stageSteps', ...PICKABLES.flatMap(p => [...(p.widgets || []), ...(p.extraWidgets || []), ...(p.typeWidgets || [])])]);
 widgetKeys.forEach(k => { if (!widgetOwners.has(k)) fail(`Home card "${k}" isn't a base card or in any pickable item`); });
-widgetOwners.forEach(k => { if (!widgetKeys.includes(k)) fail(`pickable Home card "${k}" isn't in HomeScreen's WIDGET_DEFS`); });
+widgetOwners.forEach(k => { if (!widgetKeys.includes(k)) fail(`pickable Home card "${k}" isn't in dashboardWidgets.js's WIDGET_DEFS`); });
 
 // + button actions
 const fab = await text('src/components/FloatingActionButton.js');
@@ -87,8 +85,19 @@ actionKeys.forEach(k => { if (!FAB_ACTIONS.includes(k)) fail(`+ button action "$
 // track sees, and that the rule names the cards MultiStepOnboarding has.
 {
   const { ONBOARDING_CARDS, shownCards } = await load('src/logic/onboardingCards.js');
-  const stepKeys = [...(await text('src/screens/MultiStepOnboarding.js')).matchAll(/\{ key: '([a-z]+)',\s+component:/g)].map(m => m[1]);
+  const wizard = await text('src/screens/MultiStepOnboarding.js');
+  const keysIn = (name) => {
+    const at = wizard.indexOf(`const ${name} = [`);
+    if (at < 0) return null;
+    return [...wizard.slice(at, wizard.indexOf('\n];', at)).matchAll(/\{ key: '([a-z]+)',\s+component:/g)].map(m => m[1]);
+  };
+  const stepKeys = keysIn('STEPS') || [];
   if (stepKeys.join() !== ONBOARDING_CARDS.join()) fail(`onboarding: STEPS keys [${stepKeys}] don't match ONBOARDING_CARDS [${ONBOARDING_CARDS}]`);
+  // After the welcome (the shake-up's P2) signup asks a name and nothing
+  // else: the age gate and consent run before any card either way.
+  const slimKeys = keysIn('SLIM_STEPS');
+  if (!slimKeys || slimKeys.join() !== 'name') fail(`onboarding: SLIM_STEPS should be just [name], got [${slimKeys}]`);
+  if (shownCards(slimKeys || [], { mode: 'picks', hasLifeAreas: false }).length !== 1) fail('onboarding: the slim name card should always show');
   const seen = (ctx) => shownCards(ONBOARDING_CARDS, ctx).map(i => ONBOARDING_CARDS[i]).join(' ');
   const want = (name, ctx, expected) => { const got = seen(ctx); if (got !== expected) fail(`onboarding ${name}: got "${got}", want "${expected}"`); };
   want('Level up', { mode: 'auto', hasLifeAreas: false }, 'welcome aim dream persona start name sectors');

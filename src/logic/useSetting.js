@@ -48,6 +48,24 @@ export const SETTING_KEYS = {
   // On by default; the pet's feed sheet and Settings both switch it.
   PET_REMINDERS: 'petReminders',
   TOUR_SEEN: 'tourSeen',
+  // The welcome before login (src/screens/welcome/), the shake-up's P2.
+  // true / false wins; unset means on for a device nobody has signed in on
+  // (welcomeEnabled in src/logic/welcomeCards.js). Off is the rollback.
+  WELCOME_V1: 'welcomeV1',
+  // The one-time "Pick your path" note on Home for accounts from before the
+  // welcome (src/components/PickPathNote.js).
+  PICK_PATH_NOTE_SEEN: 'pickPathNoteSeen',
+  // Today = the Planner as the dashboard (shake-up P3). true / false wins;
+  // unset means on for an account made through the welcome (metadata
+  // shakeup_onboarded_at) and a guest from it, off for everyone else, who
+  // can opt in from Make it yours for this release. Off is the rollback:
+  // the old Home and Planner (src/logic/useDashboardV2.js).
+  DASHBOARD_V2: 'dashboardV2',
+  // Today's own board layout (src/logic/widgetLayout.js todayLayoutFrom),
+  // per profile: 'todayLayout:<profileId>' or 'todayLayout:guest'. Kept apart
+  // from Home's saved layout so switching DASHBOARD_V2 off brings Home back
+  // exactly as it was.
+  TODAY_LAYOUT: 'todayLayout',
   // Retired 2026-10-16: the Library's own hide list. Its eight tools are all
   // My features picks, so the Library no longer reads it.
   HIDDEN_LIBRARY_SECTIONS: 'hiddenLibrarySections',
@@ -103,6 +121,14 @@ export async function readSetting(key, fallback) {
   } catch {
     return fallback;
   }
+}
+
+// Write a setting once, outside a screen, and wait for it to land: for a
+// value the next screen must see on its first read (the welcome and
+// signup write homeView = 'calm' right before opening Today).
+export async function writeSetting(key, value) {
+  lastKnown[key] = value;
+  await AsyncStorage.setItem(PREFIX + key, JSON.stringify(value));
 }
 
 export default function useSetting(key, defaultValue) {

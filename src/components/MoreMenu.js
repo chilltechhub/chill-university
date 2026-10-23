@@ -16,7 +16,8 @@ import { View, Text, Modal, Pressable, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 
-export default function MoreMenu({ items = [], color, label = 'More actions', style }) {
+// `text`: a word instead of the ⋯ (Calm Today's "Options").
+export default function MoreMenu({ items = [], color, label = 'More actions', style, text }) {
   const { colors: c, typography: t, spacing: s, style: ui } = useTheme();
   const [open, setOpen] = useState(false);
   const list = items.filter(Boolean);
@@ -31,7 +32,9 @@ export default function MoreMenu({ items = [], color, label = 'More actions', st
         hitSlop={8}
         style={[{ padding: 6 }, style]}
       >
-        <Ionicons name="ellipsis-horizontal" size={20} color={color || c.text2} />
+        {text
+          ? <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: color || c.text2 }}>{text}</Text>
+          : <Ionicons name="ellipsis-horizontal" size={20} color={color || c.text2} />}
       </TouchableOpacity>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>

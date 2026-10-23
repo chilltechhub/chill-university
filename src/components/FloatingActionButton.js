@@ -50,7 +50,7 @@ import { useAccess } from '../../context/AccessContext';
 import { supabase } from '../api/profileScopedClient';
 import { offlineWrite, isOnline } from '../api/offlineCache';
 import { addCapture } from '../api/captureService';
-import CalendarModal from './CalendarModal';
+import ReminderComposer from './ReminderComposer';
 import FloatingCard from './FloatingCard';
 import { QuickCaptureModal } from '../screens/CaptureInbox';
 import { showWhatsNext } from '../logic/useGuidedFirstGoal';
@@ -58,6 +58,8 @@ import { showQuickToast } from './QuickToast';
 import LoginScreen from '../screens/LoginScreen';
 import { todayStr } from '../logic/dateUtils';
 import { openTarget } from '../logic/openTarget';
+import { goToScreen } from '../logic/appRoutes';
+import useDashboardV2 from '../logic/useDashboardV2';
 import { parseTags } from '../logic/tags';
 
 // Root-stack screens that replace MainTabs entirely (no bottom tab bar showing).
@@ -96,7 +98,8 @@ const TAB_BAR_H = Platform.OS === 'ios' ? 66 : 60; // keep in step with App.js t
 const TOPBAR_H = 60;
 
 // ─── Quick Note popup ───────────────────────────────────────────────────────
-function QuickNoteModal({ visible, userId, onSaved, onClose, c, t, s, r }) {
+// Exported for Today's + Add sheet (src/screens/today/AddSheet.js).
+export function QuickNoteModal({ visible, userId, onSaved, onClose, c, t, s, r }) {
   const [body,   setBody]   = useState('');
   const [tags,   setTags]   = useState('');
   const [saving, setSaving] = useState(false);
@@ -273,8 +276,10 @@ export default function FloatingActionButton({ currentScreen, navigationRef }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const anim = useRef(new Animated.Value(0)).current;
 
-  const [calendarOpen, setCalendarOpen] = useState(false);
-  const [calendarQuickType, setCalendarQuickType] = useState(null);
+  const [reminderOpen, setReminderOpen] = useState(false);
+  // Today has its own + Add, so the FAB steps aside there (shake-up P3,
+  // §2.4); every action it carries is in Today's + Add sheet or ⋯ menu.
+  const [dashboardV2] = useDashboardV2();
   const [showLogin, setShowLogin] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [projectOpen, setProjectOpen] = useState(false);
@@ -351,10 +356,12 @@ export default function FloatingActionButton({ currentScreen, navigationRef }) {
         if (!needsSignIn()) setNoteOpen(true);
         break;
       case 'reminder':
-        if (!needsSignIn()) { setCalendarQuickType('reminder'); setCalendarOpen(true); }
+        if (!needsSignIn()) setReminderOpen(true);
         break;
+      // The calendar is Today's Week now (CalendarModal retired, P3). With
+      // DASHBOARD_V2 off the alias stays shut and this opens the Planner's week.
       case 'calendar':
-        if (!needsSignIn()) { setCalendarQuickType(null); setCalendarOpen(true); }
+        goToScreen(navigationRef?.current, 'PlannerScreen', { view: 'week', at: Date.now() });
         break;
       case 'project':
         if (!needsSignIn()) setProjectOpen(true);
@@ -372,6 +379,8 @@ export default function FloatingActionButton({ currentScreen, navigationRef }) {
   const rotate = anim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '45deg'] });
   const dialOpacity = anim;
   const dialScale = anim.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] });
+
+  if (dashboardV2 && currentScreen === 'Home') return null;
 
   return (
     <>
@@ -478,13 +487,12 @@ export default function FloatingActionButton({ currentScreen, navigationRef }) {
       </TouchableOpacity>
       </TourSpot>
 
-      {/* Calendar / Reminder */}
-      <CalendarModal
-        visible={calendarOpen}
-        onClose={() => setCalendarOpen(false)}
+      {/* New Reminder: a planner item at that time, plus a notification */}
+      <ReminderComposer
+        visible={reminderOpen}
+        onClose={() => setReminderOpen(false)}
         userId={user?.id}
-        autoAdd={calendarQuickType === 'reminder'}
-        quickType={calendarQuickType}
+        onSaved={() => { setReminderOpen(false); showQuickToast('Reminder set. It is on your plan.'); }}
       />
 
       {/* New Note */}

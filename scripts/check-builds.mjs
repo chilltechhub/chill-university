@@ -101,7 +101,7 @@ for (const kind of D.BUILD_KINDS) {
 
 // ── Names and files ─────────────────────────────────────────────────────
 {
-  check('title: page', B.buildTitle(B.newBuild('page', { name: 'Sam' })) === "Sam's page");
+  check('title: page', B.buildTitle(B.newBuild('page', { name: 'Sam' })) === "Sam's portfolio");
   check('title: business', B.buildTitle(B.newBuild('business', { idea: 'Bike repairs', who: 'students' })) === 'Bike repairs');
   check('file: slug', B.buildFilename(B.newBuild('game', { name: 'Snack Attack!!' })) === 'snack-attack.html');
   check('file: empty name still a file', B.buildFilename(B.newBuild('game', {})) === 'a-game.html');
@@ -142,12 +142,46 @@ for (const kind of D.BUILD_KINDS) {
   const game = R.renderBuild(B.newBuild('game', { name: 'G' }, T), me);
   check('me: game starts with your pet', game.includes('"hero":"🐱"') && game.includes('"item":"🐟"'));
   check('me: no pet falls back', R.renderBuild(B.newBuild('game', { name: 'G' }, T)).includes('"hero":"🐱"'));
-  let page = B.newBuild('page', { name: 'Sam' }, T);
-  page = B.pickOption(B.lookAtPart(page, 'block', T), 'block', 'dream', T);
+  const page = B.newBuild('page', { name: 'Sam' }, T);
   const html = R.renderBuild(page, me);
   check('me: page shows your pet, escaped', html.includes('with &lt;b&gt;Mochi&lt;/b&gt;'));
   check('me: dream block, escaped', html.includes('the &lt;farm&gt;') && html.includes('Becoming someone who finishes'));
-  check('me: dream block without a dream', R.renderBuild(page).includes('Something of my own'));
+  check('me: no dream, no dream block', !R.renderBuild(page).includes('Where I'));
+}
+
+// ── The portfolio's content (the Descartes builder) ─────────────────────
+{
+  const EV = '<img src=x onerror=alert(1)>';
+  const raw = {
+    bio: '  Builds   things  ', cta: EV, quote: '', email: 'sam@x.co', github: 'github.com/sam',
+    skills: ['Web', 'Web', '', EV, ...Array.from({ length: 30 }, (_, i) => 's' + i)],
+    projects: [{ title: 'Real thing', desc: 'Made it', tag: 'Web' }, { title: '', desc: '' }, ...Array.from({ length: 12 }, (_, i) => ({ title: 'p' + i }))],
+    sections: { quote: false, junk: true },
+    stage: { title: 'Student', sub: 'High School / Learner', desc: 'Learning by building.' },
+  };
+  const p = B.newBuild('page', { name: 'Sam', line: 'Student & Web Developer' }, T, raw);
+  check('content: text squeezed', p.content.bio === 'Builds things', p.content.bio);
+  check('content: skills unique, capped', p.content.skills[0] === 'Web' && p.content.skills.filter(s => s === 'Web').length === 1 && p.content.skills.length === B.PAGE_LIMITS.skills);
+  check('content: empty project cards dropped, capped', p.content.projects.length === B.PAGE_LIMITS.projects && p.content.projects[0].title === 'Real thing');
+  check('content: sections default on, junk dropped', p.content.sections.hero === true && p.content.sections.quote === false && !('junk' in p.content.sections));
+  check('content: other kinds have none', B.newBuild('game', { name: 'G' }, T, raw).content === null);
+  check('content: an old page gets the defaults', B.normalizeBuild({ kind: 'page', answers: { name: 'Sam' } }).content.sections.skills === true);
+  const html = R.renderBuild(p);
+  check('portfolio: hero, skills, projects, phase, contact', ['Personal Portfolio', 'Core expertise', 'Featured projects', 'Current phase', 'High School / Learner', 'mailto:sam@x.co'].every(s => html.includes(s)));
+  check('portfolio: typed text escaped', !html.includes('<img src=x') && html.includes('&lt;img'));
+  check('portfolio: a section switched off is gone', !html.includes('René Descartes'));
+  check('portfolio: the quote shows when on', R.renderBuild(B.setContent(p, { sections: { ...p.content.sections, quote: true } }, T)).includes('René Descartes'));
+  const bare = R.renderBuild(B.newBuild('page', { name: 'Sam' }, T));
+  check('portfolio: empty sections never show', !bare.includes('Featured projects') && !bare.includes('Core expertise') && !bare.includes('Current phase') && !bare.includes('href="#projects"'));
+  check('portfolio: hero off keeps the name', R.renderBuild(B.setContent(p, { sections: { ...p.content.sections, hero: false } }, T)).includes('<h1>Sam</h1>'));
+  const edited = B.setContent(p, { skills: ['Design'] }, T);
+  check('setContent: merges and cleans', edited.content.skills.join() === 'Design' && edited.content.bio === 'Builds things' && edited.updatedAt === T);
+  const all = B.lookAtAll(p, T);
+  check('lookAtAll: every everyday option open, no upgrades', D.BUILD_KIND_MAP.page.parts.every(pt => B.partLevel(all, pt.id) === B.LEVEL_YOURS) && B.pickOption(all, 'colors', 'neon', T).picks.colors === 'calm' && B.pickOption(all, 'colors', 'synth', T).picks.colors === 'synth');
+  for (const layout of ['center', 'split', 'bento']) {
+    const h = R.renderBuild(B.pickOption(B.answerCheck(p, 'layout', 0, T).build, 'layout', layout, T));
+    check(`portfolio: ${layout} layout renders every section`, h.includes('Featured projects') && h.includes('Current phase'));
+  }
 }
 
 // ── The AI helper: free, honest, age-aware ──────────────────────────────

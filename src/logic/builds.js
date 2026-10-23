@@ -34,6 +34,41 @@ export function newBuildId() {
 
 // Junk in, a valid Build (or null for an unknown kind) out. Unknown parts
 // are dropped, missing ones come back at the app's pick, levels clamp.
+// What a portfolio page (the founder's Descartes builder) keeps beside its
+// answers: free to edit, never locked. Only the page kind has content.
+//   bio, cta, quote, email, github   short text
+//   skills    badges, in order
+//   projects  { title, desc, tag } cards
+//   sections  which blocks show (PAGE_SECTIONS); missing means on
+//   stage     the "Current phase" card: { title, sub, desc }
+export const PAGE_SECTIONS = ['hero', 'skills', 'projects', 'timeline', 'quote', 'dream', 'contact'];
+export const PAGE_LIMITS = { skills: 16, projects: 8 };
+
+export function normalizeContent(kindId, raw) {
+  if (kindId !== 'page') return null;
+  const src = raw && typeof raw === 'object' ? raw : {};
+  const list = (v) => (Array.isArray(v) ? v : []);
+  const sections = src.sections && typeof src.sections === 'object' ? src.sections : {};
+  return {
+    bio: squeeze(src.bio, 240),
+    cta: squeeze(src.cta, 40),
+    quote: squeeze(src.quote, 160),
+    email: squeeze(src.email, 80),
+    github: squeeze(src.github, 80),
+    skills: [...new Set(list(src.skills).map(s => squeeze(s, 40)).filter(Boolean))].slice(0, PAGE_LIMITS.skills),
+    projects: list(src.projects)
+      .map(p => ({ title: squeeze(p?.title, 60), desc: squeeze(p?.desc, 160), tag: squeeze(p?.tag, 30) }))
+      .filter(p => p.title || p.desc)
+      .slice(0, PAGE_LIMITS.projects),
+    sections: Object.fromEntries(PAGE_SECTIONS.map(k => [k, sections[k] !== false])),
+    stage: {
+      title: squeeze(src.stage?.title, 40),
+      sub: squeeze(src.stage?.sub, 60),
+      desc: squeeze(src.stage?.desc, 160),
+    },
+  };
+}
+
 export function normalizeBuild(raw) {
   if (!raw || typeof raw !== 'object') return null;
   const kind = BUILD_KIND_MAP[raw.kind];
@@ -56,6 +91,7 @@ export function normalizeBuild(raw) {
     answers,
     picks,
     levels,
+    content: normalizeContent(kind.id, raw.content),
     // The Workshop project it grew into ("Grow it into a project"), if any.
     projectId: typeof raw.projectId === 'string' && raw.projectId ? raw.projectId : null,
     createdAt: raw.createdAt || null,
@@ -65,10 +101,23 @@ export function normalizeBuild(raw) {
 
 export const withProject = (build, projectId, now) => touch(build, { projectId }, now);
 
-// The app makes it: their answers, its picks.
-export function newBuild(kindId, answers = {}, now) {
+// The app makes it: their answers, its picks (and a page's starting content).
+export function newBuild(kindId, answers = {}, now, content) {
   const at = stamp(now);
-  return normalizeBuild({ kind: kindId, answers, createdAt: at, updatedAt: at });
+  return normalizeBuild({ kind: kindId, answers, content, createdAt: at, updatedAt: at });
+}
+
+// Their edits to a page's content: merged, then cleaned.
+export function setContent(build, patch, now) {
+  if (!build?.content) return build;
+  const next = normalizeBuild({ ...build, content: { ...build.content, ...patch } });
+  return touch(next, {}, now);
+}
+
+// Every everyday option open at once: the welcome's builder hands the
+// whole look over; the upgrades still wait for each part's check.
+export function lookAtAll(build, now) {
+  return (kindOf(build)?.parts || []).reduce((b, p) => lookAtPart(b, p.id, now), build);
 }
 
 export const partLevel = (build, partId) => build?.levels?.[partId] ?? LEVEL_MADE;
@@ -152,14 +201,19 @@ export function buildTitle(build) {
   const kind = kindOf(build);
   if (!kind) return 'Build';
   const a = build.answers || {};
-  if (kind.id === 'page') return a.name ? `${a.name}'s page` : 'My page';
+  if (kind.id === 'page') return a.name ? `${a.name}'s portfolio` : 'My portfolio';
   if (kind.id === 'business') return a.idea || 'My business';
   if (kind.id === 'ai') return a.name || 'My AI helper';
+  if (kind.id === 'money') return a.goal ? `Money plan: ${a.goal}` : 'My money plan';
+  if (kind.id === 'story') return a.title || 'My story';
+  if (kind.id === 'logic') return a.claim || 'My argument';
+  if (kind.id === 'body') return a.name ? `${a.name}’s body dashboard` : 'My body dashboard';
+  if (kind.id === 'launch') return a.name ? `${a.name}’s launchpad` : 'My launchpad';
   return a.name || kind.label;
 }
 
 export function buildFilename(build) {
-  const slug = buildTitle(build).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+  const slug = buildTitle(build).toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
   return `${slug || 'my-build'}.html`;
 }
 

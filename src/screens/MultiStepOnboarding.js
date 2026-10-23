@@ -2,6 +2,13 @@
 //
 // The REQUIRED part of onboarding, and nothing else.
 //
+// Since the shake-up's P2 (docs/shake-up-plan-2026-10-21.md §7.2) the
+// welcome before login asks the questions, so signup here is slim: the age
+// gate and parent consent, a name, done (SLIM_STEPS). finish() then carries
+// what the guest made into the account (src/api/claimLocal.js). The old
+// cards below stay for one release: switching the WELCOME_V1 setting off
+// brings them back.
+//
 // It used to be eight steps and roughly twenty questions, all held in one
 // useState object and written in a single upsert at the very end — so
 // quitting at step six lost the lot, and the first thing anyone saw after
@@ -26,9 +33,9 @@
 // columns — see src/logic/onboardingTasks.js and
 // src/screens/onboarding/steps.js.
 //
-// In front of both steps is the age gate, unchanged: this app's users are
-// K-12, so a real share are minors under COPPA (US, default 13) or a
-// country's GDPR Article 8 age. Consent has to be collected before we ask
+// In front of both steps is the age gate, unchanged: the app is 13 and up
+// (first audience 17-30), so some users are minors under COPPA (US,
+// default 13) or a country's GDPR Article 8 age. Consent has to be collected before we ask
 // for anything personal, not after — see src/logic/ageOfConsent.js and
 // src/api/kwsVerification.js.
 
@@ -50,7 +57,7 @@ import { generateRecommendations } from '../api/recommendationEngine';
 import { setWayfinderIntent } from '../api/wayfinderService';
 import { loadLocalDream, saveDream } from '../api/dreamService';
 import { applyDreamEdit } from '../logic/dream';
-import { queueWelcomeTour } from '../logic/useWelcomeTour';
+import { queueWelcomeTour, welcomeTourDone } from '../logic/useWelcomeTour';
 import {
   saveOnboardingFields, loadOnboardingDraft, saveOnboardingDraft, clearOnboardingDraft,
 } from '../api/onboardingService';
@@ -59,13 +66,18 @@ import { isMinorRequiringConsent } from '../logic/ageOfConsent';
 import { clearLocalUserData } from '../logic/localUserData';
 import { dobFromParts, dobProblem } from '../logic/dateUtils';
 import { startParentVerification, getVerificationStatus } from '../api/kwsVerification';
-import { DEFAULT_PERSONA, personasFor, defaultPersonaFor, getPersona } from '../data/personas';
+import { DEFAULT_PERSONA, personasFor, defaultPersonaFor, getPersona, isPersonaAllowed } from '../data/personas';
 import { ageCategoryFromDob, isMinorBand } from '../logic/profileResolver';
 import { useProfiles } from '../../context/ProfileAccountsContext';
 import { useAccess } from '../../context/AccessContext';
 import { cardApplies, shownCards } from '../logic/onboardingCards';
 import { useFeatureFlag, useRemoteConfig } from '../../context/RemoteConfigContext';
-import useSetting, { SETTING_KEYS } from '../logic/useSetting';
+import useSetting, { SETTING_KEYS, readSetting, writeSetting } from '../logic/useSetting';
+import { loadWelcome } from '../api/welcomeStore';
+import { claimLocal } from '../api/claimLocal';
+import { mergeProfileMetadata } from '../api/accessService';
+import { tailor } from '../logic/tailoring';
+import { markScreensSeen } from '../logic/useFirstVisitTutorial';
 import {
   WelcomeStep, AimStep, DreamStep, PersonaStep, StartModeStep, PickFeaturesStep, picksForData, NameStep, SectorsStep, PERSONA_AREA_DEFAULTS, areasForAim, pickFocusHub, buildRecommendations,
 } from './onboarding/steps';
@@ -116,7 +128,14 @@ const STEPS = [
   // Light or dark used to be a card here too. It's in Settings (and the
   // phone's own setting is the default), so it no longer stands between a
   // new account and its first goal (2026-10-14: fewer cards before the
-  // first win). LookStep stays in ./onboarding/steps.js, unused.
+  // first win).
+];
+
+// After the welcome: just a name (prefilled from it). Everything else the
+// old cards asked is answered there or worked out (src/logic/tailoring.js).
+const BareNameStep = (props) => <NameStep {...props} bare />;
+const SLIM_STEPS = [
+  { key: 'name', component: BareNameStep, title: 'Name', subtitle: 'What to call you' },
 ];
 
 export default function MultiStepOnboarding() {
@@ -146,6 +165,10 @@ export default function MultiStepOnboarding() {
 
   const [step,    setStep]    = useState(0);
   const [saving,  setSaving]  = useState(false);
+  // Slim unless WELCOME_V1 has been switched off (the rollback).
+  const [slim,    setSlim]    = useState(true);
+  const [welcome, setWelcome] = useState(null);
+  const steps = slim ? SLIM_STEPS : STEPS;
   const [userId,  setUserId]  = useState(null);
   const slideAnim = useRef(new Animated.Value(0)).current;
   const [direction, setDir]   = useState(1); // 1=forward, -1=back
@@ -292,6 +315,16 @@ export default function MultiStepOnboarding() {
     });
   }, []);
 
+  // The welcome's answers: the first name for the name card, the rest for
+  // finish(). Read once; they never left the phone.
+  useEffect(() => {
+    Promise.all([loadWelcome(), readSetting(SETTING_KEYS.WELCOME_V1, null)]).then(([w, setting]) => {
+      setSlim(setting !== false);
+      setWelcome(w);
+      if (w.firstName) setData(prev => (prev.display_name ? prev : { ...prev, display_name: w.firstName }));
+    }).catch(e => console.warn('onboarding welcome', e?.message));
+  }, []);
+
   // The other half of resume: the step index and the persona pick, neither
   // of which has a `profiles` column to live in (profiles.active_persona is
   // in a migration but not on the live table; the persona's real home is
@@ -314,7 +347,7 @@ export default function MultiStepOnboarding() {
         hidden_sections:  draft.hidden_sections || prev.hidden_sections,
       }));
       if (typeof draft.step === 'number') {
-        setStep(Math.min(Math.max(draft.step, 0), STEPS.length - 1));
+        setStep(Math.max(draft.step, 0)); // clamped to this wizard's cards where it's drawn
       }
     });
   }, []);
@@ -544,16 +577,16 @@ export default function MultiStepOnboarding() {
     hasLifeAreas: picksForData(data, { plusOnSale, socialOn }).includes('life-areas'),
     ageBand,
   };
-  const stepApplies = (i) => !STEPS[i] || cardApplies(STEPS[i].key, cardCtx);
+  const stepApplies = (i) => !steps[i] || cardApplies(steps[i].key, cardCtx);
   const stepFrom = (from, dirn) => {
     let i = from + dirn;
-    while (i > 0 && i < STEPS.length - 1 && !stepApplies(i)) i += dirn;
-    return Math.min(Math.max(i, 0), STEPS.length - 1);
+    while (i > 0 && i < steps.length - 1 && !stepApplies(i)) i += dirn;
+    return Math.min(Math.max(i, 0), steps.length - 1);
   };
   // The cards this person will actually see, for "3 of 6" and the bar.
   // The last card can be one that doesn't apply (Sectors without Life
   // Areas), so "is this the last one?" asks what's left, not the index.
-  const shownSteps = shownCards(STEPS.map(st => st.key), cardCtx);
+  const shownSteps = shownCards(steps.map(st => st.key), cardCtx);
   const lastShown = shownSteps[shownSteps.length - 1];
 
   const goNext = () => {
@@ -582,7 +615,85 @@ export default function MultiStepOnboarding() {
   // leaving early gives you a configured app rather than an empty one.
   const skip = () => finish();
 
+  // ── After the welcome (slim) ─────────────────────────────────────────────
+  // Same order and the same promises as the full finish() below: the one
+  // write that has to succeed, then out of the wizard, then best-effort.
+  // The account type, purpose and first goal come from the welcome's
+  // answers (tailoring.js); nobody is asked for them.
+  const finishSlim = async () => {
+    setSaving(true);
+    const w = welcome || await loadWelcome();
+    const plan = tailor({ startPoint: w.startPoint, shakiest: w.shakiest, pathKey: w.pathKey, isMinor: isMinorBand(ageBand), buildKind: w.projectKind });
+    const persona = isPersonaAllowed(plan.persona, personaCtx) ? plan.persona : defaultPersonaFor(personaCtx);
+    const areas = PERSONA_AREA_DEFAULTS[persona] || data.active_life_areas;
+    try {
+      if (!userId) throw new Error('No user');
+      await saveOnboardingFields(userId, {
+        display_name:      data.display_name || null,
+        traveler_name:     data.display_name || null,
+        age_category:      ageCategoryFromDob(dobRef.current),
+        active_life_areas: areas,
+        hidden_life_areas: LIFE_AREAS.map(a => a.id).filter(id => !areas.includes(id)),
+        theme:             data.theme,
+        onboarding_completed: true,
+      });
+    } catch (e) {
+      console.warn('onboarding finish', e);
+      Alert.alert('Error', 'Could not save your setup. Try again.');
+      setSaving(false);
+      return;
+    }
+    // The welcome's answers, on the account. Never an age: the birth date
+    // above is the only one. shakeup_onboarded_at marks a new account
+    // (Calm by default, the new dashboard in P3); unit1_done is their first
+    // project, which P6 turns into a handed-in deliverable.
+    await mergeProfileMetadata(userId, {
+      start_point: plan.startPoint, shakiest: plan.shakiest, path_key: plan.pathKey,
+      shakeup_onboarded_at: new Date().toISOString(),
+      ...(w.unit1Done ? { unit1_done: true } : {}),
+      ...(w.projectKind ? { project_kind: w.projectKind } : {}),
+      ...(w.goals.length ? { welcome_goals: w.goals } : {}),
+      ...(w.interests.length ? { welcome_interests: w.interests } : {}),
+    });
+    await setWayfinderIntent(plan.pathKey === 'like');
+    await setExperienceMode('picks', { picks: picksForData({ ...data, active_persona: persona, aim: plan.purpose }, { plusOnSale, socialOn }) });
+    await suggestAccentForPersona(persona).catch(() => {});
+    // A new account starts in Calm (§3.5), down before Home mounts.
+    await writeSetting(SETTING_KEYS.HOME_VIEW, 'calm');
+    await markScreensSeen(['Home']); // the welcome was the intro; keep Calm
+    // A look around that starts from their project and ends on the first
+    // mission, unless they already had it as a guest.
+    if (!(await welcomeTourDone(null))) await queueWelcomeTour(userId, { afterWelcome: true });
+    const aimWrite = choosePurpose(plan.purpose);
+
+    navigation.replace('MainTabs');
+
+    let master = null;
+    try {
+      master = await createMasterProfile({ type: persona, baseline: {}, dateOfBirth: dobRef.current });
+    } catch (e) {
+      console.warn('onboarding master profile', e?.message);
+      Alert.alert(
+        'Account type not saved',
+        `We couldn't set your account type to ${getPersona(persona).short}. `
+        + 'Everything else saved fine. You can set it from the profile switcher at the top of the screen.',
+      );
+    }
+    // What they made as a guest is theirs now: the page, plans, the Dream.
+    try { await claimLocal(userId, { profileId: master?.id || null }); }
+    catch (e) { console.warn('onboarding claim', e?.message); }
+    try { await aimWrite; } catch (e) { console.warn('onboarding purpose', e?.message); }
+    try { await startFirstGoal(persona, plan.purpose); } catch (e) { console.warn('onboarding first goal', e?.message); }
+    try { await refreshProfile(); } catch (e) { console.warn('onboarding refreshProfile', e?.message); }
+    try {
+      await generateRecommendations(userId, { active_life_areas: areas, age_category: ageCategoryFromDob(dobRef.current) });
+    } catch (e) { console.warn('onboarding recommendations', e?.message); }
+    clearOnboardingDraft();
+    setSaving(false);
+  };
+
   const finish = async () => {
+    if (slim) return finishSlim();
     setSaving(true);
 
     // ── The one write that has to succeed ────────────────────────────────
@@ -732,7 +843,8 @@ export default function MultiStepOnboarding() {
   };
 
   // Defensive clamp — belt-and-suspenders on top of the advancing-ref guard above.
-  const StepComponent = STEPS[Math.min(Math.max(step, 0), STEPS.length - 1)].component;
+  const stepAt   = Math.min(Math.max(step, 0), steps.length - 1);
+  const StepComponent = steps[stepAt].component;
   const stepPos  = Math.max(1, shownSteps.indexOf(step) + 1);
   const progress = (stepPos / shownSteps.length) * 100;
   const isLast   = step >= lastShown;
@@ -910,7 +1022,7 @@ export default function MultiStepOnboarding() {
 
           <View style={{ alignItems: 'center' }}>
             <Text style={cs.stepNum}>{stepPos} of {shownSteps.length}</Text>
-            <Text style={cs.stepName}>{STEPS[step].subtitle}</Text>
+            <Text style={cs.stepName}>{steps[stepAt].subtitle}</Text>
           </View>
 
           <TouchableOpacity onPress={skip} style={cs.skipBtn}>
@@ -946,8 +1058,8 @@ export default function MultiStepOnboarding() {
               ? <ActivityIndicator color="#fff" size="small" />
               : <>
                   <Text style={cs.nextBtnText}>
-                    {isLast ? 'Finish and show me around'
-                      : STEPS[step]?.key === 'dream' && !(data.dream_life || '').trim() ? 'Skip for now' : 'Continue'}
+                    {isLast ? (slim ? 'Finish' : 'Finish and show me around')
+                      : steps[stepAt]?.key === 'dream' && !(data.dream_life || '').trim() ? 'Skip for now' : 'Continue'}
                   </Text>
                   {!isLast && <Ionicons name="chevron-forward" size={18} color="#fff" />}
                 </>

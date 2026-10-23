@@ -3,8 +3,8 @@
 // it's yours (docs/studio-plan.md).
 //
 // Top to bottom: your room with your character and pet (your pet talks you
-// through it), what your Builds say about you so far (sparks), the four
-// things you can make, the trophies a mastered Build earns for your room,
+// through it), what your Builds say about you so far (sparks), the things
+// you can make, the trophies a mastered Build earns for your room,
 // and everything you've made.
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
@@ -26,6 +26,7 @@ import { newBuild, buildTitle, receiptLine, kindOf, isMastered } from '../../log
 import { sparks, sparkLine, trophyArts, companionLine } from '../../logic/studio';
 import { todayStr } from '../../logic/dateUtils';
 import { SOFTWARE_PATH } from '../../data/softwarePath';
+import { portfolioStart } from '../../logic/tailoring';
 
 const plain = (md) => md.replace(/\*\*/g, '');
 
@@ -49,7 +50,11 @@ export default function StudioScreen() {
   const line = builds.length ? sparkLine(builds) : companionLine('empty', todayStr());
 
   const make = async (answers) => {
-    const saved = await saveBuild(userId, newBuild(asking, answers));
+    // A portfolio starts with the welcome's honest seed: this page as its
+    // first project card, a prompt for the next, the quote. No stage card
+    // until they fill one in (src/components/PortfolioEditor.js).
+    const seed = asking === 'page' ? { ...portfolioStart({}).content, stage: {} } : undefined;
+    const saved = await saveBuild(userId, newBuild(asking, answers, undefined, seed));
     setAsking(null);
     if (saved) signalAction('build-made', { kind: saved.kind });
     if (saved) navigation.navigate('BuildScreen', { buildId: saved.id, fresh: true });
@@ -133,7 +138,7 @@ export default function StudioScreen() {
 
         <SectionLabel label="Trophies for your room" />
         <Card>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-around', rowGap: s.md }}>
             {BUILD_KINDS.filter(k => k.trophy).map(k => {
               const got = earned.has(k.trophy.art);
               const a = ART[k.trophy.art];

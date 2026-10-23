@@ -35,7 +35,7 @@ const SPRING = { damping: 18, stiffness: 180 };
 // One widget's position/rotation is driven entirely by Reanimated shared
 // values so dragging and the jiggle wobble both stay off the JS thread for
 // rendering, even though the drag GESTURE itself is JS-thread (see above).
-function DraggableWidget({ widgetKey, index, y, editing, offsetsRef, onSwap, onLayoutHeight, onHide, children, c, t, s, r }) {
+function DraggableWidget({ widgetKey, title, index, y, editing, offsetsRef, onSwap, onLayoutHeight, onHide, children, c, t, s, r }) {
   const translateY = useSharedValue(0);
   const rot = useSharedValue(0);
   const [dragging, setDragging] = useState(false);
@@ -124,9 +124,9 @@ function DraggableWidget({ widgetKey, index, y, editing, offsetsRef, onSwap, onL
         {children}
         {editing && (
           <>
-            <TouchableOpacity accessibilityLabel="Remove" accessibilityRole="button" onPress={onHide} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            <TouchableOpacity accessibilityLabel={title ? `Hide ${title}` : 'Hide'} accessibilityRole="button" onPress={onHide} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               style={{ position: 'absolute', top: -6, left: s.lg - 6, width: 22, height: 22, borderRadius: 11, backgroundColor: c.error, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: c.bg0, zIndex: 5 }}>
-              <Ionicons name="remove" size={14} color="#ffffff" /> {/* style-ok: white on the red remove badge */}
+              <Ionicons name="remove" size={14} color="#ffffff" />{/* style-ok: white on the red remove badge */}
             </TouchableOpacity>
             <GestureDetector gesture={pan}>
               <View
@@ -198,7 +198,7 @@ export default function WidgetBoard({ layout, widgets, editing, onChangeLayout, 
             <DraggableWidget
               key={key} widgetKey={key} index={index} y={tops[key] || 0}
               editing={editing} offsetsRef={offsetsRef}
-              onSwap={handleSwap} onLayoutHeight={handleLayoutHeight} onHide={() => handleToggleHidden(key)}
+              onSwap={handleSwap} onLayoutHeight={handleLayoutHeight} onHide={() => handleToggleHidden(key)} title={widgetMap[key]?.title}
               c={c} t={t} s={s} r={r}
             >
               {/* So a widget that has just arrived on Home can be pointed at
@@ -217,6 +217,7 @@ export default function WidgetBoard({ layout, widgets, editing, onChangeLayout, 
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm }}>
             {hidden.map(({ key }) => (
               <TouchableOpacity key={key} onPress={() => handleToggleHidden(key)}
+                accessibilityRole="button" accessibilityLabel={`Show ${widgetMap[key].title}`}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: c.bg1, borderRadius: r.full, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: c.border, borderStyle: 'dashed' }}>
                 <Ionicons name="add-circle" size={16} color={c.teal} />
                 <Text style={{ fontSize: t.xs, color: c.text2, fontWeight: '600' }}>{widgetMap[key].title}</Text>

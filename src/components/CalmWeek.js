@@ -1,18 +1,23 @@
 // src/components/CalmWeek.js
 // The Calm view's calendar: this week as one row of days (Sunday first, like
 // the Planner), a dot under each day with something on it, and the picked
-// day's first few things underneath. Same three sources as Home's Today's
-// Activities and CalendarModal: Planner items, calendar events, tasks due.
-// Tapping the list or "Planner →" opens the Planner on that day.
+// day's first few things underneath. It reads useDayPlan, the same as the
+// Planner's Week and Home's Today card: Planner items, deadlines and
+// calendar events (a guest's plans from the phone).
+// Tapping the list or "Planner →" opens the Planner on that day. On Today
+// (DASHBOARD_V2) the week follows the control row's ‹ › (anchor) and the
+// link opens that day right there (openLabel).
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
-import { supabase } from '../api/profileScopedClient';
+import { useUserProgress } from '../../context/UserProgressContext';
+import useDayPlan from '../logic/useDayPlan';
 import { dateStr } from '../logic/dateUtils';
 
 const LETTER = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const WHEN = { planner: 'Any time', event: 'All day', due: 'Due' };
 const SHOWN = 3;
 
 function weekOf(d) {
@@ -28,43 +33,48 @@ const fmtTime = (time) => {
   return `${((h + 11) % 12) + 1}:${String(m || 0).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
 };
 
-export default function CalmWeek({ userId, refreshKey, onOpenDay }) {
+export default function CalmWeek({ userId, refreshKey, onOpenDay, anchor = null, openLabel = 'Planner →' }) {
   const { colors: c, typography: t, spacing: s, accent } = useTheme();
   const today = dateStr(new Date());
-  const days = weekOf(new Date());
+  const days = weekOf(anchor || new Date());
+  const first = dateStr(days[0]);
+  const last = dateStr(days[6]);
   const [picked, setPicked] = useState(today);
-  const [byDay, setByDay] = useState(null);
-
+  // A new week: today if it's in it, else its Sunday.
+  useEffect(() => {
+    setPicked(today >= first && today <= last ? today : first);
+  }, [first]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Wait until we know who's signed in, or a signed-in person would see the
+  // phone's guest plans for a moment.
+  const { user, loading: authLoading } = useUserProgress();
+  const ready = !!userId || (!user && !authLoading);
+  const { items, loading, reload } = useDayPlan(
+    { from: first, to: last },
+    { userId, refreshKey, enabled: ready },
+  );
+  // Read again on coming back to Home (the first focus is the mount's read).
+  const focused = useRef(false);
   useFocusEffect(useCallback(() => {
-    let alive = true;
-    (async () => {
-      if (!userId) { setByDay({}); return; }
-      const week = weekOf(new Date());
-      const from = dateStr(week[0]), to = dateStr(week[6]);
-      try {
-        const [ag, ev, tk] = await Promise.all([
-          supabase.from('agenda_instances').select('id, title, date, start_time, completed, skipped').eq('user_id', userId).gte('date', from).lte('date', to),
-          supabase.from('calendar_events').select('id, title, date, time, all_day').eq('user_id', userId).gte('date', from).lte('date', to),
-          supabase.from('tasks').select('id, title, due_date, completed').eq('user_id', userId).gte('due_date', from).lte('due_date', to),
-        ]);
-        const by = {};
-        const put = (d, item) => { (by[d] = by[d] || []).push(item); };
-        (ag.data || []).filter(r => !r.skipped).forEach(r => put(r.date, { id: 'a' + r.id, title: r.title, time: r.start_time, done: !!r.completed, when: 'Any time' }));
-        (ev.data || []).forEach(r => put(r.date, { id: 'e' + r.id, title: r.title, time: r.all_day ? null : r.time, done: false, when: 'All day' }));
-        (tk.data || []).forEach(r => put(r.due_date, { id: 't' + r.id, title: r.title, time: null, done: !!r.completed, when: 'Due' }));
-        Object.values(by).forEach(list => list.sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99')));
-        if (alive) setByDay(by);
-      } catch (e) {
-        console.warn('calmWeek', e?.message);
-        if (alive) setByDay({});
-      }
-    })();
-    return () => { alive = false; };
-  }, [userId, today, refreshKey]));
+    if (focused.current) reload();
+    focused.current = true;
+  }, [reload]));
+  const byDay = useMemo(() => {
+    if (loading) return null;
+    const by = {};
+    items.filter(it => !it.skipped).forEach(it => {
+      (by[it.date] = by[it.date] || []).push({
+        id: it.key,
+        title: it.src === 'due' && it.kind === 'project' ? `Finish: ${it.title}` : it.title,
+        time: it.time, done: it.done, when: WHEN[it.src] || 'Any time',
+      });
+    });
+    return by;
+  }, [items, loading]);
 
   const list = byDay?.[picked] || [];
-  // Same word the Planner uses for a past day's unticked item.
-  const whenOf = (it) => (picked < today && !it.done ? 'Missed' : fmtTime(it.time) || it.when);
+  // Same words the Planner uses for a past day's unticked item: neutral,
+  // never "missed" or "overdue" (docs/north-star.md).
+  const whenOf = (it) => (picked < today && !it.done ? 'Still open' : fmtTime(it.time) || it.when);
   const pickedDate = days.find(d => dateStr(d) === picked) || days[0];
   const dayName = picked === today ? 'today' : pickedDate.toLocaleDateString('en-US', { weekday: 'long' });
 
@@ -74,8 +84,8 @@ export default function CalmWeek({ userId, refreshKey, onOpenDay }) {
         <Text style={{ fontSize: 12, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: c.text3 }}>
           {pickedDate.toLocaleDateString('en-US', { month: 'long' })}
         </Text>
-        <TouchableOpacity onPress={() => onOpenDay?.(picked)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Open the Planner">
-          <Text style={{ fontSize: t.xs, fontWeight: '800', color: accent.primary }}>Planner →</Text>
+        <TouchableOpacity onPress={() => onOpenDay?.(picked)} hitSlop={8} accessibilityRole="button" accessibilityLabel={openLabel === 'Planner →' ? 'Open the Planner' : `Open ${dayName}`}>
+          <Text style={{ fontSize: t.xs, fontWeight: '800', color: accent.primary }}>{openLabel}</Text>
         </TouchableOpacity>
       </View>
 
@@ -121,7 +131,7 @@ export default function CalmWeek({ userId, refreshKey, onOpenDay }) {
               <TouchableOpacity key={it.id} onPress={() => onOpenDay?.(picked)} accessibilityRole="button"
                 accessibilityLabel={`${whenOf(it)}: ${it.title}${it.done ? ', done' : ''}`}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, paddingVertical: 6 }}>
-                <Text style={{ width: 66, fontSize: 12, fontWeight: '700', color: whenOf(it) === 'Missed' ? c.error : c.text3 }}>{whenOf(it)}</Text>
+                <Text style={{ width: 66, fontSize: 12, fontWeight: '700', color: c.text3 }}>{whenOf(it)}</Text>
                 <Text numberOfLines={1} style={{ flex: 1, fontSize: t.sm, fontWeight: '600', color: it.done ? c.text3 : c.text1, textDecorationLine: it.done ? 'line-through' : 'none' }}>
                   {it.title}
                 </Text>

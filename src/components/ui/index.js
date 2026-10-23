@@ -12,6 +12,7 @@ import { View, Text, TouchableOpacity, Pressable, ActivityIndicator } from 'reac
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
 import { useUIPrefs } from '../../../context/UIPrefsContext';
+import { glow } from '../../theme';
 
 // "Appearance", "App experience" — the label above a group of cards.
 // `action` puts a small link on the right ("Library →").
@@ -59,7 +60,9 @@ export function Card({ children, style, tone = 'default', onPress, padded = true
       marginBottom: s.md,
     },
     edge && { borderLeftWidth: 3, borderLeftColor: edge },
-    st.cardShadow && tone === 'default' && shadows[st.cardShadow],
+    // Lifted off the page (the theme's layered shadow); an accent card
+    // a touch less, an inset one not at all.
+    st.cardShadow && tone !== 'inset' && shadows[st.cardShadow],
     style,
   ];
   if (onPress) {
@@ -102,6 +105,9 @@ export function Button({ label, onPress, variant = 'primary', size = 'md', icon,
           borderWidth: variant === 'secondary' ? 1.5 : 0,
           borderColor: disabled ? c.border : tint,
         },
+        // A filled button glows in its own colour, so the one action on a
+        // screen reads as raised, not printed on.
+        filled && !disabled && glow(tint),
         pressed && !disabled && !busy && { transform: [{ scale: 0.97 }], opacity: 0.88 },
         style,
       ]}
@@ -119,11 +125,11 @@ export function Button({ label, onPress, variant = 'primary', size = 'md', icon,
 // Icon + title + optional subtitle + right slot (a Switch, a value) or a
 // chevron when it navigates. Stands alone as its own card-row.
 export function ListRow({ icon, iconColor, title, subtitle, alwaysShowSubtitle = false, right, onPress, chevron, style }) {
-  const { colors: c, typography: t, spacing: s, style: st, accent } = useTheme();
+  const { colors: c, typography: t, spacing: s, style: st, accent, shadows } = useTheme();
   const { showSubtext } = useUIPrefs();
   const tint = iconColor || accent.primary;
   const body = (
-    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: s.md, backgroundColor: c.bg1, borderRadius: st.cardRadius, padding: s.lg, marginBottom: s.sm, borderWidth: st.borderWidth, borderColor: c.border }, style]}>
+    <View style={[{ flexDirection: 'row', alignItems: 'center', gap: s.md, backgroundColor: c.bg1, borderRadius: st.cardRadius, padding: s.lg, marginBottom: s.sm, borderWidth: st.borderWidth, borderColor: c.border }, st.cardShadow && shadows[st.cardShadow], style]}>
       {icon && (
         <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: tint + '22', alignItems: 'center', justifyContent: 'center' }}>
           <Ionicons name={icon} size={18} color={tint} />

@@ -27,7 +27,8 @@ import React, {
   createContext, useContext, useState, useCallback, useRef, useMemo, useEffect,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { TOUR_STEPS } from '../src/logic/tourSteps';
+import { mainTourSteps } from '../src/logic/tourSteps';
+import { isAliasGateOn } from '../src/logic/routeAliases';
 import { buildScreenTutorial } from '../src/logic/screenTutorials';
 import { peekSetting, SETTING_KEYS } from '../src/logic/useSetting';
 import { useAccess } from './AccessContext';
@@ -50,7 +51,10 @@ const PERSONALIZATION_KEY = '@cth_setting_tourPersonalization';
 // `aimChosen` false: onboarding was skipped before "What did you come here
 // for?", so the purpose is only the account type's fallback. The tour then
 // doesn't tell them they came for it.
-function buildSteps({ welcome = false, purpose = null, firstGoal = null, aimChosen = true } = {}) {
+// `dashboardV2`: Today is the Planner (shake-up P3), so + Add stands in for
+// the FAB's step (mainTourSteps).
+function buildSteps({ welcome = false, purpose = null, firstGoal = null, aimChosen = true, dashboardV2 = false } = {}) {
+  const TOUR_STEPS = mainTourSteps(dashboardV2);
   if (welcome) {
     const last = TOUR_STEPS.length - 1;
     return TOUR_STEPS.map((step, i) => {
@@ -141,9 +145,12 @@ export function TourProvider({ children }) {
 
   const [welcomeRun, setWelcomeRun] = useState(false);
   const [aimChosen, setAimChosen] = useState(true);
+  // Read on every render (the provider re-renders when a tour starts), so a
+  // tour started right after DASHBOARD_V2 switched picks the right steps.
+  const dashboardV2 = isAliasGateOn('dashboardV2');
   const steps = useMemo(
-    () => scopedSteps || buildSteps({ welcome: welcomeRun, purpose, firstGoal: getObjective(firstGoalId), aimChosen }),
-    [scopedSteps, welcomeRun, purpose, firstGoalId, aimChosen]
+    () => scopedSteps || buildSteps({ welcome: welcomeRun, purpose, firstGoal: getObjective(firstGoalId), aimChosen, dashboardV2 }),
+    [scopedSteps, welcomeRun, purpose, firstGoalId, aimChosen, dashboardV2]
   );
 
   // Which route is on screen, so a step marked `stay` can skip navigating
@@ -192,7 +199,7 @@ export function TourProvider({ children }) {
     setAimChosen(opts?.aimChosen !== false);
     setScopedSteps(null); // the main tour always wins over a scoped one
     setActive(true);
-    const first = TOUR_STEPS[0];
+    const first = mainTourSteps(isAliasGateOn('dashboardV2'))[0];
     if (first?.go) goToRef.current?.(first.go, first.goParams);
     setStepIndex(0);
   }, [endWith]);

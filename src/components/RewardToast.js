@@ -7,8 +7,8 @@
 //   but off Training you can't see it happen, only a number ticking up. Your
 //   pet, a spinning coin and "+1" drop in under the top bar.
 // - Real work counts. Finishing a planner item, a project step, a life-area
-//   action, a goal or a check-in earns a little XP (record_action,
-//   20260930140000): a check, "+5 XP" and what it was for.
+//   action, a goal or a check-in earns a little XP (record_action; amounts
+//   in 20261014120000_real_work_xp.sql): a check, "+N XP" and what it was for.
 //
 // It holds for a couple of seconds and leaves; rewards of the same kind that
 // land close together add up ("+2"). Coins aren't shown on Training, where

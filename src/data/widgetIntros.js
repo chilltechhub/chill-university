@@ -6,9 +6,9 @@
 // pointed at once, with this: what it shows, then what to do with it. A new
 // card nobody explained is just more screen.
 //
-// Keys are HomeScreen's WIDGET_DEFS keys. Keep each one true to what the
-// widget actually renders: one short sentence, key words in **bold**
-// (TourOverlay renders the markers).
+// Keys are WIDGET_DEFS keys (src/data/dashboardWidgets.js). Keep each one
+// true to what the widget actually renders: one short sentence, key words
+// in **bold** (TourOverlay renders the markers).
 //
 // No imports on purpose: plain data.
 
@@ -37,4 +37,15 @@ export const WIDGET_INTROS = {
   founderQuest:     "Your **next founder step**. Tap to open the lesson.",
   targetsReadiness: "Your **revenue target** or stage, and funding worksheets done.",
   quests:           "A **ten-minute mission**: an idea, some research, one real thing to do.",
+  nextStep:         "The **one thing** to do next. Tap the button to start it.",
+  quickAdd:         "Type a plan in **one line**, like *dentist thu 4pm*.",
+  yourDay:          "**Today's plan**. Tick things off; switch between **time** and **list**.",
+  find:             "**One useful find** a day. Try it, or wave it off.",
+  dream:            "**The life you want**, in your words. Everything here builds toward it.",
+  dueSoon:          "What's **due this week**, soonest first.",
+  stillOpen:        "What you were **halfway through**. Pick it back up or let it go.",
+  checkin:          "Life areas **due a check-in**. Takes ten seconds.",
+  unit:             "Every step of what you're on, **ticked or not**.",
+  missions:         "**Software for You** and the quick missions.",
+  review:           "About **a minute of review**, only when something's due.",
 };

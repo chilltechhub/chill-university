@@ -30,7 +30,7 @@ import {
   Dimensions, Switch, Alert, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { THEMES, FONTS } from '../../theme';
+import { FONTS } from '../../theme';
 import useSetting, { SETTING_KEYS } from '../../logic/useSetting';
 import { ensureNotificationPermission } from '../../logic/notificationScheduler';
 import { LIFE_AREAS } from '../library/LifeAreaScreen';
@@ -615,10 +615,12 @@ export function PickFeaturesStep({ data, set, theme }) {
 // ─── Card 3: your name (and the persona's optional starting number) ────────
 // Your name, not the profile's: the profile falls back to the persona's
 // short label and is renamed in one tap from the profile switcher.
-export function NameStep({ data, set, theme }) {
+// `bare`: the name and nothing else (signup after the welcome, which works
+// the account type out rather than asking it).
+export function NameStep({ data, set, theme, bare = false }) {
   const { c } = theme;
   const st = stepStyles(theme);
-  const baseline = data.active_persona && !data.exploring ? PERSONA_BASELINE[data.active_persona] : null;
+  const baseline = !bare && data.active_persona && !data.exploring ? PERSONA_BASELINE[data.active_persona] : null;
   return (
     <View style={st.stepContent}>
       <Text style={st.stepTitle}>What should we call you?</Text>
@@ -1072,62 +1074,6 @@ export function GoalsStep({ data, set, theme }) {
           thumbColor={remindersEnabled ? c.gold : c.text3}
         />
       </View>
-    </View>
-  );
-}
-
-// Theme only. Which Library tools show used to be asked here too, for
-// "show me everything"; the pick step asks that for every track now.
-export function LookStep({ data, set, theme, onThemeChange }) {
-  const { c } = theme;
-  const st = stepStyles(theme);
-  const pickTheme = (name) => { set('theme', name); onThemeChange(name); };
-
-  return (
-    <View style={st.stepContent}>
-      <Text style={st.stepTitle}>Light or dark?</Text>
-      <Text style={st.stepSubtitle}>Tap one to see it right away. You can change it any time in Settings.</Text>
-
-      <SectionLabel label="Theme — tap to preview live" theme={theme} />
-      <View style={{ gap: 12, marginBottom: 20 }}>
-        <TouchableOpacity onPress={() => pickTheme('dark')}
-          style={{ flexDirection: 'row', alignItems: 'center', borderRadius: 16, padding: 16, borderWidth: 2, backgroundColor: THEMES.dark.bg0, borderColor: data.theme === 'dark' ? THEMES.dark.gold : THEMES.dark.border }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: THEMES.dark.text1, fontWeight: '700', fontSize: 16, marginBottom: 4 }}>Dark</Text>
-            <Text style={{ color: THEMES.dark.text3, fontSize: 13 }}>Dark background, gold accents. Easier on the eyes at night.</Text>
-            <View style={{ flexDirection: 'row', gap: 6, marginTop: 10 }}>
-              {[THEMES.dark.bg0, THEMES.dark.bg1, THEMES.dark.gold, THEMES.dark.teal, THEMES.dark.text1].map((col, i) => (
-                <View key={i} style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: col, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.2)' }} />
-              ))}
-            </View>
-          </View>
-          {data.theme === 'dark' && <Ionicons name="checkmark-circle" size={24} color={THEMES.dark.gold} />}
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => pickTheme('light')}
-          style={{ flexDirection: 'row', alignItems: 'center', borderRadius: 16, padding: 16, borderWidth: 2, backgroundColor: THEMES.light.bg0, borderColor: data.theme === 'light' ? THEMES.light.teal : THEMES.light.border }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: THEMES.light.text1, fontWeight: '700', fontSize: 16, marginBottom: 4 }}>Light</Text>
-            <Text style={{ color: THEMES.light.text3, fontSize: 13 }}>White background, easy to read in daylight.</Text>
-            <View style={{ flexDirection: 'row', gap: 6, marginTop: 10 }}>
-              {[THEMES.light.bg0, THEMES.light.bg1, THEMES.light.gold, THEMES.light.teal, THEMES.light.text1].map((col, i) => (
-                <View key={i} style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: col, borderWidth: 0.5, borderColor: 'rgba(0,0,0,0.15)' }} />
-              ))}
-            </View>
-          </View>
-          {data.theme === 'light' && <Ionicons name="checkmark-circle" size={24} color={THEMES.light.teal} />}
-        </TouchableOpacity>
-      </View>
-
-      <SectionLabel label="Background" theme={theme} />
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: c.bg1, borderRadius: 12, padding: 14, marginBottom: 20, borderWidth: 0.5, borderColor: c.border }}>
-        <Ionicons name="image-outline" size={20} color={c.text3} />
-        <Text style={{ flex: 1, fontSize: 12, color: c.text3, lineHeight: 17 }}>
-          Home and the Library start with a plain background. Switch to a scenic one any time in Make it yours.
-        </Text>
-      </View>
-
-
     </View>
   );
 }

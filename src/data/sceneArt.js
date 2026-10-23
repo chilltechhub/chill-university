@@ -118,6 +118,13 @@ export const ART = {
   trophyBeat:     box('items', 106, 648, 11, 17),  // 21.d blue potion
   trophyBusiness: box('items', 106, 777, 10, 15),  // 25.d coin purse
   trophyAi:       box('items', 200, 678, 17, 20),  // 22.g scroll 2
+  // The labs' trophies (2026-10-21): whole 32px cells, a little padding.
+  trophyMoney:    box('items', 66, 770, 26, 24),   // 25.c coin pile
+  trophyStory:    box('items', 36, 676, 24, 24),   // 22.b blue book
+  trophyLogic:    box('items', 194, 516, 26, 26),  // 17.g ankh
+  trophyMath:     box('items', 36, 356, 24, 26),   // 12.b shield
+  trophyBody:     box('items', 38, 644, 20, 24),   // 21.b red flask
+  trophyLaunch:   box('items', 68, 516, 24, 26),   // 17.c amulet
 };
 
 // Animated extras. Frame counts checked by scanning every cell of each strip
@@ -155,6 +162,12 @@ export const DECOR = [
   trophy('trophyBeat', 'Beat Elixir', 'beat'),
   trophy('trophyBusiness', 'First Coin Purse', 'business'),
   trophy('trophyAi', 'Prompt Scroll', 'ai'),
+  trophy('trophyMoney', 'Gold Stack', 'money'),
+  trophy('trophyStory', 'Story Book', 'story'),
+  trophy('trophyLogic', 'Logic Charm', 'logic'),
+  trophy('trophyMath', 'Proof Shield', 'math'),
+  trophy('trophyBody', 'Vital Flask', 'body'),
+  trophy('trophyLaunch', 'Momentum Amulet', 'launch'),
 
   d('windowCream', 'Window', 'Furniture', 1, 0.95, true),
   d('plantPainting', 'Plant Print', 'Furniture', 3, 0.85, true),
