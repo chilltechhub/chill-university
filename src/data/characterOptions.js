@@ -89,13 +89,11 @@
 
 import { RIGS } from './characterRigs';
 
-function meetsRequirement(requirement, stats) {
-  if (!requirement) return true;
-  return (stats[requirement.stat] || 0) >= requirement.value;
-}
-
+// Every cosmetic is open to everyone from the first minute (shake-up P5,
+// §6.3: cosmetics without bait). Nothing can re-lock, so an equipped item
+// always stays. Pets keep their own system (petOptions.js petsOpen).
 function withUnlock(option) {
-  return { ...option, unlock: (stats) => meetsRequirement(option.requirement, stats) };
+  return { ...option, unlock: () => true };
 }
 
 // Starter-tier outfits — `requirement: null`, so ALL of these (not just
@@ -170,15 +168,7 @@ export const ACCESSORIES = [
 ].map(withUnlock);
 export const DEFAULT_ACCESSORY_ID = ACCESSORIES[0].id;
 
-const REQUIREMENT_NOUN = {
-  level: (v) => `Unlocks at Level ${v}`,
-  streakDays: (v) => `Unlocks at a ${v}-day streak`,
-  points: (v) => `Unlocks at ${v.toLocaleString()} points`,
-};
-
-/** Human-readable unlock requirement, or null if already unlocked/free. */
-export function unlockLabel(option, stats) {
-  if (!option.requirement || meetsRequirement(option.requirement, stats)) return null;
-  const noun = REQUIREMENT_NOUN[option.requirement.stat] || (() => 'Locked');
-  return noun(option.requirement.value);
+// Nothing is locked any more (above), so there's nothing to say.
+export function unlockLabel() {
+  return null;
 }

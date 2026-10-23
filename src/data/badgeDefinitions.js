@@ -19,9 +19,8 @@ export const BADGES = [
   { id: 'on_a_roll',     name: 'On a Roll',          tier: 'silver', icon: '🔥', desc: 'Reach a 7-day streak.', check: (ctx) => (ctx.streakDays || 0) >= 7 },
   { id: 'unstoppable',   name: 'Unstoppable',        tier: 'gold',   icon: '🔥', desc: 'Reach a 30-day streak.', check: (ctx) => (ctx.streakDays || 0) >= 30 },
 
-  { id: 'point_collector', name: 'Point Collector',  tier: 'bronze', icon: '✦', desc: 'Earn 500 points.', check: (ctx) => (ctx.points || 0) >= 500 },
-  { id: 'point_hoarder', name: 'Point Hoarder',      tier: 'silver', icon: '✦', desc: 'Earn 2,000 points.', check: (ctx) => (ctx.points || 0) >= 2000 },
-  { id: 'point_legend',  name: 'Point Legend',       tier: 'gold',   icon: '✦', desc: 'Earn 10,000 points.', check: (ctx) => (ctx.points || 0) >= 10000 },
+  // The three point badges (Point Collector, Hoarder, Legend) are gone:
+  // receipts, not a score (shake-up P5). Milestones come with P6.
 
   // The pet's bond (src/logic/petBond.js): Pal is level 2, Best buddy 5.
   { id: 'pet_pal',       name: 'Pet Pal',            tier: 'bronze', icon: '🐾', desc: 'Reach Pal with your pet.', check: (ctx) => (ctx.petLevel || 0) >= 2 },

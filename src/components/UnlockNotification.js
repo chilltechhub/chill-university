@@ -10,6 +10,7 @@
 // hunting for is barely an unlock.
 
 import React from 'react';
+import useProgressV2 from '../logic/useProgressV2';
 import { View, Text, Modal, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -55,6 +56,9 @@ export default function UnlockNotification() {
   // goal opened: three taps of "Later" before seeing what to do next.
   const unlockedFeatures = (unlockEvents || []).map(e => e.feature).filter(Boolean);
   const { progressEvents, dismissAllProgressEvents } = useUserProgress();
+  // Receipts, not a score (PROGRESS_V2): the card says the map got bigger,
+  // and stops folding a level into it.
+  const [progressV2] = useProgressV2();
   const { startLesson, active: tourActiveNow } = useTour();
 
   const s = makeStyles(c, t, sp, r);
@@ -68,7 +72,7 @@ export default function UnlockNotification() {
   const ready = useCalmMoment(waiting && !tourActiveNow);
   if (!ready) return null;
   const progress = summarizeProgress(progressEvents);
-  const levelLine = progress && (progress.level != null || progress.tier || progress.unlocks.length)
+  const levelLine = !progressV2 && progress && (progress.level != null || progress.tier || progress.unlocks.length)
     ? [
         progress.level != null ? `Level ${progress.level}` : progress.tier ? (progress.tier.rankLabel?.label || 'New tier') : null,
         progress.unlocks.length ? `you unlocked ${progress.unlocks.map(u => u.name).join(', ')}` : null,
@@ -222,7 +226,7 @@ export default function UnlockNotification() {
               <Ionicons name="sparkles-outline" size={26} color={c.teal} />
             </View>
             {LevelStrip}
-            <Text style={s.kicker}>New in your app · stage {stageEvent.to} of {MAX_STAGE}</Text>
+            <Text style={s.kicker}>{progressV2 ? 'Your map got bigger' : `New in your app · stage ${stageEvent.to} of ${MAX_STAGE}`}</Text>
             <Text style={s.title}>{heading.title}</Text>
             {!!heading.blurb && <Text style={s.blurb}>{heading.blurb}</Text>}
             {alsoOpen.length > 0 && (
@@ -271,7 +275,7 @@ export default function UnlockNotification() {
             <Ionicons name={feature.icon || 'lock-open-outline'} size={26} color={c.teal} />
           </View>
           {LevelStrip}
-          <Text style={s.kicker}>Now open</Text>
+          <Text style={s.kicker}>{progressV2 ? 'Your map got bigger' : 'Now open'}</Text>
           <Text style={s.title}>{feature.label}</Text>
           <Text style={s.blurb}>{feature.blurb}</Text>
           <Text style={s.via}>{VIA_COPY[via] || 'It’s yours now.'}</Text>

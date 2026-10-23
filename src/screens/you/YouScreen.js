@@ -20,7 +20,9 @@ import { useUserProgress } from '../../../context/UserProgressContext';
 import { goToScreen } from '../../logic/appRoutes';
 import { showWhatsNext } from '../../logic/useGuidedFirstGoal';
 import ProfileScreen from '../ProfileScreen';
-import { YouHeader, YouSearch, YouGround, YouFooter } from './YouParts';
+import { YouHeader, YouSearch, YouGround, YouFooter, YouReceipts } from './YouParts';
+import Room, { RoomElsewhere } from '../../components/Room';
+import useRoomPlace from '../../logic/useRoomPlace';
 
 const ROOT_ROWS = {
   notifications: 'Notifications', workmode: 'WorkMode', insights: 'Stats',
@@ -35,6 +37,10 @@ export default function YouScreen() {
   const { openPalette } = useCommandPalette();
   // The page You was opened over (the avatar passes it), for "About this page".
   const from = route.params?.from || 'Home';
+  // Your room, when it's placed here (shake-up P5); otherwise a line that
+  // says where it is. Insights lands here with anchor 'receipts'.
+  const [roomPlace] = useRoomPlace();
+  const receiptsFirst = route.params?.anchor === 'receipts';
 
   const close = useCallback(() => {
     if (navigation.canGoBack()) navigation.goBack();
@@ -77,6 +83,11 @@ export default function YouScreen() {
   const you = {
     header: <YouHeader onClose={close} />,
     top: <YouSearch onOpen={openPalette} />,
+    room: roomPlace === 'you'
+      ? <Room size={160} place="you" style={{ marginBottom: 12 }} />
+      : <RoomElsewhere here="you" style={{ marginBottom: 12 }} />,
+    receipts: <YouReceipts userId={user?.id || null} onSeeAll={user ? () => leave(() => navigation.navigate('Stats')) : null} />,
+    receiptsFirst,
     bottom: (
       <>
         <YouGround onOpenArea={(areaId) => leave(() => goToScreen(navigation, 'LifeAreaScreen', { areaId }))} />

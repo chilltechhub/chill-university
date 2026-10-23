@@ -36,7 +36,7 @@ const FAQ = [
   },
   {
     q: 'How does linking a parent and child account work?',
-    a: 'On the child\'s account: **Settings → Family → make a code** (valid 15 minutes). Enter it on the parent\'s account. **Read-only**: the parent sees level, points and streak, nothing else. Either side can unlink.',
+    a: 'On the child\'s account: **Settings → Family → make a code** (valid 15 minutes). Enter it on the parent\'s account. **Read-only**: the parent sees their progress and how active they are, nothing else. Either side can unlink.',
   },
   {
     q: 'What happens when I delete something?',

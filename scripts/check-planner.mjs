@@ -327,7 +327,8 @@ check('isSamePlan: different times differ', !L.isSamePlan({ title: 'Gym', date: 
   ];
   const m = WL.todayLayoutFrom({ home, wanted: ['nextStep', 'yourDay', 'find'] });
   const sk = shownKeys(m);
-  check('migrate: old cards take their new names in place', sk.indexOf('nextStep') === sk.indexOf('hq') + 1 && sk.includes('missions') && !sk.includes('compass') && !sk.includes('quests'), show(sk));
+  // hq (the level card) takes its new name, room (P5), like the others.
+  check('migrate: old cards take their new names in place', sk.indexOf('nextStep') === sk.indexOf('room') + 1 && !sk.includes('hq') && sk.includes('missions') && !sk.includes('compass') && !sk.includes('quests'), show(sk));
   check('migrate: focus becomes your day', sk.includes('yourDay') && !sk.includes('focus'), show(sk));
   check("migrate: the old fixed cards and Today's own show", ['dream', 'nextStep', 'quickAdd', 'yourDay', 'find'].every(k => sk.includes(k)), show(sk));
   check('migrate: quick add sits under the next step', sk.indexOf('quickAdd') === sk.indexOf('nextStep') + 1, show(sk));

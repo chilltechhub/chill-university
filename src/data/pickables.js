@@ -36,7 +36,7 @@ export const ALWAYS_ON_FEATURES = ['home-desk', 'compass'];
 // opens) is added only on the Level up track, where there are stages.
 export const BASE_WIDGETS = ['hq', 'focus', 'compass', 'goalSteps',
   // Today's board (shake-up P3): the planner and its cards, for everyone.
-  'nextStep', 'quickAdd', 'yourDay', 'find', 'dream', 'dueSoon', 'stillOpen', 'checkin', 'unit', 'missions', 'review'];
+  'nextStep', 'quickAdd', 'yourDay', 'find', 'dream', 'dueSoon', 'stillOpen', 'checkin', 'unit', 'missions', 'review', 'room'];
 
 export const PICK_GROUPS = [
   // Learning and your life first: what the app is for (2026-10-18).

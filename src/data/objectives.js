@@ -319,7 +319,10 @@ export const OBJECTIVES = [
     steps: [
       { id: 'focus',   label: 'Set a focus for today',        hint: 'One line on Home. What today is **for**.', screen: 'Home', params: { openFocus: true }, signal: 'focus-set', widget: 'focus', have: 'focus-today' },
       { id: 'plan',    label: 'Put one thing in the Planner',  hint: 'Something **real**, on a real day.', screen: 'PlannerScreen', signal: 'planner-item-added', have: 'planner-item' },
-      { id: 'mission', label: 'Finish a daily drill',          hint: "Open shows today's three. **Ticks itself.**", screen: 'Training', params: { openDrills: true }, auto: { stat: 'missions', value: 1 } },
+      // id 'mission' kept (ids never change). It counted the daily XP drills;
+      // those retired with Challenges (shake-up P5), so it counts a round
+      // finished in Practice (src/logic/practiceToday.js).
+      { id: 'mission', label: 'Finish a round in Practice',    hint: "Any game in **Practice**. **Ticks itself.**", screen: 'Practice', auto: { stat: 'practiced', value: 1 } },
       { id: 'done',    label: 'Tick off something you planned', hint: 'Tap the circle next to it in the Planner. **Ticks itself.**', screen: 'PlannerScreen', signal: 'planner-item-done', have: 'planner-done' },
     ],
     unlocks: ['weekly-review', 'work-mode'],

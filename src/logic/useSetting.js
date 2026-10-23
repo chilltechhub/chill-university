@@ -71,6 +71,16 @@ export const SETTING_KEYS = {
   // as one piece. Off is the rollback: Library · Home · Learn, the old top
   // bar and Profile (src/logic/useTabsV2.js).
   TABS_V2: 'tabsV2',
+  // Receipts, not a score (shake-up P5): the quiet toasts, the points pill
+  // gone from the top bar, Insights opening You's receipts. true / false
+  // wins; unset follows TABS_V2. Off is the rollback (src/logic/useProgressV2.js).
+  PROGRESS_V2: 'progressV2',
+  // Where your room shows: 'you' (default), 'today' or 'off' (shake-up P5,
+  // receipts.js roomPlaceOf). Synced like every @cth_setting_ key.
+  ROOM_PLACE: 'roomPlace',
+  // The momentum line in You's receipts ("You did something on 3 days this
+  // week"). On unless switched off.
+  SHOW_MOMENTUM: 'showMomentum',
   // Retired 2026-10-16: the Library's own hide list. Its eight tools are all
   // My features picks, so the Library no longer reads it.
   HIDDEN_LIBRARY_SECTIONS: 'hiddenLibrarySections',

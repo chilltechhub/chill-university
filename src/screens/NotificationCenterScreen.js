@@ -551,7 +551,7 @@ export default function NotificationCenterScreen() {
                   </>
                 )}
                 <TouchableOpacity onPress={() => { setShowSettings(false); navigation.navigate('Settings'); }} style={{ marginTop: s.md }}>
-                  <Text style={{ fontSize: 12, color: c.teal }}>Daily Drills and streak reminders are in Settings →</Text>
+                  <Text style={{ fontSize: 12, color: c.teal }}>Reminders are in Settings →</Text>
                 </TouchableOpacity>
               </>
             ) : (

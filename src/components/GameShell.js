@@ -219,7 +219,7 @@ export default function GameShell({
 
         {/* Streak */}
         <View style={s.statItem}>
-          <Text style={s.statLabel}>Streak</Text>
+          <Text style={s.statLabel}>In a row</Text>
           <View style={s.streakRow}>
             <Text style={s.statValue}>{streak}</Text>
             {streak >= 3 && (showEmojis

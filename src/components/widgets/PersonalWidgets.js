@@ -110,7 +110,7 @@ export function HabitRingsWidget({ userId, onOpenPlanner }) {
                 )
                 : days === 0
                   ? <Text style={{ fontSize: t.xs, color: c.text3 }}>starts today</Text>
-                  : <Text style={{ fontSize: t.xs, color: c.text3 }}>no streak yet</Text>}
+                  : <Text style={{ fontSize: t.xs, color: c.text3 }}>not started yet</Text>}
             </View>
             {dots ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>

@@ -9,6 +9,7 @@
 // (src/logic/useDrillPlan.js), so all three always point at the same drill.
 
 import React, { useEffect, useRef } from 'react';
+import useProgressV2 from '../logic/useProgressV2';
 import { Animated, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
@@ -18,6 +19,8 @@ import useDrillPlan from '../logic/useDrillPlan';
 const SHOW_MS = 5000;
 
 export default function DrillToast() {
+  // The daily XP drills retired with Challenges (PROGRESS_V2, shake-up P5).
+  const [progressV2] = useProgressV2();
   const { colors: c, typography: t } = useTheme();
   const insets = useSafeAreaInsets();
   const { drillEvents, dismissDrillEvent } = useUserProgress();
@@ -35,7 +38,7 @@ export default function DrillToast() {
     return () => clearTimeout(timer);
   }, [event?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!event) return null;
+  if (!event || progressV2) return null;
 
   const pts = event.reward?.points || 0;
   const nextLine = next

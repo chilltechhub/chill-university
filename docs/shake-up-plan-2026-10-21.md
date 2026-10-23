@@ -937,6 +937,14 @@ New check scripts this plan adds:
   - The `UnlockNotification` level summary.
   - `useSpendablePoints` readers: TopBar loses its display; GamesScreen, Profile and PetCareSheet **keep working** (pet food).
   - `ChildProgressScreen` and the cohort leaderboard still read points, and that is fine until Family v2.
+- **Built (2026-10-23, branch `feature/shakeup-p5`, off main after #84).** Where the code settled something this plan left open:
+  - **`PROGRESS_V2`** (`src/logic/useProgressV2.js`, rule `welcomeCards.progressV2On`): set either way wins; unset, it **follows the new tabs**. It also switches the `Stats → You` alias's `receipts` gate on, so Insights links open You's receipts (the Stats route itself, "See all numbers", still opens Insights). Off restores the points pill (as "Level N · N points"), the level-up card, the old unlock card, "+N XP", the Learn chips, Challenges, Daily Drills and the leaderboard.
+  - **Receipts** (`src/logic/receipts.js`, `check-receipts.mjs`): things made, parts mastered, parts made yours, Finds tried, goal steps done; zeros left out. **Momentum** comes from the server's run (`streak_count`, `last_active_date`): days in the last seven, "Welcome back. The next step is ready." after a gap, never a missed-day count. Its switch is in Make it yours and on the line itself ("Hide").
+  - **The 'mission' step** now counts a round finished in Practice (`src/logic/practiceToday.js`, a per-device day counter fed by `useGame` `endGame`), via `auto: { stat: 'practiced' }`. The daily-mission refill still runs (the rollback reads it).
+  - **The room** (`src/components/Room.js`, `RoomEditorSheet.js`, `useRoomPlace.js`): `roomPlace` is a shared store over the synced setting, so You, Today, the editor and Make it yours move together. **Today's `hq` card became `room`** (TODAY_KEYS; WIDGET_ALIASES carries a saved place). Placing it on Today puts it at the top of the board; Calm draws a still frame. The editor is one sheet (where it shows, pet-food points, Wardrobe · Decorate · Pet · Trophies) that opens each existing sheet; `WardrobeModal` moved to `src/components/WardrobeModal.js`.
+  - **The walking pet on Learn stays on Learn's root** (P4 kept it there so coins mount at launch), not on the Practice route.
+  - **Cosmetics open**: outfits, items, backdrops and level-gated decor all return open; trophies stay earned. **Point badges** removed. The track called "Level up" is **"Step by step"** (key `auto` unchanged).
+  - **The grep**: no user-facing "PTS", "level up", "at risk" or streak copy. In-game answer runs read "In a row" / "Best run". What's left on purpose: curriculum text, the anti-streak lesson in Digital, and "keep it" in its plain sense ("Keep it in your Vault").
 
 ### P6 · Paths, units, deliverables, Learn, Make, You content
 

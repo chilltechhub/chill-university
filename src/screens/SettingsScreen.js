@@ -532,11 +532,7 @@ export default function SettingsScreen() {
                 {[
                   { label: 'Points', val: (profile.points || 0).toLocaleString(), color: c.gold  },
                   { label: 'XP',     val: profile.xp || 0,                        color: c.teal  },
-                  // Same computed streak Home shows (useUserProgress().streakDays) —
-                  // this used to read profile.streak_count directly from its own
-                  // separate fetch, a raw DB column nothing actually increments day
-                  // to day, so it drifted from what Home displayed for the same account.
-                  { label: 'Streak', val: (streakDays || 0) + 'd',                 color: c.warning },
+                  // The streak tile is gone: momentum, never a streak (shake-up P5).
                 ].map(st => (
                   <View key={st.label} style={{ alignItems: 'center' }}>
                     <Readout size={t.lg} color={st.color}>{st.val}</Readout>

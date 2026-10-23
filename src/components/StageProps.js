@@ -25,7 +25,7 @@ export default function StageProps({ background, level = 1, decor, hideItems = f
   const [size, setSize] = useState(null);
   const props = hideItems ? []
     : decor?.items ? decor.items.filter(it => decorAllowed(it.art, level, background))
-    : (background?.props || []).filter(p => (p.minLevel || 1) <= level);
+    : (background?.props || []); // every prop from the start (shake-up P5)
   const npc = background?.npc && NPCS[background.npc.id] ? background.npc : null;
   if (!props.length && !npc) return null;
   const ground = groundFor(background);

@@ -103,7 +103,7 @@ export default function AllProfilesScreen() {
           </View>
           <View style={st.sharedStat}>
             <Text style={st.sharedNum}>{streakDays || 0}</Text>
-            <Text style={st.sharedCap}>Day streak</Text>
+            <Text style={st.sharedCap}>Days in a row</Text>
           </View>
           <View style={st.sharedStat}>
             <Text style={st.sharedNum}>{totals.done}/{totals.docs}</Text>

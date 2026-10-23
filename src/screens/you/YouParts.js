@@ -7,7 +7,7 @@
 // Every row that goes somewhere leaves You first (YouScreen's `leave`), so
 // back from Settings lands on the app, not on the dropdown.
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../context/ThemeContext';
@@ -15,6 +15,14 @@ import { useAccess } from '../../../context/AccessContext';
 import { LIFE_AREAS } from '../library/LifeAreaScreen';
 import ProfileSwitcher from '../../components/ProfileSwitcher';
 import LoginScreen from '../LoginScreen';
+import TourSpot from '../../components/TourSpot';
+import { useUserProgress } from '../../../context/UserProgressContext';
+import useSetting, { SETTING_KEYS } from '../../logic/useSetting';
+import { loadBuilds, onBuildsChange } from '../../api/buildService';
+import { receipt } from '../../logic/builds';
+import { receipts, momentum } from '../../logic/receipts';
+import { getObjective } from '../../data/objectives';
+import { todayStr } from '../../logic/dateUtils';
 
 export function YouHeader({ onClose }) {
   const { colors: c, typography: t, spacing: s } = useTheme();
@@ -122,5 +130,71 @@ export function YouFooter({ signedIn, go, onClose }) {
         <LoginScreen onSuccess={() => setSignIn(false)} onClose={() => setSignIn(false)} />
       </Modal>
     </View>
+  );
+}
+
+/**
+ * Receipts, not a score (shake-up P5, §6.2): what you made, tried and did,
+ * from what's already saved. Before units and deliverables (P6) that's your
+ * Builds, your goal steps and the Finds you tried. Momentum sits under it
+ * (switchable), and your level last, in small type: it's below the dream.
+ */
+export function YouReceipts({ userId, onSeeAll }) {
+  const { colors: c, typography: t, spacing: s, radius: r, accent } = useTheme();
+  const { completedObjectiveIds = [], activeObjective } = useAccess();
+  const { streakDays, profile, level } = useUserProgress();
+  const [findState] = useSetting(SETTING_KEYS.TODAYS_FIND, null);
+  const [showMomentum, setShowMomentum] = useSetting(SETTING_KEYS.SHOW_MOMENTUM, true);
+  const [builds, setBuilds] = useState([]);
+
+  useEffect(() => {
+    let alive = true;
+    const take = (list) => { if (alive) setBuilds((list || []).map(b => ({ receipt: receipt(b) }))); };
+    loadBuilds(userId || null).then(take).catch(() => {});
+    const off = onBuildsChange((uid, list) => { if ((uid || null) === (userId || null)) take(list); });
+    return () => { alive = false; off(); };
+  }, [userId]);
+
+  const stepsDone = completedObjectiveIds.reduce((n, id) => n + (getObjective(id)?.steps?.length || 0), 0)
+    + (activeObjective?.active ? activeObjective.done || 0 : 0);
+  const tastes = Array.isArray(findState?.tried) ? findState.tried.length : 0;
+  const rc = receipts({ builds, stepsDone, tastes });
+  const mom = momentum({ runDays: streakDays, lastActive: profile?.last_active_date, today: todayStr() });
+
+  return (
+    <TourSpot id="profile-rank" style={{ width: '100%' }}>
+      <View style={{ width: '100%', marginTop: s.md, padding: s.lg, borderRadius: r.lg, backgroundColor: c.bg1, borderWidth: 0.5, borderColor: c.border }}>
+        <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }} accessibilityRole="header">Receipts</Text>
+        {rc.empty ? (
+          <Text style={{ fontSize: t.sm, color: c.text3, marginTop: 4 }}>What you <Text style={{ fontWeight: t.bold, color: c.text2 }}>make</Text>, try and finish shows up here. Start with one thing.</Text>
+        ) : (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.md, marginTop: s.sm }}>
+            {rc.items.map(it => (
+              <View key={it.key} style={{ minWidth: 88 }} accessible accessibilityLabel={`${it.value} ${it.label}`}>
+                <Text style={{ fontSize: t.xl, fontWeight: '800', color: accent.primary }}>{it.value}</Text>
+                <Text style={{ fontSize: t.xs, color: c.text2 }}>{it.label}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+        {showMomentum !== false && !!mom.line && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginTop: s.md }}>
+            <Ionicons name={mom.comeback ? 'hand-right-outline' : 'checkmark-circle-outline'} size={16} color={accent.primary} />
+            <Text style={{ flex: 1, fontSize: t.sm, color: c.text2 }}>{mom.line}</Text>
+            <TouchableOpacity onPress={() => setShowMomentum(false)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Hide this line">
+              <Text style={{ fontSize: t.xs, color: c.text3 }}>Hide</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: s.md }}>
+          <Text style={{ flex: 1, fontSize: 11, color: c.text3 }}>Level {level || 1}</Text>
+          {!!onSeeAll && (
+            <TouchableOpacity onPress={onSeeAll} accessibilityRole="button" accessibilityLabel="See all numbers">
+              <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: accent.primary }}>See all numbers →</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    </TourSpot>
   );
 }

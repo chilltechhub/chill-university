@@ -237,7 +237,7 @@ export default function CompassScreen() {
             <Text style={[s.inlineAction, { color: c.teal, marginTop: sp.sm }]}>Add or remove features</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setExperienceMode('auto')} activeOpacity={0.7}>
-            <Text style={[s.inlineAction, { color: c.teal, marginTop: sp.sm }]}>Switch to Level up</Text>
+            <Text style={[s.inlineAction, { color: c.teal, marginTop: sp.sm }]}>Switch to Step by step</Text>
           </TouchableOpacity>
         </View>
         ) : (

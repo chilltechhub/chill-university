@@ -48,4 +48,5 @@ export const WIDGET_INTROS = {
   unit:             "Every step of what you're on, **ticked or not**.",
   missions:         "**Software for You** and the quick missions.",
   review:           "About **a minute of review**, only when something's due.",
+  room:             "**Your room**: your character and pet. Edit it, or move it to You.",
 };

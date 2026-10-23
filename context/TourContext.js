@@ -225,7 +225,7 @@ export function TourProvider({ children }) {
     // which is why real content steps silently fell back to an
     // unspotlighted card while only the synthetic Navigation step (which
     // doesn't read the registry at all) ever lit up.
-    setScopedSteps(buildScreenTutorial(routeName, personalization, { can, firstVisit: !!opts?.firstVisit, shows: showsTool, track: experienceMode, tabsV2: isAliasGateOn('tabsV2') }));
+    setScopedSteps(buildScreenTutorial(routeName, personalization, { can, firstVisit: !!opts?.firstVisit, shows: showsTool, track: experienceMode, tabsV2: isAliasGateOn('tabsV2'), progressV2: isAliasGateOn('receipts') }));
     screenTourRouteRef.current = routeName;
     setActive(true);
     setStepIndex(0);

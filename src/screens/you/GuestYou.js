@@ -40,6 +40,10 @@ export default function GuestYou({ you = null } = {}) {
         {you ? you.top : <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>You</Text>}
 
         <DreamCard userId={null} />
+        {/* In You: receipts and your room (shake-up P5). */}
+        {you?.receiptsFirst && you.receipts}
+        {you?.room}
+        {!you?.receiptsFirst && you?.receipts}
 
         <View style={{ padding: s.lg, borderRadius: r.lg, backgroundColor: c.bg1, borderWidth: 0.5, borderColor: c.border }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm }}>

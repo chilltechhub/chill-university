@@ -21,6 +21,7 @@ import { onWorkSessionChange, sessionSeconds } from '../logic/workSession';
 import { useSpendablePoints } from '../logic/usePetCare';
 import { useAccess } from '../../context/AccessContext';
 import useTabsV2 from '../logic/useTabsV2';
+import useProgressV2 from '../logic/useProgressV2';
 import { pathChip } from '../logic/nextStep';
 import { goToScreen } from '../logic/appRoutes';
 
@@ -111,7 +112,10 @@ export default function TopBar(props) {
 // flight until units exist (P6), and opens Learn. The level/points pill,
 // the tier crest and its menu are gone: the menu's rows are in You.
 function TopBarV2({ currentScreen }) {
-  const { user, profile, loading } = useUserProgress();
+  const { user, profile, loading, level, points: earned } = useUserProgress();
+  // Receipts off (PROGRESS_V2 rollback): the level and points pill comes back.
+  const [progressV2] = useProgressV2();
+  const pillPoints = useSpendablePoints(user?.id, earned);
   const { colors: c, typography: t, spacing: s, shadows: sh, accent } = useTheme();
   const navigation = useNavigation();
   const { openPalette } = useCommandPalette();
@@ -175,6 +179,13 @@ function TopBarV2({ currentScreen }) {
           style={{ width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' }}>
           <Ionicons name="search" size={19} color={c.text2} />
         </TouchableOpacity>
+        {!!user && !progressV2 && (
+          <TouchableOpacity onPress={() => navigation.navigate('You', { from: currentScreen })} hitSlop={6} accessibilityRole="button"
+            accessibilityLabel={`Level ${level}, ${pillPoints} points. Open You`}
+            style={{ backgroundColor: c.bg2, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 5 }}>
+            <Text style={{ fontSize: t.xs, fontWeight: '800', color: c.text2 }} numberOfLines={1}>Level {level} · {pillPoints.toLocaleString()} points</Text>
+          </TouchableOpacity>
+        )}
         {!!user && <NotificationBell userId={user.id} />}
       </View>
 
@@ -271,7 +282,7 @@ function TopBarV1({ currentScreen }) {
           {user ? (
             <TourSpot id="topbar-stats" radius={999} style={{ flexDirection: 'row', alignItems: 'center' }}>
             <TouchableOpacity style={s.statPill} hitSlop={7} onPress={() => navigation.navigate('Profile')} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={`Level ${level}, ${points} points. Open your profile`}>
-              <Text style={s.statPillText} numberOfLines={1}>LV {level} · {points.toLocaleString()} PTS</Text>
+              <Text style={s.statPillText} numberOfLines={1}>Level {level} · {points.toLocaleString()} points</Text>
             </TouchableOpacity>
             <NotificationBell userId={user.id} />
             </TourSpot>

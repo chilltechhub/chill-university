@@ -42,6 +42,10 @@ import WidgetBoard from '../components/WidgetBoard';
 import { WIDGET_DEFS, WIDGET_KEYS, WIDGET_BLURBS, CALM_WIDGETS } from '../data/dashboardWidgets';
 import { layoutFromWanted, reconcileWidgetLayout as reconcileLayout, todayLayoutFrom } from '../logic/widgetLayout';
 import { plannerStepParams } from '../logic/todayParams';
+import { momentum } from '../logic/receipts';
+import useProgressV2 from '../logic/useProgressV2';
+import Room from '../components/Room';
+import useRoomPlace from '../logic/useRoomPlace';
 // Today = the Planner as the dashboard (DASHBOARD_V2, shake-up P3).
 import useDashboardV2 from '../logic/useDashboardV2';
 import usePlanner, { PlannerSheets } from './today/usePlanner';
@@ -925,6 +929,11 @@ export default function HomeScreen() {
 
   const today   = new Date();
   const todayStr = toLocalDateStr(today); // local calendar — see logic/dateUtils
+  // Momentum, not a streak (shake-up P5): days you did something this week,
+  // from the same run the server keeps. Never "at risk", never a missed day.
+  const mom = momentum({ runDays: streakDays, lastActive: profile?.last_active_date, today: todayStr });
+  // Receipts, not a score: the daily XP drills retired with Challenges.
+  const [progressV2] = useProgressV2();
 
   // Rotating affirmation — changes each day
   const todaysAffirmation = affirmations.length > 0
@@ -1970,10 +1979,17 @@ export default function HomeScreen() {
     return () => { alive = false; };
   }, [dashboardV2, todayLayoutKey, savedLayout]); // eslint-disable-line react-hooks/exhaustive-deps
   // Unticked on "Pick your features": gone, tray included (a running goal's card stays).
+  // Your room is on the board only while it's placed on Today (shake-up
+  // P5); placing it there shows it, at the top if it was in the tray.
+  const [roomPlace] = useRoomPlace();
   const todayBoard = useMemo(() => {
     const gone = opened?.hidden?.widgets;
-    return (todayLayout || []).filter(l => !gone?.has(l.key) || goalWidgets.includes(l.key));
-  }, [todayLayout, opened, goalWidgets]);
+    const list = (todayLayout || []).filter(l => !gone?.has(l.key) || goalWidgets.includes(l.key));
+    if (roomPlace !== 'today') return list.filter(l => l.key !== 'room');
+    const at = list.find(l => l.key === 'room');
+    if (at && !at.hidden) return list;
+    return [{ key: 'room', hidden: false }, ...list.filter(l => l.key !== 'room')];
+  }, [todayLayout, opened, goalWidgets, roomPlace]);
   const changeTodayLayout = useCallback((next) => {
     setTodayLayout(prev => [...next, ...(prev || []).filter(l => !next.some(n => n.key === l.key))]);
   }, []);
@@ -1995,7 +2011,7 @@ export default function HomeScreen() {
       done: activeObjective.done, total: activeObjective.total, nextStep: activeObjective.nextStep,
     } : null,
     due: todayActivities.filter(a => a._src === 'task').map(a => ({ title: a.title, date: todayStr, ref: a })),
-    drill: drillPlanHome.total > 0 && drillPlanHome.doneCount < drillPlanHome.total ? { due: true, label: "Today's drills" } : null,
+    drill: !progressV2 && drillPlanHome.total > 0 && drillPlanHome.doneCount < drillPlanHome.total ? { due: true, label: "Today's drills" } : null,
     firstGoal: offerFirst ? { label: firstGoal.label, estimate: firstGoal.estimate } : null,
     today: todayStr,
   });
@@ -2373,13 +2389,14 @@ export default function HomeScreen() {
         },
         {
           key: 'dailyDrills', title: "Today's Drills",
-          render: () => (
+          // Retired with Challenges (PROGRESS_V2): Practice is the games now.
+          render: () => (progressV2 ? null : (
             <DailyDrillsWidget
               onOpenTraining={() => goToScreen(navigation, 'Training')}
               onOpenDrills={() => goToScreen(navigation, 'Training', { openDrills: true })}
               onPlay={(gameId) => navigation.navigate('Play', { gameId })}
             />
-          ),
+          )),
         },
         {
           key: 'studyBlocks', title: 'Study Blocks',
@@ -2520,6 +2537,10 @@ export default function HomeScreen() {
       render: () => boardWidgets.find(w => w.key === 'quests').render(),
     },
     {
+      key: 'room', title: 'Your room',
+      render: () => <View style={{ paddingHorizontal: s.lg }}><Room size={120} place="today" /></View>,
+    },
+    {
       key: 'review', title: 'Review',
       render: () => <TodayReview userId={userId} navigation={navigation} ui={ui} />,
     },
@@ -2546,7 +2567,9 @@ export default function HomeScreen() {
     // visible, unlike the two edit modals further down which already wrap
     // their own inputs this way.
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg0 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      {bgMode === 'player' && !calm && <PlayerMatchBackground background={playerBackground} />}
+      {/* With Today on, the scene behind it is "Room as Today's background":
+          only while the room is on Today (shake-up P5, §5.2). */}
+      {bgMode === 'player' && !calm && (!dashboardV2 || roomPlace === 'today') && <PlayerMatchBackground background={playerBackground} />}
       <ScrollView automaticallyAdjustKeyboardInsets
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.teal} />}
@@ -2582,13 +2605,14 @@ export default function HomeScreen() {
         {calm && (!dashboardV2 || (planner.view === 'Daily' && planner.isToday)) && (
           <CalmHome
             v2={dashboardV2}
+            room={roomPlace === 'today' ? <Room size={120} calm place="today" style={{ marginTop: 12 }} /> : null}
             order={todayShown.filter(l => CALM_WIDGETS.has(l.key)).map(l => l.key)}
             nextPick={pick} onActPick={actOnPick}
             personaKey={activeType}
             userId={userId}
             profileId={activeProfile?.id}
             weekday={today.toLocaleDateString('en-US', { weekday: 'long' })}
-            streakDays={streakDays}
+            streakDays={mom.days}
             activities={todayList()} desk={todos}
             focus={todayFocus}
             plan={todayPlan}
@@ -2649,16 +2673,13 @@ export default function HomeScreen() {
             <Text style={{ fontSize: t.xs, color: c.text3, ...ui.eyebrow, marginBottom: 0 }}>{dateStr}</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm }}>
-            {(streakDays || 0) > 0 && !editingWidgets && (
+            {mom.days > 0 && !editingWidgets && (
               <View
                 accessible
-                accessibilityLabel={
-                  streakState === 'rest-day' ? `${streakDays} day streak. Yesterday was a rest day; do one thing today to keep it.`
-                  : streakState === 'at-risk' ? `${streakDays} day streak. Do one thing today to keep it.`
-                  : `${streakDays} day streak`}
-                style={{ backgroundColor: c.bg1, borderRadius: 12, paddingHorizontal: s.sm, paddingVertical: 3, borderWidth: 0.5, borderColor: c.gold }}>
-                <Text style={{ fontSize: t.xs, color: c.gold, fontWeight: t.semibold }}>
-                  {showEmojis ? '🔥 ' : ''}{streakDays} day streak{streakState === 'rest-day' ? ' · rest day' : ''}
+                accessibilityLabel={mom.line}
+                style={{ backgroundColor: c.bg1, borderRadius: 12, paddingHorizontal: s.sm, paddingVertical: 3, borderWidth: 0.5, borderColor: c.teal }}>
+                <Text style={{ fontSize: t.xs, color: c.teal, fontWeight: t.semibold }}>
+                  {mom.days} day{mom.days === 1 ? '' : 's'} this week
                 </Text>
               </View>
             )}
