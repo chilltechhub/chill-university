@@ -49,4 +49,6 @@ export const WIDGET_INTROS = {
   missions:         "**Software for You** and the quick missions.",
   review:           "About **a minute of review**, only when something's due.",
   room:             "**Your room**: your character and pet. Edit it, or move it to You.",
+  deliverable:      "**Your work** for this unit. Keep going, plan time, or share it once it's in.",
+  money:            "Your **money sheet**: a little a month, and where it could get to.",
 };

@@ -919,6 +919,154 @@ export const BUILD_KINDS = [
       },
     ],
   },
+  /* ── A resume (Job to career, unit 5; shake-up P6) ───────────────────── */
+  // Leads with proof. Never invents experience: every line it can't know is
+  // a bracketed prompt for them to fill in.
+  {
+    id: 'resume',
+    label: 'A resume',
+    medium: 'Career',
+    icon: 'document-text-outline',
+    blurb: 'A one-page resume that leads with what you did. Ready to send.',
+    trophy: { art: 'trophyResume', name: 'Hire Me Scroll' },
+    growNext: 'Send it to one real job this week',
+    freeTools: [
+      { name: 'LibreOffice Writer', what: 'A free word processor. Open your resume and save it as a PDF.', url: 'https://www.libreoffice.org' },
+      { name: 'CareerOneStop', what: 'Free resume guides and job search tools from the US Dept. of Labor.', url: 'https://www.careeronestop.org/' },
+    ],
+    asks: [
+      { key: 'name', label: 'Your name', max: 40, placeholder: 'e.g. Sam Rivera' },
+      { key: 'role', label: 'The job you want', max: 50, placeholder: 'e.g. Junior web developer', fill: 'Junior web developer', hint: 'One job title. You can change it.' },
+    ],
+    deeper: { label: 'Career Explorer', route: 'Library', params: { screen: 'CareerExplorationScreen' } },
+    parts: [
+      {
+        id: 'lead', label: 'Top line', icon: 'flag-outline', start: 'summary',
+        options: [
+          { id: 'summary', label: 'A one-line summary', level: 1 },
+          { id: 'proof', label: 'Lead with proof', level: 1 },
+          { id: 'goal', label: 'The job, then the proof', level: 2 },
+        ],
+        lesson: {
+          says: 'A resume gets **seconds**, not minutes. The top line decides if someone reads the rest.',
+          tryIt: 'Switch the top line. Which would make you keep reading?',
+          check: { q: 'What decides if someone reads your resume?', options: ['The font', 'The top line', 'How long it is'], answer: 1 },
+        },
+      },
+      {
+        id: 'order', label: 'What comes first', icon: 'list-outline', start: 'experience',
+        options: [
+          { id: 'experience', label: 'Experience first', level: 1 },
+          { id: 'skills', label: 'Skills first', level: 1 },
+          { id: 'projects', label: 'Projects first', level: 2 },
+        ],
+        lesson: {
+          says: 'Put **your strongest proof first**. New to work? Projects and skills can lead.',
+          tryIt: 'Move each section to the top. Which shows you best?',
+          check: { q: 'What should come first?', options: ['Your strongest proof', 'Your oldest job', 'Your hobbies'], answer: 0 },
+        },
+      },
+      {
+        id: 'lines', label: 'How lines read', icon: 'create-outline', start: 'did',
+        options: [
+          { id: 'did', label: 'What I did', level: 1 },
+          { id: 'result', label: 'What changed', level: 1 },
+          { id: 'number', label: 'With a real number', level: 2 },
+        ],
+        lesson: {
+          says: 'A strong line says **what you did and what changed**. A real number makes it stick. Never invent one.',
+          tryIt: 'Read the example lines. Which sounds like someone you would hire?',
+          check: { q: 'What makes a resume line strong?', options: ['Big words', 'What you did and what changed', 'Your job title alone'], answer: 1 },
+        },
+      },
+      {
+        id: 'look', label: 'Look', icon: 'color-palette-outline', start: 'clean',
+        options: [
+          { id: 'clean', label: 'Clean', level: 1, ink: '#1d2125', accent: '#2f6f5e', serif: false },
+          { id: 'classic', label: 'Classic', level: 1, ink: '#1f1d1a', accent: '#6b4e2e', serif: true },
+          { id: 'bold', label: 'Bold header', level: 2, ink: '#14161a', accent: '#3d5afe', serif: false, band: true },
+        ],
+        lesson: {
+          says: 'Plain and **easy to scan** beats fancy. Many hiring systems read the text, not the design.',
+          tryIt: 'Try each look. Which reads fastest?',
+          check: { q: 'Why keep a resume plain?', options: ['It is easier to scan', 'Colour is not allowed', 'It looks lazy'], answer: 0 },
+        },
+      },
+    ],
+  },
+
+  /* ── A plan on one page (decision plan, compare sheet, reset plan) ───── */
+  // What's next units 3-4 and the Ground fix's "My reset plan".
+  {
+    id: 'plan',
+    label: 'A plan on one page',
+    medium: 'Planning',
+    icon: 'map-outline',
+    blurb: 'A choice with steps and dates, on one page. Compare first if you are not sure.',
+    trophy: { art: 'trophyPlan', name: 'Plan Tome' },
+    growNext: 'Put the first step on a real day in Today',
+    freeTools: [
+      { name: 'LibreOffice Calc', what: 'A free spreadsheet. Turn your plan into a checklist with dates.', url: 'https://www.libreoffice.org' },
+    ],
+    asks: [
+      { key: 'title', label: 'What is the plan about?', max: 60, placeholder: 'e.g. Trade school or college', fill: 'What I do after school' },
+      { key: 'choice', label: 'The choice, or the options', max: 80, placeholder: 'e.g. Electrician apprenticeship', hint: 'Two options? Write both, with "or".' },
+    ],
+    parts: [
+      {
+        id: 'shape', label: 'Kind of plan', icon: 'shapes-outline', start: 'decision',
+        options: [
+          { id: 'decision', label: 'Decision plan', level: 1 },
+          { id: 'compare', label: 'Compare sheet', level: 1 },
+          { id: 'reset', label: 'Reset plan', level: 2 },
+        ],
+        lesson: {
+          says: 'A plan on one page is **a choice with steps**. Not sure yet? Compare first. Sure? Decide and plan.',
+          tryIt: 'Switch the kind. Which fits where you are?',
+          check: { q: 'When should you compare first?', options: ['When you are not sure yet', 'Never', 'After you decide'], answer: 0 },
+        },
+      },
+      {
+        id: 'steps', label: 'Steps', icon: 'footsteps-outline', start: 'three',
+        options: [
+          { id: 'three', label: 'Three steps', level: 1, count: 3 },
+          { id: 'five', label: 'Five steps', level: 1, count: 5 },
+          { id: 'week', label: 'By week', level: 2, count: 4, weekly: true },
+        ],
+        lesson: {
+          says: 'Three steps you will **actually do** beat ten you will not. Start small.',
+          tryIt: 'Change the number of steps. Which could you finish?',
+          check: { q: 'How many steps is best?', options: ['As many as possible', 'Few enough to do', 'Exactly ten'], answer: 1 },
+        },
+      },
+      {
+        id: 'dates', label: 'When', icon: 'calendar-outline', start: 'dates',
+        options: [
+          { id: 'dates', label: 'A date each', level: 1 },
+          { id: 'soon', label: 'This week, this month', level: 1 },
+          { id: 'checkin', label: 'With a check-in', level: 2 },
+        ],
+        lesson: {
+          says: 'A step **with a date** is a plan. Without one it is a wish.',
+          tryIt: 'Switch how the dates read. Which would you keep?',
+          check: { q: 'What turns a wish into a plan?', options: ['A nice title', 'A date on each step', 'Telling nobody'], answer: 1 },
+        },
+      },
+      {
+        id: 'look', label: 'Look', icon: 'color-palette-outline', start: 'paper',
+        options: [
+          { id: 'paper', label: 'Paper', level: 1, bg: '#fbfaf6', card: '#ffffff', ink: '#1d2125', accent: '#2f6f5e' },
+          { id: 'night', label: 'Night', level: 1, bg: '#11151b', card: '#1a2029', ink: '#e8edf3', accent: '#7cc4b4' },
+          { id: 'sun', label: 'Sun', level: 2, bg: '#fff6e8', card: '#ffffff', ink: '#2a1f12', accent: '#d9822b' },
+        ],
+        lesson: {
+          says: 'Make it **easy to glance at**. You will read it on a busy day, not a calm one.',
+          tryIt: 'Pick the look you would check on a busy day.',
+          check: { q: 'Who is the plan really for?', options: ['You, on a busy day', 'A teacher', 'Nobody'], answer: 0 },
+        },
+      },
+    ],
+  },
 ];
 
 export const BUILD_KIND_MAP = Object.fromEntries(BUILD_KINDS.map(k => [k.id, k]));

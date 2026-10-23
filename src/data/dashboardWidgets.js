@@ -71,6 +71,9 @@ export const WIDGET_DEFS = [
   { key: 'review',    title: 'Review' },
   // Your room, when it's placed on Today (shake-up P5, §5.2).
   { key: 'room',      title: 'Your room' },
+  // Your work and your money sheet (shake-up P6): src/screens/today/WorkWidgets.js.
+  { key: 'deliverable', title: 'Your work' },
+  { key: 'money',       title: 'Money sheet' },
 ];
 export const WIDGET_KEYS = WIDGET_DEFS.map(w => w.key);
 
@@ -113,6 +116,8 @@ export const WIDGET_BLURBS = {
   missions:         'Software for You and the quick missions.',
   review:           'About a minute of review, when something is due.',
   room:             'Your character and pet, in a room you decorate.',
+  deliverable:      "What you're making for this unit: where it stands, and when you aim to hand it in.",
+  money:            'Your money sheet: what you save for, and where a little a month could get to.',
 };
 
 // A widget added by an app update is appended HIDDEN, so an update never
@@ -124,18 +129,19 @@ export const NEW_WIDGETS_SHOWN = new Set(['goalSteps', 'stageSteps']);
 // Keys Today adds in later phases (shake-up plan §3.3). Each moves from here
 // into WIDGET_DEFS in the PR that builds it, together with its BASE_WIDGETS
 // or pickables entry, or check-pickables goes red.
-export const PLANNED_WIDGET_KEYS = ['deliverable', 'money', 'assignments'];
+export const PLANNED_WIDGET_KEYS = ['assignments'];
 
 // Today's board (DASHBOARD_V2): the keys it offers, in tray order. The old
 // keys it replaces (focus, activities, compass, goalSteps, stageSteps,
 // quests, checkins, wisdom) aren't here, so a saved Home layout read for
 // Today takes their new names through WIDGET_ALIASES (widgetLayout.js
-// todayLayoutFrom). hq and desk stay until P5 / P6 give them a new home.
+// todayLayoutFrom). 'hq' became 'room' (P5) and 'desk' became 'deliverable'
+// (P6), so a saved place for either carries over.
 export const TODAY_KEYS = [
   'nextStep', 'quickAdd', 'yourDay', 'find', 'dream', 'dueSoon', 'stillOpen', 'checkin',
   // 'hq' (the level card) became 'room' in P5 (WIDGET_ALIASES carries a
   // saved place over).
-  'unit', 'missions', 'review', 'room', 'desk', 'ideas', 'builds', 'wayfinder',
+  'unit', 'missions', 'review', 'room', 'deliverable', 'money', 'ideas', 'builds', 'wayfinder',
   'habitRings', 'lifeAreas', 'dailyDrills', 'studyBlocks', 'classProgress',
   'orgSnapshot', 'systemsCheck', 'recurringOps', 'vaultStatus', 'founderQuest', 'targetsReadiness',
 ];
@@ -193,4 +199,6 @@ export const WIDGET_ALIASES = {
   missions:         'missions',
   review:           'review',
   room:             'room',
+  deliverable:      'deliverable',
+  money:            'money',
 };

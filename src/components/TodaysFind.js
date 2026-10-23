@@ -33,6 +33,7 @@ import { loadFinds, findAllowed, markFindTried, BUNDLED_FINDS } from '../api/fin
 import {
   pickTodaysFind, findKey, readFindState, declinesLeft, withDecline, withTried, EMPTY_FIND_STATE,
 } from '../logic/todaysFind';
+import { recordAction } from '../logic/gamificationService';
 
 // The catalog's areaId values are the eight life areas (plus 'general').
 // Labels inline rather than importing LifeAreaScreen into Home's tree.
@@ -89,6 +90,7 @@ export default function TodaysFind({ userId, variant = 'card', pal }) {
       if (userId) await markFindTried(userId, find, { note: "Tried it from Today's Find" });
       setStateRaw(withTried(state, find, day));
       signalAction('find-tried');
+      recordAction('taste_logged', find.id);
     } finally {
       setBusy(false);
     }

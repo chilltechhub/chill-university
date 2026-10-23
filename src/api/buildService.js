@@ -4,9 +4,10 @@
 // dreamService.js: one copy in memory with listeners, so the Studio list
 // and an open Build show the same thing the moment either saves.
 //
-// Device only for now. The Studio is a prototype until five real people
-// have used it (docs/studio-plan.md); once it earns a `builds` table, the
-// sync goes here the way dreamService does it, and nothing above changes.
+// The phone holds them. Signed in, each save also goes to the `builds`
+// table (20261023120000_shakeup_p6.sql, shake-up P6), and what was already
+// on the phone uploads once. That table is hand-applied: until it exists
+// the upload fails quietly and the phone copy is the record.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabaseClient';
 import { normalizeBuild } from '../logic/builds';
@@ -42,6 +43,27 @@ export const latestBuilds = () => latest;
 
 const newestFirst = (a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''));
 
+const toRow = (userId, b) => ({ id: b.id, user_id: userId, kind: b.kind, data: b, updated_at: b.updatedAt || new Date().toISOString() });
+const missingTable = (error) => error && (error.code === '42P01' || error.code === 'PGRST205');
+
+async function pushBuilds(userId, list) {
+  if (!userId || !list.length) return false;
+  try {
+    const { error } = await supabase.from('builds').upsert(list.map(b => toRow(userId, b)), { onConflict: 'user_id,id' });
+    if (error) { if (!missingTable(error)) console.warn('builds push', error.message); return false; }
+    return true;
+  } catch { return false; }
+}
+
+// Once per account on this phone: everything made before the table existed.
+async function uploadOnce(userId, list) {
+  const flag = `@cth_builds_uploaded_${userId}`;
+  try {
+    if (await AsyncStorage.getItem(flag)) return;
+    if (await pushBuilds(userId, list)) await AsyncStorage.setItem(flag, '1');
+  } catch {}
+}
+
 export async function loadBuilds(userId) {
   let list = [];
   try {
@@ -52,6 +74,7 @@ export async function loadBuilds(userId) {
     console.warn('builds load', e?.message);
   }
   announce(userId, list);
+  if (userId) uploadOnce(userId, list);
   return list;
 }
 
@@ -76,6 +99,7 @@ export async function saveBuild(userId, build) {
   if (!next) return null;
   const current = cachedBuilds(userId) || await loadBuilds(userId);
   await write(userId, [next, ...current.filter(b => b.id !== next.id)].sort(newestFirst));
+  if (userId) pushBuilds(userId, [next]);
   return next;
 }
 

@@ -22,6 +22,8 @@ import { rootStackRouter } from '../logic/navRules';
 import { useAccess } from '../../context/AccessContext';
 import useTabsV2 from '../logic/useTabsV2';
 import { gatedScreen } from '../components/FeatureGate';
+import PathScreen from './learn/PathScreen';
+import UnitScreen from './learn/UnitScreen';
 
 // Practice: the games, on top of Learn (shake-up P4). Gated like the games
 // were, so a locked shelf shows its lock, not the games.
@@ -45,6 +47,9 @@ export default function TrainingNav() {
       <Stack.Screen name="TrainingHome" component={GamesScreen} options={{ title: 'Learn' }} />
       <Stack.Screen name="Practice" component={GatedPractice} options={{ title: 'Practice' }} />
       <Stack.Screen name="ClassesStack" component={ClassesStack} />
+      {/* My path and its units (shake-up P6), on top of Learn. */}
+      <Stack.Screen name="PathScreen" component={PathScreen} options={{ title: 'My path' }} />
+      <Stack.Screen name="UnitScreen" component={UnitScreen} options={{ title: 'Unit' }} />
     </Stack.Navigator>
   );
 }

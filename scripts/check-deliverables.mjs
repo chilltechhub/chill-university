@@ -67,6 +67,115 @@ const due = [{ title: 'Essay', date: '2026-10-24' }, { title: 'Form', date: '202
   check('chip: junk counts are clamped', N.pathChip({ active: true, label: 'X', done: 9, total: 2 }).pct === 100 && N.pathChip({ active: true, label: 'X', done: -1, total: 0 }).pct === 0);
 }
 
+// ── Deliverables (src/logic/deliverables.js) and the units (src/data/units.js), P6 ──
+{
+  const asUrl = (code) => 'data:text/javascript,' + encodeURIComponent(code);
+  const D = await import(asUrl(await text('src/logic/deliverables.js')));
+  const U = await import(asUrl(await text('src/data/units.js')));
+  const B = await import(asUrl(await text('src/data/builds.js')));
+  const kinds = new Set(B.BUILD_KINDS.map(k => k.id));
+
+  // Every unit is complete enough to walk and hand in.
+  for (const u of U.UNITS) {
+    const d = u.deliverable || {};
+    check(`unit ${u.id}: three self-check lines`, (d.rubric || []).length === 3, d.rubric);
+    check(`unit ${u.id}: a deliverable kind`, ['build', 'checklist', 'reflection', 'test'].includes(d.kind), d.kind);
+    if (d.kind === 'build') check(`unit ${u.id}: its Build kind exists`, kinds.has(d.buildKind), d.buildKind);
+    if (d.kind === 'checklist') check(`unit ${u.id}: checklist items`, (d.items || []).length >= 2);
+    if (d.kind === 'reflection' || d.kind === 'test') check(`unit ${u.id}: prompts`, (d.prompts || []).length >= 2);
+    const signals = [...u.beats.map(b => U.beatSignal(u, b)), U.handInSignal(u)];
+    check(`unit ${u.id}: no two steps share a signal`, new Set(signals).size === signals.length, signals);
+    check(`unit ${u.id}: every beat says something short`, u.beats.every(b => b.says && b.says.split(/\s+/).length <= 40));
+    check(`unit ${u.id}: every source has a review date`, (u.sources || []).every(s => s.url && s.reviewed && s.license));
+  }
+  // Map cards: the same template every time, every fact sourced and dated
+  // (plan §4.2). maps.js imports the review date from units.js: inline it.
+  {
+    const mapsSrc = (await text('src/data/maps.js')).replace("from './units'", `from "${asUrl(await text('src/data/units.js'))}"`);
+    const M = await import(asUrl(mapsSrc));
+    for (const [key, map] of Object.entries(M.MAPS)) {
+      for (const card of map.cards) {
+        check(`map ${key}/${card.id}: the whole template`, ['what', 'takes', 'costs', 'leadsTo', 'firstStep'].every(f => typeof card[f] === 'string' && card[f].trim()), card.id);
+        // A card that states no facts (the gap year) needs no source; one
+        // that links out does.
+        check(`map ${key}/${card.id}: sourced, licensed, dated`, (!card.link || (card.sources || []).length > 0) && (card.sources || []).every(x => /^https:\/\//.test(x.url) && x.license && /^\d{4}-\d{2}-\d{2}$/.test(x.reviewed)));
+      }
+    }
+    check('maps: every beat that names a map has one', U.UNITS.every(u => u.beats.every(b => !b.map || M.MAPS[b.map])));
+  }
+  // Credits: every source a unit names is a real link with a licence.
+  check('sources: https, a licence, a date', U.UNITS.flatMap(u => u.sources || []).every(x => /^https:\/\//.test(x.url) && x.license && /^\d{4}-\d{2}-\d{2}$/.test(x.reviewed)));
+  check('units: each one opens the Showcase when done', U.UNIT_OBJECTIVES.every(o => o.unlocks.includes('portfolio')));
+  const ids = new Set(U.UNITS.map(u => u.id));
+  check('units: ids are unique', ids.size === U.UNITS.length);
+  check('units: each path has five, Ground one per area', ['like', 'next', 'money', 'career'].every(p => U.unitsForPath(p).length === 5) && U.unitsForPath('ground').length === 8);
+  check('units: GED comes first on What\'s next for the GED start', U.unitsForPath('next', { startPoint: 'ged' })[0].id === 'unit-ged-1' && U.unitsForPath('next', { startPoint: 'ged' }).length === 10);
+  const byId = Object.fromEntries(U.UNIT_OBJECTIVES.map(o => [o.id, o]));
+  check('unit objectives: each unit chains to the next on its path', byId['unit-money-1'].next === 'unit-money-2' && byId['unit-money-5'].next === null && byId['unit-career-5'].next === null);
+  check('unit objectives: GED leads into What\'s next', byId['unit-ged-5'].next === 'unit-next-1');
+  check('unit objectives: the last step is the hand-in', U.UNIT_OBJECTIVES.every(o => o.steps[o.steps.length - 1].signal === `deliverable-handed-in:${o.id}`));
+  check('unit objectives: every next names a real unit', U.UNIT_OBJECTIVES.every(o => !o.next || ids.has(o.next)));
+
+  // The deliverable rules.
+  const money2 = U.UNIT_BY_ID['unit-money-2'];
+  let d = D.newDeliverable(money2, '2026-10-22T10:00:00Z');
+  check('new: To do, nothing ticked', d.status === 'todo' && d.checks.length === 3 && d.checks.every(c => !c) && d.id === 'dlv-unit-money-2');
+  check('new: not ready to hand in', !D.canHandIn(d, money2) && D.handInMissing(d, money2).length === 2);
+  d = D.touch(d, { ref: 'build-1' }, '2026-10-22T11:00:00Z');
+  check('touch: making the Build moves it to Doing', d.status === 'doing');
+  d = D.touch(d, { checks: [true, true, false] });
+  check('self-check: one line left blocks the hand-in', !D.canHandIn(d, money2) && D.handInMissing(d, money2)[0] === 'Tick 1 more on the self-check');
+  d = D.touch(d, { checks: [true, true, true] });
+  check('ready: work plus every check', D.canHandIn(d, money2));
+  const handed = D.handIn(d, '2026-10-23T09:00:00Z');
+  check('hand in: status and snapshot', handed.status === 'handed' && handed.snapshotAt === '2026-10-23T09:00:00Z' && D.statusLabel(handed) === 'Handed in');
+  check('hand in: once', !D.canHandIn(handed, money2));
+  const shown = D.show(handed, '2026-10-24T09:00:00Z');
+  check('show: only after hand-in', shown.status === 'shown' && D.show(D.newDeliverable(money2), 'x').status === 'todo');
+  const fb = D.addFeedback(shown, { who: 'my aunt', said: 'Make the goal bigger', change: 'Raise it' }, '2026-10-25T09:00:00Z');
+  check('feedback: Reviewed once someone looked', D.statusLabel(fb) === 'Reviewed' && fb.feedback.length === 1);
+  check('feedback: an empty note is ignored', D.addFeedback(shown, { who: ' ', said: '' }).feedback.length === 0);
+  const changed = D.markChanged(fb, 0);
+  {
+    const u = U.UNIT_BY_ID['unit-money-1'];
+    const fresh = D.newDeliverable(u, '2026-10-23T00:00:00Z');
+    check('deliverableStep: a fresh one is 0 done, so not "halfway"', D.deliverableStep(fresh, u).done === 0);
+    const half = D.touch(fresh, { checks: [true, false, false] }, '2026-10-23T00:00:00Z');
+    const st = D.deliverableStep(half, u);
+    check('deliverableStep: counts the work and each self-check line', st.done === 1 && st.total === 1 + u.deliverable.rubric.length, JSON.stringify(st));
+    check('deliverableStep: opens its unit', st.open.screen === 'UnitScreen' && st.open.params.unitId === u.id);
+    check('deliverableStep: halfway work is the next step', N.nextStep({ deliverable: st, objective }).kind === 'deliverable');
+  }
+  check('feedback: I changed it', D.deliverableCounts([changed]).changed === 1 && D.deliverableCounts([changed]).looked === 1);
+
+  const ref = U.UNIT_BY_ID['unit-like-2'];
+  let r = D.newDeliverable(ref);
+  r = D.touch(r, { content: { 0: 'Tried a beat maker' } });
+  check('reflection: writing moves it to Doing, all lines needed', r.status === 'doing' && !D.workDone(r, ref));
+  r = D.touch(r, { content: { 0: 'a', 1: 'b', 2: 'c' } });
+  check('reflection: every line filled is the work', D.workDone(r, ref));
+  const list = U.UNIT_BY_ID['unit-money-1'];
+  let c = D.newDeliverable(list);
+  c = D.touch(c, { content: { 0: true, 1: true } });
+  check('checklist: every item ticked', !D.workDone(c, list) && D.workDone(D.touch(c, { content: { 0: true, 1: true, 2: true } }), list));
+
+  const late = { ...D.newDeliverable(money2), aimFor: '2026-10-01' };
+  check('aim-for: past is Still open, never overdue', D.aimForLabel(late, TODAY) === 'Still open');
+  check('aim-for: today and later', D.aimForLabel({ ...late, aimFor: TODAY }, TODAY) === 'Aim: today' && D.aimForLabel({ ...late, aimFor: '2026-11-03' }, TODAY) === 'Aim: Nov 3');
+  check('aim-for: handed-in work has no date nag', D.aimForLabel({ ...handed, aimFor: '2026-10-01' }, TODAY) === null);
+
+  const board = D.boardOf([d, handed, D.newDeliverable(ref), shown]);
+  check('board: four columns', board.todo.length === 1 && board.doing.length === 1 && board.handed.length === 1 && board.shown.length === 1);
+  check('in flight: Doing first', D.inFlight([D.newDeliverable(ref), d], 'unit-like-2').id === d.id);
+  check('in flight: else To do on the active unit', D.inFlight([D.newDeliverable(ref)], 'unit-like-2').unitKey === 'unit-like-2' && D.inFlight([], 'x') === null);
+  check('progress: halfway reads as halfway', Math.abs(D.progressOf(D.touch(D.newDeliverable(money2), { ref: 'b', checks: [true, false, false] }), money2) - 0.5) < 0.01);
+
+  const ms = D.milestones({ deliverables: [changed], units: [{ id: 'unit-money-1', at: '2026-10-20T00:00:00Z' }], tastes: [{ at: '2026-10-01' }, { at: '2026-10-02' }, { at: '2026-10-03' }] });
+  check('milestones: firsts with dates, in order', ms.map(m => m.key).join() === 'three-tastes,first-unit,first-handed,first-shown,first-feedback', ms.map(m => m.key));
+  check('milestones: no counts to chase', ms.every(m => !/\d+ (points|xp|level)/i.test(m.label)));
+  check('normalize: junk is dropped', D.normalizeDeliverable(null) === null && D.normalizeDeliverable({ id: 'x', status: 'weird', aimFor: 'soon' }).status === 'todo' && D.normalizeDeliverable({ id: 'x', aimFor: 'soon' }).aimFor === null);
+}
+
 if (problems.length) {
   console.error(`check-deliverables: ${problems.length} problem(s)`);
   problems.forEach(p => console.error('  - ' + p));

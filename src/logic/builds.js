@@ -209,6 +209,8 @@ export function buildTitle(build) {
   if (kind.id === 'logic') return a.claim || 'My argument';
   if (kind.id === 'body') return a.name ? `${a.name}’s body dashboard` : 'My body dashboard';
   if (kind.id === 'launch') return a.name ? `${a.name}’s launchpad` : 'My launchpad';
+  if (kind.id === 'resume') return a.name ? `${a.name}’s resume` : 'My resume';
+  if (kind.id === 'plan') return a.title || 'My plan';
   return a.name || kind.label;
 }
 

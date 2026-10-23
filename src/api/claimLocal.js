@@ -20,6 +20,8 @@ import { forgetWelcomeAnswers } from './welcomeStore';
 import { claimRows } from '../logic/agendaRows';
 import { isSamePlan } from '../logic/plannerLayout';
 import { isDreamEmpty } from '../logic/dream';
+import { claimDeliverables } from './deliverableService';
+import { claimRatings } from './lifeAreaRatings';
 
 /**
  * `profileId`: the profile the plans belong to (the new master profile),
@@ -29,6 +31,11 @@ import { isDreamEmpty } from '../logic/dream';
 export async function claimLocal(userId, { profileId = null } = {}) {
   const moved = { builds: 0, plans: 0, dream: false };
   if (!userId) return moved;
+
+  // First, while the guest's page and welcome answers are still here: their
+  // deliverables (the welcome's page becomes one) and life-area ratings.
+  try { moved.deliverables = await claimDeliverables(userId); } catch (e) { console.warn('[claimLocal] deliverables', e?.message); }
+  try { moved.ratings = await claimRatings(userId); } catch (e) { console.warn('[claimLocal] ratings', e?.message); }
 
   try {
     const guestBuilds = await loadBuilds(null);

@@ -84,8 +84,10 @@ export default function useGuidedFirstGoal(routeName, { hold = false } = {}) {
   const intro = activeObjective?.active && activeObjective.objective ? activeObjective : null;
   const isFirst = !!intro?.objective?.intro;
   const goalId = intro?.objective?.id || null;
+  // A path's unit (shake-up P6) guides itself: its screen lists every beat
+  // with its own button, so this walkthrough would only point back at it.
   const script = useMemo(
-    () => (goalId ? (FIRST_GOAL_GUIDE[goalId] || autoScript(getObjective(goalId))) : null),
+    () => (goalId && !getObjective(goalId)?.unit ? (FIRST_GOAL_GUIDE[goalId] || autoScript(getObjective(goalId))) : null),
     [goalId],
   );
   // What the guide is on: the next unticked step, or claiming the goal.

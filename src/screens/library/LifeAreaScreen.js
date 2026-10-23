@@ -13,6 +13,7 @@ import { goBackTo } from '../../logic/appRoutes';
 import { useTheme } from '../../../context/ThemeContext';
 import { useUIPrefs } from '../../../context/UIPrefsContext';
 import { supabase } from '../../api/profileScopedClient';
+import { addRating } from '../../api/lifeAreaRatings';
 import { cacheRead, cacheWrite, fetchFailed, isOnline, offlineWrite } from '../../api/offlineCache';
 import RelatedLinks, { EXCLUDE_LINK_FILTER } from './RelatedLinks';
 import TourSpot from '../../components/TourSpot';
@@ -407,6 +408,11 @@ export default function LifeAreaScreen() {
     setRatingNoteSaved(false);
     // Rating is how the guided first goal knows the step is done.
     signalAction('area-rated', { area: area.id });
+    // Kept as history (then vs now); a second rating is the Ground fix's
+    // re-rate step (shake-up P6).
+    addRating(userId, area.id, val).then(({ previous }) => {
+      if (previous) signalAction('area-rerated', { area: area.id });
+    }).catch(() => {});
     const stars = '★'.repeat(val) + '☆'.repeat(5 - val);
     const entry = {
       user_id: userId, area_id: area.id,

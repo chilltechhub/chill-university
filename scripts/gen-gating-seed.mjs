@@ -31,7 +31,11 @@ import { readFile } from 'node:fs/promises';
 // directly as modules without pulling in the React Native graph.
 async function load(path) {
   const src = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
-  return import('data:text/javascript,' + encodeURIComponent(src));
+  // objectives.js imports the units (src/data/units.js, plain data): inline it.
+  const units = src.includes("from './units'")
+    ? await readFile(new URL('../src/data/units.js', import.meta.url), 'utf8') : null;
+  const code = units ? src.replace("from './units'", `from "data:text/javascript,${encodeURIComponent(units)}"`) : src;
+  return import('data:text/javascript,' + encodeURIComponent(code));
 }
 
 const { FEATURES }   = await load('src/data/featureCatalog.js');

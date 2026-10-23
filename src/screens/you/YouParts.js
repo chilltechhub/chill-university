@@ -2,7 +2,9 @@
 // The pieces You adds around the profile (docs/shake-up-plan-2026-10-21.md
 // §2.2, P4): the header with its close, search, your life areas (the old
 // Library → Life page, "the ground"), and the footer that holds what the top
-// bar's crest menu used to, plus "What's next?".
+// bar's crest menu used to, plus "What's next?". P6 adds your shelf (work
+// handed in), work in the receipts with its dated firsts, and each area's
+// rating then vs now.
 //
 // Every row that goes somewhere leaves You first (YouScreen's `leave`), so
 // back from Settings lands on the app, not on the dropdown.
@@ -23,6 +25,11 @@ import { receipt } from '../../logic/builds';
 import { receipts, momentum } from '../../logic/receipts';
 import { getObjective } from '../../data/objectives';
 import { todayStr } from '../../logic/dateUtils';
+import useDeliverables from '../../logic/useDeliverables';
+import usePath from '../../logic/usePath';
+import { deliverableCounts, milestones, statusLabel } from '../../logic/deliverables';
+import { UNIT_BY_ID } from '../../data/units';
+import { loadRatings, onRatingsChange } from '../../api/lifeAreaRatings';
 
 export function YouHeader({ onClose }) {
   const { colors: c, typography: t, spacing: s } = useTheme();
@@ -51,23 +58,58 @@ export function YouSearch({ onOpen }) {
 }
 
 // Your life areas: the old Library → Life page, now part of You (§2.1).
-export function YouGround({ onOpenArea }) {
-  const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
+// "The ground" (P6): each area's latest rating out of 5 and, once it has
+// two, then vs now. The shakiest answer being the ground puts a Ground fix
+// first, one tap away.
+export function YouGround({ onOpenArea, onOpenPath }) {
+  const { colors: c, typography: t, spacing: s, radius: r, accent } = useTheme();
   const { isFeatureShown, experienceMode } = useAccess();
+  const { user } = useUserProgress();
+  const { groundFirst } = usePath();
+  const [ratings, setRatings] = useState([]);
+  const userId = user?.id || null;
+  useEffect(() => {
+    let alive = true;
+    loadRatings(userId).then(l => { if (alive) setRatings(l); }).catch(() => {});
+    const off = onRatingsChange((uid, l) => { if ((uid || null) === userId) setRatings(l); });
+    return () => { alive = false; off(); };
+  }, [userId]);
   if (experienceMode !== 'auto' && !isFeatureShown('life-areas')) return null;
+  const of = (id) => {
+    const mine = ratings.filter(x => x.area === id);
+    if (!mine.length) return null;
+    const now = mine[mine.length - 1].rating;
+    return { now, change: mine.length > 1 ? now - mine[0].rating : null };
+  };
   return (
     <View style={{ marginTop: s.lg }}>
-      <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1, marginBottom: 2 }}>Your life areas</Text>
-      <Text style={{ fontSize: t.sm, color: c.text3, marginBottom: s.sm }}>How each part of your life is going. <Text style={{ fontWeight: t.bold, color: c.text2 }}>Tap one</Text> to open it.</Text>
+      <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1, marginBottom: 2 }}>The ground</Text>
+      <Text style={{ fontSize: t.sm, color: c.text3, marginBottom: s.sm }}>How each part of your life is going, 1 to 5. <Text style={{ fontWeight: t.bold, color: c.text2 }}>Tap one</Text> to rate it.</Text>
+      {groundFirst && !!onOpenPath && (
+        <TouchableOpacity onPress={onOpenPath} accessibilityRole="button" accessibilityLabel="Start a Ground fix"
+          style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, padding: s.md, marginBottom: s.sm, borderRadius: r.lg, borderWidth: 1, borderColor: accent.primary, backgroundColor: accent.primary + '10' }}>
+          <Ionicons name="leaf-outline" size={16} color={accent.primary} />
+          <Text style={{ flex: 1, fontSize: t.sm, color: c.text1 }}>You said the ground feels shakiest. <Text style={{ fontWeight: t.bold }}>One small fix first.</Text></Text>
+          <Ionicons name="chevron-forward" size={15} color={accent.primary} />
+        </TouchableOpacity>
+      )}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm }}>
-        {LIFE_AREAS.map(area => (
-          <TouchableOpacity key={area.id} onPress={() => onOpenArea(area.id)} accessibilityRole="button" accessibilityLabel={`${area.label}. Open this life area`}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: r.full,
-              backgroundColor: (area.color || c.teal) + '18', borderWidth: 1, borderColor: (area.color || c.teal) + '55' }}>
-            {!!area.icon && <Ionicons name={area.icon} size={14} color={area.color || c.teal} />}
-            <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1 }}>{area.label}</Text>
-          </TouchableOpacity>
-        ))}
+        {LIFE_AREAS.map(area => {
+          const tint = area.color || c.teal;
+          const rt = of(area.id);
+          const trend = rt?.change == null ? '' : rt.change > 0 ? `, up ${rt.change} since your first rating` : rt.change < 0 ? `, down ${-rt.change} since your first rating` : ', same as your first rating';
+          return (
+            <TouchableOpacity key={area.id} onPress={() => onOpenArea(area.id)} accessibilityRole="button"
+              accessibilityLabel={`${area.label}${rt ? `, ${rt.now} out of 5${trend}` : ', not rated yet'}. Open this life area`}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: r.full,
+                backgroundColor: tint + '18', borderWidth: 1, borderColor: tint + '55' }}>
+              {!!area.icon && <Ionicons name={area.icon} size={14} color={tint} />}
+              <Text style={{ fontSize: t.sm, fontWeight: t.semibold, color: c.text1 }}>{area.label}</Text>
+              {!!rt && <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: c.text2 }}>{rt.now}/5</Text>}
+              {!!rt?.change && <Ionicons name={rt.change > 0 ? 'arrow-up' : 'arrow-down'} size={12} color={c.text2} />}
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </View>
   );
@@ -158,7 +200,10 @@ export function YouReceipts({ userId, onSeeAll }) {
   const stepsDone = completedObjectiveIds.reduce((n, id) => n + (getObjective(id)?.steps?.length || 0), 0)
     + (activeObjective?.active ? activeObjective.done || 0 : 0);
   const tastes = Array.isArray(findState?.tried) ? findState.tried.length : 0;
-  const rc = receipts({ builds, stepsDone, tastes });
+  const { list: work } = useDeliverables();
+  const rc = receipts({ builds, stepsDone, tastes, work: deliverableCounts(work) });
+  // The firsts, with their dates (§6): never a count to chase.
+  const firsts = milestones({ deliverables: work });
   const mom = momentum({ runDays: streakDays, lastActive: profile?.last_active_date, today: todayStr() });
 
   return (
@@ -173,6 +218,17 @@ export function YouReceipts({ userId, onSeeAll }) {
               <View key={it.key} style={{ minWidth: 88 }} accessible accessibilityLabel={`${it.value} ${it.label}`}>
                 <Text style={{ fontSize: t.xl, fontWeight: '800', color: accent.primary }}>{it.value}</Text>
                 <Text style={{ fontSize: t.xs, color: c.text2 }}>{it.label}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+        {!!firsts.length && (
+          <View style={{ marginTop: s.md, gap: 4 }}>
+            {firsts.map(m => (
+              <View key={m.key} style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm }}>
+                <Ionicons name="flag-outline" size={13} color={c.text3} />
+                <Text style={{ flex: 1, fontSize: t.xs, color: c.text2 }}>{m.label}</Text>
+                <Text style={{ fontSize: t.xs, color: c.text3 }}>{shortDate(m.at)}</Text>
               </View>
             ))}
           </View>
@@ -196,5 +252,50 @@ export function YouReceipts({ userId, onSeeAll }) {
         </View>
       </View>
     </TourSpot>
+  );
+}
+
+const shortDate = (iso) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
+/**
+ * Your shelf (shake-up P6): the work you handed in, newest first, each back
+ * to its unit. The Showcase is where you show it to others.
+ *   onOpen(screen, params)  You's: leaves You, then opens it
+ */
+export function YouShelf({ onOpen }) {
+  const { colors: c, typography: t, spacing: s, radius: r, accent } = useTheme();
+  const { list } = useDeliverables();
+  const { accessFor } = useAccess();
+  const done = list.filter(d => d.status === 'handed' || d.status === 'shown')
+    .sort((a, b) => String(b.snapshotAt || '').localeCompare(String(a.snapshotAt || '')));
+  if (!done.length) return null;
+  const showcase = accessFor?.('portfolio')?.available;
+  return (
+    <View style={{ width: '100%', marginTop: s.md }}>
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: s.sm }}>
+        <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }} accessibilityRole="header">Your shelf</Text>
+        {showcase && (
+          <TouchableOpacity onPress={() => onOpen('PortfolioScreen')} accessibilityRole="button" accessibilityLabel="Open your Showcase">
+            <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: accent.primary }}>Showcase →</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      <View style={{ borderRadius: r.lg, backgroundColor: c.bg1, borderWidth: 0.5, borderColor: c.border, overflow: 'hidden' }}>
+        {done.slice(0, 5).map((d, i) => (
+          <TouchableOpacity key={d.id} onPress={() => onOpen('UnitScreen', { unitId: d.unitKey })} accessibilityRole="button"
+            accessibilityLabel={`${d.title}. ${statusLabel(d)}`}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, paddingHorizontal: s.md, paddingVertical: 11, borderTopWidth: i ? 0.5 : 0, borderTopColor: c.border }}>
+            <Ionicons name={d.status === 'shown' ? 'star' : 'checkmark-done-circle'} size={18} color={accent.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: t.md, fontWeight: t.semibold, color: c.text1 }} numberOfLines={1}>{d.title}</Text>
+              <Text style={{ fontSize: t.xs, color: c.text3 }} numberOfLines={1}>{[UNIT_BY_ID[d.unitKey]?.label, statusLabel(d), shortDate(d.snapshotAt)].filter(Boolean).join(' · ')}</Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
   );
 }

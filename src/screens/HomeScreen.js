@@ -54,11 +54,15 @@ import AddSheet from './today/AddSheet';
 import WeekView from './today/WeekView';
 import MonthView from './today/MonthView';
 import { NextStepWidget, QuickAddWidget, YourDayWidget, StillOpenWidget, DueSoonWidget } from './today/TodayWidgets';
+import { DeliverableWidget, MoneyWidget } from './today/WorkWidgets';
 import CalmWeek from '../components/CalmWeek';
 import { useRightNow } from '../components/RightNowCard';
 import { nextStep } from '../logic/nextStep';
 import { tailor } from '../logic/tailoring';
 import { getObjective } from '../data/objectives';
+import { UNIT_BY_ID } from '../data/units';
+import useDeliverables from '../logic/useDeliverables';
+import { inFlight, deliverableStep } from '../logic/deliverables';
 import { loadDream, onDreamChange } from '../api/dreamService';
 import { loadWelcome } from '../api/welcomeStore';
 import { showWhatsNext } from '../logic/useGuidedFirstGoal';
@@ -808,6 +812,7 @@ export default function HomeScreen() {
   // own layout and an editor offering this type's widgets; 'doors' offers
   // all twenty.
   const { can, opened, isScreenVisible, isGameVisible, isFeatureShown, signalAction, stageEvents, activeObjective, purposeKey, firstGoalId, completedObjectiveIds = [] } = useAccess();
+  const { list: deliverables } = useDeliverables();
   // Training games unticked on "Pick your features": no Play button either.
   // Settings → "Study & Play buttons" can switch both off.
   const [quickButtons] = useSetting(SETTING_KEYS.HOME_QUICK_BUTTONS, true);
@@ -2004,8 +2009,17 @@ export default function HomeScreen() {
   const rightNow = useRightNow(todayList(), todos);
   const firstGoal = getObjective(firstGoalId);
   const offerFirst = !activeObjective?.active && firstGoal && !completedObjectiveIds.some(id => getObjective(id)?.intro);
+  // Your work in flight, then the unit's next beat (shake-up P6). A unit is
+  // an objective too: the unit input names it as one, and the objective
+  // input stays for finishing it ("claim").
+  const work = inFlight(deliverables, activeObjective?.active ? activeObjective.objective?.id : null);
+  const onUnit = activeObjective?.active && activeObjective.objective?.unit;
   const pick = nextStep({
     now: rightNow && ['now', 'soon', 'late'].includes(rightNow.kind) ? { title: rightNow.title, kind: rightNow.kind, ref: rightNow.item?.ref } : null,
+    deliverable: work ? deliverableStep(work, UNIT_BY_ID[work.unitKey]) : null,
+    unit: onUnit && !activeObjective.complete && activeObjective.nextStep ? {
+      title: activeObjective.objective.label, step: activeObjective.nextStep, done: activeObjective.done, total: activeObjective.total,
+    } : null,
     objective: activeObjective?.active ? {
       active: true, complete: !!activeObjective.complete, label: activeObjective.objective?.label,
       done: activeObjective.done, total: activeObjective.total, nextStep: activeObjective.nextStep,
@@ -2026,6 +2040,8 @@ export default function HomeScreen() {
     }
     if (a.type === 'plan' && a.ref) { setSelectedActivity(a.ref); return; }
     if (a.type === 'drill') { goToScreen(navigation, 'Training', { openDrills: true }); return; }
+    // A finished unit is finished in the unit, where the next one starts.
+    if (a.type === 'claim' && activeObjective?.objective?.unit) { goToScreen(navigation, 'UnitScreen', { unitId: activeObjective.objective.id }); return; }
     navigation.navigate('Compass');
   };
   // The Dream echo on the next step: what this builds toward, their words.
@@ -2543,6 +2559,14 @@ export default function HomeScreen() {
     {
       key: 'review', title: 'Review',
       render: () => <TodayReview userId={userId} navigation={navigation} ui={ui} />,
+    },
+    {
+      key: 'deliverable', title: 'Your work',
+      render: () => <DeliverableWidget onPlan={() => planner.openAdd()} />,
+    },
+    {
+      key: 'money', title: 'Money sheet',
+      render: () => <MoneyWidget />,
     },
   ];
 

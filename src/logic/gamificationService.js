@@ -537,6 +537,12 @@ export const REAL_ACTION_LABELS = {
   area_action:  'Life area action',
   goal_done:    'Goal finished',
   checkin:      'Checked in',
+  // Shake-up P6 (20261023120000_shakeup_p6.sql).
+  deliverable_handed_in: 'Handed in',
+  deliverable_shown:     'Shown',
+  unit_done:             'Unit done',
+  taste_logged:          'Tried something new',
+  build_mastered:        'Build mastered',
 };
 
 export async function recordAction(kind, ref = null) {

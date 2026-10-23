@@ -186,10 +186,12 @@ export const FEATURES = [
     gate: 'locked',
     depth: 'deep',
     purposes: ['build', 'career'],
+    // Any unit finished opens it too (units.js: every unit unlocks it, since
+    // its last step is handing the work in). The lock screen lists the goal.
     unlockedBy: ['ship-first-build'],
     testable: true,
     blurb: 'A public-facing record of what you have actually finished.',
-    why: 'An empty portfolio is worse than no portfolio. This opens once you have something to put in it — or once you show you already know what belongs there.',
+    why: 'An empty showcase is worse than none. This opens once you hand in your first piece of work, or once you show you already know what belongs there.',
   },
   {
     id: 'career-map',
