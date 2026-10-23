@@ -390,7 +390,7 @@ export const AREA_ACTIONS = [
       body: "Owning shares in one company means your money rides on that one company. Owning a little of hundreds, which is what an index fund does, means one company failing barely moves your total. That spread is diversification. It doesn't remove risk: when the whole market falls, a diversified fund falls too. It removes the risk of betting everything on being right about one thing." }],
     ['learn', 'fdic', "Savings accounts are insured, up to a point", { bands: YU,
       body: "In the US, money in a bank covered by the FDIC is insured up to $250,000 per depositor, per bank, per account type (reviewed 2026). If the bank fails, you get it back. Investments like stocks and funds aren't insured this way, and their value can go down. Banks that are covered say 'Member FDIC', and credit unions say NCUA." }],
-    ['habit', 'save-something', "Put something into savings", { why: "Any amount. The streak is the point." }],
+    ['habit', 'save-something', "Put something into savings", { why: "Any amount. Doing it often is the point." }],
     ['step', 'make-jars', "Make three jars: Spend, Save, Share", { bands: KID, featured: true,
       why: "Label them, and split any money you get between them." }],
     ['step', 'save-goal', "Pick one thing to save for and write down the price", { bands: TEEN, featured: true,

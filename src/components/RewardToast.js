@@ -17,6 +17,7 @@
 // reader hears the first reward of a run.
 
 import React, { useEffect, useRef, useState } from 'react';
+import useProgressV2 from '../logic/useProgressV2';
 import { Animated, Text, View, StyleSheet, AccessibilityInfo, Easing } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,10 +29,17 @@ import PetCompanion from './PetCompanion';
 import { useReducedMotion } from '../logic/a11yPrefs';
 
 const HOLD_MS = 2600;
+// Real work, with receipts not a score (PROGRESS_V2, shake-up P5): what you
+// did and one mentor line, no "+N XP". The pet's coins keep their "+1"
+// (the pet's points are its food).
+const MENTOR_LINES = ['You finished it. Most people never start.', 'Done. That is real work.', 'One more real thing, done.'];
 const TOP_BAR_CLEARANCE = 58; // sits just under the top bar
 
 export default function RewardToast({ hideCoins }) {
   const { colors: c, typography: t } = useTheme();
+  const [progressV2] = useProgressV2();
+  const progressV2Ref = useRef(progressV2);
+  progressV2Ref.current = progressV2;
   const insets = useSafeAreaInsets();
   const { level, points, rank, streakDays, gameplayStats } = useUserProgress();
   const statsRef = useRef(null);
@@ -83,7 +91,7 @@ export default function RewardToast({ hideCoins }) {
       if (next.kind === 'coin') readEquippedPet(statsRef.current).then(setPet).catch(() => setPet(null));
       AccessibilityInfo.announceForAccessibility?.(next.kind === 'coin'
         ? `Your pet found a coin. Plus ${next.amount} point${next.amount === 1 ? '' : 's'}.`
-        : `${next.label}. Plus ${next.amount} XP.`);
+        : progressV2Ref.current ? `${next.label}. ${MENTOR_LINES[0]}` : `${next.label}. Plus ${next.amount} XP.`);
     }
     if (!still) {
       pop.setValue(1.45);
@@ -148,14 +156,25 @@ export default function RewardToast({ hideCoins }) {
         ) : (
           <Ionicons name="checkmark-circle" size={22} color={c.teal} />
         )}
-        <Animated.Text style={{ fontSize: t.md, fontWeight: '900', color: accent, transform: [{ scale: pop }] }}>
-          +{total}{isCoin ? '' : ' XP'}
-        </Animated.Text>
-        <Text style={{ fontSize: t.xs, fontWeight: '600', color: c.text2 }}>
-          {isCoin
-            ? (count > 1 ? `Your pet found ${count} coins` : 'Your pet found a coin')
-            : (count > 1 ? `${count} things done` : label)}
-        </Text>
+        {isCoin || !progressV2 ? (
+          <>
+            <Animated.Text style={{ fontSize: t.md, fontWeight: '900', color: accent, transform: [{ scale: pop }] }}>
+              +{total}{isCoin ? '' : ' XP'}
+            </Animated.Text>
+            <Text style={{ fontSize: t.xs, fontWeight: '600', color: c.text2 }}>
+              {isCoin
+                ? (count > 1 ? `Your pet found ${count} coins` : 'Your pet found a coin')
+                : (count > 1 ? `${count} things done` : label)}
+            </Text>
+          </>
+        ) : (
+          <View style={{ maxWidth: 240 }}>
+            <Text style={{ fontSize: t.sm, fontWeight: '800', color: c.text1 }} numberOfLines={1}>
+              {count > 1 ? `${count} things done` : label}
+            </Text>
+            <Text style={{ fontSize: t.xs, color: c.text2 }} numberOfLines={1}>{MENTOR_LINES[(count - 1) % MENTOR_LINES.length]}</Text>
+          </View>
+        )}
       </Animated.View>
     </View>
   );

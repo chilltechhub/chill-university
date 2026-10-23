@@ -61,7 +61,7 @@ export default function ChildProgressScreen() {
             {[
               { label: 'Points', val: (child.points || 0).toLocaleString(), color: c.gold },
               { label: 'XP',     val: child.xp || 0,                        color: c.teal },
-              { label: 'Streak', val: (child.streak_count || 0) + 'd',      color: '#FF4081' },
+              { label: 'Days in a row', val: (child.streak_count || 0) + 'd',      color: '#FF4081' },
             ].map((st) => (
               <View key={st.label} style={{ alignItems: 'center' }}>
                 <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: st.color }}>{st.val}</Text>

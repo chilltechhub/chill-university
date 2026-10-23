@@ -48,7 +48,7 @@ export function experimentalOptedIn(profile) {
 // UserProgressContext. Anything a step can auto-tick has to come from here,
 // because a step that asks you to self-report a number the app is already
 // counting is either busywork or an invitation to fudge it.
-//   { streakDays, level, points, missionsToday, played }
+//   { streakDays, level, points, practiceToday, played }
 
 // How many times a step's `signal` has to fire before the step is done.
 // One unless objectives.js says otherwise.
@@ -74,7 +74,7 @@ export function stepSatisfied(step, checked = {}, stats = {}) {
     streak:   stats.streakDays    || 0,
     level:    stats.level         || 0,
     points:   stats.points        || 0,
-    missions: stats.missionsToday || 0,
+    practiced: stats.practiceToday || 0,
     played:   stats.played        || 0,
   }[stat];
 
@@ -136,7 +136,7 @@ export function objectiveProgress(objectiveId, record = null, stats = {}) {
 //   unlocks      { [featureId]: { method, unlocked_at } }
 //   attempts     { [featureId]: { passed, score, total, attempted_at } }
 //   objectives   { [objectiveId]: { status, steps } }
-//   stats        { streakDays, level, points, missionsToday, played }
+//   stats        { streakDays, level, points, practiceToday, played }
 //   settings     { educatorMode } — switches that are keys to a door
 //                (a feature's `settingKey`)
 //   plusOnSale   whether Plus can actually be bought yet. Until it can, a

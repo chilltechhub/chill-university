@@ -16,7 +16,7 @@ import { openedAt } from '../logic/experienceStage';
 
 const TITLES = {
   picks: 'Just my picks',
-  auto: 'Level up',
+  auto: 'Step by step',
   full: 'All in',
 };
 

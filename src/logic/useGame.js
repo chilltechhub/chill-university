@@ -5,6 +5,7 @@ import { handleGameEvent, claimRoundPrize } from './gamificationService';
 import { correctHaptic } from './haptics';
 import { noteAnswered } from './questionRotation';
 import { gameXpLeft } from './gameXpCap';
+import { notePracticeRound } from './practiceToday';
 
 export const DIFFICULTY = { easy: 1, medium: 2, hard: 3 };
 
@@ -160,6 +161,8 @@ export default function useGame({
 
   const endGame = useCallback(() => {
     setDone(true);
+    // A finished round counts for the goal step "Finish a round in Practice".
+    if (attempted > 0) notePracticeRound();
     endedRef.current = true;
 
     const times       = questionTimes.current;

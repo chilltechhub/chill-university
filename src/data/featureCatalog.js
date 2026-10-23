@@ -70,7 +70,7 @@ export const FEATURES = [
     gate: 'open',
     depth: 'first-step',
     purposes: ['habits', 'wellbeing', 'build', 'learn', 'money', 'career'],
-    blurb: 'Today’s focus, your streak, and the one thing worth doing next.',
+    blurb: 'Today’s focus and the one thing worth doing next.',
   },
   {
     id: 'training',

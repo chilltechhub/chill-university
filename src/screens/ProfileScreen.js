@@ -18,6 +18,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { supabase } from '../api/supabaseClient';
 import { useTheme } from '../../context/ThemeContext';
 import GuestYou from './you/GuestYou';
+import WardrobeModal from '../components/WardrobeModal';
 import { useUserProgress, SUBJECT_CONFIG } from '../../context/UserProgressContext';
 import useCharacterLoadout from '../logic/useCharacterLoadout';
 import useBonusRewards from '../logic/useBonusRewards';
@@ -43,12 +44,6 @@ import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import DreamCard from '../components/DreamCard';
 import useDashboardV2 from '../logic/useDashboardV2';
 
-const WARDROBE_TABS = [
-  { key: 'outfitId', label: 'Outfit', icon: 'shirt-outline' },
-  { key: 'petId', label: 'Pet', icon: 'paw-outline' },
-  { key: 'accessoryId', label: 'Item', icon: 'flash-outline' },
-  { key: 'backgroundId', label: 'Backdrop', icon: 'image-outline' },
-];
 
 // `you`: drawn inside You (src/screens/you/YouScreen.js, shake-up P4), which
 // passes its own header and what goes above and below the profile.
@@ -182,6 +177,10 @@ export default function ProfileScreen({ you = null } = {}) {
         {/* The Dream lives on You once Today is the Planner (shake-up P3);
             Today keeps an echo of it on the next step. */}
         {(dashboardV2 || you) && <View style={{ marginHorizontal: -16, marginBottom: 12 }}><DreamCard userId={session?.user?.id || null} /></View>}
+        {/* In You (shake-up P5) the hero is your room, and receipts replace the
+            level, points and tier chips; the anchor 'receipts' puts them first. */}
+        {you?.receiptsFirst && you.receipts}
+        {you ? you.room : (<>
         {/* ── Hero: character + pet on a landscape backdrop ─────────────── */}
         <LandscapeBackground background={background} height={200} level={level} decor={decor} style={styles.hero}>
           <CharacterWalker
@@ -214,16 +213,18 @@ export default function ProfileScreen({ you = null } = {}) {
             <Text style={styles.customizeBtnText}>Decorate</Text>
           </TouchableOpacity>
         </LandscapeBackground>
+        </>)}
 
+        {you ? (!you.receiptsFirst && you.receipts) : (<>
         {/* ── Stats ──────────────────────────────────────────────────────── */}
         <TourSpot id="profile-rank">
         <View style={styles.statsRow}>
           <StatChip label="Level" value={level} icon="trending-up-outline" c={c} t={t} s={s} r={r} />
           <StatChip label="Points" value={wallet.toLocaleString()} icon="star-outline" c={c} t={t} s={s} r={r} />
-          <StatChip label="Streak" value={`${streakDays}d`} icon="flame-outline" c={c} t={t} s={s} r={r} />
           <StatChip label="Tier" value={(RANK_LABELS[rank] || RANK_LABELS[20]).label} icon="ribbon-outline" c={c} t={t} s={s} r={r} />
         </View>
         </TourSpot>
+        </>)}
 
         {/* ── Skills / subject mastery ───────────────────────────────────── */}
         <Text style={styles.sectionTitle}>Skills</Text>
@@ -326,141 +327,6 @@ function StatChip({ label, value, icon, c, t, s, r }) {
   );
 }
 
-function WardrobeModal({ visible, onClose, tab, setTab, loadout, stats, equip, styles, c, t, heroTap, setHeroTap }) {
-  // How the character behaves, under the looks: what tapping it does (off,
-  // it jumps and Training shows a small Profile button instead) and the walk
-  // arrows. Always shown since 2026-10-15 ("tap to jump should be in the
-  // character settings"); it used to wait until something was picked.
-  const pick = (category, id) => { equip(category, id); };
-  const TABLES = { outfitId: OUTFITS, petId: PET_TIERS, accessoryId: ACCESSORIES, backgroundId: BACKGROUNDS };
-  const LABELERS = {
-    outfitId: unlockLabel, petId: petUnlockLabel, accessoryId: unlockLabel, backgroundId: backgroundUnlockLabel,
-  };
-  const CURRENT = {
-    outfitId: loadout.outfit.id, petId: loadout.pet?.id, accessoryId: loadout.accessory.id, backgroundId: loadout.background.id,
-  };
-
-  const options = TABLES[tab];
-  const labelFor = LABELERS[tab];
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.modalBackdrop}>
-        <View style={styles.wardrobeCard}>
-          <View style={styles.wardrobeHeader}>
-            <Text style={styles.modalTitle}>Customize</Text>
-            <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={onClose}>
-              <Ionicons name="close" size={22} color={c.text3} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.wardrobeTabs}>
-            {WARDROBE_TABS.map(wt => (
-              <TouchableOpacity
-                key={wt.key}
-                style={[styles.wardrobeTabBtn, tab === wt.key && styles.wardrobeTabBtnActive]}
-                onPress={() => setTab(wt.key)}
-              >
-                <Ionicons name={wt.icon} size={15} color={tab === wt.key ? textOn(c.goldMid) : c.text3} />
-                <Text style={[styles.wardrobeTabText, tab === wt.key && styles.wardrobeTabTextActive]}>{wt.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <FlatList
-            data={options}
-            keyExtractor={o => o.id}
-            numColumns={3}
-            contentContainerStyle={{ paddingVertical: 12 }}
-            renderItem={({ item }) => {
-              const locked = labelFor(item, stats);
-              const equipped = CURRENT[tab] === item.id;
-              return (
-                <TouchableOpacity
-                  style={[styles.wardrobeOption, equipped && styles.wardrobeOptionActive, locked && styles.wardrobeOptionLocked]}
-                  disabled={!!locked}
-                  onPress={() => pick(tab, item.id)}
-                >
-                  <WardrobePreview tab={tab} item={item} />
-                  <Text style={styles.wardrobeOptionName} numberOfLines={1}>{item.name}</Text>
-                  {locked ? (
-                    <Text style={styles.wardrobeLockText} numberOfLines={2}>{locked}</Text>
-                  ) : equipped ? (
-                    <Text style={styles.wardrobeEquippedText}>Equipped</Text>
-                  ) : null}
-                </TouchableOpacity>
-              );
-            }}
-          />
-          <View style={{ borderTopWidth: 0.5, borderTopColor: c.border, paddingTop: 12, marginTop: 4, gap: 10 }}>
-            <View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <Ionicons name="hand-left-outline" size={16} color={c.text3} />
-                <Text style={{ flex: 1, fontSize: t.sm, color: c.text1 }}>Tap your character to open <Text style={{ fontWeight: '700' }}>Profile</Text></Text>
-                <Switch value={heroTap !== false} onValueChange={setHeroTap} accessibilityLabel="Tap your character to open Profile" />
-              </View>
-              <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 4, marginLeft: 26 }}>
-                {heroTap !== false ? 'Off: a tap makes them jump, and the jump arrow goes away.' : 'A tap makes them jump (no jump arrow). A Profile button sits in the corner of Training.'}
-              </Text>
-            </View>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-function WardrobePreview({ tab, item }) {
-  if (tab === 'petId') return <PetCompanion pet={item} size={56} />;
-  if (tab === 'outfitId') return <PlayerCharacter outfit={item} accessory={null} size={64} />;
-  if (tab === 'accessoryId') {
-    if (!item.sheet) return <View style={{ width: 56, height: 56 }} />;
-    return <PetCompanion pet={item} size={56} />; // same crop-and-scale trick, any sheet works
-  }
-  // background: a real thumbnail for illustrated scenes, a two-tone sky
-  // swatch for the tile-based ones
-  if (item.kind === 'image') {
-    // Explicit numeric width/height on the Image itself, not aspectRatio —
-    // on web, an Image sized via aspectRatio (rather than a real number)
-    // renders at its source's native pixel height instead, same issue as
-    // LandscapeBackground.js. The box is already a fixed 56x32, so there's
-    // nothing for aspectRatio to add here anyway.
-    return (
-      <View style={{ width: 56, height: 32, borderRadius: 6, overflow: 'hidden', backgroundColor: '#0a0a12' }}>
-        <Image
-          source={item.source}
-          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
-          resizeMode="cover"
-        />
-      </View>
-    );
-  }
-  if (item.kind === 'plain') {
-    return <View style={{ width: 56, height: 32, borderRadius: 6, borderWidth: 1, borderStyle: 'dashed', borderColor: '#9aa3b5' /* style-ok: neutral outline for "no backdrop" in both modes */ }} />;
-  }
-  if (item.kind === 'room') {
-    // A tiny room: wall, floor, and its window.
-    return (
-      <View style={{ width: 56, height: 32, borderRadius: 6, overflow: 'hidden', backgroundColor: '#e8dccb' /* style-ok: fixed room-wall swatch */, alignItems: 'center' }}>
-        <PixelArt art="windowCream" height={18} style={{ marginTop: 3 }} />
-        <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 8, backgroundColor: '#b8977a' /* style-ok: fixed room-floor swatch */ }} />
-      </View>
-    );
-  }
-  // Tile scenes: the two-tone sky, with their tallest prop standing in it.
-  const hero = (item.props || []).reduce((best, p) => (!best || (p.scale || 1) > (best.scale || 1) ? p : best), null);
-  return (
-    <View style={{ width: 56, height: 32, borderRadius: 6, overflow: 'hidden', flexDirection: 'row' }}>
-      <View style={{ flex: 1, backgroundColor: item.sky[0] }} />
-      <View style={{ flex: 1, backgroundColor: item.sky[1] }} />
-      {hero && (
-        <View style={{ position: 'absolute', left: 0, right: 0, bottom: 1, alignItems: 'center' }}>
-          <PixelArt art={hero.art} height={26} />
-        </View>
-      )}
-    </View>
-  );
-}
 
 const makeStyles = (c, t, s, r) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: c.bg0 },

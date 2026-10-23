@@ -69,6 +69,8 @@ export const WIDGET_DEFS = [
   { key: 'unit',      title: 'Your steps' },
   { key: 'missions',  title: 'Missions' },
   { key: 'review',    title: 'Review' },
+  // Your room, when it's placed on Today (shake-up P5, §5.2).
+  { key: 'room',      title: 'Your room' },
 ];
 export const WIDGET_KEYS = WIDGET_DEFS.map(w => w.key);
 
@@ -110,6 +112,7 @@ export const WIDGET_BLURBS = {
   unit:             'Every step of what you are working on, ticked or not.',
   missions:         'Software for You and the quick missions.',
   review:           'About a minute of review, when something is due.',
+  room:             'Your character and pet, in a room you decorate.',
 };
 
 // A widget added by an app update is appended HIDDEN, so an update never
@@ -121,7 +124,7 @@ export const NEW_WIDGETS_SHOWN = new Set(['goalSteps', 'stageSteps']);
 // Keys Today adds in later phases (shake-up plan §3.3). Each moves from here
 // into WIDGET_DEFS in the PR that builds it, together with its BASE_WIDGETS
 // or pickables entry, or check-pickables goes red.
-export const PLANNED_WIDGET_KEYS = ['deliverable', 'room', 'money', 'assignments'];
+export const PLANNED_WIDGET_KEYS = ['deliverable', 'money', 'assignments'];
 
 // Today's board (DASHBOARD_V2): the keys it offers, in tray order. The old
 // keys it replaces (focus, activities, compass, goalSteps, stageSteps,
@@ -130,7 +133,9 @@ export const PLANNED_WIDGET_KEYS = ['deliverable', 'room', 'money', 'assignments
 // todayLayoutFrom). hq and desk stay until P5 / P6 give them a new home.
 export const TODAY_KEYS = [
   'nextStep', 'quickAdd', 'yourDay', 'find', 'dream', 'dueSoon', 'stillOpen', 'checkin',
-  'unit', 'missions', 'review', 'hq', 'desk', 'ideas', 'builds', 'wayfinder',
+  // 'hq' (the level card) became 'room' in P5 (WIDGET_ALIASES carries a
+  // saved place over).
+  'unit', 'missions', 'review', 'room', 'desk', 'ideas', 'builds', 'wayfinder',
   'habitRings', 'lifeAreas', 'dailyDrills', 'studyBlocks', 'classProgress',
   'orgSnapshot', 'systemsCheck', 'recurringOps', 'vaultStatus', 'founderQuest', 'targetsReadiness',
 ];
@@ -142,7 +147,7 @@ export const TODAY_SHOWN_NEW = new Set(['nextStep', 'quickAdd', 'yourDay', 'find
 
 // What Calm draws, in the calm style (src/screens/today/CalmToday.js). The
 // same layout as Full: a key hidden there is hidden here, in the same order.
-export const CALM_WIDGETS = new Set(['dream', 'find', 'nextStep', 'yourDay']);
+export const CALM_WIDGETS = new Set(['dream', 'find', 'nextStep', 'yourDay', 'room']);
 
 // What a saved layout's key becomes once the shake-up renames or retires it
 // (persona_profiles.active_widgets, user_settings.home_widget_layout). A
@@ -187,4 +192,5 @@ export const WIDGET_ALIASES = {
   unit:             'unit',
   missions:         'missions',
   review:           'review',
+  room:             'room',
 };

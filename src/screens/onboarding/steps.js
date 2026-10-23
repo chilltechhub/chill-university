@@ -544,7 +544,7 @@ export function PersonaStep({ data, set, theme, isMinor, ageBand }) {
 // Make it yours.
 const TRACK_CHOICES = [
   { key: 'picks', emoji: '🎯', title: 'Just my picks', tag: 'Recommended', body: 'Only what you pick next. Add more any time.' },
-  { key: 'auto',  emoji: '🌱', title: 'Level up',      body: 'Start small with a guide. Finish goals to open more.' },
+  { key: 'auto',  emoji: '🌱', title: 'Step by step',  body: 'Start small with a guide. Finish goals to open more.' },
   { key: 'full',  emoji: '🗺️', title: 'All in',        body: 'Everything at once. Hide what you don’t want.' },
 ];
 
@@ -731,7 +731,7 @@ export function CharacterStep({ data, set, theme }) {
   return (
     <View style={st.stepContent}>
       <Text style={st.stepTitle}>Meet Your Character</Text>
-      <Text style={st.stepSubtitle}>Your <Text style={{ fontWeight: '700' }}>traveler</Text> walks around Home and Learn. New gear <Text style={{ fontWeight: '700' }}>unlocks as you level up</Text>.</Text>
+      <Text style={st.stepSubtitle}>Your <Text style={{ fontWeight: '700' }}>traveler</Text> walks around Home and Learn. Every outfit is <Text style={{ fontWeight: '700' }}>yours to try</Text>.</Text>
 
       {ready && (
         <LandscapeBackground background={background} height={130} style={{ marginBottom: s.md }}>

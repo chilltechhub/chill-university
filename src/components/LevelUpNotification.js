@@ -13,6 +13,8 @@
 // on UnlockNotification's card, with this level-up folded into it.
 
 import React, { useEffect, useState } from 'react';
+import useProgressV2 from '../logic/useProgressV2';
+import { showQuickToast } from './QuickToast';
 import { View, Text, Modal, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { successHaptic } from '../logic/haptics';
@@ -42,9 +44,15 @@ export function summarizeProgress(events) {
   return { level, tier, unlocks };
 }
 
+// With receipts, not a score (PROGRESS_V2, shake-up P5), a level or tier
+// gained is one quiet line under the top bar, never a popup; the number
+// stays in You's receipts, small. Off is the rollback: the old card.
+const QUIET_LINES = ['Steady work adds up.', 'All of that counts.', 'Real work, piling up.'];
+
 export default function LevelUpNotification() {
   const { colors: c } = useTheme();
   const { progressEvents, dismissAllProgressEvents } = useUserProgress();
+  const [progressV2] = useProgressV2();
   const { stageEvents, unlockEvents } = useAccess();
   const s = makeStyles(c);
 
@@ -59,8 +67,16 @@ export default function LevelUpNotification() {
   const summary = summarizeProgress(progressEvents);
   const ready = useCalmMoment(!!summary && !tourActive && !accessWaiting);
   const shownKey = ready ? JSON.stringify(progressEvents) : null;
-  useEffect(() => { if (shownKey) successHaptic(); }, [shownKey]);
-  if (!ready || !summary) return null;
+  useEffect(() => {
+    if (!shownKey) return;
+    if (progressV2) {
+      showQuickToast(QUIET_LINES[shownKey.length % QUIET_LINES.length]);
+      dismissAllProgressEvents();
+      return;
+    }
+    successHaptic();
+  }, [shownKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!ready || !summary || progressV2) return null;
 
   const { level, tier, unlocks } = summary;
   const shareable = level != null || !!tier;

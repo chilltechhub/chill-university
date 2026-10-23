@@ -26,10 +26,12 @@
 //     fraction of the stage's height.
 
 import { fetchContentPool } from '../api/remoteConfigService';
-import { rankThresholds } from '../logic/rankUtils';
 
+// Every cosmetic is open to everyone from the first minute (shake-up P5,
+// §6.3: cosmetics without bait). Nothing can re-lock, so an equipped item
+// always stays. Pets keep their own system (petOptions.js petsOpen).
 function withUnlock(option) {
-  return { ...option, unlock: (stats) => (stats.rank ?? 20) <= option.maxRank };
+  return { ...option, unlock: () => true };
 }
 
 // Metro's bundler needs require() calls to be static string literals (no
@@ -343,11 +345,9 @@ export const BACKGROUNDS = [
 
 export const DEFAULT_BACKGROUND_ID = BACKGROUNDS[0].id;
 
-export function backgroundUnlockLabel(option, stats) {
-  if ((stats.rank ?? 20) <= option.maxRank) return null;
-  // Rank numbers aren't shown anywhere any more (tiers are), so say the points.
-  const need = rankThresholds.find(t => t.rank === option.maxRank)?.threshold;
-  return need != null ? `Unlocks at ${need.toLocaleString()} points` : `Unlocks at Rank ${option.maxRank} or better`;
+// Every backdrop is open (above), so there's nothing to say.
+export function backgroundUnlockLabel() {
+  return null;
 }
 
 // Admin-added backgrounds from Supabase (app_content, type='background_option')

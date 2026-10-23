@@ -36,6 +36,7 @@ import React, {
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useUserProgress } from './UserProgressContext';
+import usePracticeToday from '../src/logic/practiceToday';
 import { useProfiles } from './ProfileAccountsContext';
 import {
   fetchAccessState, startObjective as startObjectiveApi, saveObjectiveSteps,
@@ -265,20 +266,18 @@ export function AccessProvider({ children }) {
   const experimentalOn = experimentalOverride ?? (profile?.experimental_opt_in === true);
   const isPlus = planIsActive(profile);
 
-  // Daily drills finished today — the only auto-step counter that isn't a
-  // lifetime figure straight off the profile.
-  const missionsToday = useMemo(
-    () => (dailyMissions || []).filter(m => m.status === 'completed' || m.status === 'claimed').length,
-    [dailyMissions]
-  );
+  // Practice rounds finished today: the only auto-step counter that isn't a
+  // lifetime figure straight off the profile. It replaced the daily XP
+  // drills' count when Challenges retired (shake-up P5).
+  const practiceToday = usePracticeToday();
 
   // Lifetime activities answered in any game — the counter behind "play one
   // training game", which has to tick after one round of anything.
   const played = gameplayStats?.totalProblemsAttempted || 0;
 
   const stats = useMemo(
-    () => ({ streakDays, level, points, missionsToday, played }),
-    [streakDays, level, points, missionsToday, played]
+    () => ({ streakDays, level, points, practiceToday, played }),
+    [streakDays, level, points, practiceToday, played]
   );
 
   /* ── 3. Shown now? ─────────────────────────────────────────────────────

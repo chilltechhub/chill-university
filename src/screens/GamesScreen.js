@@ -36,6 +36,7 @@ import { useAccess } from '../../context/AccessContext';
 import TodaysFind from '../components/TodaysFind';
 import useDashboardV2 from '../logic/useDashboardV2';
 import useTabsV2 from '../logic/useTabsV2';
+import useProgressV2 from '../logic/useProgressV2';
 import { MyPathCard, LearnFinds } from './learn/LearnParts';
 
 // Single source of truth: src/services/gameRegistry.js. GamesScreen and
@@ -108,6 +109,9 @@ export default function GamesScreen() {
   const [tabsV2] = useTabsV2();
   const practice = useRoute().name === 'Practice';
   const learn = tabsV2 && !practice;
+  // Receipts, not a score (PROGRESS_V2, shake-up P5): no points/tier chips,
+  // no leaderboard, and Challenges and the daily XP drills retired.
+  const [progressV2] = useProgressV2();
   const { colors: c, typography: t, spacing: s, radius: r, shadows: sh } = useTheme();
   const { showEmojis, showSubtext } = useUIPrefs();
   const navigation = useNavigation();
@@ -146,7 +150,7 @@ export default function GamesScreen() {
   // locked, just not on the shelf yet. The 'all-games' stage lists every
   // one and adds the filters and the Progress tab.
   const { can, isGameVisible, isScreenVisible, isFeatureShown } = useAccess();
-  const showLeaderboard = leaderboardFlag && isScreenVisible('Leaderboard');
+  const showLeaderboard = leaderboardFlag && isScreenVisible('Leaderboard') && !progressV2;
   const starter = !can('all-games');
   // Learn is one page; Practice is the games and their progress.
   const tabs = practice ? (starter ? ['Training'] : ['Training', 'Progress'])
@@ -181,10 +185,12 @@ export default function GamesScreen() {
   const route = useRoute();
   useEffect(() => {
     if (route.params?.openDrills) {
-      setShowTasks(true);
+      // The daily drills retired with Challenges: an old link lands on Practice.
+      if (progressV2) navigation.navigate('Practice');
+      else setShowTasks(true);
       navigation.setParams({ openDrills: undefined });
     }
-  }, [route.params?.openDrills, navigation]);
+  }, [route.params?.openDrills, navigation, progressV2]);
   // `openPet`: the pet's "getting hungry" notification lands on its sheet.
   useEffect(() => {
     if (route.params?.openPet) {
@@ -310,10 +316,10 @@ export default function GamesScreen() {
                 percentage, and an unsized wrapper collapsed them to their
                 content, which squeezed "Newcomer" out of its chip and the
                 two buttons below out of their borders. */}
+            {!progressV2 && (
             <TourSpot id="training-stats" style={{ width: '100%' }}>
             <View style={styles.chipRow}>
               <QuickChip icon="✦" iconName="sparkles-outline" value={wallet.toLocaleString()} label="Points" c={c} t={t} s={s} r={r} />
-              <QuickChip icon="🔥" iconName="flame-outline" value={streakDays || 0} label="Streak" c={c} t={t} s={s} r={r} />
               {/* This is the character's title tier (RANK_LABELS, 1=best..20=starter),
                   not a leaderboard placement — a real leaderboard position is shown
                   elsewhere (LeaderboardScreen). Showing it as "#17" read like the same
@@ -322,6 +328,7 @@ export default function GamesScreen() {
               <QuickChip icon={(RANK_LABELS[rank] || RANK_LABELS[20]).emoji} iconName="ribbon-outline" value={(RANK_LABELS[rank] || RANK_LABELS[20]).label} label="Tier" c={c} t={t} s={s} r={r} />
             </View>
             </TourSpot>
+            )}
 
             {/* Make first (2026-10-20, docs/studio-plan.md): the Studio
                 builds a real thing with you and teaches it by taking it
@@ -395,7 +402,9 @@ export default function GamesScreen() {
             </View>
             </TourSpot>
 
-            {/* Objectives + Drills */}
+            {/* Objectives + Drills. Retired with receipts (PROGRESS_V2):
+                Practice is where the games are now. */}
+            {!progressV2 && (
             <TourSpot id="training-games" style={{ width: '100%', alignItems: 'center', marginTop: s.sm }}>
             <View style={styles.actionRow}>
               <TouchableOpacity
@@ -416,6 +425,7 @@ export default function GamesScreen() {
               </TouchableOpacity>
             </View>
             </TourSpot>
+            )}
             {reviewsDue > 0 && (
               <View style={styles.reviewNote} accessible>
                 <Ionicons name="refresh-circle-outline" size={18} color={c.teal} />
@@ -434,7 +444,7 @@ export default function GamesScreen() {
             {showSubtext && (
               <Text style={styles.sectionIntro}>
                 {starter
-                  ? `${GAMES.length} drills picked for you to start with. More open up as you finish goals and level up.`
+                  ? `${GAMES.length} drills picked for you to start with. More open up as you finish goals.`
                   : trainedCount > 0
                     ? `You've trained in ${trainedCount} of ${GAMES.length} drills. Pick one to continue.`
                     : 'Pick a drill below and choose your grade level to begin.'}
@@ -560,7 +570,6 @@ export default function GamesScreen() {
               <StatCard label="Points" value={wallet.toLocaleString()} emoji="✦" iconName="sparkles-outline" c={c} t={t} s={s} r={r} />
               <StatCard label="Accuracy" value={accuracy != null ? `${accuracy}%` : '—'} emoji="🎯" iconName="locate-outline" c={c} t={t} s={s} r={r} />
               <StatCard label="Sessions" value={gameplayStats?.levelsCompleted || 0} emoji="🏁" iconName="flag-outline" c={c} t={t} s={s} r={r} />
-              <StatCard label="Day Streak" value={streakDays || 0} emoji="🔥" iconName="flame-outline" c={c} t={t} s={s} r={r} />
             </View>
 
             <View style={styles.statsGridSecondary}>

@@ -342,7 +342,6 @@ export default function PortfolioScreen() {
   const primaryGoal   = profile?.primary_goal || '';
   const totalProjects = data.projects.length;
   const totalSkills   = data.skills.length;
-  const streak        = profile?.streak_count || 0;
 
   // Copies a plain-text summary to the clipboard — the same "copy as
   // Markdown" pattern ProjectDetail.js uses for a single build, applied to
@@ -350,7 +349,8 @@ export default function PortfolioScreen() {
   // message to someone else.
   const sharePortfolio = async () => {
     const lines = [
-      `${displayName} — Level ${level} · ${xp} XP${streak ? ` · ${streak}-day streak` : ''}`,
+      // What they made, not a score (shake-up P5).
+      `${displayName} — ${totalProjects} project${totalProjects === 1 ? '' : 's'} · ${totalSkills} skill${totalSkills === 1 ? '' : 's'}`,
       lifeStage ? lifeStage : null,
       primaryGoal ? `Goal: ${primaryGoal}` : null,
       '',
@@ -431,7 +431,6 @@ export default function PortfolioScreen() {
                   { label: 'XP EARNED',  val: xp.toLocaleString(),    color: th.gold   },
                   { label: 'PROJECTS',   val: totalProjects,            color: th.cyan   },
                   { label: 'SKILLS',     val: totalSkills,              color: th.green  },
-                  { label: 'STREAK',     val: streak + 'd',             color: th.pink   },
                 ].map(st => (
                   <View key={st.label} style={ph.stat}>
                     <Text style={[ph.statVal, { color: st.color }]}>{st.val}</Text>

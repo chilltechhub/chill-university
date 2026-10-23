@@ -190,7 +190,7 @@ export default function GameOver({
       <View style={s.statsGrid}>
         <StatBox s={s} label="Accuracy" value={`${accuracy}%`} icon="stats-chart" color={accuracy >= 70 ? G.success : G.warning} />
         <StatBox s={s} label="Correct" value={`${correct}/${total}`} icon="checkmark-circle" color={G.teal} />
-        <StatBox s={s} label="Best Streak" value={streak} icon="flame" color={G.gold} />
+        <StatBox s={s} label="Best run" value={streak} icon="flame" color={G.gold} />
         {timeSeconds !== null && (
           <StatBox s={s} label="Time" value={`${timeSeconds}s`} icon="timer" color={G.purple} />
         )}

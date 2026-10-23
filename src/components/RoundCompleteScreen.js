@@ -126,7 +126,7 @@ export default function RoundCompleteScreen({
       {showEmojis && <Text style={s.ornament}>✦ · ✦</Text>}
       <Text style={s.title}>Round {roundNumber} Complete!</Text>
       <Text style={s.stats}>
-        {correct}/{total} correct{streak >= 3 ? `  ·  ${showEmojis ? '🔥 ' : ''}${streak} streak` : ''}
+        {correct}/{total} correct{streak >= 3 ? `  ·  ${showEmojis ? '🔥 ' : ''}${streak} in a row` : ''}
       </Text>
 
       {!!fact && (

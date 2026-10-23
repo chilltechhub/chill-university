@@ -127,6 +127,13 @@ export function tabsV2On(setting, dashboardV2) {
   return !!dashboardV2;
 }
 
+// PROGRESS_V2 (shake-up P5): receipts, not a score. Set either way, it wins;
+// unset, it follows the new tabs.
+export function progressV2On(setting, tabsV2) {
+  if (setting === true || setting === false) return setting;
+  return !!tabsV2;
+}
+
 /**
  * Where the app opens (§7.2 Boot).
  *   hasSession           someone is signed in

@@ -29,8 +29,9 @@ export const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 // Wall items are measured from the top; the editor measures everything from
 // the ground, so turn `top` into a height (at a 200px stage, near enough).
 export function seedLayout(background, level = 1) {
+  // Every prop from the start: decor no longer waits for a level (shake-up P5, §6.3).
   const items = (background?.props || [])
-    .filter(p => (p.minLevel || 1) <= level && ART[p.art])
+    .filter(p => ART[p.art])
     .map(p => {
       const scale = p.scale || 1;
       const y = p.top != null
@@ -47,13 +48,14 @@ export function seedLayout(background, level = 1) {
 let earnedTrophies = new Set();
 export function setEarnedTrophies(arts) { earnedTrophies = new Set(arts || []); }
 export const trophyEarned = (art) => earnedTrophies.has(art);
+// How many, for the room editor's Trophies (shake-up P5).
+export const earnedTrophyCount = () => earnedTrophies.size;
 
-// Unlocked by level, by a mastered Build (trophies), or part of the scene
-// to begin with (at your level: the room's furniture still moves in when
-// it would have).
+// Trophies are earned by real work (a Build mastered); everything else is
+// open (shake-up P5, §6.3).
 export function decorAllowed(art, level, background) {
   const item = decorById(art);
   if (item?.build) return earnedTrophies.has(art);
-  if (item && level >= item.level) return true;
-  return !!background?.props?.some(p => p.art === art && (p.minLevel || 1) <= level);
+  if (item) return true;
+  return !!background?.props?.some(p => p.art === art);
 }

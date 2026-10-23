@@ -24,7 +24,7 @@ import { TABBAR_V2_BODY } from './tourSteps';
 // "A single training game in progress", which told nobody anything.
 const PLAY_STEPS = [
   { title: 'Switch games', body: "**Swipe up or down** for the next game." },
-  { title: 'Your level', body: "Pick your **level** first. A hot streak moves you up; misses ease you down." },
+  { title: 'Your level', body: "Pick your **level** first. A few right in a row moves you up; misses ease you down." },
   { title: 'Leaving', body: "Tap **X** (top left) to leave. Every right answer is **already saved**." },
 ];
 
@@ -49,7 +49,6 @@ const SCREEN_FEATURES = {
     { title: "Today's Wisdom", body: "A daily quote, plus **your own affirmations** if you add some with **+**.", id: 'home-focus' },
   ],
   Training: [
-    { title: 'Where the points come from', body: "Your **points** and **streak**. Fun to watch. Your **goals** are the real score.", id: 'training-stats' },
     { title: 'Daily Drills & Challenges', body: "**Daily Drills**: three small targets, new each day. **Challenges**: the bigger weekly ones.", id: 'training-games' },
     { title: 'Classes', body: "**Lessons** by subject, with quizzes and missions. The games test what they teach.", id: 'training-classes' },
     { title: 'Practice', body: "Tap **Practice** for a game on what you learn.", id: 'training-enter' },
@@ -240,11 +239,11 @@ const SCREEN_FEATURES = {
     { title: 'Scenes', body: "Use your character's **landscape** behind Home or the Library, or keep it plain.", id: 'settings-background' },
   ],
   Profile: [
-    { title: 'Your rank', body: "Level, points and streak, **shared by all your profiles**.", id: 'profile-rank' },
-    { title: 'Your character', body: "Your **traveler** walks around Home and Learn. New gear unlocks as you level up.", id: 'profile-rank' },
+    { title: 'Your receipts', body: "What you **made**, tried and finished. **Shared by all your profiles.**", id: 'profile-rank' },
+    { title: 'Your character', body: "Your **traveler** walks around your room. Every outfit is **yours to try**.", id: 'profile-rank' },
   ],
   PortfolioScreen: [
-    { title: 'Your stats', body: "XP, projects, skills and streak **at a glance**.", id: 'portfolio-stats' },
+    { title: 'Your stats', body: "Projects, skills and what you finished, **at a glance**.", id: 'portfolio-stats' },
     { title: 'Sections', body: "Experience, Skills, Projects, Education… Some **fill in on their own**.", id: 'portfolio-sections' },
     { title: 'Add Entry', body: "Tap **Add Entry** for anything outside the app, like a certificate.", id: 'portfolio-add' },
   ],
@@ -365,7 +364,7 @@ const STARTER_FEATURES = {
     },
     { title: 'Capture', body: "Tap **Capture** (top right) to save a thought now. **Sort it later.**", id: 'library-capture', librarySubTab: 'domains' },
     { title: 'Four pages', body: "**Life**, **Find**, **Make** and **Tools**. Tap one, or swipe.", id: 'library-views' },
-    { title: 'More on the way', body: "**More opens** as you finish goals and level up.", growth: true },
+    { title: 'More on the way', body: "**More opens** as you finish goals.", growth: true },
   ],
 };
 
@@ -463,11 +462,20 @@ const MAKE_STEPS = [
   { title: 'Capture', body: "Tap **Capture** (top right) to save a thought now. **Sort it later.**", id: 'library-capture' },
 ];
 
-export function buildScreenTutorial(routeName, personalization, { can, firstVisit = false, shows, track, tabsV2 = false } = {}) {
+// Retired with Challenges and the daily XP drills (PROGRESS_V2, shake-up P5):
+// their buttons are gone, so their steps go too.
+const RETIRED_STEPS = new Set(['training-games']);
+
+export function buildScreenTutorial(routeName, personalization, opts = {}) {
+  const steps = buildSteps(routeName, personalization, opts);
+  return opts.progressV2 ? steps.filter(st => !RETIRED_STEPS.has(st.id)) : steps;
+}
+
+function buildSteps(routeName, personalization, { can, firstVisit = false, shows, track, tabsV2 = false } = {}) {
   if (tabsV2 && routeName === 'LibraryScreen') return forThisApp(firstVisit ? MAKE_STEPS.slice(0, 2) : MAKE_STEPS, shows, track);
   if (firstVisit) {
     if (FIRST_VISIT[routeName]) return forThisApp(FIRST_VISIT[routeName], shows, track);
-    const full = buildScreenTutorial(routeName, personalization, { can, shows, track, tabsV2 });
+    const full = buildSteps(routeName, personalization, { can, shows, track, tabsV2 });
     if (full.length <= FIRST_VISIT_STEPS) return full;
     const short = full.slice(0, FIRST_VISIT_STEPS);
     const last = short[short.length - 1];

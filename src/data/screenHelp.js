@@ -87,7 +87,7 @@ export const SCREEN_HELP = {
   },
   Profile: {
     title: 'Profile',
-    body: 'Your rank, points, streak, and account details live here.',
+    body: 'Your page, your Dream, what you made and your account details live here.',
   },
   Settings: {
     title: 'Settings',
@@ -111,6 +111,6 @@ export const SCREEN_HELP = {
   },
   Family: {
     title: 'Family',
-    body: "Link a parent or child's account. Read-only — a linked parent sees level, XP, points, and streak, and nothing else.",
+    body: "Link a parent or child's account. Read-only — a linked parent sees their progress and how active they are, and nothing else.",
   },
 };

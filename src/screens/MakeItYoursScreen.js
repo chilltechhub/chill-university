@@ -32,10 +32,12 @@ import AccessibilitySettings from '../components/AccessibilitySettings';
 import { AppearancePicker, LifeAreaChips } from '../components/LookAndFeel';
 import useDashboardV2 from '../logic/useDashboardV2';
 import useTabsV2 from '../logic/useTabsV2';
+import useProgressV2 from '../logic/useProgressV2';
+import useRoomPlace from '../logic/useRoomPlace';
 
 const TRACK_VALUE = {
   picks: '**Just my picks.** Only what you chose. Goals suggest more.',
-  auto: '**Level up.** A few tools first, more with each goal.',
+  auto: '**Step by step.** A few tools first, more with each goal.',
   full: '**All in.** Everything, minus what you untick.',
 };
 const CORNERS = [['top-left', 'Top left'], ['top-right', 'Top right'], ['bottom-left', 'Bottom left'], ['bottom-right', 'Bottom right']];
@@ -62,6 +64,10 @@ export default function MakeItYoursScreen() {
   // The tabs Today · Learn · Make and You (shake-up P4). They follow Today
   // until switched here on their own.
   const [tabsV2, setTabsV2] = useTabsV2();
+  // Receipts, not a score, and where your room shows (shake-up P5).
+  const [progressV2, setProgressV2] = useProgressV2();
+  const [roomPlace, setRoomPlace] = useRoomPlace();
+  const [showMomentum, setShowMomentum] = useSetting(SETTING_KEYS.SHOW_MOMENTUM, true);
 
   const persona = getPersona(activeType);
   const track = ['picks', 'auto', 'full'].includes(experienceMode) ? experienceMode : 'auto';
@@ -160,7 +166,7 @@ export default function MakeItYoursScreen() {
             onPress={() => navigation.navigate('ConnectedApps')} />
           <Row icon="layers-outline" title="How you start" value={TRACK_VALUE[track]} />
           <Segments label="How you start" value={track}
-            options={[['picks', 'Just my picks'], ['auto', 'Level up'], ['full', 'All in']]}
+            options={[['picks', 'Just my picks'], ['auto', 'Step by step'], ['full', 'All in']]}
             onChange={(v) => {
               setExperienceMode(v);
               // Just my picks is only as good as the picks: straight to them.
@@ -181,6 +187,22 @@ export default function MakeItYoursScreen() {
           <Row icon="albums-outline" title="Tabs: Today · Learn · Make"
             value={tabsV2 ? '**On.** Your picture (top left) opens **You**' : '**Off.** Library · Home · Learn, as before'}
             right={<Toggle value={!!tabsV2} onChange={(v) => setTabsV2(v)} label="Tabs: Today, Learn, Make" />} />
+          <Row icon="receipt-outline" title="Receipts, not a score"
+            value={progressV2 ? '**On.** What you made and did, no level or points up top' : '**Off.** Level and points in the top bar, as before'}
+            right={<Toggle value={!!progressV2} onChange={(v) => setProgressV2(v)} label="Receipts, not a score" />} />
+          {progressV2 && (
+            <Row icon="checkmark-circle-outline" title="Days this week, in your receipts"
+              value={showMomentum !== false ? '**On.** "You did something on 3 days this week"' : '**Off.**'}
+              right={<Toggle value={showMomentum !== false} onChange={(v) => setShowMomentum(v)} label="Days this week, in your receipts" />} />
+          )}
+          {tabsV2 && (
+            <>
+              <Row icon="home-outline" title="Your room"
+                value={roomPlace === 'today' ? 'On **Today**' : roomPlace === 'off' ? '**Hidden.** Just your picture up top' : 'On **You**'} />
+              <Segments label="Your room" value={roomPlace}
+                options={[['you', 'You'], ['today', 'Today'], ['off', 'Hide']]} onChange={setRoomPlace} />
+            </>
+          )}
           <Row icon="leaf-outline" title={dashboardV2 ? 'View, everywhere' : 'Home view'}
             value={homeView === 'calm' ? '**Calm.** Fewer cards, the same day' : '**Full.** Every card you picked'} />
           <Segments label={dashboardV2 ? 'View' : 'Home view'} value={homeView === 'calm' ? 'calm' : 'full'}

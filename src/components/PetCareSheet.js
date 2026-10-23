@@ -130,7 +130,7 @@ export default function PetCareSheet({ visible, onClose, pet }) {
       // so this also moves the reminder back.
       if (remindOn !== false) syncPetReminder({ fullUntil: res.fullUntil, name, enabled: true, ask: true });
     } else if (res.reason === 'points') {
-      setNote(['Not enough points. Earn more in ', 'Training', '.']);
+      setNote(['Not enough points yet. Practice in ', 'Learn', ' earns more.']);
     } else if (res.reason === 'full') {
       setNote([`${name} is `, 'full', '.']);
     } else {
@@ -194,7 +194,7 @@ export default function PetCareSheet({ visible, onClose, pet }) {
               <Animated.View style={[s.banner, { transform: [{ scale: bannerPop }] }]} accessibilityLiveRegion="polite">
                 <Ionicons name="sparkles" size={18} color={c.gold} />
                 <Text style={s.bannerText}>
-                  <Text style={s.bold}>Level up!</Text> {name} is now your <Text style={s.bold}>{prog.level.name}</Text>.
+                  <Text style={s.bold}>Closer now.</Text> {name} is now your <Text style={s.bold}>{prog.level.name}</Text>.
                   {prog.level.perk ? <Text>{'\n'}Unlocked: <Text style={s.bold}>{prog.level.perk}</Text></Text> : null}
                 </Text>
               </Animated.View>
@@ -340,7 +340,7 @@ export default function PetCareSheet({ visible, onClose, pet }) {
             </View>
 
             <Text style={s.wallet}>
-              <Text style={s.bold}>{wallet.toLocaleString()}</Text> pts to spend
+              <Text style={s.bold}>{wallet.toLocaleString()}</Text> points for pet food
               <Text style={s.dim}>{'  ·  '}spending never lowers your <Text style={s.bold}>rank</Text></Text>
             </Text>
           </ScrollView>

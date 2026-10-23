@@ -55,7 +55,7 @@ export default function CalmHome({
   // keys (CALM_WIDGETS), in its order; `nextPick` is the shared next step
   // (src/logic/nextStep.js), so both views name the same one. The Studio
   // lives in Make now, so it isn't here.
-  v2 = false, order = null, nextPick = null, onActPick,
+  v2 = false, order = null, nextPick = null, onActPick, room = null,
 }) {
   const { spacing: s } = useTheme();
   const keys = useMemo(() => (TILES[personaKey] || TILES.PERSONAL).filter(k => !v2 || k !== 'streak'), [personaKey, v2]);
@@ -234,11 +234,13 @@ export default function CalmHome({
           sub: current ? `Now: ${current.l.short || current.l.title}` : total ? 'All done' : null,
         };
       },
+      // Momentum, not a streak (shake-up P5): `streakDays` is days you did
+      // something this week (receipts.js momentum). The key stays 'streak'.
       streak: () => ({
-        label: 'Streak', screen: null, open: onOpenProfile,
+        label: 'This week', screen: null, open: onOpenProfile,
         value: String(streakDays || 0),
-        unit: plural(streakDays || 0, 'day in a row', 'days in a row'),
-        sub: streakDays ? null : 'Do one thing today',
+        unit: plural(streakDays || 0, 'day you did something', 'days you did something'),
+        sub: null,
       }),
     };
     const built = {};
@@ -302,6 +304,8 @@ export default function CalmHome({
       find: <TodaysFind key="find" userId={userId} variant="calm" pal={pal} />,
       nextStep: heroBlock(pickHero()),
       yourDay: dayBlock(),
+      // Your room on Today, as a still frame (shake-up P5).
+      room: room ? <View key="room">{room}</View> : null,
     };
     return (
       <View style={{ paddingHorizontal: s.lg, paddingTop: s.xs }}>
@@ -324,15 +328,15 @@ export default function CalmHome({
     <View style={{ paddingHorizontal: s.lg, paddingTop: s.md }}>
       <CalmPanel id="calmHomePanel" pal={pal}>
 
-        {/* Day · streak (level and points are in the top bar) */}
+        {/* Day · days this week (momentum, never a streak) */}
         <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 20 }, headerStyle]}>
           <Text style={{ fontSize: 13, color: pal.text2, ...eyebrow, fontWeight: '600' }}>{weekday}</Text>
           {(streakDays || 0) > 0 && (
             <TouchableOpacity onPress={onOpenProfile} hitSlop={8} accessibilityRole="button"
-              accessibilityLabel={`${streakDays} day streak. Open your profile`}
+              accessibilityLabel={`You did something on ${streakDays} day${streakDays === 1 ? '' : 's'} this week. Open You`}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Ionicons name="flame" size={14} color="#f0a050" />
-              <Text style={{ fontSize: 13, fontWeight: '700', color: pal.text }}>{streakDays} day{streakDays === 1 ? '' : 's'}</Text>
+              <Ionicons name="checkmark-circle" size={14} color={pal.eyebrow} />
+              <Text style={{ fontSize: 13, fontWeight: '700', color: pal.text }}>{streakDays} day{streakDays === 1 ? '' : 's'} this week</Text>
             </TouchableOpacity>
           )}
         </View>
