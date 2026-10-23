@@ -348,12 +348,21 @@ check('isSamePlan: different times differ', !L.isSamePlan({ title: 'Gym', date: 
   check('v2: a setting wins either way', WC.dashboardV2On(true, {}) === true && WC.dashboardV2On(false, { signedIn: true, onboardedAt: 'x' }) === false);
   check('v2: new accounts on, old accounts off', WC.dashboardV2On(null, { signedIn: true, onboardedAt: '2026-10-22' }) === true && WC.dashboardV2On(undefined, { signedIn: true }) === false);
   check('v2: a guest from the welcome on, any other guest off', WC.dashboardV2On(null, { welcomeGuest: true }) === true && WC.dashboardV2On(null, {}) === false);
+  // The new tabs (P4) come on with Today unless set on their own.
+  check('tabs v2: unset follows Today', WC.tabsV2On(null, true) === true && WC.tabsV2On(undefined, false) === false);
+  check('tabs v2: a setting wins either way', WC.tabsV2On(false, true) === false && WC.tabsV2On(true, false) === true);
 
   const TS = await import(asUrl(await text('src/logic/tourSteps.js')));
   const tv2 = TS.mainTourSteps(true);
   check('tour: + Add stands in for the FAB on Today', tv2.some(st => st.id === 'planner-add') && !tv2.some(st => st.id === 'fab') && tv2.length === TS.TOUR_STEPS.length);
   check('tour: unchanged with Today off', TS.mainTourSteps(false) === TS.TOUR_STEPS);
-  const AT = await import(asUrl(await text('src/logic/guide/lessons/appTour.js')));
+  // The new tabs (P4): the bar step names Today · Learn · Make, the rest stays.
+  const tabsTour = TS.mainTourSteps(false, true);
+  check('tour (new tabs): the bar step names Today, Learn and Make', /Today.*Learn.*Make/.test(tabsTour.find(st => st.id === 'nav-tabbar').body) && tabsTour.length === TS.TOUR_STEPS.length && tabsTour.some(st => st.id === 'fab'));
+  // appTour reads the tab bar's words from tourSteps.
+  const AT = await import(asUrl((await text('src/logic/guide/lessons/appTour.js')).replace("'../../tourSteps'", `"${asUrl(await text('src/logic/tourSteps.js'))}"`)));
+  check('app tour (new tabs): the bar step names Today, Learn and Make', /Today.*Learn.*Make/.test(AT.appTour({ project: 'P', mission: 'M', dashboardV2: true, tabsV2: true }).find(st => st.id === 'nav-tabbar').body));
+  check('app tour (old tabs): the bar step unchanged', /Library/.test(AT.appTour({ project: 'P', mission: 'M' }).find(st => st.id === 'nav-tabbar').body));
   const ids = (l) => l.map(st => st.id);
   check('app tour (Today): project in Make, then + Add', show(ids(AT.appTour({ project: 'P', mission: 'M', dashboardV2: true }))) === show(['studio-builds', 'nav-tabbar', 'planner-add', 'calm-next']));
   check('app tour (old Home): unchanged', show(ids(AT.appTour({ project: 'P', mission: 'M' }))) === show(['home-studio', 'nav-tabbar', 'fab', 'calm-next']));

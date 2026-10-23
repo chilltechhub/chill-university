@@ -99,3 +99,24 @@ export function nextStep({ now, deliverable, unit, objective, due, drill, firstG
   }
   return { kind: 'path', label: 'Next step', title: 'Pick a path to start on', action: { type: 'path', label: 'Pick a path', screen: 'Compass' } };
 }
+
+/**
+ * The top bar's path chip and thin bar (shake-up P4, §2.3). Until units
+ * exist (P6) it's the goal in flight: its title, and its steps done. With
+ * none, it invites a start. `pct` is 0–100, for the bar.
+ *   objective  { active, complete, label, done, total }, as nextStep takes it
+ */
+export function pathChip(objective) {
+  if (!objective?.active || !objective.label) {
+    return { label: 'Pick where to start', done: 0, total: 0, pct: 0, empty: true };
+  }
+  const total = Math.max(0, objective.total || 0);
+  const done = Math.min(total, Math.max(0, objective.done || 0));
+  return {
+    label: objective.label,
+    done, total,
+    pct: total ? Math.round((done / total) * 100) : 0,
+    sub: total ? (objective.complete ? 'Done · claim it' : `Step ${Math.min(done + 1, total)} of ${total}`) : null,
+    empty: false,
+  };
+}

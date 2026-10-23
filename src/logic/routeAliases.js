@@ -7,9 +7,10 @@
 // An alias only resolves when
 //   - its target is a route the app has registered (`isKnown`), and
 //   - its `gate`, if it has one, has been switched on (setAliasGate).
-// So each can be written ahead of its phase and change nothing: `You` and
-// `PathScreen` don't exist until P4 / P6, and PlannerScreen keeps opening
-// the Planner until Today ships behind DASHBOARD_V2 (P3).
+// So each can be written ahead of its phase and change nothing: `PathScreen`
+// doesn't exist until P6, Profile opens You only with the new tabs
+// (TABS_V2, P4), and PlannerScreen opens the Planner unless Today is on
+// (DASHBOARD_V2, P3).
 //
 // `phase` marks a target that isn't registered yet. scripts/check-tour-spots.mjs
 // fails on a target that is neither registered nor marked, so a typo here
@@ -21,12 +22,15 @@ export const ALIASES = {
   // Today is the Planner (§3). Params date / editInstance / review / addFor
   // pass straight through.
   PlannerScreen: { to: 'Home', gate: 'dashboardV2' },
-  // You, the full-screen dropdown from the top bar (§2.2).
-  Profile: { to: 'You', phase: 'P4' },
+  // You, the full-screen dropdown from the top bar (§2.2), with the new
+  // tabs (TABS_V2). The Profile route renders You then too.
+  Profile: { to: 'You', gate: 'tabsV2' },
   // Goals become the path view in Learn.
   Compass: { to: 'PathScreen', phase: 'P6' },
   // Receipts live on You; the Stats route stays for "See all numbers".
-  Stats: { to: 'You', params: { anchor: 'receipts' }, phase: 'P4' },
+  // Waits for the receipts themselves (P5): until then Insights is the
+  // only place those numbers are, so it keeps opening.
+  Stats: { to: 'You', params: { anchor: 'receipts' }, gate: 'receipts', phase: 'P5' },
 };
 
 const gates = new Set();

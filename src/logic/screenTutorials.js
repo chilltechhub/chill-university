@@ -14,6 +14,7 @@
 
 import { SCREEN_HELP } from '../data/screenHelp';
 import { EXAMPLES } from '../config/chilltech';
+import { TABBAR_V2_BODY } from './tourSteps';
 
 // Hand-authored, multi-feature walkthroughs for the screens people spend
 // the most time in. `id` matches a real <TourSpot id="..."> when one
@@ -432,7 +433,11 @@ const MORE_NOTE = ' Full tour: tap **your picture** (top left) → **Screen Tuto
 // answers for the tool; a step about a missing one is dropped, so the
 // guide never says "tap Capture" over nothing.
 // 'home-quick-buttons' isn't a tool: it's Settings → "Study & Play buttons".
-const STEP_FEATURE = { 'library-life-areas': 'life-areas', 'library-capture': 'capture', 'home-study-play': 'home-quick-buttons', 'training-classes': 'classes' };
+const STEP_FEATURE = { 'library-life-areas': 'life-areas', 'library-capture': 'capture', 'home-study-play': 'home-quick-buttons', 'training-classes': 'classes',
+  // Hidden on Settings while Organizations is off (shake-up P4).
+  'settings-organization': 'organization',
+  // Make's Saved section opens with the Inbox (shake-up P4).
+  'hub-section-saved': 'capture' };
 // `growth` steps say the app opens more over time, which is only how
 // Level up works; the other tracks grow by adding in My features.
 const ADD_MORE = { title: 'Want more?', body: 'Add any tool in **My features** (your picture → Make it yours).' };
@@ -450,10 +455,19 @@ function forThisApp(steps, shows, track) {
     });
 }
 
-export function buildScreenTutorial(routeName, personalization, { can, firstVisit = false, shows, track } = {}) {
+// The Library tab is Make with the new tabs (TABS_V2, shake-up P4): one
+// page, so its tutorial is about what it holds, not about four pages.
+const MAKE_STEPS = [
+  { title: 'Make', body: "**Studio**: the app makes it with you. **Workshop**: your own projects. **Showcase**: what you finished.", id: 'hub-section-make' },
+  { title: 'Saved', body: "What you **kept**: Finds, notes and links. The **Inbox** holds what you jotted down.", id: 'hub-section-saved' },
+  { title: 'Capture', body: "Tap **Capture** (top right) to save a thought now. **Sort it later.**", id: 'library-capture' },
+];
+
+export function buildScreenTutorial(routeName, personalization, { can, firstVisit = false, shows, track, tabsV2 = false } = {}) {
+  if (tabsV2 && routeName === 'LibraryScreen') return forThisApp(firstVisit ? MAKE_STEPS.slice(0, 2) : MAKE_STEPS, shows, track);
   if (firstVisit) {
     if (FIRST_VISIT[routeName]) return forThisApp(FIRST_VISIT[routeName], shows, track);
-    const full = buildScreenTutorial(routeName, personalization, { can, shows, track });
+    const full = buildScreenTutorial(routeName, personalization, { can, shows, track, tabsV2 });
     if (full.length <= FIRST_VISIT_STEPS) return full;
     const short = full.slice(0, FIRST_VISIT_STEPS);
     const last = short[short.length - 1];
@@ -475,5 +489,6 @@ export function buildScreenTutorial(routeName, personalization, { can, firstVisi
   steps = forThisApp(personalize(routeName, steps, personalization), shows, track);
   // Home only — see NAV_STEP_TAB. Every other screen ends on its own last
   // feature rather than on a navigation lecture.
-  return routeName === 'Home' ? [...steps, NAV_STEP_TAB] : steps;
+  if (routeName !== 'Home') return steps;
+  return [...steps, tabsV2 ? { ...NAV_STEP_TAB, body: TABBAR_V2_BODY } : NAV_STEP_TAB];
 }

@@ -35,6 +35,8 @@ import { reviewDueCount, onReviewsChange } from '../logic/questionRotation';
 import { useAccess } from '../../context/AccessContext';
 import TodaysFind from '../components/TodaysFind';
 import useDashboardV2 from '../logic/useDashboardV2';
+import useTabsV2 from '../logic/useTabsV2';
+import { MyPathCard, LearnFinds } from './learn/LearnParts';
 
 // Single source of truth: src/services/gameRegistry.js. GamesScreen and
 // GameFeed both read from it now, so a game's id/subject/icon can never
@@ -100,6 +102,12 @@ export default function GamesScreen() {
   // With Today as the Planner (shake-up P3), Today's Find is a widget there
   // and its full card lives here in Learn.
   const [dashboardV2] = useDashboardV2();
+  // The new tabs (TABS_V2, shake-up P4): this is Learn's root in its Learn
+  // layout (My path, Find, Classes, Missions, Practice) and, as the
+  // 'Practice' route on top of it, the games themselves.
+  const [tabsV2] = useTabsV2();
+  const practice = useRoute().name === 'Practice';
+  const learn = tabsV2 && !practice;
   const { colors: c, typography: t, spacing: s, radius: r, shadows: sh } = useTheme();
   const { showEmojis, showSubtext } = useUIPrefs();
   const navigation = useNavigation();
@@ -119,7 +127,8 @@ export default function GamesScreen() {
   // any device) moves it. Training is mounted from launch, so this always
   // runs. Never asks for permission here; the feed sheet does, on a tap.
   useEffect(() => {
-    if (!petCare.ready) return;
+    // Learn's root keeps it; Practice, on top, leaves it alone.
+    if (!petCare.ready || practice) return;
     if (!pet) { cancelPetReminder(); return; }
     syncPetReminder({ fullUntil: petCare.fullUntil, name: petName });
   }, [petCare.ready, petCare.fullUntil, petName, pet]);
@@ -139,21 +148,24 @@ export default function GamesScreen() {
   const { can, isGameVisible, isScreenVisible, isFeatureShown } = useAccess();
   const showLeaderboard = leaderboardFlag && isScreenVisible('Leaderboard');
   const starter = !can('all-games');
-  const tabs = starter ? STARTER_TABS : TABS;
+  // Learn is one page; Practice is the games and their progress.
+  const tabs = practice ? (starter ? ['Training'] : ['Training', 'Progress'])
+    : learn ? ['Overview'] : (starter ? STARTER_TABS : TABS);
+  const homeTab = practice ? 'Training' : 'Overview';
   const GAMES = useMemo(
     () => SHUFFLED_GAMES.filter(g => isGameVisible(g.key)),
     [isGameVisible]
   );
-  const [activeTab, setActiveTab] = useState('Overview');
+  const [activeTab, setActiveTab] = useState(homeTab);
   // Coming back to Training (out of a game, or from another tab) lands on
   // the Overview: the "folder" level, with Classes, Practice and today's
   // drills, rather than wherever in the game list it was left.
-  useFocusEffect(useCallback(() => { setActiveTab('Overview'); }, []));
+  useFocusEffect(useCallback(() => { setActiveTab(homeTab); }, [homeTab]));
   // Dropping back (switching "show me everything" off) while on a tab the
   // current stage doesn't have.
   useEffect(() => {
-    if (!tabs.includes(activeTab)) setActiveTab('Overview');
-  }, [tabs, activeTab]);
+    if (!tabs.includes(activeTab)) setActiveTab(homeTab);
+  }, [tabs, activeTab, homeTab]);
   const [showMissions, setShowMissions] = useState(false);
   const [showTasks, setShowTasks] = useState(false);
   // Missed questions due for another go (questionRotation.js). Recounted on
@@ -209,8 +221,17 @@ export default function GamesScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       {/* ── Header ── */}
       <View style={styles.header}>
-        <Text style={styles.eyebrow}>LEARN</Text>
-        <Text style={styles.name}>{displayName}</Text>
+        {practice && (
+          <TouchableOpacity onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('TrainingHome'))}
+            hitSlop={8} accessibilityRole="button" accessibilityLabel="Back to Learn"
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 2, alignSelf: 'flex-start', marginBottom: 4 }}>
+            <Ionicons name="chevron-back" size={18} color={c.teal} />
+            <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.teal }}>Learn</Text>
+          </TouchableOpacity>
+        )}
+        <Text style={styles.eyebrow}>{practice ? 'PRACTICE' : 'LEARN'}</Text>
+        <Text style={styles.name}>{practice ? 'Games' : displayName}</Text>
+        {tabs.length > 1 && (
         <View style={styles.tabs}>
           {tabs.map(tab => (
             <TouchableOpacity
@@ -225,6 +246,7 @@ export default function GamesScreen() {
             </TouchableOpacity>
           ))}
         </View>
+        )}
       </View>
 
       <ScrollView
@@ -234,7 +256,9 @@ export default function GamesScreen() {
       >
         {activeTab === 'Overview' && (
           <>
-            {dashboardV2 && <View style={{ marginBottom: 12 }}><TodaysFind userId={user?.id || null} /></View>}
+            {learn && <MyPathCard />}
+            {(dashboardV2 || learn) && <View style={{ marginBottom: 12, width: '100%' }}><TodaysFind userId={user?.id || null} /></View>}
+            {learn && <LearnFinds />}
             {/* Avatar — your actual equipped character, pet, and backdrop
                 (Profile screen's wardrobe), not a fixed placeholder image.
                 Tapping it opens your Profile when that setting's on; when
@@ -355,13 +379,15 @@ export default function GamesScreen() {
                 // A different game each time, not whichever came first in
                 // the list (2026-10-10: "games should be randomized, even on
                 // startup").
+                // With the new tabs, Practice is its own page of games.
                 onPress={() => {
+                  if (learn) { navigation.navigate('Practice'); return; }
                   const pick = GAMES.length ? GAMES[Math.floor(Math.random() * GAMES.length)] : null;
                   navigation.navigate('Play', pick ? { gameId: pick.key } : { index: 0 });
                 }}
                 activeOpacity={0.85}
                 accessibilityRole="button"
-                accessibilityLabel="Practice: play a game"
+                accessibilityLabel={learn ? 'Practice: the games' : 'Practice: play a game'}
               >
                 <Ionicons name="play" size={18} color={c.gold} />
                 <Text style={styles.actionText}>Practice</Text>

@@ -44,6 +44,7 @@ import { Button } from '../../components/ui';
 import PlanDetailSheet from '../../components/PlanDetailSheet';
 import StudioCard from '../../components/StudioCard';
 import useDashboardV2 from '../../logic/useDashboardV2';
+import useTabsV2 from '../../logic/useTabsV2';
 
 // Same icon/color-by-type map CaptureInbox and ImportScreen already share,
 // reused here for domain-filter result rows rather than a third copy.
@@ -136,6 +137,48 @@ export const LIBRARY_HUBS = [
       // Waits for people (app_config 'social_on').
       { label: 'Community', screen: 'DiscoverScreen', icon: 'people-outline', desc: 'People, mentors and shared work' },
     ],
+  },
+];
+
+// With the new tabs (TABS_V2, shake-up P4, §2.1) this tab is **Make**: one
+// page of what you make, what you saved, and a short tools shelf. Find moved
+// to Learn, Life to You, and the Planner is Today. Every route stays in
+// LibraryNav, so search, links and back behave as before.
+const hubItem = (screen) => LIBRARY_HUBS.flatMap(h => h.items).find(i => i.screen === screen && !i.params);
+export const MAKE_TABS = [{ key: 'make', label: 'Make' }];
+export const MAKE_HUBS = [
+  {
+    id: 'make',
+    tab: 'make',
+    title: 'Make',
+    tagline: 'Make something real, then make it yours',
+    icon: 'color-wand-outline',
+    accentKey: 'purple',
+    items: ['StudioScreen', 'ProjectsScreen', 'PortfolioScreen', 'IdeaGardenScreen'].map(hubItem).filter(Boolean),
+  },
+  {
+    id: 'saved',
+    tab: 'make',
+    title: 'Saved',
+    tagline: 'What you kept, and what you jotted down',
+    icon: 'bookmark-outline',
+    accentKey: 'teal',
+    compact: true,
+    items: [
+      { ...hubItem('KnowledgeScreen'), label: 'Saved' },
+      { label: 'Capture Inbox', screen: 'CaptureInbox', icon: 'file-tray-full-outline', desc: 'What you jotted down, to sort' },
+      hubItem('ImportScreen'),
+    ].filter(item => item?.screen),
+  },
+  {
+    id: 'tools',
+    tab: 'make',
+    title: 'Tools',
+    tagline: 'For money and more',
+    icon: 'construct-outline',
+    accentKey: 'gold',
+    compact: true,
+    items: ['SavingsInvestingScreen', 'DebtCreditScreen'].map(hubItem).filter(Boolean),
   },
 ];
 
@@ -362,6 +405,10 @@ export default function LibraryScreen() {
   // means the app's view; this page's own libraryView is only read while
   // homeView was never set.
   const [dashboardV2] = useDashboardV2();
+  // Make, with the new tabs (MAKE_HUBS above).
+  const [tabsV2] = useTabsV2();
+  const HUBS = tabsV2 ? MAKE_HUBS : LIBRARY_HUBS;
+  const PAGES = tabsV2 ? MAKE_TABS : TABS;
   const [appView, setAppView] = useSetting(SETTING_KEYS.HOME_VIEW, null);
   const pageView = dashboardV2 ? (appView || libraryView) : libraryView;
   const setPageView = dashboardV2 ? setAppView : setLibraryView;
@@ -399,18 +446,18 @@ export default function LibraryScreen() {
   // new appended so a future 4th tab doesn't just vanish for someone with
   // a saved order already.
   const [tabOrder, setTabOrder] = useSetting(SETTING_KEYS.LIBRARY_TAB_ORDER, DEFAULT_TAB_ORDER);
-  const allOrderedTabs = tabOrder.filter(k => TABS_BY_KEY[k]).map(k => TABS_BY_KEY[k]);
-  TABS.forEach(t => { if (!allOrderedTabs.find(ot => ot.key === t.key)) allOrderedTabs.push(t); });
+  const allOrderedTabs = tabsV2 ? [...MAKE_TABS] : tabOrder.filter(k => TABS_BY_KEY[k]).map(k => TABS_BY_KEY[k]);
+  if (!tabsV2) TABS.forEach(t => { if (!allOrderedTabs.find(ot => ot.key === t.key)) allOrderedTabs.push(t); });
   // Life is the life-area grid: always there on Level up, and on the other
   // tracks only if Life Areas is ticked. Build and Knowledge show once at
   // least one of their hub cards does. Never zero tabs: Life comes back if
   // it would be the only thing left.
   const tabHasCards = (key) => (key === 'domains'
     ? experienceMode === 'auto' || isFeatureShown('life-areas')
-    : LIBRARY_HUBS
+    : HUBS
       .filter(hub => hub.tab === key)
       .some(hub => hub.items.some(item => isScreenVisible(item.screen))));
-  const shownTabs = allOrderedTabs.filter(tb => tabHasCards(tb.key));
+  const shownTabs = tabsV2 ? allOrderedTabs : allOrderedTabs.filter(tb => tabHasCards(tb.key));
   const orderedTabs = shownTabs.length ? shownTabs : allOrderedTabs.filter(tb => tb.key === 'domains');
 
   const [activeTab, setActiveTabRaw] = useState(orderedTabs[0]?.key || 'domains');
@@ -430,6 +477,13 @@ export default function LibraryScreen() {
   }, [tabOrder]);
 
   const setActiveTab = (key) => { userPickedTabRef.current = true; setActiveTabRaw(key); };
+  // Make is one page: whatever asked for another (a tour step's
+  // librarySubTab, an old saved order) lands on it.
+  useEffect(() => {
+    if (tabsV2 && activeTab !== 'make') setActiveTabRaw('make');
+  }, [tabsV2, activeTab]);
+  // The browser tab's title follows the tab's name.
+  useEffect(() => { navigation.setOptions({ title: tabsV2 ? 'Make' : 'Library' }); }, [navigation, tabsV2]);
 
   // ── Swipe left/right between the views ──
   // These are sub-views of one screen rather than pages of a pager, so the
@@ -743,7 +797,7 @@ export default function LibraryScreen() {
     if (visibleItems.length === 0) return null;
     // The screen title already names the view, so a hub whose title says
     // the same thing just repeats itself — keep only its tagline then.
-    const showHubTitle = hub.title !== TABS.find(tb => tb.key === activeTab)?.label;
+    const showHubTitle = hub.title !== PAGES.find(tb => tb.key === activeTab)?.label;
     // The tagline describes the hub's headline tool. On a first day that
     // tool may not be on show yet (a Personal account's Build view is just
     // the Wayfinder), and "execution, projects & career archives" over a
@@ -884,7 +938,7 @@ export default function LibraryScreen() {
           <View style={{ flex: 1 }}>
             <TourSpot id={orderedTabs.length > 1 ? 'library-title' : 'library-views'} style={{ alignSelf: 'flex-start' }}>
               <Text style={styles.headerTitle} accessibilityRole="header">
-                {orderedTabs.length > 1 ? 'Library' : (TABS.find(tb => tb.key === activeTab)?.label || 'Library')}
+                {orderedTabs.length > 1 ? 'Library' : (PAGES.find(tb => tb.key === activeTab)?.label || 'Library')}
               </Text>
             </TourSpot>
             {/* The purpose, restated where the choosing happens. Tapping it
@@ -968,7 +1022,7 @@ export default function LibraryScreen() {
             vaultCount={vaultCount}
             recentCaptures={recentCaptures}
             gardenIdeas={gardenIdeas}
-            tools={LIBRARY_HUBS.filter(hub => hub.tab === activeTab).flatMap(visibleItemsFor)}
+            tools={HUBS.filter(hub => hub.tab === activeTab).flatMap(visibleItemsFor)}
             canOpen={isScreenVisible}
             captureShown={isFeatureShown('capture')}
             showEmojis={showEmojis}
@@ -1141,12 +1195,12 @@ export default function LibraryScreen() {
         )}
 
         {/* ── Build / Knowledge tabs ── */}
-        {activeTab !== 'domains' && LIBRARY_HUBS.filter(hub => hub.tab === activeTab).map(renderHub)}
+        {activeTab !== 'domains' && HUBS.filter(hub => hub.tab === activeTab).map(renderHub)}
 
         {/* Early on a page can hold one card and a screen of nothing, which
             reads as broken. Say that it fills up, and where to see what's next. */}
         {activeTab !== 'domains' && (() => {
-          const open = LIBRARY_HUBS.filter(h => h.tab === activeTab).reduce((n, h) => n + visibleItemsFor(h).length, 0);
+          const open = HUBS.filter(h => h.tab === activeTab).reduce((n, h) => n + visibleItemsFor(h).length, 0);
           // All in: what's missing was unticked on purpose, so no nudge.
           if (open >= 3 || experienceMode === 'full') return null;
           if (open === 0 && experienceMode !== 'picks') return null;
@@ -1157,8 +1211,8 @@ export default function LibraryScreen() {
           // as a hollow app (2026-10-14).
           if (!picks) {
             const path = pathFor(persona);
-            const shown = new Set(LIBRARY_HUBS.filter(h => h.tab === activeTab).flatMap(h => visibleItemsFor(h).map(e => e.item.screen)));
-            const coming = LIBRARY_HUBS.filter(h => h.tab === activeTab).flatMap(h => h.items)
+            const shown = new Set(HUBS.filter(h => h.tab === activeTab).flatMap(h => visibleItemsFor(h).map(e => e.item.screen)));
+            const coming = HUBS.filter(h => h.tab === activeTab).flatMap(h => h.items)
               .filter(item => !shown.has(item.screen))
               .map(item => {
                 const feature = featureForScreen(item.screen);

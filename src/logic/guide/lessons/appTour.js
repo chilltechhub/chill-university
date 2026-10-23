@@ -9,6 +9,8 @@
 // walks the mission itself. Every step keeps Home in Calm (`keepCalm`,
 // HomeScreen.js). Skip is the fast track: it goes straight to the mission.
 
+import { TABBAR_V2_BODY } from '../../tourSteps';
+
 const SKIP = 'Skip to my mission';
 
 export const APP_TOUR = [
@@ -70,9 +72,10 @@ export const APP_TOUR_TODAY = {
 
 // The steps with their words filled in. No project (they skipped it) drops
 // its step; no mission yet says where the next step always sits.
-export function appTour({ project, mission, dashboardV2 = false } = {}) {
+export function appTour({ project, mission, dashboardV2 = false, tabsV2 = false } = {}) {
   return APP_TOUR
     .map(step => (dashboardV2 && APP_TOUR_TODAY[step.id]) || step)
+    .map(step => (tabsV2 && step.id === 'nav-tabbar' ? { ...step, body: TABBAR_V2_BODY } : step))
     .filter(step => project || (step.id !== 'home-studio' && step.id !== 'studio-builds'))
     .map(step => ({
       ...step,

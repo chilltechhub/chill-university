@@ -19,6 +19,10 @@ import { readableOn } from '../logic/contrast';
 import { useBlueprint, WORKSHOP_SCREENS } from '../screens/library/blueprint';
 import { onWorkSessionChange, sessionSeconds } from '../logic/workSession';
 import { useSpendablePoints } from '../logic/usePetCare';
+import { useAccess } from '../../context/AccessContext';
+import useTabsV2 from '../logic/useTabsV2';
+import { pathChip } from '../logic/nextStep';
+import { goToScreen } from '../logic/appRoutes';
 
 // Profile / Help / Screen Tutorial / Settings / Search — one tap-menu off
 // the crest instead of five separate rows. These used to live on the FAB's
@@ -94,7 +98,98 @@ function WorkSessionPill({ navigation, c }) {
   );
 }
 
-export default function TopBar({ currentScreen }) {
+// With the new tabs (TABS_V2, shake-up P4), the new bar; off, the old one.
+export default function TopBar(props) {
+  const [tabsV2] = useTabsV2();
+  return tabsV2 ? <TopBarV2 {...props} /> : <TopBarV1 {...props} />;
+}
+
+// The new bar (docs/shake-up-plan-2026-10-21.md §2.3):
+//   [avatar ▾]   your path · step 2 of 4          [🔍] [🔔]
+//   ▔▔▔▔▔▔▔▔▔▔▔▔▔ thin bar: steps done
+// The avatar opens You (and closes it again). The chip is the goal in
+// flight until units exist (P6), and opens Learn. The level/points pill,
+// the tier crest and its menu are gone: the menu's rows are in You.
+function TopBarV2({ currentScreen }) {
+  const { user, profile, loading } = useUserProgress();
+  const { colors: c, typography: t, spacing: s, shadows: sh, accent } = useTheme();
+  const navigation = useNavigation();
+  const { openPalette } = useCommandPalette();
+  const { activeObjective } = useAccess();
+  const o = activeObjective?.active ? activeObjective : null;
+  const chip = pathChip(o && {
+    active: true, complete: !!o.complete, label: o.objective?.label, done: o.done, total: o.total,
+  });
+  const youOpen = currentScreen === 'You' || currentScreen === 'Profile';
+  const bp = useBlueprint();
+  const onPaper = WORKSHOP_SCREENS.has(currentScreen);
+  const name = profile?.traveler_name || profile?.display_name || '';
+  const initial = name.trim().charAt(0).toUpperCase();
+
+  if (loading) {
+    return (
+      <View style={{ paddingHorizontal: s.lg, paddingVertical: s.sm, backgroundColor: c.headerBg, flexDirection: 'row', alignItems: 'center' }}>
+        <ActivityIndicator size="small" color={c.gold} />
+      </View>
+    );
+  }
+
+  const toggleYou = () => {
+    if (youOpen && navigation.canGoBack()) navigation.goBack();
+    else navigation.navigate('You', { from: currentScreen });
+  };
+
+  return (
+    <View style={[{ paddingHorizontal: s.lg, paddingTop: s.sm, paddingBottom: chip.total ? s.xs : s.sm, backgroundColor: c.headerBg,
+      borderBottomWidth: 0.5, borderBottomColor: c.border, ...sh.sm }, onPaper && { backgroundColor: bp.paper, borderBottomColor: bp.border }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm }}>
+        <TourSpot id="topbar-avatar" radius={999}>
+          <TouchableOpacity onPress={toggleYou} hitSlop={7} activeOpacity={0.75} accessibilityRole="button"
+            accessibilityLabel={youOpen ? 'Close You' : 'You: your page, search, settings and more'}
+            accessibilityState={{ expanded: youOpen }}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+            <View style={{ width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
+              backgroundColor: accent.primary + '22', borderWidth: 1.5, borderColor: accent.primary }}>
+              {initial
+                ? <Text style={{ fontSize: 14, fontWeight: '800', color: accent.primary }}>{initial}</Text>
+                : <Ionicons name="person" size={16} color={accent.primary} />}
+            </View>
+            <Ionicons name={youOpen ? 'chevron-up' : 'chevron-down'} size={14} color={c.text3} />
+          </TouchableOpacity>
+        </TourSpot>
+
+        {/* Your path: the goal in flight, or an invitation to start one. */}
+        <TouchableOpacity onPress={() => goToScreen(navigation, 'Training')} activeOpacity={0.75} accessibilityRole="button"
+          accessibilityLabel={chip.empty ? 'Pick where to start. Open Learn' : `${chip.label}${chip.sub ? `, ${chip.sub}` : ''}. Open Learn`}
+          style={{ flex: 1, minWidth: 0, paddingHorizontal: 4 }}>
+          <Text numberOfLines={1} style={{ fontSize: t.sm, fontWeight: '800', color: chip.empty ? accent.primary : c.text1 }}>
+            {chip.empty ? 'Pick where to start →' : chip.label}
+          </Text>
+          {!!chip.sub && <Text numberOfLines={1} style={{ fontSize: 11, color: c.text3 }}>{chip.sub}</Text>}
+        </TouchableOpacity>
+
+        {/* A Work Mode session still going: its clock, one tap back to it. */}
+        {currentScreen !== 'WorkMode' && currentScreen !== 'WorkModeScreen' && <WorkSessionPill navigation={navigation} c={c} />}
+
+        <TouchableOpacity onPress={openPalette} hitSlop={8} accessibilityRole="button" accessibilityLabel="Search"
+          style={{ width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="search" size={19} color={c.text2} />
+        </TouchableOpacity>
+        {!!user && <NotificationBell userId={user.id} />}
+      </View>
+
+      {/* Steps done on the goal in flight. It used to draw tier progress. */}
+      {chip.total > 0 && (
+        <View style={{ height: 3, backgroundColor: c.bg2, borderRadius: 2, overflow: 'hidden', marginTop: 6 }}
+          accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: chip.total, now: chip.done }}>
+          <View style={{ height: 3, width: `${chip.pct}%`, backgroundColor: accent.primary, borderRadius: 2 }} />
+        </View>
+      )}
+    </View>
+  );
+}
+
+function TopBarV1({ currentScreen }) {
   const { user, points: earned, rank, level, progress, loading } = useUserProgress();
   // What's left to spend (pet food comes off it). Rank still counts everything earned.
   const points = useSpendablePoints(user?.id, earned);

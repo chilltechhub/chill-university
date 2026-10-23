@@ -229,9 +229,17 @@ for (const [from, a] of Object.entries(ALIASES)) {
   const today = resolveAlias('PlannerScreen', params, known);
   if (today.screen !== 'Home' || today.params?.date !== params.date) routeProblems.push(`routeAliases: with dashboardV2 on, PlannerScreen should open Home with its date, got ${JSON.stringify(today)}`);
   setAliasGate('dashboardV2', false);
-  if (resolveAlias('Profile', undefined, known).screen !== 'Profile') routeProblems.push('routeAliases: Profile should stay Profile until You is registered');
+  // Profile opens You with the new tabs (TABS_V2, P4), and stays Profile without.
+  if (resolveAlias('Profile', undefined, known).screen !== 'Profile') routeProblems.push('routeAliases: Profile should stay Profile with the new tabs off');
+  setAliasGate('tabsV2', true);
+  if (resolveAlias('Profile', undefined, known).screen !== 'You') routeProblems.push('routeAliases: with tabsV2 on, Profile should open You');
+  setAliasGate('tabsV2', false);
+  // Stats keeps opening Insights until You has the receipts (P5).
+  if (resolveAlias('Stats', { x: 1 }, known).screen !== 'Stats') routeProblems.push('routeAliases: Stats should keep opening Insights until the receipts gate is on');
+  setAliasGate('receipts', true);
   const stats = resolveAlias('Stats', { x: 1 }, (n) => n === 'You');
-  if (stats.screen !== 'You' || stats.params?.anchor !== 'receipts' || stats.params?.x !== 1) routeProblems.push(`routeAliases: Stats should open You at receipts once You exists, got ${JSON.stringify(stats)}`);
+  if (stats.screen !== 'You' || stats.params?.anchor !== 'receipts' || stats.params?.x !== 1) routeProblems.push(`routeAliases: Stats should open You at receipts once its gate is on, got ${JSON.stringify(stats)}`);
+  setAliasGate('receipts', false);
 }
 
 // The guide's seen-set syncs across devices (prefsSync.js PREFIXES), loaded

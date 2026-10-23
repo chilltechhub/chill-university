@@ -53,6 +53,8 @@ import WelcomeScreen from './src/screens/welcome/WelcomeScreen';
 import { loadWelcome, isWelcomeOn } from './src/api/welcomeStore';
 import { bootTarget } from './src/logic/welcomeCards';
 import ProfileScreen   from './src/screens/ProfileScreen';
+import YouScreen       from './src/screens/you/YouScreen';
+import useTabsV2       from './src/logic/useTabsV2';
 import SettingsScreen  from './src/screens/SettingsScreen';
 import NotificationCenterScreen from './src/screens/NotificationCenterScreen';
 import PlayScreen      from './src/screens/PlayScreen';
@@ -105,7 +107,7 @@ installWebAlertShim(); // web only: Alert.alert → the browser's dialogs
 // so this is both its first route and its gate.
 const GatedStats        = gatedScreen('insights', StatsScreen);
 // Screens the + button stays off (see where it's rendered below).
-const NO_FAB_ROUTES = new Set(['Play', 'PlayGame', 'Profile', 'WorkMode', 'Plus']);
+const NO_FAB_ROUTES = new Set(['Play', 'PlayGame', 'Profile', 'You', 'WorkMode', 'Plus']);
 // Work Mode from Home's Focus buttons. Inside the Library stack it had to be
 // reached by switching tabs first, which flashed the Library (setting off its
 // first-visit tutorial over the timer) and made closing land on whatever the
@@ -134,6 +136,40 @@ const TAB_ICONS = {
   Training: { active: 'school', inactive: 'school-outline' },
   Library:  { active: 'book',    inactive: 'book-outline' },
 };
+// The new tabs (TABS_V2, shake-up P4): Today · Learn · Make. Routes unchanged.
+const TAB_ICONS_V2 = {
+  Home:     { active: 'today',      inactive: 'today-outline' },
+  Training: { active: 'school',     inactive: 'school-outline' },
+  Library:  { active: 'color-wand', inactive: 'color-wand-outline' },
+};
+
+// You drops down from the top bar (shake-up P4, §2.2): a transparent modal
+// on the root stack that slides from the top, so the tabs underneath keep
+// their place. A swipe up closes it.
+const forDropDown = ({ current, layouts }) => ({
+  cardStyle: {
+    transform: [{
+      translateY: current.progress.interpolate({ inputRange: [0, 1], outputRange: [-layouts.screen.height, 0], extrapolate: 'clamp' }),
+    }],
+  },
+  overlayStyle: { opacity: current.progress.interpolate({ inputRange: [0, 1], outputRange: [0, 0.35], extrapolate: 'clamp' }) },
+});
+const YOU_OPTIONS = {
+  title: 'You',
+  presentation: 'transparentModal',
+  gestureEnabled: true,
+  gestureDirection: 'vertical-inverted',
+  cardOverlayEnabled: true,
+  cardStyle: { flex: 1 },
+  cardStyleInterpolator: forDropDown,
+};
+// The Profile route renders You too once the new tabs are on, so every
+// navigate('Profile') lands there; off, it's the old Profile (the rollback).
+function ProfileRoute({ navigation }) {
+  const [tabsV2] = useTabsV2();
+  React.useEffect(() => { navigation.setOptions({ title: tabsV2 ? 'You' : 'Profile' }); }, [navigation, tabsV2]);
+  return tabsV2 ? <YouScreen /> : <ProfileScreen />;
+}
 
 // bottom-tabs' own 'shift' interpolator parks every inactive tab at opacity 0
 // AND translateX ±50. On web (no react-native-screens) inactive tabs stay laid
@@ -165,7 +201,10 @@ function MainTabs() {
   // goes. The screen stays mounted (the pet on it finds coins while the app
   // is open), and a goal step or Home's Play button can still get there.
   const { isFeatureShown } = useAccess();
-  const trainingTab = isFeatureShown('training') || isFeatureShown('classes');
+  // With the new tabs, Learn is also your path and Finds, so it always shows.
+  const [tabsV2] = useTabsV2();
+  const trainingTab = tabsV2 || isFeatureShown('training') || isFeatureShown('classes');
+  const icons = tabsV2 ? TAB_ICONS_V2 : TAB_ICONS;
   // The tab labels come from react-navigation's own Text, which the
   // accessibility swap (src/components/AppText.js) doesn't reach. Capped at
   // Larger so three labels still fit across.
@@ -208,49 +247,62 @@ function MainTabs() {
         tabBarInactiveTintColor: c.tabInactive,
         tabBarLabelStyle: { fontSize: 12, fontWeight: '600', marginTop: 0, ...tabLabelA11y, lineHeight: tabLabelA11y.fontSize + 4 },
         tabBarIcon: ({ focused, color, size }) => {
-          const icons = TAB_ICONS[route.name];
-          return <Ionicons name={focused ? icons.active : icons.inactive} size={size} color={color} />;
+          const icon = icons[route.name];
+          return <Ionicons name={focused ? icon.active : icon.inactive} size={size} color={color} />;
         },
       })}
 
     >
-      {/* The Library tab always opens on the Library itself, not on
-          whichever tool was last open inside it (a life area the guide
-          took you to, say). Tapping it while already there did this
-          before; tapping it from another tab now does too. */}
-      <Tab.Screen
-        name="Library"
-        component={LibraryNav}
-        listeners={({ navigation, route }) => ({
-          tabPress: (e) => {
-            const inner = route.state;
-            if (inner && inner.index > 0) {
-              e.preventDefault();
-              navigation.navigate('Library', { screen: 'LibraryScreen' });
-            }
-          },
-        })}
-      />
-      <Tab.Screen name="Home"     component={HomeScreen} />
-      {/* Mounted at launch, not on first visit: the pet on this tab finds
-          coins while the app is open on any screen (src/logic/useCoinRewards.js),
-          so it has to be out from the start. */}
-      {/* Classes sit inside it (src/screens/TrainingNav.js). Like the
-          Library, tapping the tab returns to its first screen. */}
-      <Tab.Screen
-        name="Training"
-        component={TrainingNav}
-        options={{ lazy: false, tabBarLabel: 'Learn', title: 'Learn', ...(trainingTab ? null : { tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }) }}
-        listeners={({ navigation, route }) => ({
-          tabPress: (e) => {
-            const inner = route.state;
-            if (inner && inner.index > 0) {
-              e.preventDefault();
-              navigation.navigate('Training', { screen: inner.routes[0].name });
-            }
-          },
-        })}
-      />
+      {/* Old order Library · Home · Learn; with the new tabs (TABS_V2,
+          shake-up P4) Today · Learn · Make. Same routes either way. */}
+      {(tabsV2 ? ['Home', 'Training', 'Library'] : ['Library', 'Home', 'Training']).map(name => {
+        // The Library tab always opens on the Library itself, not on
+        // whichever tool was last open inside it (a life area the guide
+        // took you to, say). Tapping it while already there did this
+        // before; tapping it from another tab now does too.
+        if (name === 'Library') return (
+          <Tab.Screen
+            name="Library"
+            key="Library"
+            component={LibraryNav}
+            options={tabsV2 ? { tabBarLabel: 'Make', title: 'Make' } : undefined}
+            listeners={({ navigation, route }) => ({
+              tabPress: (e) => {
+                const inner = route.state;
+                if (inner && inner.index > 0) {
+                  e.preventDefault();
+                  navigation.navigate('Library', { screen: 'LibraryScreen' });
+                }
+              },
+            })}
+          />
+        );
+        if (name === 'Home') return (
+          <Tab.Screen name="Home" key="Home" component={HomeScreen} options={tabsV2 ? { tabBarLabel: 'Today', title: 'Today' } : undefined} />
+        );
+        // Mounted at launch, not on first visit: the pet on this tab finds
+        // coins while the app is open on any screen (src/logic/useCoinRewards.js),
+        // so it has to be out from the start. Classes sit inside it
+        // (src/screens/TrainingNav.js). Like the Library, tapping the tab
+        // returns to its first screen.
+        return (
+          <Tab.Screen
+            name="Training"
+            key="Training"
+            component={TrainingNav}
+            options={{ lazy: false, tabBarLabel: 'Learn', title: 'Learn', ...(trainingTab ? null : { tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }) }}
+            listeners={({ navigation, route }) => ({
+              tabPress: (e) => {
+                const inner = route.state;
+                if (inner && inner.index > 0) {
+                  e.preventDefault();
+                  navigation.navigate('Training', { screen: inner.routes[0].name });
+                }
+              },
+            })}
+          />
+        );
+      })}
     </Tab.Navigator>
   );
 }
@@ -561,7 +613,8 @@ function AppInner() {
           </Stack.Screen>
           <Stack.Screen name="MultiStepOnboarding" component={MultiStepOnboarding} />
           <Stack.Screen name="MainTabs"            component={MainTabs} />
-          <Stack.Screen name="Profile"             component={ProfileScreen} />
+          <Stack.Screen name="Profile"             component={ProfileRoute} />
+          <Stack.Screen name="You"                 component={YouScreen} options={YOU_OPTIONS} />
           <Stack.Screen name="Settings"            component={SettingsScreen} />
           <Stack.Screen name="Notifications"       component={NotificationCenterScreen} />
           <Stack.Screen name="Play"                component={PlayScreen} />

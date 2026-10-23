@@ -31,6 +31,7 @@ import TourSpot from '../components/TourSpot';
 import AccessibilitySettings from '../components/AccessibilitySettings';
 import { AppearancePicker, LifeAreaChips } from '../components/LookAndFeel';
 import useDashboardV2 from '../logic/useDashboardV2';
+import useTabsV2 from '../logic/useTabsV2';
 
 const TRACK_VALUE = {
   picks: '**Just my picks.** Only what you chose. Goals suggest more.',
@@ -58,6 +59,9 @@ export default function MakeItYoursScreen() {
   // Today as the Planner (shake-up P3): on for new accounts, opt-in here for
   // everyone else for this release. Off brings the old Home and Planner back.
   const [dashboardV2, setDashboardV2] = useDashboardV2();
+  // The tabs Today · Learn · Make and You (shake-up P4). They follow Today
+  // until switched here on their own.
+  const [tabsV2, setTabsV2] = useTabsV2();
 
   const persona = getPersona(activeType);
   const track = ['picks', 'auto', 'full'].includes(experienceMode) ? experienceMode : 'auto';
@@ -174,6 +178,9 @@ export default function MakeItYoursScreen() {
           <Row icon="calendar-outline" title="Today as your planner"
             value={dashboardV2 ? '**On.** Home is your day: the plan, the next step, your cards' : '**Off.** Home and the Planner as before'}
             right={<Toggle value={!!dashboardV2} onChange={(v) => setDashboardV2(v)} label="Today as your planner" />} />
+          <Row icon="albums-outline" title="Tabs: Today · Learn · Make"
+            value={tabsV2 ? '**On.** Your picture (top left) opens **You**' : '**Off.** Library · Home · Learn, as before'}
+            right={<Toggle value={!!tabsV2} onChange={(v) => setTabsV2(v)} label="Tabs: Today, Learn, Make" />} />
           <Row icon="leaf-outline" title={dashboardV2 ? 'View, everywhere' : 'Home view'}
             value={homeView === 'calm' ? '**Calm.** Fewer cards, the same day' : '**Full.** Every card you picked'} />
           <Segments label={dashboardV2 ? 'View' : 'Home view'} value={homeView === 'calm' ? 'calm' : 'full'}

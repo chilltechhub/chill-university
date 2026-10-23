@@ -50,7 +50,9 @@ const WARDROBE_TABS = [
   { key: 'backgroundId', label: 'Backdrop', icon: 'image-outline' },
 ];
 
-export default function ProfileScreen() {
+// `you`: drawn inside You (src/screens/you/YouScreen.js, shake-up P4), which
+// passes its own header and what goes above and below the profile.
+export default function ProfileScreen({ you = null } = {}) {
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
   const [dashboardV2] = useDashboardV2();
   const styles = makeStyles(c, t, s, r);
@@ -153,7 +155,7 @@ export default function ProfileScreen() {
 
   // A guest's You: their Dream, their page, Save my progress (the
   // shake-up's P2). It was a sign-in wall.
-  if (!session) return <GuestYou />;
+  if (!session) return <GuestYou you={you} />;
 
   const petLevel = bondLevel(petCare.bond).level;
   const badgeCtx = { level, streakDays, points, subjectProgress, gameplayStats, petLevel };
@@ -166,17 +168,20 @@ export default function ProfileScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {you ? you.header : (
       <View style={styles.header}>
         <Text style={styles.title}>Your Profile</Text>
         <TouchableOpacity accessibilityLabel="Settings" accessibilityRole="button" onPress={() => navigation.navigate('Settings')} style={styles.gearBtn}>
           <Ionicons name="settings-outline" size={22} color={c.text3} />
         </TouchableOpacity>
       </View>
+      )}
 
       <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+        {you?.top}
         {/* The Dream lives on You once Today is the Planner (shake-up P3);
             Today keeps an echo of it on the next step. */}
-        {dashboardV2 && <View style={{ marginHorizontal: -16, marginBottom: 12 }}><DreamCard userId={session?.user?.id || null} /></View>}
+        {(dashboardV2 || you) && <View style={{ marginHorizontal: -16, marginBottom: 12 }}><DreamCard userId={session?.user?.id || null} /></View>}
         {/* ── Hero: character + pet on a landscape backdrop ─────────────── */}
         <LandscapeBackground background={background} height={200} level={level} decor={decor} style={styles.hero}>
           <CharacterWalker
@@ -268,8 +273,11 @@ export default function ProfileScreen() {
           placeholderTextColor={c.text4}
           multiline
         />
+        {you?.bottom}
       </ScrollView>
 
+      {/* In You, only while there's something to save. */}
+      {(!you || dirty) && (
       <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.saveBtn, (!dirty || saving) && styles.saveBtnDisabled]}
@@ -279,6 +287,7 @@ export default function ProfileScreen() {
           {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save changes</Text>}
         </TouchableOpacity>
       </View>
+      )}
 
       <WardrobeModal
         heroTap={heroTap}

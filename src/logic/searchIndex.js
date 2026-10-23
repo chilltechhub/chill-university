@@ -28,6 +28,8 @@ const library = (screen, params) => ({ type: 'tab', tab: 'Library', screen, para
 // Classes live in the Training tab (src/screens/TrainingNav.js), on top of
 // the games screen so back returns there.
 const classes = (screen, params) => ({ type: 'tab', tab: 'Training', screen: 'ClassesStack', params: { screen, params }, initial: false });
+// Practice sits on top of Learn the same way (shake-up P4).
+const training = (screen, params) => ({ type: 'tab', tab: 'Training', screen, params, initial: false });
 
 export function navigateTo(navigation, route) {
   if (!route) return;
@@ -46,11 +48,15 @@ export function navigateTo(navigation, route) {
 // gated at the navigator (see src/components/FeatureGate.js's gatedScreen),
 // so landing on one shows its lock and the way through rather than its
 // contents.
+// The tabs go by their new names (Today · Learn · Make, shake-up P4) with
+// the old ones in the subtitle, so "Home", "Library" or "Training" still
+// find them whichever tabs are on.
 const STANDALONE = [
-  { title: 'Home',            subtitle: 'Today, focus & quick actions',      icon: 'home-outline',            route: tab('Home') },
-  { title: 'Training',        subtitle: 'Games & daily drills',              icon: 'barbell-outline',         route: tab('Training') },
+  { title: 'Today',           subtitle: 'Your day, your plan and the next step · Home, Planner', icon: 'today-outline', route: tab('Home') },
+  { title: 'Learn',           subtitle: 'Your path, Finds, classes and practice · Training', icon: 'school-outline', route: tab('Training') },
+  { title: 'Practice',        subtitle: 'Games and daily drills',            icon: 'game-controller-outline', route: training('Practice') },
   { title: 'Classes',         subtitle: 'Lessons and missions by subject',     icon: 'ribbon-outline',          route: classes('ClassesMain') },
-  { title: 'Library',         subtitle: 'Every hub, life area & class',      icon: 'book-outline',            route: tab('Library') },
+  { title: 'Make',            subtitle: 'Studio, projects, saved and tools · Library', icon: 'color-wand-outline', route: tab('Library') },
   { title: 'Capture Inbox',   subtitle: 'Process what you jotted down',      icon: 'file-tray-full-outline',  route: library('CaptureInbox') },
   { title: 'Bring stuff in',  subtitle: 'Import lists, links, files or notes', icon: 'cloud-upload-outline',    route: library('ImportScreen') },
   { title: 'Fill with AI',    subtitle: 'Plan or change anything with any AI chatbot', icon: 'sparkles-outline', route: library('AIBridgeScreen') },
@@ -59,7 +65,11 @@ const STANDALONE = [
   { title: 'Labs',            subtitle: 'Experiments in progress',           icon: 'flask-outline',           route: library('LabsScreen') },
   { title: 'Fellow Scholars', subtitle: 'People on a similar path',          icon: 'people-outline',          route: library('FellowScholarsScreen') },
   { title: 'Mentors & Experts', subtitle: 'More experienced people',         icon: 'school-outline',          route: library('MentorsScreen') },
-  { title: 'Profile',         subtitle: 'Rank, points, streak & account',    icon: 'person-circle-outline',   route: root('Profile') },
+  { title: 'You',             subtitle: 'Your page, your Dream, your life areas · Profile', icon: 'person-circle-outline', route: root('Profile') },
+  { title: 'Make it yours',   subtitle: 'Look, layout and features',         icon: 'options-outline',         route: root('MakeItYours') },
+  { title: 'My features',     subtitle: 'Pick what the app shows you',       icon: 'apps-outline',            route: root('MyFeatures') },
+  { title: 'Notifications',   subtitle: 'Reminders, what needs doing, news', icon: 'notifications-outline',   route: root('Notifications') },
+  { title: 'Connected apps',  subtitle: 'Calendar, reminders, share, files', icon: 'git-network-outline',     route: root('ConnectedApps') },
   { title: 'Goals',         subtitle: 'Your goal, every stage & what opens next',  icon: 'navigate-outline',        route: root('Compass') },
   { title: 'Insights',        subtitle: 'Done, habits, focus & game stats',  icon: 'analytics-outline',       route: root('Stats') },
   { title: 'Settings',        subtitle: 'Theme, sections, notifications',    icon: 'settings-outline',        route: root('Settings') },

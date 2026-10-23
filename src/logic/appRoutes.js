@@ -33,6 +33,8 @@ const ROOT_SCREENS = new Set([
   'MyFeatures',
   'ConnectedApps',
   'Notifications', 'AllProfiles',
+  // You, the dropdown from the top bar (shake-up P4).
+  'You',
 ]);
 
 // The Classes stack, two levels down (Training -> ClassesStack -> screen).
@@ -65,6 +67,10 @@ export function goToScreen(navigation, target, targetParams) {
   if (screen === 'Training' || screen === 'TrainingHome') {
     return navigation.navigate('MainTabs', { screen: 'Training', params: { screen: 'TrainingHome', params } }, { pop: true });
   }
+  // Practice: the games, on top of Learn (shake-up P4), so back returns there.
+  if (screen === 'Practice') {
+    return navigation.navigate('MainTabs', { screen: 'Training', params: { screen: 'Practice', initial: false, params } }, { pop: true });
+  }
   // `params` here is the Classes stack's own: { screen, params } inside it.
   if (screen === 'ClassesStack') {
     return navigation.navigate('MainTabs', {
@@ -93,7 +99,7 @@ export function goToScreen(navigation, target, targetParams) {
 /** True when `screen` is one this resolver knows how to reach. */
 export function isKnownScreen(screen) {
   return TAB_SCREENS.has(screen) || ROOT_SCREENS.has(screen) || CLASS_SCREENS.has(screen)
-    || screen === 'ClassesStack' || screen === 'TrainingHome';
+    || screen === 'ClassesStack' || screen === 'TrainingHome' || screen === 'Practice';
 }
 
 // The name a route goes by for tutorials, the guide and the top bar. The

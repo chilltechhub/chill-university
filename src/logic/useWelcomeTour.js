@@ -111,7 +111,7 @@ export default function useWelcomeTour(routeName) {
         return;
       }
       const made = await loadBuilds(uid).catch(() => []);
-      if (alive) startLesson(appTour({ project: made[0] ? buildTitle(made[0]) : null, mission, dashboardV2: isAliasGateOn('dashboardV2') }), { onEnd: finish });
+      if (alive) startLesson(appTour({ project: made[0] ? buildTitle(made[0]) : null, mission, dashboardV2: isAliasGateOn('dashboardV2'), tabsV2: isAliasGateOn('tabsV2') }), { onEnd: finish });
     }, SETTLE_MS);
     return () => { alive = false; clearTimeout(timer); };
   }, [state, tourActive, routeName, startTour, startLesson, finish, uid, mission]);

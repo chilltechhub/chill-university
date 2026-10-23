@@ -78,6 +78,15 @@ const TODAY_ADD_STEP = {
 };
 
 /** The main tour as it stands: with Today on, + Add stands in for the FAB. */
-export function mainTourSteps(dashboardV2 = false) {
-  return dashboardV2 ? TOUR_STEPS.map(st => (st.id === 'fab' ? TODAY_ADD_STEP : st)) : TOUR_STEPS;
+// The tabs Today · Learn · Make (TABS_V2, shake-up P4), said the same way by
+// every tour that explains the bar.
+export const TABBAR_V2_BODY = '**Today** = your day. **Learn** = your path, classes and practice. **Make** = the Studio and what you make. **Your picture** (top left) opens You.';
+
+export function mainTourSteps(dashboardV2 = false, tabsV2 = false) {
+  if (!dashboardV2 && !tabsV2) return TOUR_STEPS;
+  return TOUR_STEPS.map(st => {
+    if (dashboardV2 && st.id === 'fab') return TODAY_ADD_STEP;
+    if (tabsV2 && st.id === 'nav-tabbar') return { ...st, body: TABBAR_V2_BODY };
+    return st;
+  });
 }

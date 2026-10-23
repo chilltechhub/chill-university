@@ -57,6 +57,14 @@ const due = [{ title: 'Essay', date: '2026-10-24' }, { title: 'Form', date: '202
   check('a soon plan counts as now', N.nextStep({ now: { title: 'Gym', kind: 'soon' } }).label === 'Coming up');
   check('an unknown now-kind is ignored', N.nextStep({ now: { title: 'X', kind: 'rest' }, objective }).kind === 'objective');
   check('junk inputs don\'t throw', N.nextStep({ due: [null, { title: '' }], objective: { active: true } }).kind === 'path');
+
+  // The top bar's path chip (P4): the goal in flight until units exist.
+  const chip = N.pathChip({ active: true, label: 'First Steps', done: 1, total: 4 });
+  check('chip: the goal, its step, the bar', chip.label === 'First Steps' && chip.sub === 'Step 2 of 4' && chip.pct === 25 && !chip.empty);
+  check('chip: no goal invites a start', N.pathChip(null).label === 'Pick where to start' && N.pathChip({ active: false }).empty);
+  const claim = N.pathChip({ active: true, complete: true, label: 'X', done: 3, total: 3 });
+  check('chip: a finished goal says claim it, bar full', claim.sub === 'Done · claim it' && claim.pct === 100);
+  check('chip: junk counts are clamped', N.pathChip({ active: true, label: 'X', done: 9, total: 2 }).pct === 100 && N.pathChip({ active: true, label: 'X', done: -1, total: 0 }).pct === 0);
 }
 
 if (problems.length) {
