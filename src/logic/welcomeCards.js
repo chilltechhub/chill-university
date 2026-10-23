@@ -79,9 +79,18 @@ export function togglePick(list = [], key) {
 // WELCOME_V1, the rollback switch (plan §11 P2). Set either way, it wins.
 // Unset, it's on for a device nobody has signed in on, and off for one
 // someone has: a person who signed out lands on Login, as they always did.
-export function welcomeEnabled(setting, signedInBefore) {
+// `chosen`: someone tapped "New here? Start here" on Login, so the welcome
+// is theirs on this device too (until someone signs in).
+export function welcomeEnabled(setting, signedInBefore, chosen = false) {
   if (setting === true || setting === false) return setting;
-  return !signedInBefore;
+  return !signedInBefore || !!chosen;
+}
+
+// "New here? Start here" on Login opens the welcome. A finished one opens
+// again (the answers stay, and "Start over" is there); a half-done one picks
+// up where it was. The patch to save first, or null.
+export function startHerePatch(welcome) {
+  return normalizeWelcome(welcome).done ? { done: false, guest: false, at: null } : null;
 }
 
 // The line a page project starts with, from where they are and the path

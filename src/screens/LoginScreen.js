@@ -10,7 +10,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../api/supabaseClient';
 import { needsSecondStep, verifySignInCode } from '../api/mfa';
 import { useNavigation, NavigationRouteContext } from '@react-navigation/native';
-import { saveWelcome, SIGNED_IN_BEFORE_KEY } from '../api/welcomeStore';
+import { saveWelcome, chooseWelcome, forgetWelcomeChoice, SIGNED_IN_BEFORE_KEY } from '../api/welcomeStore';
+import { readSetting, SETTING_KEYS } from '../logic/useSetting';
 import { redeemOrgInviteCode } from '../api/organizationService';
 import { PRIVACY_POLICY_URL, TERMS_URL } from '../config/legal';
 
@@ -84,6 +85,21 @@ export default function LoginScreen({ onSuccess, onClose }) {
   // button that did nothing. { kind: 'error' | 'info', text, action? }
   const [notice,      setNotice]      = useState(null);
   const fail = (text, action) => setNotice({ kind: 'error', text, action });
+
+  // "New here? Start here": the welcome, on a phone that skips it because
+  // someone has signed in here before. Only as its own screen (not the
+  // sign-in pop-up), and not when WELCOME_V1 is switched off.
+  const [welcomeOff, setWelcomeOff] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    readSetting(SETTING_KEYS.WELCOME_V1, null).then(v => { if (alive) setWelcomeOff(v === false); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  const showStartHere = !onClose && !onSuccess && !welcomeOff;
+  const startHere = async () => {
+    await chooseWelcome().catch(e => console.warn('start here', e?.message));
+    navigation.reset({ index: 0, routes: [{ name: 'Welcome' }] });
+  };
   const switchMode = (m) => { setMode(m); setNotice(null); };
 
   // A device nobody has signed in on opens on Create account. It opened on
@@ -128,6 +144,7 @@ export default function LoginScreen({ onSuccess, onClose }) {
   const goAfterAuth = async (user) => {
   try {
     AsyncStorage.setItem(SIGNED_IN_BEFORE_KEY, '1').catch(() => {});
+    forgetWelcomeChoice();
     await maybeRedeemPendingOrgCode();
 
     const { data: profile } = await supabase
@@ -316,6 +333,13 @@ export default function LoginScreen({ onSuccess, onClose }) {
           <Text style={s.appName}>Deskartes</Text>
           <Text style={s.tagline}>by ChillTech Hub</Text>
         </View>
+
+        {showStartHere && !mfaUser && (
+          <TouchableOpacity onPress={startHere} style={s.startHere} accessibilityRole="button"
+            accessibilityLabel="New here? Start here. A few quick questions, then your first project">
+            <Text style={s.startHereText}>New here? <Text style={s.startHereLink}>Start here →</Text></Text>
+          </TouchableOpacity>
+        )}
 
         {/* Two-step sign-in: the password was right, now the code. */}
         {mfaUser && (
@@ -519,8 +543,8 @@ export default function LoginScreen({ onSuccess, onClose }) {
           ) : (
             <TouchableOpacity style={s.switchRow} onPress={() => switchMode(mode === 'login' ? 'signup' : 'login')} accessibilityRole="button">
               <Text style={s.switchText}>
-                {mode === 'login' ? 'New here? ' : 'Have an account? '}
-                <Text style={s.switchLink}>{mode === 'login' ? 'Create account' : 'Sign in'}</Text>
+                {mode === 'login' ? 'No account? ' : 'Have an account? '}
+                <Text style={s.switchLink}>{mode === 'login' ? 'Create one' : 'Sign in'}</Text>
               </Text>
             </TouchableOpacity>
           )}
@@ -595,6 +619,9 @@ const s = StyleSheet.create({
   switchRow:   { marginTop: 18, alignItems: 'center' },
   switchText:  { fontSize: 13, color: 'rgba(255,255,255,0.4)' },
   switchLink:  { color: '#2bb5a0', fontWeight: '600' },
+  startHere:     { alignSelf: 'center', marginTop: -16, marginBottom: 18, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: 'rgba(43,181,160,0.12)', borderWidth: 1, borderColor: 'rgba(43,181,160,0.45)' },
+  startHereText: { fontSize: 14, color: 'rgba(255,255,255,0.75)' },
+  startHereLink: { color: '#5fd4c0', fontWeight: '800' },
   guestBtn:    { marginTop: 14, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)', borderRadius: 14, paddingVertical: 14 },
   guestText:   { fontSize: 15, fontWeight: '700', color: 'rgba(255,255,255,0.92)', textAlign: 'center' },
   guestSub:    { fontSize: 12, color: 'rgba(255,255,255,0.62)', textAlign: 'center', marginTop: 8, lineHeight: 17 },
