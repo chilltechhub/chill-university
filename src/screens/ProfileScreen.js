@@ -40,6 +40,8 @@ import TourSpot from '../components/TourSpot';
 import { textOn } from '../logic/contrast';
 import { RANK_LABELS } from '../theme';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
+import DreamCard from '../components/DreamCard';
+import useDashboardV2 from '../logic/useDashboardV2';
 
 const WARDROBE_TABS = [
   { key: 'outfitId', label: 'Outfit', icon: 'shirt-outline' },
@@ -50,6 +52,7 @@ const WARDROBE_TABS = [
 
 export default function ProfileScreen() {
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
+  const [dashboardV2] = useDashboardV2();
   const styles = makeStyles(c, t, s, r);
   const navigation = useNavigation();
   const progress = useUserProgress();
@@ -171,6 +174,9 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+        {/* The Dream lives on You once Today is the Planner (shake-up P3);
+            Today keeps an echo of it on the next step. */}
+        {dashboardV2 && <View style={{ marginHorizontal: -16, marginBottom: 12 }}><DreamCard userId={session?.user?.id || null} /></View>}
         {/* ── Hero: character + pet on a landscape backdrop ─────────────── */}
         <LandscapeBackground background={background} height={200} level={level} decor={decor} style={styles.hero}>
           <CharacterWalker

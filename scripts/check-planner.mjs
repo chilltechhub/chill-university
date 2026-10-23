@@ -279,6 +279,87 @@ check('isSamePlan: different times differ', !L.isSamePlan({ title: 'Gym', date: 
   check('phone sync: never two at once', overlap === 1, overlap);
 }
 
+// ── Today = the Planner as the dashboard (shake-up P3) ───────────────────
+// Links in (todayParams.js), Today's own layout (widgetLayout.js), the
+// DASHBOARD_V2 rule (welcomeCards.js) and the tours' + Add swap.
+{
+  const text = (p) => readFile(new URL(`../${p}`, import.meta.url), 'utf8');
+  const asUrl = (code) => 'data:text/javascript,' + encodeURIComponent(code);
+  const P = await import(asUrl(await text('src/logic/todayParams.js')));
+  const T = '2026-10-22';
+  const inst = { id: 'a1', date: '2026-10-25', title: 'X' };
+  const e = P.todayParamsAction({ editInstance: inst }, T);
+  check('link: editInstance opens its day with the edit sheet', e.view === 'Daily' && e.date === '2026-10-25' && e.edit === inst && show(e.used) === show(['editInstance']), show(e));
+  check('link: review opens today with the review', P.todayParamsAction({ review: 1 }, T).date === T && P.todayParamsAction({ review: 1 }, T).review === true);
+  const d = P.todayParamsAction({ date: '2026-11-02' }, T);
+  check('link: date opens that day', d.view === 'Daily' && d.date === '2026-11-02');
+  const a = P.todayParamsAction({ addFor: { date: '2026-10-30', area: 'physical' } }, T);
+  check('link: addFor opens the add sheet on that day, in that area', a.date === '2026-10-30' && a.add.area === 'physical');
+  check('link: addFor without a day is today', P.todayParamsAction({ addFor: { area: 'mental' } }, T).date === T);
+  const w = P.todayParamsAction({ view: 'week', at: 1 }, T);
+  check("link: the FAB's Calendar opens the week", w.view === 'Weekly' && w.date === null && show(w.used) === show(['view']), show(w));
+  check('link: a day in a view', P.todayParamsAction({ date: '2026-10-01', view: 'month' }, T).view === 'Monthly');
+  check('link: nothing to do is null', P.todayParamsAction({}, T) === null && P.todayParamsAction(null, T) === null && P.todayParamsAction({ date: 'tomorrow' }, T) === null);
+  check('link: a bad editInstance is ignored', P.todayParamsAction({ editInstance: { id: 1 } }, T) === null);
+  check('goal step: "put one in the Planner" opens the add sheet in its area', show(P.plannerStepParams({ screen: 'PlannerScreen', signal: 'planner-item-added:physical' })) === show({ addFor: { area: 'physical' } }));
+  check('goal step: no area named, no area forced', P.plannerStepParams({ screen: 'PlannerScreen', signal: 'planner-item-added' }).addFor.area === null);
+  check('goal step: a step that says what to open, or another screen, is left alone', P.plannerStepParams({ screen: 'PlannerScreen', params: { date: T } }) === null && P.plannerStepParams({ screen: 'VaultScreen' }) === null && P.plannerStepParams(null) === null);
+
+  // The Planner's scopes (§3.4): Day keeps "this profile", Week/Month the
+  // calendar's "every profile"; Today asks for the calendar one.
+  const up = await text('src/screens/today/usePlanner.js');
+  check("scope: Day reads the planner's, this profile by default", up.includes("useViewScope('planner', SCOPE_PROFILE)"));
+  check("scope: Week/Month read the calendar's, every profile by default", up.includes("useViewScope('calendar', SCOPE_ALL)") && up.includes("calendarScope && view !== 'Daily' ? calScope : plannerScope"));
+  check('scope: Today uses the calendar scope for Week/Month', (await text('src/screens/HomeScreen.js')).includes('calendarScope: true'));
+  // Every add signals the goal steps, and a new habit tops up its repeats.
+  check('add: a new plan signals planner-item-added with its area', up.includes("signalAction('planner-item-added', { area: saved?.area })"));
+  check('add: a repeating plan tops up its series at once', up.includes('extendRepeatingPlans(userId, { force: true })'));
+  check('phone: Today syncs to the phone gathered, not per render', up.includes('syncPlansToPhoneSoon(userId)') && !up.includes('syncPlansToPhone(userId)'));
+
+  const dwUrl = asUrl(await text('src/data/dashboardWidgets.js'));
+  const DW = await import(dwUrl);
+  const WL = await import(asUrl((await text('src/logic/widgetLayout.js')).replace("'../data/dashboardWidgets'", `"${dwUrl}"`)));
+  const shownKeys = (l) => l.filter(x => !x.hidden).map(x => x.key);
+  // A Home layout from before: the goal card, today, the desk, quests, a hidden wisdom.
+  const home = [
+    { key: 'hq', hidden: false }, { key: 'compass', hidden: false }, { key: 'focus', hidden: false },
+    { key: 'desk', hidden: false }, { key: 'quests', hidden: false }, { key: 'wisdom', hidden: true }, { key: 'lifeAreas', hidden: true },
+  ];
+  const m = WL.todayLayoutFrom({ home, wanted: ['nextStep', 'yourDay', 'find'] });
+  const sk = shownKeys(m);
+  check('migrate: old cards take their new names in place', sk.indexOf('nextStep') === sk.indexOf('hq') + 1 && sk.includes('missions') && !sk.includes('compass') && !sk.includes('quests'), show(sk));
+  check('migrate: focus becomes your day', sk.includes('yourDay') && !sk.includes('focus'), show(sk));
+  check("migrate: the old fixed cards and Today's own show", ['dream', 'nextStep', 'quickAdd', 'yourDay', 'find'].every(k => sk.includes(k)), show(sk));
+  check('migrate: quick add sits under the next step', sk.indexOf('quickAdd') === sk.indexOf('nextStep') + 1, show(sk));
+  // An old layout with today above the goal card: the Find goes under both.
+  const sk2 = shownKeys(WL.todayLayoutFrom({ home: [{ key: 'hq', hidden: false }, { key: 'focus', hidden: false }, { key: 'compass', hidden: false }, { key: 'desk', hidden: false }] }));
+  check("migrate: today's find sits under the day's cards", sk2.indexOf('find') === Math.max(sk2.indexOf('yourDay'), sk2.indexOf('nextStep'), sk2.indexOf('quickAdd')) + 1, show(sk2));
+  check('migrate: a hidden card stays hidden, a retired one is gone', m.some(x => x.key === 'lifeAreas' && x.hidden) && !m.some(x => x.key === 'wisdom'), show(m));
+  check('migrate: every Today key is somewhere, once', DW.TODAY_KEYS.every(k => m.filter(x => x.key === k).length === 1) && m.length === DW.TODAY_KEYS.length);
+  check('migrate: never touches the Home layout', home[1].key === 'compass' && home.length === 7);
+  const saved = [{ key: 'find', hidden: false }, { key: 'nextStep', hidden: true }];
+  const sv = WL.todayLayoutFrom({ saved, home, wanted: [] });
+  check('saved: a layout saved for Today wins as it is', show(shownKeys(sv)) === show(['find']) && sv.find(x => x.key === 'nextStep').hidden, show(shownKeys(sv)));
+  const fresh = WL.todayLayoutFrom({ wanted: ['nextStep', 'yourDay', 'find', 'deliverable', 'checkin'] });
+  check('new account: next step, quick add, then the path, unbuilt keys skipped', show(shownKeys(fresh)) === show(['nextStep', 'quickAdd', 'yourDay', 'find', 'checkin']), show(shownKeys(fresh)));
+  check('calm draws a subset of the same keys', [...DW.CALM_WIDGETS].every(k => DW.TODAY_KEYS.includes(k)));
+
+  const WC = await import(asUrl(await text('src/logic/welcomeCards.js')));
+  check('v2: a setting wins either way', WC.dashboardV2On(true, {}) === true && WC.dashboardV2On(false, { signedIn: true, onboardedAt: 'x' }) === false);
+  check('v2: new accounts on, old accounts off', WC.dashboardV2On(null, { signedIn: true, onboardedAt: '2026-10-22' }) === true && WC.dashboardV2On(undefined, { signedIn: true }) === false);
+  check('v2: a guest from the welcome on, any other guest off', WC.dashboardV2On(null, { welcomeGuest: true }) === true && WC.dashboardV2On(null, {}) === false);
+
+  const TS = await import(asUrl(await text('src/logic/tourSteps.js')));
+  const tv2 = TS.mainTourSteps(true);
+  check('tour: + Add stands in for the FAB on Today', tv2.some(st => st.id === 'planner-add') && !tv2.some(st => st.id === 'fab') && tv2.length === TS.TOUR_STEPS.length);
+  check('tour: unchanged with Today off', TS.mainTourSteps(false) === TS.TOUR_STEPS);
+  const AT = await import(asUrl(await text('src/logic/guide/lessons/appTour.js')));
+  const ids = (l) => l.map(st => st.id);
+  check('app tour (Today): project in Make, then + Add', show(ids(AT.appTour({ project: 'P', mission: 'M', dashboardV2: true }))) === show(['studio-builds', 'nav-tabbar', 'planner-add', 'calm-next']));
+  check('app tour (old Home): unchanged', show(ids(AT.appTour({ project: 'P', mission: 'M' }))) === show(['home-studio', 'nav-tabbar', 'fab', 'calm-next']));
+  check('app tour (Today, no project): no Studio stop', !ids(AT.appTour({ dashboardV2: true })).includes('studio-builds'));
+}
+
 if (problems.length) {
   console.error(`check-planner: ${problems.length} problem(s), ${passed} passed\n`);
   for (const p of problems) console.error(`  ✗ ${p}`);

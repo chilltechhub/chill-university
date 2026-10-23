@@ -25,12 +25,21 @@ export async function loadWelcome() {
   }
 }
 
+// Told whenever the answers change (useDashboardV2 listens for "kept going
+// as a guest").
+const listeners = new Set();
+export function onWelcomeChange(fn) {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
 // Writes are queued so two quick answers can't overwrite each other.
 let queue = Promise.resolve();
 export function saveWelcome(patch) {
   const run = queue.then(async () => {
     const next = normalizeWelcome({ ...(await loadWelcome()), ...patch });
     await AsyncStorage.setItem(WELCOME_KEY, JSON.stringify(next));
+    listeners.forEach(fn => { try { fn(next); } catch { /* a listener's problem */ } });
     return next;
   });
   queue = run.catch(() => {});

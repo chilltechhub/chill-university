@@ -55,6 +55,20 @@ export const WIDGET_DEFS = [
   // Every type: the next quest (src/data/quests.js). Joins Home at each
   // type's third stage, alongside the next three games.
   { key: 'quests',           title: 'Missions' },
+  // ── Today, the Planner as the dashboard (shake-up P3, §3.3) ──────────────
+  // Drawn by HomeScreen when DASHBOARD_V2 is on. Nothing here is pinned:
+  // each one moves, hides and comes back from the tray like every other.
+  { key: 'nextStep',  title: 'Next step' },
+  { key: 'quickAdd',  title: 'Quick add' },
+  { key: 'yourDay',   title: 'Your day' },
+  { key: 'find',      title: "Today's Find" },
+  { key: 'dream',     title: 'The Dream' },
+  { key: 'dueSoon',   title: 'Due this week' },
+  { key: 'stillOpen', title: 'Still open' },
+  { key: 'checkin',   title: 'Check-in' },
+  { key: 'unit',      title: 'Your steps' },
+  { key: 'missions',  title: 'Missions' },
+  { key: 'review',    title: 'Review' },
 ];
 export const WIDGET_KEYS = WIDGET_DEFS.map(w => w.key);
 
@@ -85,6 +99,17 @@ export const WIDGET_BLURBS = {
   founderQuest:     'The next step on the founder track.',
   targetsReadiness: 'Your targets and how ready the paperwork is.',
   quests:           'The next ten-minute quest to try.',
+  nextStep:         'The one thing to do next, from your goal, your day or what is due.',
+  quickAdd:         'Type a plan in one line, like "dentist thu 4pm".',
+  yourDay:          "Today's plan by time or as a list, what's due, and your focus.",
+  find:             'One useful tool or idea a day.',
+  dream:            'The life you want, in your words.',
+  dueSoon:          'What is due in the next seven days.',
+  stillOpen:        'What you were halfway through, and to-dos with no day.',
+  checkin:          'Life areas you have not rated in a while.',
+  unit:             'Every step of what you are working on, ticked or not.',
+  missions:         'Software for You and the quick missions.',
+  review:           'About a minute of review, when something is due.',
 };
 
 // A widget added by an app update is appended HIDDEN, so an update never
@@ -96,10 +121,28 @@ export const NEW_WIDGETS_SHOWN = new Set(['goalSteps', 'stageSteps']);
 // Keys Today adds in later phases (shake-up plan §3.3). Each moves from here
 // into WIDGET_DEFS in the PR that builds it, together with its BASE_WIDGETS
 // or pickables entry, or check-pickables goes red.
-export const PLANNED_WIDGET_KEYS = [
-  'nextStep', 'quickAdd', 'yourDay', 'dream', 'deliverable', 'dueSoon', 'stillOpen',
-  'find', 'room', 'money', 'assignments', 'unit', 'missions', 'checkin',
+export const PLANNED_WIDGET_KEYS = ['deliverable', 'room', 'money', 'assignments'];
+
+// Today's board (DASHBOARD_V2): the keys it offers, in tray order. The old
+// keys it replaces (focus, activities, compass, goalSteps, stageSteps,
+// quests, checkins, wisdom) aren't here, so a saved Home layout read for
+// Today takes their new names through WIDGET_ALIASES (widgetLayout.js
+// todayLayoutFrom). hq and desk stay until P5 / P6 give them a new home.
+export const TODAY_KEYS = [
+  'nextStep', 'quickAdd', 'yourDay', 'find', 'dream', 'dueSoon', 'stillOpen', 'checkin',
+  'unit', 'missions', 'review', 'hq', 'desk', 'ideas', 'builds', 'wayfinder',
+  'habitRings', 'lifeAreas', 'dailyDrills', 'studyBlocks', 'classProgress',
+  'orgSnapshot', 'systemsCheck', 'recurringOps', 'vaultStatus', 'founderQuest', 'targetsReadiness',
 ];
+
+// Shown, not tucked into the tray, when an existing layout first meets
+// Today: the Dream and Today's Find were fixed cards on Home, and the next
+// step, quick add and your day are what Today is.
+export const TODAY_SHOWN_NEW = new Set(['nextStep', 'quickAdd', 'yourDay', 'find', 'dream']);
+
+// What Calm draws, in the calm style (src/screens/today/CalmToday.js). The
+// same layout as Full: a key hidden there is hidden here, in the same order.
+export const CALM_WIDGETS = new Set(['dream', 'find', 'nextStep', 'yourDay']);
 
 // What a saved layout's key becomes once the shake-up renames or retires it
 // (persona_profiles.active_widgets, user_settings.home_widget_layout). A
@@ -133,4 +176,15 @@ export const WIDGET_ALIASES = {
   founderQuest:     'founderQuest',
   targetsReadiness: 'targetsReadiness',
   quests:           'missions',    // Software for You + quests
+  nextStep:         'nextStep',
+  quickAdd:         'quickAdd',
+  yourDay:          'yourDay',
+  find:             'find',
+  dream:            'dream',
+  dueSoon:          'dueSoon',
+  stillOpen:        'stillOpen',
+  checkin:          'checkin',
+  unit:             'unit',
+  missions:         'missions',
+  review:           'review',
 };

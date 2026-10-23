@@ -14,12 +14,19 @@ import { AREAS } from '../../api/plannerService';
  * phone; "Add from ideas" and the weekly review read the account, so they
  * wait for one, and "Phone calendar" says why it needs one.
  */
+//
+// Today (shake-up P3) adds its own: "What's next?" (the FAB's, which steps
+// aside on Today), the life-area filter (Calm keeps it in here), Edit layout
+// and Calm/Full. "Add from ideas" moves to Today's + Add sheet (noIdeas).
 export function plannerMenuItems({
   view, timeMode, guest, profileCount, showingAll,
   onIdeas, onToggleTime, onPhoneCalendar, onExport, onDuplicates, onWeeklyReview, onToggleScope,
+  onWhatsNext, onFilter, areaCount = 0, onEditLayout, onCalm, calm, noIdeas = false,
 }) {
   return [
-    !guest && { label: 'Add from ideas', icon: 'grid-outline', onPress: onIdeas },
+    onWhatsNext && { label: "What's next?", icon: 'chatbubble-ellipses-outline', onPress: onWhatsNext },
+    onFilter && { label: areaCount ? `Life areas (${areaCount} on)` : 'Filter by life area', icon: 'funnel-outline', onPress: onFilter },
+    !guest && !noIdeas && { label: 'Add from ideas', icon: 'grid-outline', onPress: onIdeas },
     view === 'Daily' && {
       label: timeMode ? 'Show as a list' : 'Show by time of day',
       icon: timeMode ? 'list' : 'time-outline',
@@ -27,8 +34,10 @@ export function plannerMenuItems({
     },
     { label: 'Phone calendar', icon: 'phone-portrait-outline', onPress: onPhoneCalendar },
     { label: 'Add to my calendar', icon: 'calendar-outline', onPress: onExport },
-    { label: 'Remove duplicates', icon: 'copy-outline', onPress: onDuplicates },
+    { label: 'Tidy up duplicates', icon: 'copy-outline', onPress: onDuplicates },
     !guest && { label: 'Weekly review', icon: 'stats-chart-outline', onPress: onWeeklyReview },
+    onEditLayout && view === 'Daily' && { label: 'Edit layout', icon: 'apps-outline', onPress: onEditLayout },
+    onCalm && { label: calm ? 'Show everything (Full)' : 'Calm view', icon: 'leaf-outline', onPress: onCalm },
     // Widen across profiles: only once there's more than one.
     profileCount > 1 && {
       label: showingAll ? 'Show this profile only' : 'Show all profiles',

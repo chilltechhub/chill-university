@@ -32,6 +32,7 @@ import { markScreensSeen } from './useFirstVisitTutorial';
 import { loadBuilds } from '../api/buildService';
 import { buildTitle } from './builds';
 import { appTour } from './guide/lessons/appTour';
+import { isAliasGateOn } from './routeAliases';
 
 const key = (uid) => `@cth_welcome_tour_${uid || 'guest'}`;
 const PENDING = new Set(['pending', 'pending-noaim', 'pending-project']);
@@ -110,7 +111,7 @@ export default function useWelcomeTour(routeName) {
         return;
       }
       const made = await loadBuilds(uid).catch(() => []);
-      if (alive) startLesson(appTour({ project: made[0] ? buildTitle(made[0]) : null, mission }), { onEnd: finish });
+      if (alive) startLesson(appTour({ project: made[0] ? buildTitle(made[0]) : null, mission, dashboardV2: isAliasGateOn('dashboardV2') }), { onEnd: finish });
     }, SETTLE_MS);
     return () => { alive = false; clearTimeout(timer); };
   }, [state, tourActive, routeName, startTour, startLesson, finish, uid, mission]);

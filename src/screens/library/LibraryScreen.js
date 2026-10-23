@@ -42,6 +42,8 @@ import { unlockHint } from '../../logic/featureAccess';
 import { todayStr, daysBetween } from '../../logic/dateUtils';
 import { Button } from '../../components/ui';
 import PlanDetailSheet from '../../components/PlanDetailSheet';
+import StudioCard from '../../components/StudioCard';
+import useDashboardV2 from '../../logic/useDashboardV2';
 
 // Same icon/color-by-type map CaptureInbox and ImportScreen already share,
 // reused here for domain-filter result rows rather than a third copy.
@@ -356,7 +358,14 @@ export default function LibraryScreen() {
   // switch, apart from Home's. Not while a walkthrough step points at
   // something here: its highlights are on the full page.
   const [libraryView, setLibraryView] = useSetting(SETTING_KEYS.LIBRARY_VIEW, 'full');
-  const calm = libraryView === 'calm' && !(tourActive && !currentStep?.compact);
+  // With Today as the Planner (shake-up P3, §3.5) one setting, homeView,
+  // means the app's view; this page's own libraryView is only read while
+  // homeView was never set.
+  const [dashboardV2] = useDashboardV2();
+  const [appView, setAppView] = useSetting(SETTING_KEYS.HOME_VIEW, null);
+  const pageView = dashboardV2 ? (appView || libraryView) : libraryView;
+  const setPageView = dashboardV2 ? setAppView : setLibraryView;
+  const calm = pageView === 'calm' && !(tourActive && !currentStep?.compact);
   // Wayfinder gating. `gatedNavigate` opens the entry if it's available and
   // the unlock sheet if it isn't — a locked tile still does something when
   // tapped, which is the difference between a gate and a dead button.
@@ -889,7 +898,7 @@ export default function LibraryScreen() {
               </TouchableOpacity>
             )}
           </View>
-          <TouchableOpacity onPress={() => setLibraryView(calm ? 'full' : 'calm')} hitSlop={8}
+          <TouchableOpacity onPress={() => setPageView(calm ? 'full' : 'calm')} hitSlop={8}
             accessibilityRole="button" accessibilityLabel={calm ? 'Calm view is on. Show the full Library' : 'Calm view: one panel and a short list'}
             style={styles.calmBtn}>
             <Ionicons name={calm ? 'leaf' : 'leaf-outline'} size={14} color={calm ? accent.primary : c.text3} />
@@ -941,6 +950,10 @@ export default function LibraryScreen() {
           </TourSpot>
         )}
 
+        {/* The Studio: Make's own front door now that Today is the Planner
+            (shake-up P3 moves it off Home). */}
+        {dashboardV2 && !calm && <View style={{ marginBottom: 12 }}><StudioCard /></View>}
+
         {calm && (
           <CalmLibrary
             tab={activeTab}
@@ -964,7 +977,7 @@ export default function LibraryScreen() {
               ? gatedNavigate(feature.id, () => navigation.navigate(item.screen))
               : navigation.navigate(item.screen))}
             onNavigate={(screen, params) => navigation.navigate(screen, params)}
-            onShowAll={() => setLibraryView('full')}
+            onShowAll={() => setPageView('full')}
           />
         )}
 

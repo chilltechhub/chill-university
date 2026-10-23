@@ -81,7 +81,7 @@ export default function AgendaRow({ instance, onUpdate, onOpen, c, t, s, r }) {
             </Text>
             {overdue && !done && (
               <View style={{ backgroundColor: c.bg2, borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1 }}>
-                <Text style={{ fontSize: 11, color: c.text3, fontWeight: t.bold }}>NOT DONE</Text>
+                <Text style={{ fontSize: 11, color: c.text3, fontWeight: t.bold }}>Still open</Text>
               </View>
             )}
             {/* Only shown when the item belongs to a profile other than the

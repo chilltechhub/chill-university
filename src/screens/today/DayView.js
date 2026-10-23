@@ -22,7 +22,12 @@ import EventsList from './EventsList';
 // ─── Daily page ───────────────────────────────────────────────────────────────
 // `userId` null: a guest, planning on the phone. The check-in and the list
 // of what slipped read the account, so they wait for one.
-export default function DayView({ userId, date, activeAreas, timeMode, onOpen, onAdd, onQuickAdded, quickArea, reviewAt, refreshKey, showingAll, c, t, s, r }) {
+//
+// `embedded`: inside Today's "Your day" widget (shake-up P3). Quick add and
+// "still open" are widgets of their own there, `renderHeader({ completed,
+// total })` replaces the progress bar, and the time grid gets a fixed
+// height so it scrolls inside the card instead of stretching the page.
+export default function DayView({ userId, date, activeAreas, timeMode, onOpen, onAdd, onQuickAdded, quickArea, reviewAt, refreshKey, showingAll, embedded = false, renderHeader, c, t, s, r }) {
   const iso = toISO(date);
   // The spinner is for the first load only (the page remounts per day). A
   // reload after ticking or editing something swaps the rows in place, so
@@ -41,17 +46,18 @@ export default function DayView({ userId, date, activeAreas, timeMode, onOpen, o
   const completed = instances.filter(i => i.completed).length;
   const total     = instances.filter(i => !i.skipped).length;
 
-  if (loading) return <SkeletonRows count={4} style={{ padding: s.lg }} />;
+  if (loading) return <SkeletonRows count={embedded ? 3 : 4} style={{ padding: s.lg }} />;
 
   const sharedProps = { instances, date, onUpdate: handleUpdate, onOpen, onAdd, onAddAt: (time) => onAdd(time), c, t, s, r };
   const isToday = iso === toISO(new Date());
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={embedded ? null : { flex: 1 }}>
       {/* Check-in + progress */}
       <View style={{ paddingHorizontal: s.lg, paddingTop: s.sm }}>
+        {renderHeader?.({ completed, total })}
         {!!userId && <DailyCheckin userId={userId} date={iso} />}
-        {total > 0 && (
+        {total > 0 && !renderHeader && (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: s.sm }}>
             <View style={{ flex: 1, height: 4, backgroundColor: c.bg2, borderRadius: 2, overflow: 'hidden' }}>
               <View style={{ height: 4, borderRadius: 2, backgroundColor: c.teal, width: `${(completed / total) * 100}%` }} />
@@ -61,12 +67,12 @@ export default function DayView({ userId, date, activeAreas, timeMode, onOpen, o
         )}
       </View>
       {/* Type a plan in one line ("dentist thu 4pm"). */}
-      {!showingAll && (
+      {!showingAll && !embedded && (
         <PlannerQuickAdd userId={userId} date={date} area={quickArea}
           onAdded={(row) => { reload(); onQuickAdded?.(row); }} c={c} t={t} s={s} r={r} />
       )}
       {/* Today only: what slipped from earlier days, and to-dos with no day. */}
-      {isToday && !showingAll && !!userId && (
+      {isToday && !showingAll && !!userId && !embedded && (
         <PlannerBacklog userId={userId} onChange={reload} openAt={reviewAt} c={c} t={t} s={s} r={r} />
       )}
       <DueList items={due} onChange={reload} label={isToday ? 'Due today' : 'Due'} c={c} t={t} s={s} r={r} />
@@ -74,7 +80,7 @@ export default function DayView({ userId, date, activeAreas, timeMode, onOpen, o
       {/* Events from the phone's calendars, when connected (⋯ → Phone calendar). */}
       {!showingAll && <PhoneEventsList date={iso} c={c} t={t} s={s} r={r} />}
       {timeMode
-        ? <TimeView {...sharedProps} />
+        ? (embedded ? <View style={{ height: 440 }}><TimeView {...sharedProps} /></View> : <TimeView {...sharedProps} />)
         : <ListView {...sharedProps} />
       }
     </View>

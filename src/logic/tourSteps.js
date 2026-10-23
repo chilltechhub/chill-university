@@ -67,3 +67,17 @@ export const TOUR_STEPS = [
     body: "Next: **your first goal**. It's a suggestion: to change anything, tap **your picture** → **Make it yours**.",
   },
 ];
+
+// Today = the Planner as the dashboard (DASHBOARD_V2, shake-up P3): the FAB
+// steps aside on Today, so the + step points at Today's own + Add.
+const TODAY_ADD_STEP = {
+  id: 'planner-add',
+  go: 'Home',
+  title: 'The + Add button',
+  body: "Puts anything on your day: **a plan**, **a reminder**, **a note**. On other screens, the round **+** does the same.",
+};
+
+/** The main tour as it stands: with Today on, + Add stands in for the FAB. */
+export function mainTourSteps(dashboardV2 = false) {
+  return dashboardV2 ? TOUR_STEPS.map(st => (st.id === 'fab' ? TODAY_ADD_STEP : st)) : TOUR_STEPS;
+}

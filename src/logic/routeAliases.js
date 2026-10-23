@@ -36,6 +36,11 @@ export function setAliasGate(gate, on) {
   if (on) gates.add(gate); else gates.delete(gate);
 }
 
+/** Is a gate on? (The tours ask whether Today is the Planner yet.) */
+export function isAliasGateOn(gate) {
+  return gates.has(gate);
+}
+
 /**
  * The route `screen` really opens, and with which params. Follows one alias
  * at most: an alias of an alias is a mistake the check script catches.

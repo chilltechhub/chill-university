@@ -102,6 +102,15 @@ export function pageLineFor({ startPoint, pathKey } = {}) {
   return [START_LINE[startPoint], PATH_LINE[pathKey]].filter(Boolean).join(' ') || START_LINE.unsure;
 }
 
+// DASHBOARD_V2 (shake-up P3): Today as the Planner dashboard. Set either way,
+// it wins. Unset: on for an account made through the welcome (finish()
+// writes metadata.shakeup_onboarded_at) and for a guest who kept going from
+// it; off for every account from before, who can opt in.
+export function dashboardV2On(setting, { signedIn = false, onboardedAt = null, welcomeGuest = false } = {}) {
+  if (setting === true || setting === false) return setting;
+  return signedIn ? !!onboardedAt : !!welcomeGuest;
+}
+
 /**
  * Where the app opens (§7.2 Boot).
  *   hasSession           someone is signed in

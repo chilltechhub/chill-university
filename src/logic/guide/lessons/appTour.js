@@ -47,11 +47,33 @@ export const APP_TOUR = [
   },
 ];
 
+// Today = the Planner as the dashboard (DASHBOARD_V2, shake-up P3): the
+// project lives in Make (the Studio), and Today's + Add stands in for the
+// FAB, which steps aside on Today.
+export const APP_TOUR_TODAY = {
+  'home-studio': {
+    id: 'studio-builds',
+    go: 'StudioScreen',
+    title: 'Your project lives in Make',
+    body: '**{project}** is saved in the **Studio**. Open it any time to take another part apart.',
+    skipLabel: SKIP,
+  },
+  fab: {
+    id: 'planner-add',
+    go: 'Home',
+    keepCalm: true,
+    title: 'The + Add button',
+    body: 'Puts anything on your day: **a plan**, **a reminder**, **a note**.',
+    skipLabel: SKIP,
+  },
+};
+
 // The steps with their words filled in. No project (they skipped it) drops
 // its step; no mission yet says where the next step always sits.
-export function appTour({ project, mission } = {}) {
+export function appTour({ project, mission, dashboardV2 = false } = {}) {
   return APP_TOUR
-    .filter(step => project || step.id !== 'home-studio')
+    .map(step => (dashboardV2 && APP_TOUR_TODAY[step.id]) || step)
+    .filter(step => project || (step.id !== 'home-studio' && step.id !== 'studio-builds'))
     .map(step => ({
       ...step,
       body: step.id === 'calm-next' && !mission

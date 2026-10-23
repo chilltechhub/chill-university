@@ -866,6 +866,13 @@ New check scripts this plan adds:
 - **Checks:** `npm run check` (check-wiring, check-pickables, check-tour-spots, check-style on the new files).
 - **Rollback:** `DASHBOARD_V2` off renders the old `HomeScreen` + `PlannerScreen`; both stay registered for one release.
 - **Risks:** the main screen. Keep the HomeScreen 1003 rule (tours force Full) until P7, so old tours still find their spots.
+- **Built (2026-10-22, branch `feature/shakeup-p3`, on top of P2).** Parity walked in `docs/shake-up-planner-parity.md`. Where the code settled something this plan left open:
+  - **Today stays the `Home` route** (no `DashboardScreen`): `HomeScreen.js` renders the old Home or Today on `useDashboardV2()` (`src/logic/useDashboardV2.js`, rule in `welcomeCards.js` `dashboardV2On`). The Planner's state is one hook, `src/screens/today/usePlanner.js`, shared by Today and the old `PlannerScreen` (its sheets in `PlannerSheets`). New: `TodayControls`, `AddSheet`, `TodayWidgets` (Next step, Quick add, Your day, Still open, Due this week).
+  - **Today's layout is its own setting**, `todayLayout:<profileId|guest>`, so Home's saved layout is untouched for the rollback. First open migrates the Home layout (`widgetLayout.js` `todayLayoutFrom`).
+  - **`nextStep.js`** takes `now` (Right now) first, then the plan's order; claim, first goal and path fall back to CompassCard's own UI. `check-deliverables.mjs` covers it (`npm run check` is 20 scripts).
+  - **Calm on Today** is `CalmHome` with `v2` (not yet renamed `CalmToday`): the same keys in the board's order, `CalmWeek` following ‹ ›, a month in Month, and another day's plan when you open one.
+  - **The setting carries its last answer** to screens that mount later, and `PlannerScreen` waits for it, so an old link's params reach Today.
+  - Moved: TodaysFind → Learn, StudioCard → Library (Full), DreamCard → You. "Missed" / "NOT DONE" → "Still open".
 
 ### P4 · Tabs, top bar, You shell
 

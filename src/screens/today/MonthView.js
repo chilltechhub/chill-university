@@ -21,15 +21,18 @@ export default function MonthView({ userId, anchor, activeAreas, onDayPress, ref
   const dayIso = (day) => `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   const { items, loading } = useDayPlan(
     { from: dayIso(1), to: dayIso(daysInMonth) },
-    { userId, allProfiles: showingAll, areas: activeAreas, refreshKey, due: false, events: false },
+    // Deadlines too (shake-up P3): a due dot under the day, so the month
+    // reads like a school calendar. Deliverables' "aim for" dates join in P6.
+    { userId, allProfiles: showingAll, areas: activeAreas, refreshKey, due: true, events: false },
   );
-  const { countByDate, doneByDate } = useMemo(() => {
-    const cm = {}, dm = {};
+  const { countByDate, doneByDate, dueByDate } = useMemo(() => {
+    const cm = {}, dm = {}, du = {};
     items.forEach(it => {
+      if (it.src === 'due') { if (!it.done) du[it.date] = (du[it.date] || 0) + 1; return; }
       cm[it.date] = (cm[it.date] || 0) + 1;
       if (it.done) dm[it.date] = (dm[it.date] || 0) + 1;
     });
-    return { countByDate: cm, doneByDate: dm };
+    return { countByDate: cm, doneByDate: dm, dueByDate: du };
   }, [items]);
 
   if (loading) return <SkeletonRows count={4} style={{ padding: s.lg }} />;
@@ -50,15 +53,19 @@ export default function MonthView({ userId, anchor, activeAreas, onDayPress, ref
           const done    = doneByDate[iso] || 0;
           const isToday = iso === today;
           const allDone = count > 0 && done === count;
+          const dueCount = dueByDate[iso] || 0;
           return (
             <TouchableOpacity key={day} onPress={() => onDayPress(new Date(year, month, day))}
+              accessibilityRole="button"
+              accessibilityLabel={`${new Date(year, month, day).toDateString()}${count ? `, ${done} of ${count} done` : ''}${dueCount ? `, ${dueCount} due` : ''}`}
               style={{ width: '14.28%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center', padding: 2 }}>
               <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: isToday ? c.teal : 'transparent', borderWidth: count > 0 && !isToday ? 1 : 0, borderColor: allDone ? c.teal : c.border, alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={{ fontSize: 13, fontWeight: isToday ? '800' : '500', color: isToday ? c.onFill : allDone ? c.teal : c.text1 }}>{day}</Text>
               </View>
-              {count > 0 && !allDone && (
-                <View style={{ position: 'absolute', bottom: 3, width: 4, height: 4, borderRadius: 2, backgroundColor: c.gold }} />
-              )}
+              <View style={{ position: 'absolute', bottom: 3, flexDirection: 'row', gap: 3 }}>
+                {count > 0 && !allDone && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: c.gold }} />}
+                {dueCount > 0 && <View style={{ width: 5, height: 5, borderRadius: 1, backgroundColor: c.purple || c.text2 }} />}
+              </View>
             </TouchableOpacity>
           );
         })}

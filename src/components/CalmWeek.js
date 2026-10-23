@@ -4,9 +4,11 @@
 // day's first few things underneath. It reads useDayPlan, the same as the
 // Planner's Week and Home's Today card: Planner items, deadlines and
 // calendar events (a guest's plans from the phone).
-// Tapping the list or "Planner →" opens the Planner on that day.
+// Tapping the list or "Planner →" opens the Planner on that day. On Today
+// (DASHBOARD_V2) the week follows the control row's ‹ › (anchor) and the
+// link opens that day right there (openLabel).
 
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
@@ -31,17 +33,23 @@ const fmtTime = (time) => {
   return `${((h + 11) % 12) + 1}:${String(m || 0).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
 };
 
-export default function CalmWeek({ userId, refreshKey, onOpenDay }) {
+export default function CalmWeek({ userId, refreshKey, onOpenDay, anchor = null, openLabel = 'Planner →' }) {
   const { colors: c, typography: t, spacing: s, accent } = useTheme();
   const today = dateStr(new Date());
-  const days = weekOf(new Date());
+  const days = weekOf(anchor || new Date());
+  const first = dateStr(days[0]);
+  const last = dateStr(days[6]);
   const [picked, setPicked] = useState(today);
+  // A new week: today if it's in it, else its Sunday.
+  useEffect(() => {
+    setPicked(today >= first && today <= last ? today : first);
+  }, [first]); // eslint-disable-line react-hooks/exhaustive-deps
   // Wait until we know who's signed in, or a signed-in person would see the
   // phone's guest plans for a moment.
   const { user, loading: authLoading } = useUserProgress();
   const ready = !!userId || (!user && !authLoading);
   const { items, loading, reload } = useDayPlan(
-    { from: dateStr(days[0]), to: dateStr(days[6]) },
+    { from: first, to: last },
     { userId, refreshKey, enabled: ready },
   );
   // Read again on coming back to Home (the first focus is the mount's read).
@@ -64,8 +72,9 @@ export default function CalmWeek({ userId, refreshKey, onOpenDay }) {
   }, [items, loading]);
 
   const list = byDay?.[picked] || [];
-  // Same word the Planner uses for a past day's unticked item.
-  const whenOf = (it) => (picked < today && !it.done ? 'Missed' : fmtTime(it.time) || it.when);
+  // Same words the Planner uses for a past day's unticked item: neutral,
+  // never "missed" or "overdue" (docs/north-star.md).
+  const whenOf = (it) => (picked < today && !it.done ? 'Still open' : fmtTime(it.time) || it.when);
   const pickedDate = days.find(d => dateStr(d) === picked) || days[0];
   const dayName = picked === today ? 'today' : pickedDate.toLocaleDateString('en-US', { weekday: 'long' });
 
@@ -75,8 +84,8 @@ export default function CalmWeek({ userId, refreshKey, onOpenDay }) {
         <Text style={{ fontSize: 12, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase', color: c.text3 }}>
           {pickedDate.toLocaleDateString('en-US', { month: 'long' })}
         </Text>
-        <TouchableOpacity onPress={() => onOpenDay?.(picked)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Open the Planner">
-          <Text style={{ fontSize: t.xs, fontWeight: '800', color: accent.primary }}>Planner →</Text>
+        <TouchableOpacity onPress={() => onOpenDay?.(picked)} hitSlop={8} accessibilityRole="button" accessibilityLabel={openLabel === 'Planner →' ? 'Open the Planner' : `Open ${dayName}`}>
+          <Text style={{ fontSize: t.xs, fontWeight: '800', color: accent.primary }}>{openLabel}</Text>
         </TouchableOpacity>
       </View>
 
@@ -122,7 +131,7 @@ export default function CalmWeek({ userId, refreshKey, onOpenDay }) {
               <TouchableOpacity key={it.id} onPress={() => onOpenDay?.(picked)} accessibilityRole="button"
                 accessibilityLabel={`${whenOf(it)}: ${it.title}${it.done ? ', done' : ''}`}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, paddingVertical: 6 }}>
-                <Text style={{ width: 66, fontSize: 12, fontWeight: '700', color: whenOf(it) === 'Missed' ? c.error : c.text3 }}>{whenOf(it)}</Text>
+                <Text style={{ width: 66, fontSize: 12, fontWeight: '700', color: c.text3 }}>{whenOf(it)}</Text>
                 <Text numberOfLines={1} style={{ flex: 1, fontSize: t.sm, fontWeight: '600', color: it.done ? c.text3 : c.text1, textDecorationLine: it.done ? 'line-through' : 'none' }}>
                   {it.title}
                 </Text>

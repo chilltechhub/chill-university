@@ -37,11 +37,27 @@ import PickPathNote from '../components/PickPathNote';
 import StudioCard from '../components/StudioCard';
 import TodaysFind from '../components/TodaysFind';
 import useDrillPlan from '../logic/useDrillPlan';
-import CalendarModal from '../components/CalendarModal';
 import PlanDetailSheet from '../components/PlanDetailSheet';
 import WidgetBoard from '../components/WidgetBoard';
-import { WIDGET_DEFS, WIDGET_KEYS, WIDGET_BLURBS } from '../data/dashboardWidgets';
-import { layoutFromWanted, reconcileWidgetLayout as reconcileLayout } from '../logic/widgetLayout';
+import { WIDGET_DEFS, WIDGET_KEYS, WIDGET_BLURBS, CALM_WIDGETS } from '../data/dashboardWidgets';
+import { layoutFromWanted, reconcileWidgetLayout as reconcileLayout, todayLayoutFrom } from '../logic/widgetLayout';
+import { plannerStepParams } from '../logic/todayParams';
+// Today = the Planner as the dashboard (DASHBOARD_V2, shake-up P3).
+import useDashboardV2 from '../logic/useDashboardV2';
+import usePlanner, { PlannerSheets } from './today/usePlanner';
+import TodayControls from './today/TodayControls';
+import AddSheet from './today/AddSheet';
+import WeekView from './today/WeekView';
+import MonthView from './today/MonthView';
+import { NextStepWidget, QuickAddWidget, YourDayWidget, StillOpenWidget, DueSoonWidget } from './today/TodayWidgets';
+import CalmWeek from '../components/CalmWeek';
+import { useRightNow } from '../components/RightNowCard';
+import { nextStep } from '../logic/nextStep';
+import { tailor } from '../logic/tailoring';
+import { getObjective } from '../data/objectives';
+import { loadDream, onDreamChange } from '../api/dreamService';
+import { loadWelcome } from '../api/welcomeStore';
+import { showWhatsNext } from '../logic/useGuidedFirstGoal';
 import LevelRing from '../components/LevelRing';
 import PlayerMatchBackground from '../components/PlayerMatchBackground';
 import GettingStartedCard from '../components/GettingStartedCard';
@@ -63,7 +79,7 @@ import { useFabPosition, topFabClearance, FAB_CLEARANCE } from '../../context/Fa
 import { starterWidgetLayout } from '../logic/experienceStage';
 import { useReducedMotion } from '../logic/a11yPrefs';
 import useCharacterLoadout from '../logic/useCharacterLoadout';
-import useSetting, { SETTING_KEYS } from '../logic/useSetting';
+import useSetting, { SETTING_KEYS, readSetting, writeSetting } from '../logic/useSetting';
 import { goToScreen } from '../logic/appRoutes';
 import { RANK_LABELS } from '../theme';
 import { GAMES_MASTER } from './GamesScreen';
@@ -787,7 +803,7 @@ export default function HomeScreen() {
   // far, a couple at a time, with no editor. 'dashboard' brings this type's
   // own layout and an editor offering this type's widgets; 'doors' offers
   // all twenty.
-  const { can, opened, isScreenVisible, isGameVisible, isFeatureShown, signalAction, stageEvents, activeObjective, purposeKey } = useAccess();
+  const { can, opened, isScreenVisible, isGameVisible, isFeatureShown, signalAction, stageEvents, activeObjective, purposeKey, firstGoalId, completedObjectiveIds = [] } = useAccess();
   // Training games unticked on "Pick your features": no Play button either.
   // Settings → "Study & Play buttons" can switch both off.
   const [quickButtons] = useSetting(SETTING_KEYS.HOME_QUICK_BUTTONS, true);
@@ -803,6 +819,13 @@ export default function HomeScreen() {
   // (CalmHome.js). Full: every card. Switched here, in Settings or Make it
   // yours; synced to the account like every '@cth_setting_' key.
   const [homeView, setHomeView] = useSetting(SETTING_KEYS.HOME_VIEW, 'full');
+  // Today (DASHBOARD_V2): this screen becomes the Planner as the dashboard —
+  // a control row, then one widget board with nothing pinned; Week and
+  // Month replace the board. Off, it is the old Home exactly.
+  const [dashboardV2] = useDashboardV2();
+  const route = useRoute();
+  const planner = usePlanner({ route, navigation, calendarScope: true, enabled: dashboardV2 });
+  const [addOpen, setAddOpen] = useState(false);
   // The remote kill switch and the stage, both — see isGameVisible.
   const GAMES = useMemo(
     () => GAMES_MASTER.filter(g => isGameVisible(g.key)),
@@ -876,7 +899,8 @@ export default function HomeScreen() {
   const activeProfileIdRef = useRef(null);
   const activeTypeRef = useRef(DEFAULT_PERSONA);
 
-  const [showCalendar,   setShowCalendar]   = useState(false);
+  // CalendarModal is retired (shake-up P3): its doors open the week.
+  const openWeek = () => goToScreen(navigation, 'PlannerScreen', { view: 'week', at: Date.now() });
 
   // Dashboard widget order/visibility — see src/data/dashboardWidgets.js and
   // WidgetBoard.js. Edits are local-only (fast, no network) while editing;
@@ -1669,6 +1693,13 @@ export default function HomeScreen() {
   const goToLibraryScreen = (screen, params) => {
     // Classes moved to the Training tab (src/screens/TrainingNav.js).
     if (screen === 'ClassesStack') return goToScreen(navigation, 'ClassesStack', params);
+    // The Planner is Today with DASHBOARD_V2 on (routeAliases.js). A card's
+    // bare "Planner →" on Today would land where it already is: it opens
+    // + Add instead. With a day or an item, the alias carries it here.
+    if (screen === 'PlannerScreen') {
+      if (dashboardV2 && !params) { setAddOpen(true); return undefined; }
+      return goToScreen(navigation, 'PlannerScreen', params);
+    }
     navigation.navigate('Library');
     setTimeout(() => navigation.navigate('Library', { screen, params }), 0);
   };
@@ -1879,8 +1910,8 @@ export default function HomeScreen() {
     catch (e) { console.warn('HomeScreen: complete activity assignment', e.message); }
   };
 
-  const openActivityInCalendar = (item) => { closeActivitySheet(); setShowCalendar(true); };
-  const openActivityInPlanner  = (item) => { closeActivitySheet(); goToLibraryScreen('PlannerScreen'); };
+  const openActivityInCalendar = (item) => { closeActivitySheet(); goToScreen(navigation, 'PlannerScreen', { date: item.date || todayStr }); };
+  const openActivityInPlanner  = (item) => { closeActivitySheet(); goToLibraryScreen('PlannerScreen', dashboardV2 ? { date: item.date || todayStr } : undefined); };
   const focusOnActivity = (item) => { closeActivitySheet(); navigation.navigate('WorkMode', { presetTitle: item.title }); };
 
   // Every action list closes the sheet itself (see above), so there's
@@ -1919,6 +1950,581 @@ export default function HomeScreen() {
     goToLibraryScreen(key);
   };
 
+  // ── Today (DASHBOARD_V2) ─────────────────────────────────────────────────
+  // Its own layout, per profile, so Home's saved layout stays untouched for
+  // the rollback. First time: migrated from the saved Home layout, or the
+  // path's defaults (widgetLayout.js todayLayoutFrom).
+  const [todayLayout, setTodayLayout] = useState(null);
+  const todayLayoutKey = `${SETTING_KEYS.TODAY_LAYOUT}:${activeProfile?.id || 'guest'}`;
+  useEffect(() => {
+    if (!dashboardV2) return undefined;
+    let alive = true;
+    (async () => {
+      const saved = await readSetting(todayLayoutKey, null);
+      const meta = profile?.metadata || {};
+      const w = userId ? null : await loadWelcome().catch(() => null);
+      const plan = tailor({ startPoint: meta.start_point || w?.startPoint, pathKey: meta.path_key || w?.pathKey });
+      const next = todayLayoutFrom({ saved, home: savedLayout ? widgetLayout : null, wanted: plan.todayWidgets });
+      if (alive) setTodayLayout(next);
+    })();
+    return () => { alive = false; };
+  }, [dashboardV2, todayLayoutKey, savedLayout]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Unticked on "Pick your features": gone, tray included (a running goal's card stays).
+  const todayBoard = useMemo(() => {
+    const gone = opened?.hidden?.widgets;
+    return (todayLayout || []).filter(l => !gone?.has(l.key) || goalWidgets.includes(l.key));
+  }, [todayLayout, opened, goalWidgets]);
+  const changeTodayLayout = useCallback((next) => {
+    setTodayLayout(prev => [...next, ...(prev || []).filter(l => !next.some(n => n.key === l.key))]);
+  }, []);
+  const exitTodayEdit = () => {
+    setEditingWidgets(false);
+    if (todayLayout) writeSetting(todayLayoutKey, todayLayout).catch(() => {});
+  };
+  const todayShown = todayBoard.filter(l => !l.hidden);
+
+  // The one next step (src/logic/nextStep.js): Full's widget and Calm's
+  // headline both read this, so they always name the same thing.
+  const rightNow = useRightNow(todayList(), todos);
+  const firstGoal = getObjective(firstGoalId);
+  const offerFirst = !activeObjective?.active && firstGoal && !completedObjectiveIds.some(id => getObjective(id)?.intro);
+  const pick = nextStep({
+    now: rightNow && ['now', 'soon', 'late'].includes(rightNow.kind) ? { title: rightNow.title, kind: rightNow.kind, ref: rightNow.item?.ref } : null,
+    objective: activeObjective?.active ? {
+      active: true, complete: !!activeObjective.complete, label: activeObjective.objective?.label,
+      done: activeObjective.done, total: activeObjective.total, nextStep: activeObjective.nextStep,
+    } : null,
+    due: todayActivities.filter(a => a._src === 'task').map(a => ({ title: a.title, date: todayStr, ref: a })),
+    drill: drillPlanHome.total > 0 && drillPlanHome.doneCount < drillPlanHome.total ? { due: true, label: "Today's drills" } : null,
+    firstGoal: offerFirst ? { label: firstGoal.label, estimate: firstGoal.estimate } : null,
+    today: todayStr,
+  });
+  const actOnPick = (p) => {
+    const a = p?.action || {};
+    if (a.type === 'open') {
+      // "Put one thing in the Planner", on Today: the add sheet, right here.
+      const here = dashboardV2 && plannerStepParams(p.kind === 'objective' ? activeObjective?.nextStep : a);
+      if (here) { navigation.setParams(here); return; }
+      if (a.screen) goToScreen(navigation, a.screen, a.params); else navigation.navigate('Compass');
+      return;
+    }
+    if (a.type === 'plan' && a.ref) { setSelectedActivity(a.ref); return; }
+    if (a.type === 'drill') { goToScreen(navigation, 'Training', { openDrills: true }); return; }
+    navigation.navigate('Compass');
+  };
+  // The Dream echo on the next step: what this builds toward, their words.
+  const [dreamEcho, setDreamEcho] = useState(null);
+  useEffect(() => {
+    if (!dashboardV2) return undefined;
+    const read = (d) => {
+      const part = (d?.parts || []).map(x => x?.label || x).find(Boolean);
+      setDreamEcho(part || (d?.becoming ? `becoming ${d.becoming}` : null));
+    };
+    loadDream(userId).then(read).catch(() => {});
+    return onDreamChange((uid, d) => { if ((uid || null) === (userId || null)) read(d); });
+  }, [dashboardV2, userId]);
+  // A change on Today's planner refreshes what Home reads too (the next
+  // step, Calm's "Today: 3 things").
+  useEffect(() => {
+    if (!dashboardV2 || !planner.refreshKey) return;
+    if (userId) loadAll(userId); else if (guest) loadGuestDay();
+  }, [planner.refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const todayMenu = planner.menuItems({
+    noIdeas: true,
+    onWhatsNext: showWhatsNext,
+    onFilter: calm ? planner.openFilter : null, areaCount: planner.activeAreas.size,
+    onEditLayout: () => { setHomeView('full'); setEditingWidgets(true); },
+    onCalm: () => setHomeView(calm ? 'full' : 'calm'), calm,
+  });
+  const openDayOnToday = (iso) => { planner.setAnchor(new Date(`${iso}T00:00:00`)); planner.setView('Daily'); };
+
+  // Every card the board can draw, Home's and Today's: the layout picks.
+  // scripts/check-wiring.mjs reads the `key: … title: … render:` entries.
+  const boardWidgets = [
+        {
+          key: 'hq', title: 'You',
+          render: () => (
+            <View style={{ backgroundColor: c.bg1, borderRadius: ui.cardRadius, padding: s.lg, marginHorizontal: s.lg, borderWidth: ui.borderWidth, borderColor: c.border }}>
+              <CommanderCard
+                profile={profile}
+                rank={rank}
+                progress={progress}
+                c={c} t={t}
+                onPress={() => navigation.navigate('Profile')}
+              />
+              {((quickButtons && studyDestinations.length > 0) || playShown) && (
+              <TourSpot id="home-study-play">
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: s.md }}>
+                {quickButtons && studyDestinations.length > 0 && (
+                <TouchableOpacity
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: c.teal, backgroundColor: c.tealLight, borderRadius: ui.buttonRadius, paddingVertical: s.md }}
+                  onPress={goStudy} onLongPress={() => setShowStudyMenu(true)} delayLongPress={350}>
+                  <Ionicons name="book-outline" size={15} color={c.teal} />
+                  <Text style={{ fontSize: t.md, color: c.teal, ...ui.buttonLabel }}>Study</Text>
+                </TouchableOpacity>
+                )}
+                {playShown && (
+                <TouchableOpacity
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: c.gold, backgroundColor: c.goldLight, borderRadius: ui.buttonRadius, paddingVertical: s.md }}
+                  onPress={goPlay} onLongPress={() => setShowPlayMenu(true)} delayLongPress={350}>
+                  <Ionicons name="game-controller-outline" size={15} color={c.gold} />
+                  <Text style={{ fontSize: t.md, color: c.gold, ...ui.buttonLabel }}>Play</Text>
+                </TouchableOpacity>
+                )}
+              </View>
+              </TourSpot>
+              )}
+            </View>
+          ),
+        },
+        {
+          key: 'wisdom', title: "Today's Wisdom",
+          render: () => (
+            <TourSpot id="home-focus">
+            <View style={{ backgroundColor: c.bg1, borderRadius: ui.cardRadius, padding: s.lg, marginHorizontal: s.lg, borderWidth: ui.borderWidth, borderColor: c.border }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: s.sm }}>
+                <Text style={{ fontSize: ui.name === 'plain' ? 12 : 10, color: c.teal, ...ui.eyebrow }}>{showEmojis ? '✦ ' : ''}Today's Wisdom</Text>
+                <TouchableOpacity accessibilityLabel="Add" accessibilityRole="button" onPress={() => setEditAffirm(true)}>
+                  <Ionicons name="add-circle-outline" size={20} color={c.gold} />
+                </TouchableOpacity>
+              </View>
+              {/* Your own takeaways first, when one is due; the quote otherwise. */}
+              <RememberThis userId={userId} navigation={navigation} ui={ui}>
+                <Text style={{ fontSize: t.sm, color: c.text1, lineHeight: 20, fontStyle: 'italic', marginBottom: s.sm }}>"{todaysQuote.text}"</Text>
+                <Text style={{ fontSize: t.xs, color: c.text3 }}>— {todaysQuote.author}</Text>
+              </RememberThis>
+              {todaysAffirmation && (
+                <TouchableOpacity onPress={() => setEditAffirm(true)}
+                  style={{ marginTop: s.sm, borderTopWidth: 0.5, borderTopColor: c.border, paddingTop: s.sm }}>
+                  <Text style={{ fontSize: ui.name === 'plain' ? 12 : 10, color: c.gold, ...ui.eyebrow, marginBottom: 4 }}>{showEmojis ? '💛 ' : ''}My Affirmation</Text>
+                  <Text style={{ fontSize: t.sm, color: c.text1, lineHeight: 20 }}>{todaysAffirmation}</Text>
+                  {affirmations.length > 1 && (
+                    <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 4 }}>{affirmations.length} affirmations rotating daily</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+            </TourSpot>
+          ),
+        },
+        {
+          key: 'focus', title: 'Today',
+          render: () => (!editingWidgets ? (
+            <TodayCard
+              date={today}
+              focus={todayFocus}
+              onEditFocus={() => { setFocusDraft(todayFocus || ''); setEditFocus(true); }}
+              onCalendar={() => openWeek()}
+              activities={todayList()}
+              desk={deskList()}
+              show={{ activities: boardShows('activities'), desk: boardShows('desk'), checkins: boardShows('checkins') }}
+              onOpenActivity={(item) => (item._src === 'planner' ? setOpenPlan(item.raw)
+                : item._src === 'due' && item.raw?.projectId ? openTarget(navigation, { kind: 'project', id: item.raw.projectId })
+                : setSelectedActivity(item))}
+              onPlan={() => goToLibraryScreen('PlannerScreen')}
+              onOpenDesk={setSelectedDeskItem}
+              onAddDesk={() => setShowTodoInput(true)}
+              adding={showTodoInput} addText={todoInput} onAddText={setTodoInput} onAddSubmit={addTodo}
+              checkInDue={checkInDue}
+              onCheckIn={({ area, rating, lastCheck }) => navigation.navigate('Library', { screen: 'LifeAreaScreen', params: { areaId: area.id, rating, lastCheck } })}
+              onNowOpen={(ref, kind) => (kind === 'desk' ? setSelectedDeskItem(ref) : setSelectedActivity(ref))}
+              onNowDone={(ref) => (ref._src === 'task' ? completeActivityTask(ref) : completeActivityRoutine(ref))}
+              onNowFocus={(ref, kind) => (kind === 'desk' ? focusOnDeskItem(ref) : navigation.navigate('WorkMode', { presetTitle: ref.title }))}
+              formatTime={fmtActivityTime}
+            />
+          ) : (
+            <TourSpot id="home-focus-input">
+            <View style={{ paddingHorizontal: s.lg, flexDirection: 'row', gap: s.sm }}>
+              <TouchableOpacity
+                style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border }}
+                onPress={() => { setFocusDraft(todayFocus || ''); setEditFocus(true); }}>
+                <Ionicons name="bookmark" size={14} color={c.teal} />
+                <Text style={{ flex: 1, fontSize: t.sm, color: todayFocus ? c.text1 : c.text3, lineHeight: 20 }} numberOfLines={2}>
+                  {todayFocus || "Set today's focus..."}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ backgroundColor: c.bg1, borderRadius: r.md, paddingHorizontal: 14, paddingVertical: 10, borderWidth: ui.borderWidth, borderColor: c.border, alignItems: 'center', justifyContent: 'center', minWidth: 70 }}
+                onPress={() => openWeek()}>
+                <Text style={{ fontSize: t.xxl, fontFamily: ui.titleFont, fontWeight: t.bold, color: c.text1, lineHeight: 28 }}>{today.getDate()}</Text>
+                <Text style={{ fontSize: ui.name === 'plain' ? 11 : 9, color: c.text3, ...ui.eyebrow, marginBottom: 0 }}>
+                  {today.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            </TourSpot>
+          )),
+        },
+        {
+          key: 'activities', title: "Today's Activities",
+          render: () => (
+            todayList().length === 0 ? (todayActivities.length > 0 ? <View /> : (
+              // Always on Home now (HOME_BASICS), so an empty day says so
+              // and offers the one thing to do about it.
+              <View style={{ paddingHorizontal: s.lg }}>
+                <TouchableOpacity
+                  onPress={() => goToLibraryScreen('PlannerScreen')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Nothing planned for today. Open the Planner"
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border, borderStyle: 'dashed' }}>
+                  <SleepyCat size={36} style={{ marginVertical: -8, marginLeft: -6 }} />
+                  <Text style={{ flex: 1, fontSize: t.xs, color: c.text2 }}>Nothing planned for today</Text>
+                  <Text style={{ fontSize: t.xs, color: accent.primary, fontWeight: t.bold }}>Plan →</Text>
+                </TouchableOpacity>
+              </View>
+            )) : (
+              <TourSpot id="home-today-activities">
+              <View style={{ paddingHorizontal: s.lg }}>
+                <SectionHead title="Today's Activities" action="Calendar →" onAction={() => openWeek()} c={c} t={t} />
+                {todayList().slice(0, 3).map(item => (
+                  <ActivityRow key={item.id} item={item} onPress={() => (item._src === 'planner' ? setOpenPlan(item.raw)
+                    : item._src === 'due' && item.raw?.projectId ? openTarget(navigation, { kind: 'project', id: item.raw.projectId })
+                    : setSelectedActivity(item))} c={c} t={t} s={s} r={r} />
+                ))}
+                {todayList().length > 3 && (
+                  <TouchableOpacity onPress={() => openWeek()}>
+                    <Text style={{ fontSize: t.xs, color: c.text3, textAlign: 'center', marginTop: 2 }}>
+                      +{todayList().length - 3} more today
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              </TourSpot>
+            )
+          ),
+        },
+        {
+          key: 'desk', title: 'On the Desk',
+          render: () => (
+            <TourSpot id="home-desk">
+            <View style={{ paddingHorizontal: s.lg }}>
+              <SectionHead title="On the Desk" action="+ Add" onAction={() => setShowTodoInput(true)} c={c} t={t} />
+              {showTodoInput && (
+                <View style={{ flexDirection: 'row', gap: s.sm, marginBottom: s.sm }}>
+                  <TextInput
+                    style={{ flex: 1, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: ui.borderWidth, borderColor: c.border }}
+                    value={todoInput} onChangeText={setTodoInput}
+                    placeholder="What needs to get done?" placeholderTextColor={c.text4}
+                    autoFocus onSubmitEditing={addTodo}
+                  />
+                  <TouchableOpacity style={{ backgroundColor: accent.primary, borderRadius: ui.buttonRadius, padding: s.md, alignItems: 'center', justifyContent: 'center' }} onPress={addTodo} accessibilityLabel="Add to desk">
+                    <Ionicons name="checkmark" size={18} color={accent.onPrimary} />
+                  </TouchableOpacity>
+                </View>
+              )}
+              {/* The one thing to do next, with its actions right here, and
+                  the rest of the ranked list drifting past underneath.
+                  Everything used to be an equal chip in the ticker, so
+                  "what do I do now" took a tap to answer. */}
+              {deskList().length > 0 ? (
+                <>
+                  <NextUpCard item={deskList()[0]} actions={actionsForDeskItem(deskList()[0])} c={c} t={t} s={s} r={r} />
+                  {deskList().length > 1 && (
+                    <View style={{ marginTop: s.sm }}>
+                      <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: 6 }}>Also on the desk</Text>
+                      <DeskTicker
+                        items={deskList().slice(1)}
+                        onItemPress={setSelectedDeskItem}
+                        onAdd={() => setShowTodoInput(true)}
+                        c={c} t={t} s={s} r={r}
+                      />
+                    </View>
+                  )}
+                </>
+              ) : (
+                <DeskTicker
+                  items={deskList()}
+                  onItemPress={setSelectedDeskItem}
+                  onAdd={() => setShowTodoInput(true)}
+                  c={c} t={t} s={s} r={r}
+                />
+              )}
+            </View>
+            </TourSpot>
+          ),
+        },
+        {
+          key: 'ideas', title: 'Latest Ideas',
+          render: () => (
+            ideas.length === 0 ? (
+              editingWidgets ? (
+                <View style={{ paddingHorizontal: s.lg }}>
+                  <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border, borderStyle: 'dashed' }}>
+                    <Text style={{ fontSize: t.xs, color: c.text3 }}>Latest Ideas — nothing planted yet</Text>
+                  </View>
+                </View>
+              ) : <View />
+            ) : (
+              <View style={{ paddingHorizontal: s.lg }}>
+                <SectionHead title="Latest Ideas" action="Garden →" onAction={() => goToLibraryScreen('IdeaGardenScreen')} c={c} t={t} />
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -s.lg }}>
+                  <View style={{ flexDirection: 'row', paddingHorizontal: s.lg, gap: s.sm }}>
+                    {ideas.map(idea => (
+                      <TouchableOpacity key={idea.id}
+                        onPress={() => { setSelectedIdea(idea); setShowIdeaCard(true); }}
+                        activeOpacity={0.85}
+                        style={{ width: 110, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 1, borderColor: idea.color || c.teal, alignItems: 'center', gap: 6 }}>
+                        <Text style={{ fontSize: 28 }}>
+                          {idea.plant_type === 'tree' ? '🌳' : idea.plant_type === 'flower' ? '🌸' : idea.plant_type === 'plant' ? '🌿' : '🌱'}
+                        </Text>
+                        <Text style={{ fontSize: 11, fontWeight: t.medium, color: c.text1, textAlign: 'center', lineHeight: 15 }} numberOfLines={2}>
+                          {idea.title}
+                        </Text>
+                        {(idea.garden_petals?.length > 0) && (
+                          <Text style={{ fontSize: 11, color: idea.color || c.teal }}>
+                            {idea.garden_petals.length} petals
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+            )
+          ),
+        },
+        {
+          key: 'builds', title: 'Active Projects',
+          render: () => (
+            activeBuilds.length === 0 ? (
+              editingWidgets ? (
+                <View style={{ paddingHorizontal: s.lg }}>
+                  <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border, borderStyle: 'dashed' }}>
+                    <Text style={{ fontSize: t.xs, color: c.text3 }}>Active Projects — nothing in progress</Text>
+                  </View>
+                </View>
+              ) : <View />
+            ) : (
+              <View style={{ paddingHorizontal: s.lg }}>
+                <SectionHead title="Active Projects" action="Workshop →" onAction={() => goToLibraryScreen('ProjectsScreen')} c={c} t={t} />
+                <View style={{ backgroundColor: c.bg1, borderRadius: ui.cardRadius, borderWidth: ui.borderWidth, borderColor: c.border, paddingHorizontal: s.md }}>
+                  {activeBuilds.slice(0, 4).map((p, i, arr) => (
+                    <TouchableOpacity key={p.id} onPress={() => navigation.navigate('Library', { screen: 'ProjectDetail', params: { project: p } })} activeOpacity={0.7}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, paddingVertical: 10, borderBottomWidth: i === arr.length - 1 ? 0 : 0.5, borderBottomColor: c.border }}>
+                      <Text style={{ fontSize: 15 }}>{p.emoji || '🏗️'}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: t.sm, fontWeight: '600', color: c.text1 }} numberOfLines={1}>{p.title}</Text>
+                        <Text style={{ fontSize: 11, color: c.text3 }} numberOfLines={1}>
+                          {deskProjectIds.has(String(p.id)) && boardShows('desk')
+                            ? (p.due_date ? `Finish by ${new Date(p.due_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · next step is on your desk` : 'Next step is on your desk')
+                            : p.next_action ? `Next: ${p.next_action}` : 'No next step set'}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={14} color={c.text4} />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )
+          ),
+        },
+        {
+          key: 'checkins', title: 'Check-ins',
+          render: () => (
+            checkInDue.length === 0 ? (
+              editingWidgets ? (
+                <View style={{ paddingHorizontal: s.lg }}>
+                  <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border, borderStyle: 'dashed' }}>
+                    <Text style={{ fontSize: t.xs, color: c.text3 }}>Check-ins Due — every domain is current</Text>
+                  </View>
+                </View>
+              ) : <View />
+            ) : (
+              <View style={{ paddingHorizontal: s.lg }}>
+                <SectionHead title="Check-ins" action="Library →" onAction={() => navigation.navigate('Library')} c={c} t={t} />
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm }}>
+                  {checkInDue.map(({ area, rating, lastCheck, days }) => (
+                    <TouchableOpacity
+                      key={area.id}
+                      onPress={() => navigation.navigate('Library', { screen: 'LifeAreaScreen', params: { areaId: area.id, rating, lastCheck } })}
+                      activeOpacity={0.8}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: (area.color || c.teal) + '66', backgroundColor: c.bg1 }}>
+                      {showEmojis
+                        ? <Text style={{ fontSize: 13 }}>{area.emoji}</Text>
+                        : <Ionicons name={area.icon} size={13} color={area.color || c.teal} />}
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: area.color || c.teal }}>{area.label}</Text>
+                      <Readout size={11} color={c.text3} weight="400">{days === null ? 'not rated yet' : `${days}d`}</Readout>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )
+          ),
+        },
+
+        // ── Persona widgets ────────────────────────────────────────────
+        // Hidden by default unless the active profile's type asks for
+        // them (see layoutForPersona / personas.defaultWidgets). Each one
+        // owns its own empty state — none of them shows a number it
+        // doesn't have.
+        {
+          key: 'habitRings', title: 'Habits',
+          render: () => <HabitRingsWidget userId={userId} onOpenPlanner={() => goToLibraryScreen('PlannerScreen')} />,
+        },
+        {
+          key: 'lifeAreas', title: 'Life Areas',
+          render: () => (
+            <LifeAreasWidget
+              areas={lifeAreaStats}
+              onOpenLibrary={() => navigation.navigate('Library')}
+              onOpenArea={(area, rating) => goToLibraryScreen('LifeAreaScreen', { areaId: area.id, rating })}
+            />
+          ),
+        },
+        {
+          key: 'dailyDrills', title: "Today's Drills",
+          render: () => (
+            <DailyDrillsWidget
+              onOpenTraining={() => goToScreen(navigation, 'Training')}
+              onOpenDrills={() => goToScreen(navigation, 'Training', { openDrills: true })}
+              onPlay={(gameId) => navigation.navigate('Play', { gameId })}
+            />
+          ),
+        },
+        {
+          key: 'studyBlocks', title: 'Study Blocks',
+          render: () => <StudyBlocksWidget userId={userId} onOpenPlanner={() => goToLibraryScreen('PlannerScreen')} />,
+        },
+        {
+          key: 'classProgress', title: 'Subjects',
+          render: () => <ClassProgressWidget subjectProgress={subjectProgress} onOpenClasses={() => goToLibraryScreen('ClassesStack')} />,
+        },
+        {
+          key: 'orgSnapshot', title: 'Organization',
+          render: () => <OrgSnapshotWidget userId={userId} onOpenOrg={() => navigation.navigate('Organization')} />,
+        },
+        {
+          key: 'systemsCheck', title: 'Systems Check',
+          render: () => <SystemsCheckWidget areas={lifeAreaStats} onOpenLibrary={() => navigation.navigate('Library')} />,
+        },
+        {
+          key: 'recurringOps', title: 'Recurring Ops',
+          render: () => <RecurringOpsWidget userId={userId} onOpenPlanner={() => goToLibraryScreen('PlannerScreen')} />,
+        },
+        {
+          key: 'vaultStatus', title: 'The Vault',
+          render: () => (
+            <VaultStatusWidget
+              userId={userId} profileId={activeProfile?.id}
+              onOpenVault={() => goToLibraryScreen('ClassesStack')}
+            />
+          ),
+        },
+        {
+          key: 'founderQuest', title: 'Founder Quest',
+          render: () => (
+            <FounderQuestWidget
+              userId={userId} profileId={activeProfile?.id}
+              onOpenClasses={() => goToLibraryScreen('ClassesStack')}
+            />
+          ),
+        },
+        {
+          key: 'targetsReadiness', title: 'Targets & Readiness',
+          render: () => (
+            <TargetsReadinessWidget
+              userId={userId} profile={activeProfile}
+              onOpenProfiles={() => navigation.navigate('AllProfiles')}
+              onOpenClasses={() => goToLibraryScreen('ClassesStack')}
+            />
+          ),
+        },
+        {
+          key: 'quests', title: 'Missions',
+          render: () => (
+            <QuestWidget
+              type={activeType} aim={purposeKey}
+              onOpenQuest={(questId) => goToLibraryScreen('ClassesStack', { screen: 'Quest', params: { questId, from: 'Home' } })}
+              // All missions: Software for You and the quick ones, in one list.
+              onOpenAll={() => goToLibraryScreen('SoftwarePathScreen')}
+            />
+          ),
+        },
+        {
+          key: 'wayfinder', title: 'Wayfinder',
+          render: () => (
+            <WayfinderWidget
+              userId={userId}
+              onOpen={(params) => goToLibraryScreen('WayfinderScreen', params)}
+            />
+          ),
+        },
+        {
+          key: 'compass', title: 'Your goal',
+          render: () => (
+            <TourSpot id="home-compass">
+              <CompassCard />
+            </TourSpot>
+          ),
+        },
+        {
+          key: 'goalSteps', title: 'Your steps',
+          render: () => <GoalStepsWidget />,
+        },
+        {
+          key: 'stageSteps', title: "What's next",
+          render: () => (
+            <TourSpot id="home-stage">
+              <StageStepsWidget />
+            </TourSpot>
+          ),
+        },
+
+    // ── Today's own (DASHBOARD_V2, shake-up P3) ────────────────────────────
+    {
+      key: 'nextStep', title: 'Next step',
+      render: () => (
+        <TourSpot id="home-compass">
+          <NextStepWidget pick={pick} dream={dreamEcho} onAct={actOnPick} />
+        </TourSpot>
+      ),
+    },
+    {
+      key: 'quickAdd', title: 'Quick add',
+      render: () => <QuickAddWidget userId={planner.userId} area={planner.defaultArea} onAdded={(row) => planner.afterAdded(row)} />,
+    },
+    {
+      key: 'yourDay', title: 'Your day',
+      render: () => (
+        <YourDayWidget planner={planner} focus={todayFocus}
+          onEditFocus={() => { setFocusDraft(todayFocus || ''); setEditFocus(true); }}
+          onOpen={planner.setDetail} onAdd={planner.openAdd} onQuickAdded={(row) => planner.afterAdded(row)} />
+      ),
+    },
+    {
+      key: 'find', title: "Today's Find",
+      render: () => <TodaysFind userId={userId} />,
+    },
+    {
+      key: 'dream', title: 'The Dream',
+      render: () => <DreamCard userId={userId} />,
+    },
+    {
+      key: 'dueSoon', title: 'Due this week',
+      render: () => <DueSoonWidget planner={planner} onOpenDay={openDayOnToday} />,
+    },
+    {
+      key: 'stillOpen', title: 'Still open',
+      render: () => <StillOpenWidget planner={planner} />,
+    },
+    {
+      key: 'checkin', title: 'Check-in',
+      render: () => boardWidgets.find(w => w.key === 'checkins').render(),
+    },
+    {
+      key: 'unit', title: 'Your steps',
+      render: () => <GoalStepsWidget />,
+    },
+    {
+      key: 'missions', title: 'Missions',
+      render: () => boardWidgets.find(w => w.key === 'quests').render(),
+    },
+    {
+      key: 'review', title: 'Review',
+      render: () => <TodayReview userId={userId} navigation={navigation} ui={ui} />,
+    },
+  ];
+
   const goPlay = () => {
     // Same reason goStudy checks: GAMES is what this stage shows minus the
     // remote kill switch, so a handful of ids in 'disabled_games' can empty
@@ -1946,10 +2552,38 @@ export default function HomeScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.teal} />}
         contentContainerStyle={{ paddingBottom: FAB_CLEARANCE }}
       >
+        {/* ── Today's control row (DASHBOARD_V2): the one fixed piece ── */}
+        {dashboardV2 && (
+          <View style={String(fabPosition || '').startsWith('top') ? topFabClearance(fabPosition) : null}>
+            <TodayControls planner={planner} calm={calm} menuItems={todayMenu}
+              onToggleCalm={() => setHomeView('calm')} onAdd={() => setAddOpen(true)}
+              accent={accent} shadows={sh} c={c} t={t} s={s} r={r} />
+          </View>
+        )}
+        {/* Today in Calm, Week and Month: the calm week, or the month. */}
+        {calm && dashboardV2 && planner.view === 'Weekly' && (
+          <View style={{ paddingHorizontal: s.lg }}>
+            <CalmWeek userId={planner.userId} refreshKey={planner.refreshKey} onOpenDay={openDayOnToday}
+              anchor={planner.anchor} openLabel="Open day →" />
+          </View>
+        )}
+        {/* Calm, on another day (opened from the week or month): that day's
+            plan. Calm's own cards are about today. */}
+        {calm && dashboardV2 && planner.view === 'Daily' && !planner.isToday && (
+          boardWidgets.find(w => w.key === 'yourDay').render()
+        )}
+        {calm && dashboardV2 && planner.view === 'Monthly' && (
+          <MonthView userId={planner.userId} anchor={planner.anchor} activeAreas={planner.activeAreas}
+            onDayPress={planner.onDayPress} refreshKey={planner.refreshKey} showingAll={planner.showingAll} c={c} t={t} s={s} />
+        )}
+
         {/* ── Calm view: one next step, today's focus, two cards for this
              account type. "Show all cards" switches back. ── */}
-        {calm && (
+        {calm && (!dashboardV2 || (planner.view === 'Daily' && planner.isToday)) && (
           <CalmHome
+            v2={dashboardV2}
+            order={todayShown.filter(l => CALM_WIDGETS.has(l.key)).map(l => l.key)}
+            nextPick={pick} onActPick={actOnPick}
             personaKey={activeType}
             userId={userId}
             profileId={activeProfile?.id}
@@ -1968,14 +2602,45 @@ export default function HomeScreen() {
               else navigation.navigate('Compass');
             }}
             onEditFocus={() => { setFocusDraft(todayFocus || ''); setEditFocus(true); }}
-            onOpenDay={(date) => goToLibraryScreen('PlannerScreen', { date })}
-            onOpenScreen={(screen, params) => (screen === 'Library' ? navigation.navigate('Library') : goToLibraryScreen(screen, params))}
+            onOpenDay={(date) => (dashboardV2 ? openDayOnToday(date) : goToLibraryScreen('PlannerScreen', { date }))}
+            onOpenScreen={(screen, params) => (dashboardV2 && screen === 'PlannerScreen' ? setAddOpen(true)
+              : screen === 'Library' ? navigation.navigate('Library') : goToLibraryScreen(screen, params))}
             onOpenProfile={() => navigation.navigate('Profile')}
             onShowAll={() => setHomeView('full')}
             headerStyle={String(fabPosition || '').startsWith('top') ? { ...topFabClearance(fabPosition), minHeight: undefined } : null}
           />
         )}
-        {!calm && (<>
+        {!calm && dashboardV2 && (<>
+        {/* ── Today, Full ── */}
+        {!editingWidgets && <PickPathNote userId={userId} style={{ marginBottom: s.md }} />}
+        {editingWidgets && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginHorizontal: s.lg, marginBottom: s.md }}>
+            <RichText style={{ flex: 1, fontSize: t.sm, color: c.text2 }} boldStyle={{ color: c.text1 }}>
+              **Tap −** to hide a card. **Drag ≡** to move it. Hidden cards wait at the bottom.
+            </RichText>
+            <Button label="Done" size="sm" fullWidth={false} onPress={exitTodayEdit} />
+          </View>
+        )}
+        {planner.view === 'Daily' ? (
+          !todayShown.length && !editingWidgets ? (
+            // Every card hidden: say so, and offer one back.
+            <View style={{ alignItems: 'center', paddingVertical: s.xxl, paddingHorizontal: s.lg, gap: s.md }}>
+              <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text2 }}>Your board is empty</Text>
+              <Button label="Add a widget" icon="add" fullWidth={false} onPress={() => setEditingWidgets(true)} />
+            </View>
+          ) : todayLayout ? (
+            <WidgetBoard layout={todayBoard} editing={editingWidgets} onChangeLayout={changeTodayLayout}
+              c={c} t={t} s={s} r={r} widgets={boardWidgets} />
+          ) : null
+        ) : planner.view === 'Weekly' ? (
+          <WeekView userId={planner.userId} anchor={planner.anchor} activeAreas={planner.activeAreas}
+            onDayPress={planner.onDayPress} refreshKey={planner.refreshKey} showingAll={planner.showingAll} c={c} t={t} s={s} />
+        ) : (
+          <MonthView userId={planner.userId} anchor={planner.anchor} activeAreas={planner.activeAreas}
+            onDayPress={planner.onDayPress} refreshKey={planner.refreshKey} showingAll={planner.showingAll} c={c} t={t} s={s} />
+        )}
+        </>)}
+        {!calm && !dashboardV2 && (<>
         {/* ── Date + streak + widget edit toggle ── */}
         <View style={[{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: s.lg, paddingTop: s.md, paddingBottom: s.sm }, topFabClearance(fabPosition)]}>
           {/* Over a scenic background these sit on the landscape itself (grey on
@@ -2080,436 +2745,7 @@ export default function HomeScreen() {
           editing={editingWidgets && canEditWidgets}
           onChangeLayout={changeBoardLayout}
           c={c} t={t} s={s} r={r}
-          widgets={[
-            {
-              key: 'hq', title: 'You',
-              render: () => (
-                <View style={{ backgroundColor: c.bg1, borderRadius: ui.cardRadius, padding: s.lg, marginHorizontal: s.lg, borderWidth: ui.borderWidth, borderColor: c.border }}>
-                  <CommanderCard
-                    profile={profile}
-                    rank={rank}
-                    progress={progress}
-                    c={c} t={t}
-                    onPress={() => navigation.navigate('Profile')}
-                  />
-                  {((quickButtons && studyDestinations.length > 0) || playShown) && (
-                  <TourSpot id="home-study-play">
-                  <View style={{ flexDirection: 'row', gap: 10, marginTop: s.md }}>
-                    {quickButtons && studyDestinations.length > 0 && (
-                    <TouchableOpacity
-                      style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: c.teal, backgroundColor: c.tealLight, borderRadius: ui.buttonRadius, paddingVertical: s.md }}
-                      onPress={goStudy} onLongPress={() => setShowStudyMenu(true)} delayLongPress={350}>
-                      <Ionicons name="book-outline" size={15} color={c.teal} />
-                      <Text style={{ fontSize: t.md, color: c.teal, ...ui.buttonLabel }}>Study</Text>
-                    </TouchableOpacity>
-                    )}
-                    {playShown && (
-                    <TouchableOpacity
-                      style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderWidth: 1, borderColor: c.gold, backgroundColor: c.goldLight, borderRadius: ui.buttonRadius, paddingVertical: s.md }}
-                      onPress={goPlay} onLongPress={() => setShowPlayMenu(true)} delayLongPress={350}>
-                      <Ionicons name="game-controller-outline" size={15} color={c.gold} />
-                      <Text style={{ fontSize: t.md, color: c.gold, ...ui.buttonLabel }}>Play</Text>
-                    </TouchableOpacity>
-                    )}
-                  </View>
-                  </TourSpot>
-                  )}
-                </View>
-              ),
-            },
-            {
-              key: 'wisdom', title: "Today's Wisdom",
-              render: () => (
-                <TourSpot id="home-focus">
-                <View style={{ backgroundColor: c.bg1, borderRadius: ui.cardRadius, padding: s.lg, marginHorizontal: s.lg, borderWidth: ui.borderWidth, borderColor: c.border }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: s.sm }}>
-                    <Text style={{ fontSize: ui.name === 'plain' ? 12 : 10, color: c.teal, ...ui.eyebrow }}>{showEmojis ? '✦ ' : ''}Today's Wisdom</Text>
-                    <TouchableOpacity accessibilityLabel="Add" accessibilityRole="button" onPress={() => setEditAffirm(true)}>
-                      <Ionicons name="add-circle-outline" size={20} color={c.gold} />
-                    </TouchableOpacity>
-                  </View>
-                  {/* Your own takeaways first, when one is due; the quote otherwise. */}
-                  <RememberThis userId={userId} navigation={navigation} ui={ui}>
-                    <Text style={{ fontSize: t.sm, color: c.text1, lineHeight: 20, fontStyle: 'italic', marginBottom: s.sm }}>"{todaysQuote.text}"</Text>
-                    <Text style={{ fontSize: t.xs, color: c.text3 }}>— {todaysQuote.author}</Text>
-                  </RememberThis>
-                  {todaysAffirmation && (
-                    <TouchableOpacity onPress={() => setEditAffirm(true)}
-                      style={{ marginTop: s.sm, borderTopWidth: 0.5, borderTopColor: c.border, paddingTop: s.sm }}>
-                      <Text style={{ fontSize: ui.name === 'plain' ? 12 : 10, color: c.gold, ...ui.eyebrow, marginBottom: 4 }}>{showEmojis ? '💛 ' : ''}My Affirmation</Text>
-                      <Text style={{ fontSize: t.sm, color: c.text1, lineHeight: 20 }}>{todaysAffirmation}</Text>
-                      {affirmations.length > 1 && (
-                        <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 4 }}>{affirmations.length} affirmations rotating daily</Text>
-                      )}
-                    </TouchableOpacity>
-                  )}
-                </View>
-                </TourSpot>
-              ),
-            },
-            {
-              key: 'focus', title: 'Today',
-              render: () => (!editingWidgets ? (
-                <TodayCard
-                  date={today}
-                  focus={todayFocus}
-                  onEditFocus={() => { setFocusDraft(todayFocus || ''); setEditFocus(true); }}
-                  onCalendar={() => setShowCalendar(true)}
-                  activities={todayList()}
-                  desk={deskList()}
-                  show={{ activities: boardShows('activities'), desk: boardShows('desk'), checkins: boardShows('checkins') }}
-                  onOpenActivity={(item) => (item._src === 'planner' ? setOpenPlan(item.raw)
-                    : item._src === 'due' && item.raw?.projectId ? openTarget(navigation, { kind: 'project', id: item.raw.projectId })
-                    : setSelectedActivity(item))}
-                  onPlan={() => goToLibraryScreen('PlannerScreen')}
-                  onOpenDesk={setSelectedDeskItem}
-                  onAddDesk={() => setShowTodoInput(true)}
-                  adding={showTodoInput} addText={todoInput} onAddText={setTodoInput} onAddSubmit={addTodo}
-                  checkInDue={checkInDue}
-                  onCheckIn={({ area, rating, lastCheck }) => navigation.navigate('Library', { screen: 'LifeAreaScreen', params: { areaId: area.id, rating, lastCheck } })}
-                  onNowOpen={(ref, kind) => (kind === 'desk' ? setSelectedDeskItem(ref) : setSelectedActivity(ref))}
-                  onNowDone={(ref) => (ref._src === 'task' ? completeActivityTask(ref) : completeActivityRoutine(ref))}
-                  onNowFocus={(ref, kind) => (kind === 'desk' ? focusOnDeskItem(ref) : navigation.navigate('WorkMode', { presetTitle: ref.title }))}
-                  formatTime={fmtActivityTime}
-                />
-              ) : (
-                <TourSpot id="home-focus-input">
-                <View style={{ paddingHorizontal: s.lg, flexDirection: 'row', gap: s.sm }}>
-                  <TouchableOpacity
-                    style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border }}
-                    onPress={() => { setFocusDraft(todayFocus || ''); setEditFocus(true); }}>
-                    <Ionicons name="bookmark" size={14} color={c.teal} />
-                    <Text style={{ flex: 1, fontSize: t.sm, color: todayFocus ? c.text1 : c.text3, lineHeight: 20 }} numberOfLines={2}>
-                      {todayFocus || "Set today's focus..."}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={{ backgroundColor: c.bg1, borderRadius: r.md, paddingHorizontal: 14, paddingVertical: 10, borderWidth: ui.borderWidth, borderColor: c.border, alignItems: 'center', justifyContent: 'center', minWidth: 70 }}
-                    onPress={() => setShowCalendar(true)}>
-                    <Text style={{ fontSize: t.xxl, fontFamily: ui.titleFont, fontWeight: t.bold, color: c.text1, lineHeight: 28 }}>{today.getDate()}</Text>
-                    <Text style={{ fontSize: ui.name === 'plain' ? 11 : 9, color: c.text3, ...ui.eyebrow, marginBottom: 0 }}>
-                      {today.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-                </TourSpot>
-              )),
-            },
-            {
-              key: 'activities', title: "Today's Activities",
-              render: () => (
-                todayList().length === 0 ? (todayActivities.length > 0 ? <View /> : (
-                  // Always on Home now (HOME_BASICS), so an empty day says so
-                  // and offers the one thing to do about it.
-                  <View style={{ paddingHorizontal: s.lg }}>
-                    <TouchableOpacity
-                      onPress={() => goToLibraryScreen('PlannerScreen')}
-                      accessibilityRole="button"
-                      accessibilityLabel="Nothing planned for today. Open the Planner"
-                      style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border, borderStyle: 'dashed' }}>
-                      <SleepyCat size={36} style={{ marginVertical: -8, marginLeft: -6 }} />
-                      <Text style={{ flex: 1, fontSize: t.xs, color: c.text2 }}>Nothing planned for today</Text>
-                      <Text style={{ fontSize: t.xs, color: accent.primary, fontWeight: t.bold }}>Plan →</Text>
-                    </TouchableOpacity>
-                  </View>
-                )) : (
-                  <TourSpot id="home-today-activities">
-                  <View style={{ paddingHorizontal: s.lg }}>
-                    <SectionHead title="Today's Activities" action="Calendar →" onAction={() => setShowCalendar(true)} c={c} t={t} />
-                    {todayList().slice(0, 3).map(item => (
-                      <ActivityRow key={item.id} item={item} onPress={() => (item._src === 'planner' ? setOpenPlan(item.raw)
-                        : item._src === 'due' && item.raw?.projectId ? openTarget(navigation, { kind: 'project', id: item.raw.projectId })
-                        : setSelectedActivity(item))} c={c} t={t} s={s} r={r} />
-                    ))}
-                    {todayList().length > 3 && (
-                      <TouchableOpacity onPress={() => setShowCalendar(true)}>
-                        <Text style={{ fontSize: t.xs, color: c.text3, textAlign: 'center', marginTop: 2 }}>
-                          +{todayList().length - 3} more today
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                  </TourSpot>
-                )
-              ),
-            },
-            {
-              key: 'desk', title: 'On the Desk',
-              render: () => (
-                <TourSpot id="home-desk">
-                <View style={{ paddingHorizontal: s.lg }}>
-                  <SectionHead title="On the Desk" action="+ Add" onAction={() => setShowTodoInput(true)} c={c} t={t} />
-                  {showTodoInput && (
-                    <View style={{ flexDirection: 'row', gap: s.sm, marginBottom: s.sm }}>
-                      <TextInput
-                        style={{ flex: 1, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, fontSize: t.sm, color: c.text1, borderWidth: ui.borderWidth, borderColor: c.border }}
-                        value={todoInput} onChangeText={setTodoInput}
-                        placeholder="What needs to get done?" placeholderTextColor={c.text4}
-                        autoFocus onSubmitEditing={addTodo}
-                      />
-                      <TouchableOpacity style={{ backgroundColor: accent.primary, borderRadius: ui.buttonRadius, padding: s.md, alignItems: 'center', justifyContent: 'center' }} onPress={addTodo} accessibilityLabel="Add to desk">
-                        <Ionicons name="checkmark" size={18} color={accent.onPrimary} />
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                  {/* The one thing to do next, with its actions right here, and
-                      the rest of the ranked list drifting past underneath.
-                      Everything used to be an equal chip in the ticker, so
-                      "what do I do now" took a tap to answer. */}
-                  {deskList().length > 0 ? (
-                    <>
-                      <NextUpCard item={deskList()[0]} actions={actionsForDeskItem(deskList()[0])} c={c} t={t} s={s} r={r} />
-                      {deskList().length > 1 && (
-                        <View style={{ marginTop: s.sm }}>
-                          <Text style={{ fontSize: t.xs, color: c.text3, marginBottom: 6 }}>Also on the desk</Text>
-                          <DeskTicker
-                            items={deskList().slice(1)}
-                            onItemPress={setSelectedDeskItem}
-                            onAdd={() => setShowTodoInput(true)}
-                            c={c} t={t} s={s} r={r}
-                          />
-                        </View>
-                      )}
-                    </>
-                  ) : (
-                    <DeskTicker
-                      items={deskList()}
-                      onItemPress={setSelectedDeskItem}
-                      onAdd={() => setShowTodoInput(true)}
-                      c={c} t={t} s={s} r={r}
-                    />
-                  )}
-                </View>
-                </TourSpot>
-              ),
-            },
-            {
-              key: 'ideas', title: 'Latest Ideas',
-              render: () => (
-                ideas.length === 0 ? (
-                  editingWidgets ? (
-                    <View style={{ paddingHorizontal: s.lg }}>
-                      <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border, borderStyle: 'dashed' }}>
-                        <Text style={{ fontSize: t.xs, color: c.text3 }}>Latest Ideas — nothing planted yet</Text>
-                      </View>
-                    </View>
-                  ) : <View />
-                ) : (
-                  <View style={{ paddingHorizontal: s.lg }}>
-                    <SectionHead title="Latest Ideas" action="Garden →" onAction={() => goToLibraryScreen('IdeaGardenScreen')} c={c} t={t} />
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -s.lg }}>
-                      <View style={{ flexDirection: 'row', paddingHorizontal: s.lg, gap: s.sm }}>
-                        {ideas.map(idea => (
-                          <TouchableOpacity key={idea.id}
-                            onPress={() => { setSelectedIdea(idea); setShowIdeaCard(true); }}
-                            activeOpacity={0.85}
-                            style={{ width: 110, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: 1, borderColor: idea.color || c.teal, alignItems: 'center', gap: 6 }}>
-                            <Text style={{ fontSize: 28 }}>
-                              {idea.plant_type === 'tree' ? '🌳' : idea.plant_type === 'flower' ? '🌸' : idea.plant_type === 'plant' ? '🌿' : '🌱'}
-                            </Text>
-                            <Text style={{ fontSize: 11, fontWeight: t.medium, color: c.text1, textAlign: 'center', lineHeight: 15 }} numberOfLines={2}>
-                              {idea.title}
-                            </Text>
-                            {(idea.garden_petals?.length > 0) && (
-                              <Text style={{ fontSize: 11, color: idea.color || c.teal }}>
-                                {idea.garden_petals.length} petals
-                              </Text>
-                            )}
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    </ScrollView>
-                  </View>
-                )
-              ),
-            },
-            {
-              key: 'builds', title: 'Active Projects',
-              render: () => (
-                activeBuilds.length === 0 ? (
-                  editingWidgets ? (
-                    <View style={{ paddingHorizontal: s.lg }}>
-                      <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border, borderStyle: 'dashed' }}>
-                        <Text style={{ fontSize: t.xs, color: c.text3 }}>Active Projects — nothing in progress</Text>
-                      </View>
-                    </View>
-                  ) : <View />
-                ) : (
-                  <View style={{ paddingHorizontal: s.lg }}>
-                    <SectionHead title="Active Projects" action="Workshop →" onAction={() => goToLibraryScreen('ProjectsScreen')} c={c} t={t} />
-                    <View style={{ backgroundColor: c.bg1, borderRadius: ui.cardRadius, borderWidth: ui.borderWidth, borderColor: c.border, paddingHorizontal: s.md }}>
-                      {activeBuilds.slice(0, 4).map((p, i, arr) => (
-                        <TouchableOpacity key={p.id} onPress={() => navigation.navigate('Library', { screen: 'ProjectDetail', params: { project: p } })} activeOpacity={0.7}
-                          style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, paddingVertical: 10, borderBottomWidth: i === arr.length - 1 ? 0 : 0.5, borderBottomColor: c.border }}>
-                          <Text style={{ fontSize: 15 }}>{p.emoji || '🏗️'}</Text>
-                          <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: t.sm, fontWeight: '600', color: c.text1 }} numberOfLines={1}>{p.title}</Text>
-                            <Text style={{ fontSize: 11, color: c.text3 }} numberOfLines={1}>
-                              {deskProjectIds.has(String(p.id)) && boardShows('desk')
-                                ? (p.due_date ? `Finish by ${new Date(p.due_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · next step is on your desk` : 'Next step is on your desk')
-                                : p.next_action ? `Next: ${p.next_action}` : 'No next step set'}
-                            </Text>
-                          </View>
-                          <Ionicons name="chevron-forward" size={14} color={c.text4} />
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-                )
-              ),
-            },
-            {
-              key: 'checkins', title: 'Check-ins',
-              render: () => (
-                checkInDue.length === 0 ? (
-                  editingWidgets ? (
-                    <View style={{ paddingHorizontal: s.lg }}>
-                      <View style={{ backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, borderWidth: ui.borderWidth, borderColor: c.border, borderStyle: 'dashed' }}>
-                        <Text style={{ fontSize: t.xs, color: c.text3 }}>Check-ins Due — every domain is current</Text>
-                      </View>
-                    </View>
-                  ) : <View />
-                ) : (
-                  <View style={{ paddingHorizontal: s.lg }}>
-                    <SectionHead title="Check-ins" action="Library →" onAction={() => navigation.navigate('Library')} c={c} t={t} />
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm }}>
-                      {checkInDue.map(({ area, rating, lastCheck, days }) => (
-                        <TouchableOpacity
-                          key={area.id}
-                          onPress={() => navigation.navigate('Library', { screen: 'LifeAreaScreen', params: { areaId: area.id, rating, lastCheck } })}
-                          activeOpacity={0.8}
-                          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: (area.color || c.teal) + '66', backgroundColor: c.bg1 }}>
-                          {showEmojis
-                            ? <Text style={{ fontSize: 13 }}>{area.emoji}</Text>
-                            : <Ionicons name={area.icon} size={13} color={area.color || c.teal} />}
-                          <Text style={{ fontSize: 12, fontWeight: '700', color: area.color || c.teal }}>{area.label}</Text>
-                          <Readout size={11} color={c.text3} weight="400">{days === null ? 'not rated yet' : `${days}d`}</Readout>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-                )
-              ),
-            },
-
-            // ── Persona widgets ────────────────────────────────────────────
-            // Hidden by default unless the active profile's type asks for
-            // them (see layoutForPersona / personas.defaultWidgets). Each one
-            // owns its own empty state — none of them shows a number it
-            // doesn't have.
-            {
-              key: 'habitRings', title: 'Habits',
-              render: () => <HabitRingsWidget userId={userId} onOpenPlanner={() => goToLibraryScreen('PlannerScreen')} />,
-            },
-            {
-              key: 'lifeAreas', title: 'Life Areas',
-              render: () => (
-                <LifeAreasWidget
-                  areas={lifeAreaStats}
-                  onOpenLibrary={() => navigation.navigate('Library')}
-                  onOpenArea={(area, rating) => goToLibraryScreen('LifeAreaScreen', { areaId: area.id, rating })}
-                />
-              ),
-            },
-            {
-              key: 'dailyDrills', title: "Today's Drills",
-              render: () => (
-                <DailyDrillsWidget
-                  onOpenTraining={() => goToScreen(navigation, 'Training')}
-                  onOpenDrills={() => goToScreen(navigation, 'Training', { openDrills: true })}
-                  onPlay={(gameId) => navigation.navigate('Play', { gameId })}
-                />
-              ),
-            },
-            {
-              key: 'studyBlocks', title: 'Study Blocks',
-              render: () => <StudyBlocksWidget userId={userId} onOpenPlanner={() => goToLibraryScreen('PlannerScreen')} />,
-            },
-            {
-              key: 'classProgress', title: 'Subjects',
-              render: () => <ClassProgressWidget subjectProgress={subjectProgress} onOpenClasses={() => goToLibraryScreen('ClassesStack')} />,
-            },
-            {
-              key: 'orgSnapshot', title: 'Organization',
-              render: () => <OrgSnapshotWidget userId={userId} onOpenOrg={() => navigation.navigate('Organization')} />,
-            },
-            {
-              key: 'systemsCheck', title: 'Systems Check',
-              render: () => <SystemsCheckWidget areas={lifeAreaStats} onOpenLibrary={() => navigation.navigate('Library')} />,
-            },
-            {
-              key: 'recurringOps', title: 'Recurring Ops',
-              render: () => <RecurringOpsWidget userId={userId} onOpenPlanner={() => goToLibraryScreen('PlannerScreen')} />,
-            },
-            {
-              key: 'vaultStatus', title: 'The Vault',
-              render: () => (
-                <VaultStatusWidget
-                  userId={userId} profileId={activeProfile?.id}
-                  onOpenVault={() => goToLibraryScreen('ClassesStack')}
-                />
-              ),
-            },
-            {
-              key: 'founderQuest', title: 'Founder Quest',
-              render: () => (
-                <FounderQuestWidget
-                  userId={userId} profileId={activeProfile?.id}
-                  onOpenClasses={() => goToLibraryScreen('ClassesStack')}
-                />
-              ),
-            },
-            {
-              key: 'targetsReadiness', title: 'Targets & Readiness',
-              render: () => (
-                <TargetsReadinessWidget
-                  userId={userId} profile={activeProfile}
-                  onOpenProfiles={() => navigation.navigate('AllProfiles')}
-                  onOpenClasses={() => goToLibraryScreen('ClassesStack')}
-                />
-              ),
-            },
-            {
-              key: 'quests', title: 'Missions',
-              render: () => (
-                <QuestWidget
-                  type={activeType} aim={purposeKey}
-                  onOpenQuest={(questId) => goToLibraryScreen('ClassesStack', { screen: 'Quest', params: { questId, from: 'Home' } })}
-                  // All missions: Software for You and the quick ones, in one list.
-                  onOpenAll={() => goToLibraryScreen('SoftwarePathScreen')}
-                />
-              ),
-            },
-            {
-              key: 'wayfinder', title: 'Wayfinder',
-              render: () => (
-                <WayfinderWidget
-                  userId={userId}
-                  onOpen={(params) => goToLibraryScreen('WayfinderScreen', params)}
-                />
-              ),
-            },
-            {
-              key: 'compass', title: 'Your goal',
-              render: () => (
-                <TourSpot id="home-compass">
-                  <CompassCard />
-                </TourSpot>
-              ),
-            },
-            {
-              key: 'goalSteps', title: 'Your steps',
-              render: () => <GoalStepsWidget />,
-            },
-            {
-              key: 'stageSteps', title: "What's next",
-              render: () => (
-                <TourSpot id="home-stage">
-                  <StageStepsWidget />
-                </TourSpot>
-              ),
-            },
-          ]}
+          widgets={boardWidgets}
         />
         {/* About a minute of review, only when something is due. Under the
             cards so it never competes with the goal. */}
@@ -2707,13 +2943,14 @@ export default function HomeScreen() {
         c={c} t={t} s={s} r={r}
       />
 
-      <CalendarModal
-        visible={showCalendar}
-        onClose={() => setShowCalendar(false)}
-        userId={userId}
-        initialDate={today}
-        onEditPlan={(row) => goToLibraryScreen('PlannerScreen', { editInstance: row })}
-      />
+      {/* ── Today's sheets: add/edit, item, filter, ideas, phone calendar ── */}
+      {dashboardV2 && (
+        <>
+          <PlannerSheets planner={planner} navigation={navigation} c={c} t={t} s={s} r={r} />
+          <AddSheet visible={addOpen} onClose={() => setAddOpen(false)} guest={planner.guest} userId={planner.userId}
+            onPlan={() => planner.openAdd()} onIdeas={planner.openIdeas} navigation={navigation} c={c} t={t} s={s} r={r} />
+        </>
+      )}
 
       {/* ── Hold STUDY: pick a destination ── */}
       <Modal visible={showStudyMenu} transparent animationType="slide" onRequestClose={() => setShowStudyMenu(false)}>
