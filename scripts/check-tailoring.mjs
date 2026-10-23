@@ -129,6 +129,20 @@ check('a guest (age unknown) is treated as under 18', T.tailor({}).minor === tru
 check('an under-18 account gets export only', T.tailor({ isMinor: true }).canShareLinks === false);
 check('an adult can make share links', T.tailor({ isMinor: false }).canShareLinks === true);
 
+// Every path names a purpose a new account can start on (objectives.js),
+// and says what it is in one line for the welcome.
+{
+  const objectives = await text('src/data/objectives.js');
+  const purposes = new Set([...objectives.slice(objectives.indexOf('export const PURPOSES = ['), objectives.indexOf('export const ONBOARDING_AIMS'))
+    .matchAll(/^ {4}key: '([a-z]+)',/gm)].map(m => m[1]));
+  check('objectives PURPOSES readable', purposes.size >= 5, [...purposes].join());
+  for (const [key, kit] of Object.entries(K.PATH_KITS)) {
+    check(`pathKits.${key} purpose '${kit.purpose}' is an objectives.js purpose`, purposes.has(kit.purpose));
+    check(`pathKits.${key} has a one-line blurb`, !!kit.blurb && kit.blurb.length <= 70, kit.blurb);
+  }
+  check('tailor() hands back the path\'s purpose', T.tailor({ startPoint: 'working', shakiest: 'paid' }).purpose === K.PATH_KITS.money.purpose);
+}
+
 // ── derivePersona (§7.2) ───────────────────────────────────────────────────
 for (const [ctx, want] of [
   [{ startPoint: 'highSchool' }, 'STUDENT'],
@@ -136,6 +150,9 @@ for (const [ctx, want] of [
   [{ startPoint: 'working' }, 'PERSONAL'],
   [{ startPoint: 'unsure' }, 'PERSONAL'],
   [{ startPoint: 'working', buildKind: 'business' }, 'ENTREPRENEUR'],
+  [{ startPoint: 'college' }, 'STUDENT'],
+  [{ startPoint: 'creator' }, 'ENTREPRENEUR'],
+  [{ startPoint: 'creator', buildKind: 'money' }, 'ENTREPRENEUR'],
   [{ startPoint: 'highSchool', buildKind: 'page' }, 'STUDENT'],
   [{}, 'PERSONAL'],
   [undefined, 'PERSONAL'],
@@ -145,7 +162,7 @@ for (const [ctx, want] of [
 }
 
 // ── welcomeCards (§7.2) ────────────────────────────────────────────────────
-check('welcome cards in order', W.WELCOME_CARDS.join() === 'ikigai,ground,notBehind,startPoint,shakiest,suggest,firstPage,keep', W.WELCOME_CARDS.join());
+check('welcome cards in order', W.WELCOME_CARDS.join() === 'quote,why,stage,interests,project,build,keep', W.WELCOME_CARDS.join());
 check('the welcome never asks for age', !W.WELCOME_CARDS.some(c => /^(age|birth|dob)|Age|Birth|Dob/.test(c)));
 check('welcome key', W.WELCOME_KEY === '@cth_welcome_v1');
 {
@@ -154,13 +171,81 @@ check('welcome key', W.WELCOME_KEY === '@cth_welcome_v1');
   check('stored answers keep the answers', n.startPoint === 'working' && n.shakiest === 'ground' && n.pathKey === 'ground' && n.firstName === 'Sam', show(n));
   check('flags are true only when true', n.guest === true && n.done === false && n.unit1Done === false, show(n));
   check('garbage storage reads as empty answers', show(W.normalizeWelcome('nope')) === show(W.normalizeWelcome(null)) && W.normalizeWelcome(null).startPoint === null);
+  const l = W.normalizeWelcome({ goals: ['money', 'money', '<b>', 7, 'show'], interests: 'page', projectKind: 'money', at: 'make' });
+  check('picks keep their order, once each, keys only', show(l.goals) === show(['money', 'show']) && show(l.interests) === '[]', show(l));
+  check('project and card kept', l.projectKind === 'money' && l.at === 'make', show(l));
+  check('empty answers have empty picks', show(W.normalizeWelcome(null).goals) === '[]' && show(W.normalizeWelcome(null).interests) === '[]');
 }
-check('W4 needs a starting point', !W.canLeave('startPoint', {}) && W.canLeave('startPoint', { startPoint: 'ged' }));
-check('W5 needs a shakiest circle', !W.canLeave('shakiest', { startPoint: 'ged' }) && W.canLeave('shakiest', { shakiest: 'paid' }));
-check('W1 always lets you on', W.canLeave('ikigai', {}));
+check('togglePick adds in order and removes', show(W.togglePick(W.togglePick(['a'], 'b'), 'a')) === show(['b']));
+check('why needs a goal', !W.canLeave('why', { goals: [] }) && W.canLeave('why', { goals: ['money'] }));
+check('stage needs a starting point', !W.canLeave('stage', {}) && W.canLeave('stage', { startPoint: 'ged' }));
+check('interests need one', !W.canLeave('interests', { interests: [] }) && W.canLeave('interests', { interests: ['page'] }));
+check('the builder needs the project made', !W.canLeave('build', {}) && W.canLeave('build', { unit1Done: true }));
+check('the quote always lets you on', W.canLeave('quote', {}));
 check('a fresh welcome starts at the top', W.resumeAt({}) === 0);
-check('a half-done welcome resumes at the first open question', W.WELCOME_CARDS[W.resumeAt({ startPoint: 'working' })] === 'shakiest');
-check('a finished welcome resumes at the end', W.WELCOME_CARDS[W.resumeAt({ startPoint: 'w', shakiest: 's', pathKey: 'p', unit1Done: true })] === 'keep');
+check('a relaunch picks up on the card they were on', W.WELCOME_CARDS[W.resumeAt({ at: 'interests', startPoint: 'working' })] === 'interests');
+check('a half-done welcome resumes at the first open question', W.WELCOME_CARDS[W.resumeAt({ goals: ['money'] })] === 'stage');
+check('a finished welcome resumes at the end', W.WELCOME_CARDS[W.resumeAt({ goals: ['x'], startPoint: 'w', interests: ['page'], projectKind: 'page', unit1Done: true })] === 'keep');
+
+// The Descartes welcome's choices name real things, and its recommendation
+// follows the picks (the founder's step 5).
+{
+  const kindIds = new Set(BUILD_KINDS.map(k => k.id));
+  check('every start point has a hint and a portfolio card', K.START_POINTS.every(p => !!p.hint && p.hint.length <= 70 && !!p.icon && !!p.portfolio?.title && !!p.portfolio?.sub && !!p.portfolio?.desc));
+  check('the welcome shows the founder\'s five stages, all real', K.WELCOME_STAGES.length === 5 && K.WELCOME_STAGES.every(k => K.START_POINTS.some(p => p.key === k)));
+  check('the founder\'s four motivations, word for word', K.WELCOME_GOALS.map(g => g.label).join('|') === 'Build a personal portfolio webpage|Develop a disciplined habit of building|Showcase skills & real projects|Explore modern digital tools');
+  check('the founder\'s six interests', K.WELCOME_INTERESTS.length === 6 && K.WELCOME_INTERESTS.every(i => i.label && i.icon && i.skill && i.role && i.kinds.length));
+  for (const i of K.WELCOME_INTERESTS) check(`interest ${i.key} points at real projects`, i.kinds.every(k => K.WELCOME_PROJECTS.some(p => p.kind === k)));
+  for (const p of K.WELCOME_PROJECTS) check(`project ${p.kind} is a Studio kind with three stats`, kindIds.has(p.kind) && p.stats.length === 3 && !!p.title && !!p.desc && !!p.launch);
+  check('the portfolio leads the projects', K.WELCOME_PROJECTS[0].kind === 'page');
+  for (const g of K.WELCOME_GOALS) {
+    check(`goal ${g.key} points at a real project (or none)`, g.kind === null || K.WELCOME_PROJECTS.some(p => p.kind === g.kind));
+    for (const sp of K.START_POINTS.map(p => p.key)) {
+      check(`goal ${g.key} at ${sp} leads to a path`, Object.hasOwn(K.PATH_KITS, T.goalPath(g.key, sp)), T.goalPath(g.key, sp));
+    }
+  }
+  check('a portfolio is a career move at work', T.goalPath('portfolio', 'working') === 'career' && T.goalPath('portfolio', 'highSchool') === 'like');
+
+  const p1 = T.welcomePlan({ goals: ['portfolio'], interests: ['finance', 'writing'], startPoint: 'working' });
+  check('the portfolio wins when they asked for one', p1.kind === 'page' && p1.pathKey === 'career', JSON.stringify(p1));
+  check('the others are every other site, theirs first', p1.others.length === K.WELCOME_PROJECTS.length - 1 && p1.others[0] === 'money' && !p1.others.includes('page'), show(p1.others));
+  check('reasons name what they picked', p1.reasons.includes('Build a personal portfolio webpage'), show(p1.reasons));
+  const p2 = T.welcomePlan({ goals: ['explore'], interests: ['finance'], startPoint: 'working' });
+  check('no page asked for: their first interest wins', p2.kind === 'money' && p2.reasons.join() === 'Personal Finance & Wealth', show(p2));
+  check('a habit of building points at the launchpad', T.welcomePlan({ goals: ['habit'] }).kind === 'launch');
+  check('logic interest + school leans to the logic lab', T.welcomePlan({ interests: ['logic'], startPoint: 'highSchool' }).kind === 'logic');
+  check('nothing picked: the portfolio, on What do I like?', T.welcomePlan({}).kind === 'page' && T.welcomePlan({}).pathKey === 'like');
+  check('a chosen path wins', T.welcomePlan({ goals: ['portfolio'], pathKey: 'money' }).pathKey === 'money');
+  check('unknown picks are ignored', T.welcomePlan({ goals: ['nope'], interests: ['nope'], startPoint: 'nope' }).kind === 'page');
+  for (const sp of K.START_POINTS.map(p => p.key)) {
+    check(`${sp}: every path's welcome plan names a real project`, Object.keys(K.PATH_KITS).every(pk => kindIds.has(T.welcomePlan({ startPoint: sp, pathKey: pk }).kind)));
+  }
+
+  // launchBuilderWorkspace: interests → badges, stage → headline + phase card.
+  const ps = T.portfolioStart({ firstName: 'Sam', startPoint: 'college', interests: ['web', 'design', 'nope'] });
+  check('portfolio: name from the welcome', ps.answers.name === 'Sam');
+  check('portfolio: headline from stage and first interest', ps.answers.line === 'College Student & Web Developer', ps.answers.line);
+  check('portfolio: interests become skill badges', show(ps.content.skills) === show(['Web Development', 'UI/UX Design']));
+  check('portfolio: the stage fills the phase card', ps.content.stage.title === 'College Student' && !!ps.content.stage.desc);
+  check('portfolio: nothing made up (this page + a prompt)', ps.content.projects.length === 2 && ps.content.projects[0].title === 'This portfolio' && ps.content.projects[1].title === 'Next project');
+  check('portfolio: no name, no made-up name', T.portfolioStart({}).answers.name === '' && T.portfolioStart({}).answers.line === 'Life Explorer');
+  check('portfolio: the Descartes quote', /use it well/.test(ps.content.quote));
+}
+
+// WELCOME_V1: set either way wins; unset, only a device nobody signed in on
+// gets the welcome, so someone who signed out still lands on Login.
+check('WELCOME_V1 unset, fresh device → welcome', W.welcomeEnabled(null, false) === true);
+check('WELCOME_V1 unset, signed in here before → Login as before', W.welcomeEnabled(undefined, true) === false);
+check('WELCOME_V1 off is the rollback', W.welcomeEnabled(false, false) === false);
+check('WELCOME_V1 on wins', W.welcomeEnabled(true, true) === true);
+// "A page about you" starts with a line from their answers, within the
+// page's own limit, for every start and path.
+for (const sp of [...K.START_POINTS.map(p => p.key), null]) {
+  for (const pk of [...Object.keys(K.PATH_KITS), null]) {
+    const line = W.pageLineFor({ startPoint: sp, pathKey: pk });
+    check(`page line ${sp}/${pk}`, !!line && line.length <= W.PAGE_LINE_MAX && !/undefined|null/.test(line), line);
+  }
+}
 
 // Boot (§7.2): signed-in people never see the welcome.
 const boot = (ctx) => { const b = W.bootTarget(ctx); return `${b.route}${b.guest ? ' guest' : ''}${b.pickPathNote ? ' +pickPath' : ''}`; };

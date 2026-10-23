@@ -48,6 +48,13 @@ export const SETTING_KEYS = {
   // On by default; the pet's feed sheet and Settings both switch it.
   PET_REMINDERS: 'petReminders',
   TOUR_SEEN: 'tourSeen',
+  // The welcome before login (src/screens/welcome/), the shake-up's P2.
+  // true / false wins; unset means on for a device nobody has signed in on
+  // (welcomeEnabled in src/logic/welcomeCards.js). Off is the rollback.
+  WELCOME_V1: 'welcomeV1',
+  // The one-time "Pick your path" note on Home for accounts from before the
+  // welcome (src/components/PickPathNote.js).
+  PICK_PATH_NOTE_SEEN: 'pickPathNoteSeen',
   // Retired 2026-10-16: the Library's own hide list. Its eight tools are all
   // My features picks, so the Library no longer reads it.
   HIDDEN_LIBRARY_SECTIONS: 'hiddenLibrarySections',
@@ -103,6 +110,14 @@ export async function readSetting(key, fallback) {
   } catch {
     return fallback;
   }
+}
+
+// Write a setting once, outside a screen, and wait for it to land: for a
+// value the next screen must see on its first read (the welcome and
+// signup write homeView = 'calm' right before opening Today).
+export async function writeSetting(key, value) {
+  lastKnown[key] = value;
+  await AsyncStorage.setItem(PREFIX + key, JSON.stringify(value));
 }
 
 export default function useSetting(key, defaultValue) {

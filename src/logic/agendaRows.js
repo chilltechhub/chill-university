@@ -52,6 +52,26 @@ export function deleteRows(rows, ids) {
   return (rows || []).filter(r => !gone.has(r.id));
 }
 
+/**
+ * At signup: the guest's rows as new rows for the account, minus any the
+ * account already has (`isSame(existing, row)`, plannerService's
+ * isSamePlan). Local ids and timestamps stay behind; the server makes its
+ * own. Done and skipped carry over.
+ */
+export function claimRows(localRows, existingRows, userId, isSame) {
+  const keep = ['title', 'area', 'cadence', 'type', 'date', 'start_time', 'duration_minutes', 'notes',
+    'completed', 'completed_at', 'skipped', 'link_type', 'link_screen', 'link_id'];
+  const out = [];
+  for (const r of localRows || []) {
+    if (!r?.title || !r.date) continue;
+    if ((existingRows || []).some(x => isSame(x, r)) || out.some(x => isSame(x, r))) continue;
+    const row = { user_id: userId };
+    keep.forEach(k => { if (r[k] !== undefined) row[k] = r[k]; });
+    out.push(row);
+  }
+  return out;
+}
+
 // The same series rule as plannerService.getSeriesFrom: same title, repeat
 // and time (local rows never come from a library component), from this day
 // on, this one plus the ones not done yet.

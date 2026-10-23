@@ -18,6 +18,7 @@ import BuildPreview from '../../components/BuildPreview';
 import BuildAskSheet from '../../components/BuildAskSheet';
 import PetCompanion from '../../components/PetCompanion';
 import PartSheet from './PartSheet';
+import PortfolioEditor from '../../components/PortfolioEditor';
 import { saveBuild, deleteBuild } from '../../api/buildService';
 import { recordExport } from '../../api/pathService';
 import { growIntoProject } from '../../api/buildProjects';
@@ -158,6 +159,15 @@ export default function BuildScreen() {
         <RichText style={{ fontSize: t.sm, color: c.text2, marginTop: s.sm }} boldStyle={{ color: c.text1 }}>
           {receiptLine(build)}
         </RichText>
+
+        {/* A portfolio's words, skills, project cards and sections: free to
+            change, live (the founder's builder panels). Its look is the parts below. */}
+        {kind.id === 'page' && !!build.content && (
+          <>
+            <SectionLabel label="Customize" />
+            <PortfolioEditor build={build} onChange={update} look={false} />
+          </>
+        )}
 
         <SectionLabel label="Take it apart" />
         {kind.parts.map(p => {

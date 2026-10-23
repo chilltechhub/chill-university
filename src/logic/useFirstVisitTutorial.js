@@ -61,7 +61,7 @@ let shownThisSession = 0;
 // have their own explanation built in; interrupting either with a tutorial
 // about it would be talking over the thing doing the talking. Wayfinder
 // opens on its own guided intro for the same reason.
-const NEVER = new Set(['Login', 'MultiStepOnboarding', 'ResetPassword', 'WayfinderScreen']);
+const NEVER = new Set(['Welcome', 'Login', 'MultiStepOnboarding', 'ResetPassword', 'WayfinderScreen']);
 
 export async function loadSeenScreens() {
   try {

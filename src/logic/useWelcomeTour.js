@@ -16,14 +16,25 @@
 //
 // Only accounts onboarding queued (queueWelcomeTour) get it automatically.
 // Everyone else has Settings → Replay Tutorial, which runs the same steps.
+//
+// Since 2026-10-21 the welcome queues it too, for a guest who kept going
+// (stored under 'guest') or a new account, as 'pending-project': instead
+// of the general tour it runs APP_TOUR (src/logic/guide/lessons/appTour.js),
+// which starts from the project they just made and ends on their next
+// mission, where the guided first goal takes over.
 
 import { useEffect, useState, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTour } from '../../context/TourContext';
 import { useUserProgress } from '../../context/UserProgressContext';
+import { useAccess } from '../../context/AccessContext';
 import { markScreensSeen } from './useFirstVisitTutorial';
+import { loadBuilds } from '../api/buildService';
+import { buildTitle } from './builds';
+import { appTour } from './guide/lessons/appTour';
 
-const key = (uid) => `@cth_welcome_tour_${uid}`;
+const key = (uid) => `@cth_welcome_tour_${uid || 'guest'}`;
+const PENDING = new Set(['pending', 'pending-noaim', 'pending-project']);
 // Long enough for Home's widgets to load and their TourSpots to measure.
 const SETTLE_MS = 1200;
 
@@ -32,15 +43,21 @@ const SETTLE_MS = 1200;
 // same pattern as forgetSeenScreens.
 const queueListeners = new Set();
 
-/** Called by onboarding's finish(), before it leaves for Home. */
+/** Called by onboarding's finish(), or the welcome, before it leaves for Home. */
 // `aimChosen` false when onboarding was skipped before the "What did you
 // come here for?" card, so the tour doesn't open with "You came here to…"
 // about a purpose they never picked. Stored as its own pending value.
-export async function queueWelcomeTour(uid, { aimChosen = true } = {}) {
-  if (!uid) return;
-  const value = aimChosen ? 'pending' : 'pending-noaim';
+// `afterWelcome`: they came through the welcome (and usually its project),
+// so run APP_TOUR. uid null is the guest.
+export async function queueWelcomeTour(uid, { aimChosen = true, afterWelcome = false } = {}) {
+  const value = afterWelcome ? 'pending-project' : aimChosen ? 'pending' : 'pending-noaim';
   queueListeners.forEach(fn => fn(uid, value));
   try { await AsyncStorage.setItem(key(uid), value); } catch { /* the tour stays in Settings */ }
+}
+
+/** Has this account (or the guest, uid null) already had a welcome tour? */
+export async function welcomeTourDone(uid) {
+  try { return (await AsyncStorage.getItem(key(uid))) === 'done'; } catch { return false; }
 }
 
 /**
@@ -49,8 +66,10 @@ export async function queueWelcomeTour(uid, { aimChosen = true } = {}) {
  */
 export default function useWelcomeTour(routeName) {
   const { user } = useUserProgress();
-  const { active: tourActive, startTour } = useTour();
+  const { active: tourActive, startTour, startLesson } = useTour();
+  const { activeObjective } = useAccess();
   const uid = user?.id || null;
+  const mission = activeObjective?.active ? activeObjective.objective?.label || null : null;
   // null while loading, then 'pending' | 'done'. Anything but 'pending' in
   // storage (including nothing) means this account isn't due one.
   const [state, setState] = useState(null);
@@ -58,9 +77,8 @@ export default function useWelcomeTour(routeName) {
   useEffect(() => {
     let alive = true;
     setState(null);
-    if (!uid) { setState('done'); return undefined; }
     AsyncStorage.getItem(key(uid))
-      .then(raw => { if (alive) setState(raw === 'pending' || raw === 'pending-noaim' ? raw : 'done'); })
+      .then(raw => { if (alive) setState(PENDING.has(raw) ? raw : 'done'); })
       .catch(() => { if (alive) setState('done'); });
     return () => { alive = false; };
   }, [uid]);
@@ -84,11 +102,18 @@ export default function useWelcomeTour(routeName) {
   }, [uid]);
 
   useEffect(() => {
-    if ((state !== 'pending' && state !== 'pending-noaim') || tourActive || routeName !== 'Home') return undefined;
-    const aimChosen = state !== 'pending-noaim';
-    const timer = setTimeout(() => startTour({ onEnd: finish, welcome: true, aimChosen }), SETTLE_MS);
-    return () => clearTimeout(timer);
-  }, [state, tourActive, routeName, startTour, finish]);
+    if (!PENDING.has(state) || tourActive || routeName !== 'Home') return undefined;
+    let alive = true;
+    const timer = setTimeout(async () => {
+      if (state !== 'pending-project') {
+        startTour({ onEnd: finish, welcome: true, aimChosen: state !== 'pending-noaim' });
+        return;
+      }
+      const made = await loadBuilds(uid).catch(() => []);
+      if (alive) startLesson(appTour({ project: made[0] ? buildTitle(made[0]) : null, mission }), { onEnd: finish });
+    }, SETTLE_MS);
+    return () => { alive = false; clearTimeout(timer); };
+  }, [state, tourActive, routeName, startTour, startLesson, finish, uid, mission]);
 
   return { holding: state !== 'done' };
 }

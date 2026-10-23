@@ -348,32 +348,33 @@ export const radius = {
   sm: 6, md: 10, lg: 14, xl: 18, xxl: 24, full: 9999,
 };
 
-// Shadows
-export const makeShadows = (dark) => ({
-  // Light: soft and wide rather than a tight dark edge, so a card sits on
-  // the page instead of being outlined on it.
-  sm: {
-    shadowColor: dark ? '#000' : '#3a2f1e',
-    shadowOffset: { width: 0, height: dark ? 1 : 2 },
-    shadowOpacity: dark ? 0.3 : 0.07,
-    shadowRadius: dark ? 3 : 8,
-    elevation: 2,
-  },
-  md: {
-    shadowColor: dark ? '#000' : '#161b28',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: dark ? 0.4 : 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  lg: {
-    shadowColor: dark ? '#000' : '#161b28',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: dark ? 0.5 : 0.14,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-});
+// Shadows (2026-10-21: "the app looks flat, especially in light mode").
+// Two layers each, like real light: a tight contact shadow under the edge
+// plus a wide soft one that lifts the card off the page. boxShadow works
+// on web (react-native-web 0.21) and on iOS/Android (RN 0.76+), and it
+// stops the "shadow* props are deprecated" warning on web.
+//   sm  cards and rows      md  raised: pickers, selected cards
+//   lg  sheets and modals   glow(color)  a coloured lift for primary buttons
+const INK = '42, 34, 20'; // warm, so light-mode shadows sit on the paper canvas
+export const makeShadows = (dark) => (dark
+  ? {
+    sm: { boxShadow: '0 1px 2px rgba(0, 0, 0, 0.45), 0 6px 18px rgba(0, 0, 0, 0.32)' },
+    md: { boxShadow: '0 2px 4px rgba(0, 0, 0, 0.45), 0 12px 32px rgba(0, 0, 0, 0.42)' },
+    lg: { boxShadow: '0 4px 10px rgba(0, 0, 0, 0.5), 0 24px 60px rgba(0, 0, 0, 0.55)' },
+  }
+  : {
+    sm: { boxShadow: `0 1px 2px rgba(${INK}, 0.07), 0 6px 18px rgba(${INK}, 0.08)` },
+    md: { boxShadow: `0 2px 4px rgba(${INK}, 0.08), 0 14px 34px rgba(${INK}, 0.12)` },
+    lg: { boxShadow: `0 4px 10px rgba(${INK}, 0.1), 0 26px 64px rgba(${INK}, 0.18)` },
+  });
+
+// A coloured lift under a filled control (the accent's own light).
+// `hex` is a 6-digit colour; anything else gets no glow.
+export function glow(hex, strength = 1) {
+  if (!/^#[0-9a-f]{6}$/i.test(hex || '')) return null;
+  const a = (n) => Math.round(Math.min(255, n * strength)).toString(16).padStart(2, '0');
+  return { boxShadow: `0 2px 6px ${hex}${a(56)}, 0 10px 24px ${hex}${a(64)}` };
+}
 
 // Life area color lookup
 export function getLifeAreaColor(areaId, colors) {

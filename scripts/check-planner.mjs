@@ -241,6 +241,22 @@ check('isSamePlan: different times differ', !L.isSamePlan({ title: 'Gym', date: 
   rows = A.deleteRows(rows, ['local-test-1']);
   check('guest: delete removes it', !rows.some(r => r.title === 'Budget') && rows.length === 3);
   check('guest: ids are unique', new Set(Array.from({ length: 50 }, () => A.makeLocalId())).size === 50);
+
+  // Signup: the guest's plans become the account's (src/api/claimLocal.js).
+  const guest = [
+    { id: 'local-a', user_id: null, title: 'Walk', date: '2026-10-21', start_time: '07:00', area: 'physical', cadence: 'once', completed: true, completed_at: '2026-10-21T07:30:00Z', created_at: 'x' },
+    { id: 'local-b', user_id: null, title: 'Budget', date: '2026-10-22', start_time: null, area: 'financial', cadence: 'once' },
+    { id: 'local-c', user_id: null, title: 'Budget', date: '2026-10-22', start_time: null, area: 'financial', cadence: 'once' },
+    { id: 'local-d', user_id: null, title: '', date: '2026-10-22' },
+  ];
+  const already = [{ title: 'Walk', date: '2026-10-21', start_time: '07:00' }];
+  const claimed = A.claimRows(guest, already, 'user-1', L.isSamePlan);
+  check('claim: one already on the account is skipped', !claimed.some(r => r.title === 'Walk'), JSON.stringify(claimed));
+  check('claim: a plan in there twice lands once', claimed.filter(r => r.title === 'Budget').length === 1);
+  check('claim: an untitled row is dropped', claimed.length === 1);
+  check('claim: rows belong to the account, with no local id or timestamp', claimed.every(r => r.user_id === 'user-1' && !('id' in r) && !('created_at' in r)));
+  const done = A.claimRows([guest[0]], [], 'user-1', L.isSamePlan)[0];
+  check('claim: done carries over', done.completed === true && done.completed_at === '2026-10-21T07:30:00Z' && done.start_time === '07:00');
 }
 
 // ── Phone-calendar sync, gathered (src/logic/coalesce.js) ───────────────────

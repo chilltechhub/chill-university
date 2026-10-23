@@ -270,6 +270,22 @@ export async function saveStartChoices(userId, patch = {}) {
   return { error };
 }
 
+/**
+ * Merges `patch` into profiles.metadata, the same read-then-write as
+ * saveStartChoices. The welcome's answers land here at signup
+ * (start_point, shakiest, path_key, shakeup_onboarded_at...), and the
+ * "Pick your path" note writes path_key for older accounts.
+ */
+export async function mergeProfileMetadata(userId, patch = {}) {
+  if (!userId) return { error: null };
+  const { data: row, error: readError } = await supabase.from('profiles').select('metadata').eq('id', userId).maybeSingle();
+  if (readError) { warn('mergeProfileMetadata', readError); return { error: readError }; }
+  const prev = row?.metadata && typeof row.metadata === 'object' ? row.metadata : {};
+  const { error } = await supabase.from('profiles').update({ metadata: { ...prev, ...patch } }).eq('id', userId);
+  warn('mergeProfileMetadata', error);
+  return { error };
+}
+
 /** Drops the cached snapshot — used on sign-out so the next account starts clean. */
 export async function clearAccessCache(userId) {
   if (!userId) return;

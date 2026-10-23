@@ -15,6 +15,7 @@ import { Card, Eyebrow, Button } from './ui';
 import { CalmPill, calmEyebrow } from './CalmKit';
 import RichText from './RichText';
 import PetCompanion from './PetCompanion';
+import TourSpot from './TourSpot';
 import useStudio from '../logic/useStudio';
 import { buildTitle, nextPart, receiptLine, isMastered, kindOf } from '../logic/builds';
 import { sparkLine, companionLine } from '../logic/studio';
@@ -49,7 +50,8 @@ export default function StudioCard({ variant = 'card', pal }) {
 
   if (variant === 'calm' && pal) {
     return (
-      <View style={{ marginTop: s.lg, backgroundColor: pal.glass, borderWidth: 1, borderColor: pal.glassEdge, borderRadius: 22, padding: s.lg }}>
+      <TourSpot id="home-studio" style={{ marginTop: s.lg }} radius={22}>
+      <View style={{ backgroundColor: pal.glass, borderWidth: 1, borderColor: pal.glassEdge, borderRadius: 22, padding: s.lg }}>
         <Text style={{ ...calmEyebrow, color: pal.eyebrow }}>Studio</Text>
         <Text style={{ fontSize: 17, lineHeight: 23, fontWeight: '700', color: pal.text, marginTop: 8 }}>{title}</Text>
         <RichText style={{ fontSize: 13, color: pal.text2, marginTop: 4 }} boldStyle={{ color: pal.text }}>{line}</RichText>
@@ -58,12 +60,13 @@ export default function StudioCard({ variant = 'card', pal }) {
           {!!last && <CalmPill label="All builds" onPress={() => openIn(navigation, 'StudioScreen')} pal={pal} />}
         </View>
       </View>
+      </TourSpot>
     );
   }
 
   // Same side margins as the Dream and Today's Find above and below it.
   return (
-    <View style={{ marginHorizontal: s.lg }}>
+    <TourSpot id="home-studio" style={{ marginHorizontal: s.lg }}>
     {/* An edge while a Build is halfway: it's in progress (Home's card rule). */}
     <Card accentEdge={!!last && !isMastered(last)}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -88,6 +91,6 @@ export default function StudioCard({ variant = 'card', pal }) {
       </View>
       <Button label={action.label} icon={action.icon} size="sm" onPress={action.go} style={{ marginTop: s.md }} />
     </Card>
-    </View>
+    </TourSpot>
   );
 }

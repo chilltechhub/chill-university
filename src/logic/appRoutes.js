@@ -26,7 +26,7 @@ const TAB_SCREENS = new Set(['Home', 'Training', 'Library']);
 
 // Root stack — see App.js's <Stack.Navigator>.
 const ROOT_SCREENS = new Set([
-  'Login', 'ResetPassword', 'MultiStepOnboarding', 'MainTabs',
+  'Welcome', 'Login', 'ResetPassword', 'MultiStepOnboarding', 'MainTabs',
   'Profile', 'Settings', 'Play', 'PlayGame', 'Leaderboard', 'Family',
   'ChildProgress', 'Organization', 'CohortRoster', 'Help', 'Compass', 'Stats', 'Plus', 'WorkMode',
   'MakeItYours',

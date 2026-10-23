@@ -85,8 +85,19 @@ actionKeys.forEach(k => { if (!FAB_ACTIONS.includes(k)) fail(`+ button action "$
 // track sees, and that the rule names the cards MultiStepOnboarding has.
 {
   const { ONBOARDING_CARDS, shownCards } = await load('src/logic/onboardingCards.js');
-  const stepKeys = [...(await text('src/screens/MultiStepOnboarding.js')).matchAll(/\{ key: '([a-z]+)',\s+component:/g)].map(m => m[1]);
+  const wizard = await text('src/screens/MultiStepOnboarding.js');
+  const keysIn = (name) => {
+    const at = wizard.indexOf(`const ${name} = [`);
+    if (at < 0) return null;
+    return [...wizard.slice(at, wizard.indexOf('\n];', at)).matchAll(/\{ key: '([a-z]+)',\s+component:/g)].map(m => m[1]);
+  };
+  const stepKeys = keysIn('STEPS') || [];
   if (stepKeys.join() !== ONBOARDING_CARDS.join()) fail(`onboarding: STEPS keys [${stepKeys}] don't match ONBOARDING_CARDS [${ONBOARDING_CARDS}]`);
+  // After the welcome (the shake-up's P2) signup asks a name and nothing
+  // else: the age gate and consent run before any card either way.
+  const slimKeys = keysIn('SLIM_STEPS');
+  if (!slimKeys || slimKeys.join() !== 'name') fail(`onboarding: SLIM_STEPS should be just [name], got [${slimKeys}]`);
+  if (shownCards(slimKeys || [], { mode: 'picks', hasLifeAreas: false }).length !== 1) fail('onboarding: the slim name card should always show');
   const seen = (ctx) => shownCards(ONBOARDING_CARDS, ctx).map(i => ONBOARDING_CARDS[i]).join(' ');
   const want = (name, ctx, expected) => { const got = seen(ctx); if (got !== expected) fail(`onboarding ${name}: got "${got}", want "${expected}"`); };
   want('Level up', { mode: 'auto', hasLifeAreas: false }, 'welcome aim dream persona start name sectors');

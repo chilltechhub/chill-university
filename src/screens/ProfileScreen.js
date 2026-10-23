@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { supabase } from '../api/supabaseClient';
 import { useTheme } from '../../context/ThemeContext';
-import SignInPrompt from '../components/SignInPrompt';
+import GuestYou from './you/GuestYou';
 import { useUserProgress, SUBJECT_CONFIG } from '../../context/UserProgressContext';
 import useCharacterLoadout from '../logic/useCharacterLoadout';
 import useBonusRewards from '../logic/useBonusRewards';
@@ -148,14 +148,9 @@ export default function ProfileScreen() {
     );
   }
 
-  if (!session) {
-    return (
-      <SignInPrompt
-        title="Make it yours"
-        body="Sign in to keep your level, points, streak and badges, and pick up where you left off on any device."
-      />
-    );
-  }
+  // A guest's You: their Dream, their page, Save my progress (the
+  // shake-up's P2). It was a sign-in wall.
+  if (!session) return <GuestYou />;
 
   const petLevel = bondLevel(petCare.bond).level;
   const badgeCtx = { level, streakDays, points, subjectProgress, gameplayStats, petLevel };

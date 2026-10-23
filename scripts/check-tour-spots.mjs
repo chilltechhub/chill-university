@@ -70,6 +70,19 @@ for (const f of [join(SRC, 'logic', 'screenTutorials.js'), join(SRC, 'logic', 't
   }
 }
 
+// Guide lessons (src/logic/guide/lessons/, the shake-up's guide) name their
+// spots as `id:` like the screen tutorials.
+{
+  const dir = join(SRC, 'logic', 'guide', 'lessons');
+  let lessonFiles = [];
+  try { lessonFiles = walk(dir); } catch { /* no lessons yet */ }
+  for (const f of lessonFiles) {
+    for (const m of decomment(readFileSync(f, 'utf8')).matchAll(/\bid:\s*['"]([^'"]+)['"]/g)) {
+      if (!referenced.has(m[1])) referenced.set(m[1], relative(ROOT, f));
+    }
+  }
+}
+
 const missing = [...referenced.entries()].filter(
   ([id]) => !literal.has(id) && !prefixes.some(p => p && id.startsWith(p)),
 );

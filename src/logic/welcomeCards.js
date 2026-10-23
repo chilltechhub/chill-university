@@ -1,38 +1,50 @@
 // src/logic/welcomeCards.js
-// The welcome before login (docs/shake-up-plan-2026-10-21.md §7.2): its
-// cards, what each needs before you can move on, the answers kept on the
-// phone, and where the app opens at launch. No imports, so
-// scripts/check-tailoring.mjs can run it. Not wired yet: P2 builds the
-// Welcome route on top of it.
+// The welcome before login: its cards, what each needs before you can move
+// on, the answers kept on the phone, and where the app opens at launch. No
+// imports, so scripts/check-tailoring.mjs can run it. The Welcome route
+// (src/screens/welcome/) and App.js's boot are built on it.
 //
-//   ikigai, ground, notBehind   W1-W3: the four circles, the ground, "You're
-//                               not behind. You're starting from here."
-//   startPoint                  W4: "Where are you in life right now?"
-//   shakiest                    W5: "Which feels shakiest right now?"
-//   suggest                     W6: "Want to start here?" (one path)
-//   firstPage                   W7: "A page about you", your first Build
-//   keep                        W8: "Want to keep this?"
+// Since 2026-10-21 it's the founder's Descartes onboarding, exactly as they
+// specified it (their Gemini thread + descartes_onboarding_portfolio_builder.html;
+// docs/shake-up-plan-2026-10-21.md §7.2 had ikigai cards here):
 //
-// There is no age card, on purpose: age is asked only at signup, where the
-// birth date gate and parent consent already are.
+//   quote       Step 1 of 5. "It is not enough to have a good mind…",
+//               fading in one line at a time. Tap anywhere.
+//   why         Step 2. "Conquer yourself rather than the world." then
+//               "What brings you here today?" (pick any: goals)
+//   stage       Step 3. "What stage of life are you at right now?" (startPoint)
+//   interests   Step 4. "Pick your skills & interests" (pick any)
+//   project     Step 5. "Recommended Project", or one of the others
+//   build       the live builder: preview, code, customize, export
+//   keep        "Want to keep this?" Then a quick look around the app and
+//               the first mission (src/logic/useWelcomeTour.js).
+//
+// Every card can be skipped, and the first four have a fast track straight
+// to the project. There is no age card, on purpose: age is asked only at
+// signup, where the birth date gate and parent consent already are.
 
 export const WELCOME_KEY = '@cth_welcome_v1';
 
-export const WELCOME_CARDS = ['ikigai', 'ground', 'notBehind', 'startPoint', 'shakiest', 'suggest', 'firstPage', 'keep'];
+export const WELCOME_CARDS = ['quote', 'why', 'stage', 'interests', 'project', 'build', 'keep'];
+// "Step 1 of 5" … "Step 5 of 5": the founder's five; the builder and keep follow.
+export const WELCOME_STEPS = 5;
 
-// What a card needs answered before Next works.
-const NEEDS = { startPoint: 'startPoint', shakiest: 'shakiest', suggest: 'pathKey', firstPage: 'unit1Done' };
+// What a card needs answered before Next works. Skip moves on without it.
+const NEEDS = { why: 'goals', stage: 'startPoint', interests: 'interests', project: 'projectKind', build: 'unit1Done' };
+
+const answered = (v) => (Array.isArray(v) ? v.length > 0 : !!v);
 
 export function canLeave(card, answers = {}) {
   const need = NEEDS[card];
-  return !need || !!answers[need];
+  return !need || answered(answers[need]);
 }
 
-// Where a half-done welcome picks up after a relaunch: the start if nothing
-// is answered yet, else the first card still waiting on an answer, else the
-// last one.
+// Where a half-done welcome picks up after a relaunch: the card they were
+// on (`at`), else the first card still waiting on an answer, else the start.
 export function resumeAt(answers = {}) {
-  if (!Object.values(NEEDS).some(k => answers[k])) return 0;
+  const at = WELCOME_CARDS.indexOf(answers.at);
+  if (at >= 0) return at;
+  if (!Object.values(NEEDS).some(k => answered(answers[k]))) return 0;
   const i = WELCOME_CARDS.findIndex(card => NEEDS[card] && !canLeave(card, answers));
   return i < 0 ? WELCOME_CARDS.length - 1 : i;
 }
@@ -40,7 +52,9 @@ export function resumeAt(answers = {}) {
 // The answers, and nothing else. Whatever else turns up in storage (an
 // older shape, a stray field) is dropped rather than carried into an
 // account at signup; that includes anything age-like.
-const TEXT = { startPoint: 20, shakiest: 20, pathKey: 20, firstName: 40 };
+// shakiest is from the ikigai welcome; an older half-done one still has it.
+const TEXT = { startPoint: 20, shakiest: 20, pathKey: 20, firstName: 40, projectKind: 20, at: 20 };
+const LISTS = { goals: 8, interests: 12 }; // picked keys, in the order picked
 const FLAGS = ['unit1Done', 'done', 'guest'];
 
 export function normalizeWelcome(raw) {
@@ -49,8 +63,43 @@ export function normalizeWelcome(raw) {
   for (const [k, max] of Object.entries(TEXT)) {
     out[k] = typeof src[k] === 'string' && src[k].trim() ? src[k].trim().slice(0, max) : null;
   }
+  for (const [k, max] of Object.entries(LISTS)) {
+    const list = Array.isArray(src[k]) ? src[k] : [];
+    out[k] = [...new Set(list.filter(v => typeof v === 'string' && /^[a-zA-Z]{1,20}$/.test(v)))].slice(0, max);
+  }
   FLAGS.forEach(k => { out[k] = src[k] === true; });
   return out;
+}
+
+// Pick or unpick one key of a multi-pick card, keeping the order picked.
+export function togglePick(list = [], key) {
+  return list.includes(key) ? list.filter(k => k !== key) : [...list, key];
+}
+
+// WELCOME_V1, the rollback switch (plan §11 P2). Set either way, it wins.
+// Unset, it's on for a device nobody has signed in on, and off for one
+// someone has: a person who signed out lands on Login, as they always did.
+export function welcomeEnabled(setting, signedInBefore) {
+  if (setting === true || setting === false) return setting;
+  return !signedInBefore;
+}
+
+// The line a page project starts with, from where they are and the path
+// they're on. A draft in plain words; it's theirs to change.
+const START_LINE = {
+  highSchool: 'Finishing high school.', college: 'In college.', working: 'Working now.',
+  creator: 'Making my own thing.', ged: 'Getting my diploma.', unsure: 'Starting from here.',
+};
+const PATH_LINE = {
+  like: 'Trying things to find what fits.',
+  next: 'Working out what comes next.',
+  money: 'Getting my money right.',
+  career: 'Turning a job into a career.',
+  ground: 'Getting my basics steady first.',
+};
+export const PAGE_LINE_MAX = 90; // the page Build's own limit (src/data/builds.js)
+export function pageLineFor({ startPoint, pathKey } = {}) {
+  return [START_LINE[startPoint], PATH_LINE[pathKey]].filter(Boolean).join(' ') || START_LINE.unsure;
 }
 
 /**

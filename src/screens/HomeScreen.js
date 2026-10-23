@@ -33,6 +33,7 @@ import RightNowCard from '../components/RightNowCard';
 import TodayCard from '../components/TodayCard';
 import CalmHome from '../components/CalmHome';
 import DreamCard from '../components/DreamCard';
+import PickPathNote from '../components/PickPathNote';
 import StudioCard from '../components/StudioCard';
 import TodaysFind from '../components/TodaysFind';
 import useDrillPlan from '../logic/useDrillPlan';
@@ -884,7 +885,8 @@ export default function HomeScreen() {
   const [editingWidgets, setEditingWidgets] = useState(false);
   // Not while a walkthrough step is pointing at something: its highlights
   // are on the full board. The small "Next: …" chip between steps is fine.
-  const calm = homeView === 'calm' && !editingWidgets && !(tourActive && !tourStep?.compact);
+  // A step marked keepCalm (the after-welcome tour) points at Calm's own cards.
+  const calm = homeView === 'calm' && !editingWidgets && !(tourActive && !tourStep?.compact && !tourStep?.keepCalm);
   // True once this profile has a saved arrangement (loaded, or saved from
   // Edit). Before the 'dashboard' stage it decides whether the board follows
   // the stage's starter order or the person's own.
@@ -2019,6 +2021,8 @@ export default function HomeScreen() {
              everything else on Home (docs/north-star.md). Not a widget:
              it isn't one card among many, and it can't be hidden by
              accident while rearranging. ── */}
+        {/* Older accounts: pick a path, once (the welcome asks new ones). */}
+        {!editingWidgets && <PickPathNote userId={userId} style={{ marginBottom: s.md }} />}
         {!editingWidgets && <DreamCard userId={userId} />}
 
         {/* ── The Studio: under the dream, the app's main thing to do is

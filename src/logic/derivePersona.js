@@ -5,13 +5,14 @@
 // one, so this keeps every one of them working.
 //
 //   a business Build      ENTREPRENEUR  (a choice they made beats where they start)
-//   finishing school, GED STUDENT
+//   making my own thing   ENTREPRENEUR
+//   school, college, GED  STUDENT
 //   anything else         PERSONAL
 //
 // No imports, so scripts/check-tailoring.mjs can run it.
 
 export function derivePersona({ startPoint, buildKind } = {}) {
-  if (buildKind === 'business') return 'ENTREPRENEUR';
-  if (startPoint === 'highSchool' || startPoint === 'ged') return 'STUDENT';
+  if (buildKind === 'business' || startPoint === 'creator') return 'ENTREPRENEUR';
+  if (startPoint === 'highSchool' || startPoint === 'college' || startPoint === 'ged') return 'STUDENT';
   return 'PERSONAL';
 }

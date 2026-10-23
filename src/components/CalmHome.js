@@ -19,7 +19,9 @@ import { resumeFirstGoalGuide } from '../logic/useGuidedFirstGoal';
 import { useRightNow } from './RightNowCard';
 import CalmWeek from './CalmWeek';
 import DreamCard from './DreamCard';
+import PickPathNote from './PickPathNote';
 import StudioCard from './StudioCard';
+import TourSpot from './TourSpot';
 import TodaysFind from './TodaysFind';
 import { useCalmPalette, CalmPanel, CalmHeadline, CalmPill as Pill, CalmTiles, CalmShowAll, calmEyebrow as eyebrow, plural, ago } from './CalmKit';
 import { supabase } from '../api/profileScopedClient';
@@ -262,15 +264,17 @@ export default function CalmHome({
         </View>
 
         {/* The life they want, above the next step (docs/north-star.md) */}
+        <PickPathNote userId={userId} style={{ marginHorizontal: 0 }} />
         <DreamCard userId={userId} variant="calm" pal={pal} />
         <StudioCard variant="calm" pal={pal} />
         <TodaysFind userId={userId} variant="calm" pal={pal} />
 
-        {/* The one next step */}
-        <CalmHeadline pal={pal} onPress={openHero}
-          label={hero ? hero.label : 'Today'} title={hero ? hero.title : 'One clear next step.'}
-          a11y={hero ? `${hero.label}. ${hero.title}` : 'Nothing planned yet'}
-          style={{ marginTop: s.xl, marginBottom: s.sm }} />
+        {/* The one next step (the after-welcome tour ends here) */}
+        <TourSpot id="calm-next" style={{ marginTop: s.xl, marginBottom: s.sm }}>
+          <CalmHeadline pal={pal} onPress={openHero}
+            label={hero ? hero.label : 'Today'} title={hero ? hero.title : 'One clear next step.'}
+            a11y={hero ? `${hero.label}. ${hero.title}` : 'Nothing planned yet'} />
+        </TourSpot>
         <View style={{ flexDirection: 'row', gap: s.sm, marginBottom: s.lg }}>
           {heroDone && (
             <Pill label="Done" icon="checkmark" onPress={() => onDonePick?.(hero.ref)} pal={pal} solid
