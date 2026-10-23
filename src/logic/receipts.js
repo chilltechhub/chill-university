@@ -1,8 +1,8 @@
 // src/logic/receipts.js
 // Receipts, not a score (docs/shake-up-plan-2026-10-21.md §6.2, P5): what
-// you did, counted from data that already exists. Before units and
-// deliverables (P6) that's your Builds, your goal steps and the Finds you
-// tried. Then momentum: how many days this week you did something, never
+// you did, counted from data that already exists: your work handed in and
+// shown (P6), your Builds, your goal steps and the Finds you tried. Then
+// momentum: how many days this week you did something, never
 // how many you missed.
 //
 // No imports, so scripts/check-receipts.mjs runs it as-is.
@@ -17,10 +17,13 @@ const dayNum = (iso) => (ISO.test(iso || '') ? Date.UTC(+iso.slice(0, 4), +iso.s
  *              ({ total, mastered, changed }, src/logic/builds.js receipt())
  *   stepsDone  goal steps ticked, every goal so far
  *   tastes     Finds tried (Today's Find, Finds, missions)
- * Returns { made, mastered, changed, stepsDone, tastes, items, empty }.
- * `items` is what to show, in order, zeros left out.
+ *   work       your deliverables' counts (P6, deliverables.js
+ *              deliverableCounts): { handedIn, shown, looked, changed }
+ * Returns { made, mastered, changed, stepsDone, tastes, handedIn, shown,
+ * looked, fixed, items, empty }. `items` is what to show, in order, zeros
+ * left out. Work handed in leads: it's the school feel's proof.
  */
-export function receipts({ builds = [], stepsDone = 0, tastes = 0 } = {}) {
+export function receipts({ builds = [], stepsDone = 0, tastes = 0, work = null } = {}) {
   const list = Array.isArray(builds) ? builds.filter(Boolean) : [];
   const sum = (k) => list.reduce((n, b) => n + Math.max(0, b.receipt?.[k] || 0), 0);
   const out = {
@@ -29,8 +32,16 @@ export function receipts({ builds = [], stepsDone = 0, tastes = 0 } = {}) {
     changed: sum('changed'),
     stepsDone: Math.max(0, stepsDone | 0),
     tastes: Math.max(0, tastes | 0),
+    handedIn: Math.max(0, work?.handedIn | 0),
+    shown: Math.max(0, work?.shown | 0),
+    looked: Math.max(0, work?.looked | 0),
+    fixed: Math.max(0, work?.changed | 0),
   };
   out.items = [
+    out.handedIn && { key: 'handedIn', value: out.handedIn, label: 'handed in' },
+    out.shown && { key: 'shown', value: out.shown, label: 'shown' },
+    out.looked && { key: 'looked', value: out.looked, label: out.looked === 1 ? 'person gave feedback' : 'pieces of feedback' },
+    out.fixed && { key: 'fixed', value: out.fixed, label: out.fixed === 1 ? 'change from feedback' : 'changes from feedback' },
     out.made && { key: 'made', value: out.made, label: out.made === 1 ? 'thing made' : 'things made' },
     out.mastered && { key: 'mastered', value: out.mastered, label: out.mastered === 1 ? 'part mastered' : 'parts mastered' },
     out.changed && { key: 'changed', value: out.changed, label: out.changed === 1 ? 'part made yours' : 'parts made yours' },

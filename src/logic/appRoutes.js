@@ -35,7 +35,13 @@ const ROOT_SCREENS = new Set([
   'Notifications', 'AllProfiles',
   // You, the dropdown from the top bar (shake-up P4).
   'You',
+  // Sources and credits (shake-up P6).
+  'Credits',
 ]);
+
+// Learn's own stack, on top of its first screen (TrainingNav.js): Practice
+// (shake-up P4), My path and its units (P6). Back returns to Learn.
+const TRAINING_SCREENS = new Set(['Practice', 'PathScreen', 'UnitScreen']);
 
 // The Classes stack, two levels down (Training -> ClassesStack -> screen).
 // Subject screens come from the class catalog so adding a subject needs no
@@ -67,9 +73,9 @@ export function goToScreen(navigation, target, targetParams) {
   if (screen === 'Training' || screen === 'TrainingHome') {
     return navigation.navigate('MainTabs', { screen: 'Training', params: { screen: 'TrainingHome', params } }, { pop: true });
   }
-  // Practice: the games, on top of Learn (shake-up P4), so back returns there.
-  if (screen === 'Practice') {
-    return navigation.navigate('MainTabs', { screen: 'Training', params: { screen: 'Practice', initial: false, params } }, { pop: true });
+  // Practice, My path, a unit: on top of Learn, so back returns there.
+  if (TRAINING_SCREENS.has(screen)) {
+    return navigation.navigate('MainTabs', { screen: 'Training', params: { screen, initial: false, params } }, { pop: true });
   }
   // `params` here is the Classes stack's own: { screen, params } inside it.
   if (screen === 'ClassesStack') {
@@ -99,7 +105,7 @@ export function goToScreen(navigation, target, targetParams) {
 /** True when `screen` is one this resolver knows how to reach. */
 export function isKnownScreen(screen) {
   return TAB_SCREENS.has(screen) || ROOT_SCREENS.has(screen) || CLASS_SCREENS.has(screen)
-    || screen === 'ClassesStack' || screen === 'TrainingHome' || screen === 'Practice';
+    || TRAINING_SCREENS.has(screen) || screen === 'ClassesStack' || screen === 'TrainingHome';
 }
 
 // The name a route goes by for tutorials, the guide and the top bar. The

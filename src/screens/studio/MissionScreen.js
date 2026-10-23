@@ -27,6 +27,7 @@ import { newBuild, buildTitle, buildFilename } from '../../logic/builds';
 import { renderBuild } from '../../logic/buildRender';
 import { missionState, markSeen, recordPractice, markTried, shuffledOptions } from '../../logic/softwarePath';
 import { companionLine } from '../../logic/studio';
+import { recordAction } from '../../logic/gamificationService';
 
 function Beat({ n, title, done, children }) {
   const { colors: c, typography: t, spacing: s, accent } = useTheme();
@@ -118,6 +119,7 @@ export default function MissionScreen() {
   const triedIt = async (f) => {
     if (studio.userId) await markFindTried(studio.userId, f, { note: 'Tried it in Software for You' }).catch(() => {});
     signalAction('find-tried');
+    recordAction('taste_logged', f.id);
     update(markTried(progress, mission.id, f.legacyId || f.id));
   };
   const openStudioFor = (kind) => navigation.navigate('StudioScreen', { start: kind, at: Date.now() });

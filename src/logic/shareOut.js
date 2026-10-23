@@ -77,6 +77,8 @@ export function milestoneText(kind, detail) {
     case 'level': return `I just reached Level ${detail} in Deskartes. ${APP_PAGE}`;
     case 'tier':  return `I just made ${detail} in Deskartes. ${APP_PAGE}`;
     case 'quest': return `I just finished the "${detail}" quest in Deskartes. ${APP_PAGE}`;
-    default:      return `Leveling up with Deskartes. ${APP_PAGE}`;
+    // Handed in (shake-up P6): the work, not a score.
+    case 'handed': return `I just finished "${detail}". Made with Deskartes. ${APP_PAGE}`;
+    default:      return `Making things with Deskartes. ${APP_PAGE}`;
   }
 }

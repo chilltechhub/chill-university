@@ -880,7 +880,8 @@ export function AccessProvider({ children }) {
 
     if (!userId) return { unlocked: unlockIds };
     const res = await completeObjectiveApi(activeObjectiveId, unlockIds);
-    recordAction('goal_done', activeObjectiveId);
+    // A path's unit pays as a unit (100), not as a goal (shake-up P6, §6.1).
+    recordAction(getObjective(activeObjectiveId)?.unit ? 'unit_done' : 'goal_done', activeObjectiveId);
     return { ...res, unlocked: unlockIds };
   }, [activeObjectiveId, userId, applyLocal, noteUnlocks]);
 

@@ -47,8 +47,9 @@ export const SHAKIEST = [
 export const CORE_TODAY = ['nextStep', 'yourDay', 'find'];
 export const MAX_PATH_WIDGETS = 4;
 
-// Studio kinds the paths need that P6 builds (check-tailoring accepts them).
-export const PLANNED_BUILD_KINDS = ['resume', 'plan'];
+// Studio kinds the paths name before builds.js has them (check-tailoring
+// accepts them). Empty since P6 built resume and plan.
+export const PLANNED_BUILD_KINDS = [];
 
 // Learn shelves a path can put first (§8.2). P6 builds them.
 export const LEARN_SHELVES = {

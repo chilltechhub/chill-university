@@ -12,7 +12,8 @@
 //                   events, phone events
 //   StillOpenWidget what slipped from earlier days and to-dos with no day.
 //                   Never "overdue"
-//   DueSoonWidget   what's due in the next seven days
+//   DueSoonWidget   what's due in the next seven days, your work's aim-for
+//                   dates included (handed in: ticked, not gone)
 
 import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
@@ -30,6 +31,9 @@ import { rowsOf } from '../../logic/dayPlan';
 import { dueWhen } from '../../logic/nextStep';
 import { toISO, addDays } from './plannerShared';
 import DayView from './DayView';
+import useDeliverables from '../../logic/useDeliverables';
+import { goToScreen } from '../../logic/appRoutes';
+import { useNavigation } from '@react-navigation/native';
 
 // The card every Today widget sits on: the theme's surface and its lift.
 function Surface({ children, edge, style }) {
@@ -143,22 +147,33 @@ export function StillOpenWidget({ planner: p }) {
 }
 
 export function DueSoonWidget({ planner: p, onOpenDay }) {
-  const { colors: c, typography: t, spacing: s } = useTheme();
+  const navigation = useNavigation();
+  const { colors: c, typography: t, spacing: s, accent } = useTheme();
   const from = toISO(new Date());
   const to = toISO(addDays(new Date(), 6));
   const { items, loading } = useDayPlan({ from, to }, { userId: p.userId, refreshKey: p.refreshKey, events: false, enabled: !!p.userId });
-  const due = useMemo(() => rowsOf(items, 'due').filter(d => !d.completed).sort((a, b) => String(a.date).localeCompare(String(b.date))), [items]);
+  const { list: work } = useDeliverables();
+  const due = useMemo(() => {
+    const planned = rowsOf(items, 'due').filter(d => !d.completed);
+    // Your work, by its aim-for date. Handed in stays, ticked, the rest of
+    // the week: Due → done.
+    const mine = (work || []).filter(d => d.aimFor && d.aimFor >= from && d.aimFor <= to)
+      .map(d => ({ kind: 'work', id: d.id, unitKey: d.unitKey, title: d.title, date: d.aimFor, done: d.status === 'handed' || d.status === 'shown' }));
+    return [...planned, ...mine].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  }, [items, work, from, to]);
+  const open = (d) => (d.kind === 'work' ? goToScreen(navigation, 'UnitScreen', { unitId: d.unitKey }) : onOpenDay(d.date));
   return (
     <WidgetCard title="Due this week" icon="flag-outline" loading={!!p.userId && loading}
-      empty={!p.userId
-        ? { text: 'Deadlines from your projects and classes show here once you have an account.' }
-        : !due.length ? { text: 'Nothing due in the next seven days.' } : null}>
+      empty={!due.length
+        ? { text: p.userId ? 'Nothing due in the next seven days.' : 'Your work and its aim-for dates show here. Deadlines from projects and classes join once you have an account.' }
+        : null}>
       {due.slice(0, 6).map(d => (
-        <TouchableOpacity key={`${d.kind}-${d.id}`} onPress={() => onOpenDay(d.date)} accessibilityRole="button"
-          accessibilityLabel={`${d.title}. ${dueWhen(d.date, from)}`}
+        <TouchableOpacity key={`${d.kind}-${d.id}`} onPress={() => open(d)} accessibilityRole="button"
+          accessibilityLabel={`${d.title}. ${d.done ? 'Handed in' : dueWhen(d.date, from)}`}
           style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, paddingVertical: 7, borderTopWidth: 0.5, borderTopColor: c.border }}>
-          <Text numberOfLines={1} style={{ flex: 1, fontSize: t.sm, color: c.text1 }}>{d.title}</Text>
-          <Text style={{ fontSize: t.xs, fontWeight: t.semibold, color: c.text3 }}>{dueWhen(d.date, from)}</Text>
+          {d.kind === 'work' && <Ionicons name={d.done ? 'checkmark-circle' : 'document-text-outline'} size={15} color={d.done ? accent.primary : c.text3} />}
+          <Text numberOfLines={1} style={{ flex: 1, fontSize: t.sm, color: d.done ? c.text3 : c.text1, textDecorationLine: d.done ? 'line-through' : 'none' }}>{d.title}</Text>
+          <Text style={{ fontSize: t.xs, fontWeight: t.semibold, color: d.done ? accent.primary : c.text3 }}>{d.done ? 'Handed in' : dueWhen(d.date, from)}</Text>
         </TouchableOpacity>
       ))}
     </WidgetCard>

@@ -1248,9 +1248,107 @@ profile();show();matrix();velocity();days();exp();
   return shell(name ? `${name}’s launchpad` : 'My launchpad', style, body, script);
 }
 
+/* ── Resume (shake-up P6) ─────────────────────────────────────────────── */
+
+// Every line it can't know is a bracketed prompt: a resume never invents.
+function renderResume(build) {
+  const name = build.answers.name || 'Your name';
+  const role = build.answers.role || 'The job you want';
+  const look = pickOf(build, 'look');
+  const lead = {
+    summary: `${cap(role)} who finishes what I start.`,
+    proof: '[One thing you made or did that shows you can do this job]',
+    goal: `Looking for: ${role}. [One line of proof]`,
+  }[build.picks.lead] || cap(role);
+  const line = {
+    did: ['[What you did, in a few words]', '[Another thing you did]'],
+    result: ['[What you did] so that [what changed]', '[What you did] so that [what changed]'],
+    number: ['[What you did], [a real number: how many, how much, how often]', '[What you did], [a real number]'],
+  }[build.picks.lines] || ['[What you did]'];
+  const sections = {
+    experience: ['Experience', 'Projects', 'Skills'],
+    skills: ['Skills', 'Experience', 'Projects'],
+    projects: ['Projects', 'Experience', 'Skills'],
+  }[build.picks.order] || ['Experience', 'Projects', 'Skills'];
+  const body = (title) => (title === 'Skills'
+    ? '<p class="skills">[Skill] · [Skill] · [Skill]</p>'
+    : `<div class="item"><h3>[${title === 'Projects' ? 'Project name' : 'Job title, Place'}] <span>[Dates]</span></h3><ul>${line.map(l => `<li>${esc(l)}</li>`).join('')}</ul></div>`);
+  const font = look.serif ? 'Georgia,"Times New Roman",serif' : 'system-ui,-apple-system,Segoe UI,Roboto,sans-serif';
+  const style = `
+body{background:#fff;color:${look.ink};font-family:${font};line-height:1.45}
+main{max-width:720px;margin:0 auto;padding:44px 26px}
+header{${look.band ? `background:${look.accent};color:#fff;margin:-44px -26px 28px;padding:36px 26px` : 'border-bottom:2px solid ' + look.accent + ';padding-bottom:14px;margin-bottom:22px'}}
+h1{font-size:30px;letter-spacing:-0.01em}
+header p{font-size:16px;${look.band ? 'opacity:.9' : 'color:' + look.accent}}
+.lead{font-size:17px;margin-bottom:24px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:${look.accent};margin:22px 0 8px}
+h3{font-size:16px;display:flex;justify-content:space-between;gap:12px}
+h3 span{font-weight:400;opacity:.7;font-size:14px}
+ul{margin:6px 0 0 18px}
+li{margin:3px 0}
+.item{margin-bottom:12px}
+.skills{font-size:15px}
+`;
+  const html = `<main>
+<header><h1>${esc(name)}</h1><p>${esc(role)} · [email] · [city]</p></header>
+<p class="lead">${esc(lead)}</p>
+${sections.map(t => `<h2>${t}</h2>${body(t)}`).join('\n')}
+</main>`;
+  return shell(`${name} resume`, style, html);
+}
+
+/* ── A plan on one page (shake-up P6) ─────────────────────────────────── */
+
+function renderPlan(build) {
+  const title = build.answers.title || 'My plan';
+  const choice = build.answers.choice || '[The choice]';
+  const look = pickOf(build, 'look');
+  const steps = pickOf(build, 'steps');
+  const count = steps.count || 3;
+  const when = (i) => ({
+    dates: '[Date]',
+    soon: i === 0 ? 'This week' : i === 1 ? 'This month' : 'Later',
+    checkin: i === count - 1 ? '[Date] · check in' : '[Date]',
+  }[build.picks.dates] || '[Date]');
+  const label = (i) => (steps.weekly ? `Week ${i + 1}` : `Step ${i + 1}`);
+  const list = Array.from({ length: count }, (_, i) => `<li><b>${label(i)}</b><span>[What you will do]</span><em>${esc(when(i))}</em></li>`).join('');
+  const [a, b] = String(choice).split(/\s+or\s+/i);
+  const shape = build.picks.shape;
+  const inner = shape === 'compare'
+    ? `<table><tr><th></th><th>${esc(a || 'Option A')}</th><th>${esc(b || 'Option B')}</th></tr>
+${['Time to get there', 'What it costs', 'A normal day', 'Where it leads', 'Where I found this'].map(r => `<tr><td>${r}</td><td>[ ]</td><td>[ ]</td></tr>`).join('')}
+</table>
+<p class="note">Pick one when you know more. Then make a decision plan.</p>`
+    : shape === 'reset'
+      ? `<div class="cards"><div><h2>Where I was</h2><p>[One honest line]</p></div><div><h2>What I changed</h2><p>[The one thing I did]</p></div><div><h2>What's next</h2><p>[One next step]</p></div></div><ol>${list}</ol>`
+      : `<p class="choice"><b>My choice:</b> ${esc(choice)}</p><p class="why"><b>Why:</b> [One line]</p><ol>${list}</ol><p class="note">I will tell: [one person]</p>`;
+  const style = `
+body{background:${look.bg};color:${look.ink};font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.5}
+main{max-width:680px;margin:0 auto;padding:40px 22px}
+.tag{display:inline-block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:${look.accent}}
+h1{font-size:clamp(26px,6vw,36px);margin:8px 0 18px;letter-spacing:-0.01em}
+h2{font-size:15px;margin-bottom:4px;color:${look.accent}}
+ol{list-style:none;display:grid;gap:10px;margin:18px 0}
+li{background:${look.card};border-radius:14px;padding:14px 16px;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;box-shadow:0 3px 14px #0000000f}
+li b{color:${look.accent}}
+li em{font-style:normal;opacity:.75;font-size:14px}
+.cards{display:grid;gap:10px}
+.cards div{background:${look.card};border-radius:14px;padding:14px 16px}
+table{width:100%;border-collapse:collapse;background:${look.card};border-radius:14px;overflow:hidden}
+th,td{padding:10px 12px;border-bottom:1px solid ${look.accent}22;text-align:left;font-size:15px}
+th{color:${look.accent}}
+.choice,.why{font-size:17px;margin:6px 0}
+.note{margin-top:14px;opacity:.8}
+`;
+  const kind = { decision: 'Decision plan', compare: 'Compare sheet', reset: 'Reset plan' }[shape] || 'Plan';
+  const html = `<main><span class="tag">${kind}</span><h1>${esc(title)}</h1>${inner}</main>`;
+  return shell(title, style, html);
+}
+
 const RENDERERS = {
   page: renderPage, game: renderGame, beat: renderBeat, business: renderBusiness, ai: renderAi,
   money: renderMoney, story: renderStory, logic: renderLogic, math: renderMath, body: renderBody, launch: renderLaunch,
+  resume: renderResume, plan: renderPlan,
 };
 
 export function renderBuild(build, me = null) {

@@ -341,8 +341,9 @@ check('isSamePlan: different times differ', !L.isSamePlan({ title: 'Gym', date: 
   const saved = [{ key: 'find', hidden: false }, { key: 'nextStep', hidden: true }];
   const sv = WL.todayLayoutFrom({ saved, home, wanted: [] });
   check('saved: a layout saved for Today wins as it is', show(shownKeys(sv)) === show(['find']) && sv.find(x => x.key === 'nextStep').hidden, show(shownKeys(sv)));
-  const fresh = WL.todayLayoutFrom({ wanted: ['nextStep', 'yourDay', 'find', 'deliverable', 'checkin'] });
-  check('new account: next step, quick add, then the path, unbuilt keys skipped', show(shownKeys(fresh)) === show(['nextStep', 'quickAdd', 'yourDay', 'find', 'checkin']), show(shownKeys(fresh)));
+  // 'assignments' is still planned (dashboardWidgets.js PLANNED_WIDGET_KEYS).
+  const fresh = WL.todayLayoutFrom({ wanted: ['nextStep', 'yourDay', 'find', 'deliverable', 'assignments', 'checkin'] });
+  check('new account: next step, quick add, then the path, unbuilt keys skipped', show(shownKeys(fresh)) === show(['nextStep', 'quickAdd', 'yourDay', 'find', 'deliverable', 'checkin']), show(shownKeys(fresh)));
   check('calm draws a subset of the same keys', [...DW.CALM_WIDGETS].every(k => DW.TODAY_KEYS.includes(k)));
 
   const WC = await import(asUrl(await text('src/logic/welcomeCards.js')));

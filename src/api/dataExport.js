@@ -22,6 +22,8 @@ const USER_TABLES = [
   'wayfinder_maps', 'dreams', 'user_objectives', 'feature_unlocks', 'user_missions',
   'subject_progress', 'timer_sessions', 'activity_log', 'project_research',
   'community_posts', 'organization_members',
+  // Shake-up P6: Studio Builds, deliverables and every life-area rating.
+  'builds', 'deliverables', 'life_area_ratings',
 ];
 
 // Tables keyed on a parent row instead of the user.

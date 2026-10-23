@@ -26,7 +26,11 @@ import { readFile } from 'node:fs/promises';
 // as-is, the same way gen-gating-seed.mjs loads featureCatalog.js.
 async function load(path) {
   const src = await readFile(new URL(`../${path}`, import.meta.url), 'utf8');
-  return import('data:text/javascript,' + encodeURIComponent(src));
+  // objectives.js imports the units (src/data/units.js, plain data): inline it.
+  const units = src.includes("from './units'")
+    ? await readFile(new URL('../src/data/units.js', import.meta.url), 'utf8') : null;
+  const code = units ? src.replace("from './units'", `from "data:text/javascript,${encodeURIComponent(units)}"`) : src;
+  return import('data:text/javascript,' + encodeURIComponent(code));
 }
 const text = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');

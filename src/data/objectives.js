@@ -62,6 +62,8 @@
 // it while the goal runs, even at a stage that hasn't opened it yet, or
 // the guide would be pointing at something that isn't there.
 
+import { UNIT_OBJECTIVES } from './units';
+
 /* ─── Purposes ────────────────────────────────────────────────────────────── */
 //
 // `matches` maps the answers MultiStepOnboarding already collects
@@ -758,6 +760,11 @@ export const OBJECTIVES = [
   },
 ];
 
+// The paths' units (src/data/units.js, shake-up P6): each is an objective,
+// so the engine runs them, one at a time. They're walked from My path, not
+// picked from the Compass lists (objectivesForPurpose leaves them out).
+OBJECTIVES.push(...UNIT_OBJECTIVES);
+
 export const OBJECTIVE_BY_ID = Object.fromEntries(OBJECTIVES.map(o => [o.id, o]));
 
 export function getObjective(id) {
@@ -780,7 +787,7 @@ export function objectivesForPurpose(purposeKey) {
   const purpose = getPurpose(purposeKey);
   const starter = purpose?.starterObjective;
   const path = purpose?.path || [];
-  return OBJECTIVES.filter(o => !o.intro).sort((a, b) => score(b) - score(a));
+  return OBJECTIVES.filter(o => !o.intro && !o.unit).sort((a, b) => score(b) - score(a));
 
   function score(o) {
     const onPath = path.indexOf(o.id);

@@ -64,6 +64,7 @@ import TopBar           from './src/components/TopBar';
 import FloatingActionButton from './src/components/FloatingActionButton';
 import CommandPalette from './src/components/CommandPalette';
 import HelpScreen       from './src/screens/HelpScreen';
+import OpenSourceCreditsScreen from './src/screens/OpenSourceCreditsScreen';
 import MakeItYoursScreen from './src/screens/MakeItYoursScreen';
 import MyFeaturesScreen from './src/screens/MyFeaturesScreen';
 import ConnectedAppsScreen from './src/screens/ConnectedAppsScreen';
@@ -626,6 +627,7 @@ function AppInner() {
           <Stack.Screen name="Organization"        component={OrganizationScreen} />
           <Stack.Screen name="CohortRoster"        component={CohortRosterScreen} />
           <Stack.Screen name="Help"                component={HelpScreen} />
+          <Stack.Screen name="Credits"             component={OpenSourceCreditsScreen} options={{ title: 'Sources and credits' }} />
           <Stack.Screen name="MakeItYours"         component={MakeItYoursScreen} options={{ title: 'Make it yours' }} />
           <Stack.Screen name="MyFeatures"          component={MyFeaturesScreen} options={{ title: 'My features' }} />
           <Stack.Screen name="ConnectedApps"       component={ConnectedAppsScreen} options={{ title: 'Connected apps' }} />

@@ -33,6 +33,7 @@ import { companionLine } from '../../logic/studio';
 import { renderBuild } from '../../logic/buildRender';
 import { shareFile } from '../../logic/shareFile';
 import { confirmAsync, notify } from '../../logic/confirm';
+import { recordAction } from '../../logic/gamificationService';
 
 const LEVEL_ICONS = ['sparkles-outline', 'hand-left-outline', 'ribbon-outline'];
 
@@ -56,6 +57,8 @@ export default function BuildScreen() {
     if (!next || next === build) return;
     setLocal(next);
     saveBuild(userId, next);
+    // Every part mastered: pays once, ever, per Build (record_action).
+    if (build && !isMastered(build) && isMastered(next)) recordAction('build_mastered', next.id);
   }, [build, userId]);
 
   const kind = kindOf(build);

@@ -173,7 +173,7 @@ const refs = [];
 // a route (elsewhere it can be a nested navigator param pointing anywhere).
 const DATA = [
   'src/data/firstGoalGuide.js', 'src/logic/tourSteps.js', 'src/logic/useGuidedFirstGoal.js',
-  'src/data/objectives.js', 'src/data/featureCatalog.js', 'src/logic/openTarget.js',
+  'src/data/objectives.js', 'src/data/units.js', 'src/data/featureCatalog.js', 'src/logic/openTarget.js',
   'src/logic/searchIndex.js', 'src/data/experienceStages.js',
 ];
 const guideDir = join(SRC, 'logic', 'guide');

@@ -19,6 +19,7 @@ import DreamSheet, { valueLabel } from './DreamSheet';
 import useDream from '../logic/useDream';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import { DREAM_NAME } from '../logic/dream';
+import { useAccess } from '../../context/AccessContext';
 
 const LATER_DAYS = 14;
 const ASK = 'What do you want your life to look like?';
@@ -32,7 +33,10 @@ export default function DreamCard({ userId, variant = 'card', pal }) {
   if (loading) return null;
   const snoozed = empty && laterUntil && Date.parse(laterUntil) > Date.now();
   const later = () => setLaterUntil(new Date(Date.now() + LATER_DAYS * 86400000).toISOString());
-  const sheet = <DreamSheet visible={open} onClose={() => setOpen(false)} dream={dream} onSave={save} userId={userId} />;
+  // Saving it ticks "Write the Dream" (What's next, unit 2).
+  const { signalAction } = useAccess();
+  const saveAndSignal = async (patch) => { const res = await save(patch); signalAction('dream-saved'); return res; };
+  const sheet = <DreamSheet visible={open} onClose={() => setOpen(false)} dream={dream} onSave={saveAndSignal} userId={userId} />;
 
   const partsLine = dream?.parts?.map(p => p.label) || [];
   const valuesLine = (dream?.values || []).map(valueLabel);

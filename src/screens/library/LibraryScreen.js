@@ -43,6 +43,7 @@ import { todayStr, daysBetween } from '../../logic/dateUtils';
 import { Button } from '../../components/ui';
 import PlanDetailSheet from '../../components/PlanDetailSheet';
 import StudioCard from '../../components/StudioCard';
+import MakeBoard from '../../components/MakeBoard';
 import useDashboardV2 from '../../logic/useDashboardV2';
 import useTabsV2 from '../../logic/useTabsV2';
 
@@ -1006,6 +1007,8 @@ export default function LibraryScreen() {
 
         {/* The Studio: Make's own front door now that Today is the Planner
             (shake-up P3 moves it off Home). */}
+        {/* Your work, To do · Doing · Handed in · Shown (shake-up P6). */}
+        {tabsV2 && !calm && <MakeBoard />}
         {dashboardV2 && !calm && <View style={{ marginBottom: 12 }}><StudioCard /></View>}
 
         {calm && (

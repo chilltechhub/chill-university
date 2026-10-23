@@ -125,6 +125,9 @@ export const ART = {
   trophyMath:     box('items', 36, 356, 24, 26),   // 12.b shield
   trophyBody:     box('items', 38, 644, 20, 24),   // 21.b red flask
   trophyLaunch:   box('items', 68, 516, 24, 26),   // 17.c amulet
+  // P6's kinds reuse two items under their own keys for now.
+  trophyResume:   box('items', 200, 678, 17, 20),  // 22.g scroll 2
+  trophyPlan:     box('items', 134, 678, 20, 22),  // 22.e tome
 };
 
 // Animated extras. Frame counts checked by scanning every cell of each strip
@@ -168,6 +171,8 @@ export const DECOR = [
   trophy('trophyMath', 'Proof Shield', 'math'),
   trophy('trophyBody', 'Vital Flask', 'body'),
   trophy('trophyLaunch', 'Momentum Amulet', 'launch'),
+  trophy('trophyResume', 'Hire Me Scroll', 'resume'),
+  trophy('trophyPlan', 'Plan Tome', 'plan'),
 
   d('windowCream', 'Window', 'Furniture', 1, 0.95, true),
   d('plantPainting', 'Plant Print', 'Furniture', 3, 0.85, true),

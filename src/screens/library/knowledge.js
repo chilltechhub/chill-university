@@ -53,6 +53,7 @@ import { todayStr } from '../../logic/dateUtils';
 import { successHaptic } from '../../logic/haptics';
 import { parseTags } from '../../logic/tags';
 import { usesOf, planNotesFor, planTitleFor, recordUse } from '../../api/knowledgeUse';
+import { recordAction } from '../../logic/gamificationService';
 
 // ─── Item kinds ────────────────────────────────────────────────────────────
 // Saving here files a thing: status 'active', the same as sorting it into
@@ -1191,6 +1192,7 @@ export default function KnowledgeScreen() {
       await insertItem({ ...payload, urlMeta: { ...payload.urlMeta, uses: [{ at: new Date().toISOString(), note: 'Tried it' }] } });
     }
     signalAction('find-tried');
+    recordAction('taste_logged', cat.id || cat.url);
   };
 
   // ── Derived lists ─────────────────────────────────────────────────────────

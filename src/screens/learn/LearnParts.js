@@ -6,8 +6,9 @@
 // pet that finds coins stays mounted from launch; the games themselves are
 // the Practice route.
 //
-// My path is the goal in flight until units exist (P6), the same thing the
-// top bar's chip shows (nextStep.js pathChip).
+// My path is the goal or unit in flight, the same thing the top bar's chip
+// shows (nextStep.js pathChip). Nothing in flight: your path's name, and
+// the card opens My path (PathScreen, P6) to pick the next unit.
 
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
@@ -18,16 +19,21 @@ import { useAccess } from '../../../context/AccessContext';
 import { pathChip } from '../../logic/nextStep';
 import { goToScreen } from '../../logic/appRoutes';
 import TourSpot from '../../components/TourSpot';
+import usePath from '../../logic/usePath';
+import { PATH_KITS } from '../../data/pathKits';
 
 export function MyPathCard() {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s, radius: r, accent, shadows: sh } = useTheme();
   const { activeObjective } = useAccess();
+  const { pathKey } = usePath();
   const o = activeObjective?.active ? activeObjective : null;
   const chip = pathChip(o && { active: true, complete: !!o.complete, label: o.objective?.label, done: o.done, total: o.total });
   const step = o?.nextStep;
+  const myPath = () => goToScreen(navigation, 'PathScreen');
   const open = () => {
-    if (!o || o.complete || !step?.screen) { navigation.navigate('Compass'); return; }
+    if (o?.complete && o.objective?.unit) { goToScreen(navigation, 'UnitScreen', { unitId: o.objective.id }); return; }
+    if (!o || o.complete || !step?.screen) { myPath(); return; }
     goToScreen(navigation, step.screen, step.params);
   };
   return (
@@ -35,7 +41,7 @@ export function MyPathCard() {
       <View style={[{ width: '100%', padding: s.lg, borderRadius: r.xl, backgroundColor: c.bg1, borderWidth: 0.5, borderColor: c.border, marginBottom: s.md }, sh.sm]}>
         <Text style={{ fontSize: 11, fontWeight: '800', letterSpacing: 1.2, color: accent.primary }}>MY PATH</Text>
         <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, marginTop: 4 }} numberOfLines={2}>
-          {chip.empty ? 'Pick where to start' : chip.label}
+          {chip.empty ? PATH_KITS[pathKey]?.label || 'Pick where to start' : chip.label}
         </Text>
         {!chip.empty && !!step?.label && !o.complete && (
           <Text style={{ fontSize: t.sm, color: c.text2, marginTop: 2 }} numberOfLines={2}>Next: <Text style={{ fontWeight: t.bold, color: c.text1 }}>{step.label}</Text></Text>
@@ -49,18 +55,18 @@ export function MyPathCard() {
           </View>
         )}
         {chip.empty && (
-          <Text style={{ fontSize: t.sm, color: c.text3, marginTop: 2 }}>One goal at a time. <Text style={{ fontWeight: t.bold, color: c.text2 }}>Pick one</Text> and the steps show up here.</Text>
+          <Text style={{ fontSize: t.sm, color: c.text3, marginTop: 2 }}>One unit at a time. <Text style={{ fontWeight: t.bold, color: c.text2 }}>Pick the next one</Text> and its steps show up here.</Text>
         )}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, marginTop: s.md }}>
           <TouchableOpacity onPress={open} accessibilityRole="button"
-            accessibilityLabel={chip.empty ? 'Pick a goal' : o?.complete ? 'Claim your goal' : `Open the next step: ${step?.label || chip.label}`}
+            accessibilityLabel={chip.empty ? 'Open my path' : o?.complete ? 'Finish it' : `Open the next step: ${step?.label || chip.label}`}
             style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: s.md, paddingVertical: 9, borderRadius: r.lg, backgroundColor: accent.primary }}>
             <Ionicons name={chip.empty ? 'compass-outline' : 'arrow-forward'} size={15} color={accent.onPrimary} />
-            <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: accent.onPrimary }}>{chip.empty ? 'Pick a goal' : o?.complete ? 'Claim it' : 'Open'}</Text>
+            <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: accent.onPrimary }}>{chip.empty ? 'My path' : o?.complete ? 'Finish it' : 'Open'}</Text>
           </TouchableOpacity>
           {!chip.empty && (
-            <TouchableOpacity onPress={() => navigation.navigate('Compass')} accessibilityRole="button" accessibilityLabel="All your goals">
-              <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: accent.primary }}>All goals →</Text>
+            <TouchableOpacity onPress={myPath} accessibilityRole="button" accessibilityLabel="My path, every unit">
+              <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: accent.primary }}>My path →</Text>
             </TouchableOpacity>
           )}
         </View>

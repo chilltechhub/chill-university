@@ -11,6 +11,7 @@ const text = (p) => readFile(new URL(`../${p}`, import.meta.url), 'utf8');
 const asUrl = (code) => 'data:text/javascript,' + encodeURIComponent(code);
 const R = await import(asUrl(await text('src/logic/receipts.js')));
 const W = await import(asUrl(await text('src/logic/welcomeCards.js')));
+const I = await import(asUrl(await text('src/logic/ikigai.js')));
 
 const problems = [];
 let passed = 0;
@@ -25,6 +26,23 @@ const builds = [
 const r = R.receipts({ builds, stepsDone: 7, tastes: 1 });
 check('counts add up across Builds', r.made === 2 && r.mastered === 5 && r.changed === 2, show(r));
 check('items in order, plurals right', show(r.items.map(i => `${i.value} ${i.label}`)) === show(['2 things made', '5 parts mastered', '2 parts made yours', '1 Find tried', '7 steps done']), show(r.items));
+{
+  const w = R.receipts({ builds, work: { handedIn: 2, shown: 1, looked: 1, changed: 0 } });
+  check('work handed in leads the receipts', show(w.items.slice(0, 3).map(i => `${i.value} ${i.label}`)) === show(['2 handed in', '1 shown', '1 person gave feedback']), show(w.items));
+  check('no work yet adds nothing', !R.receipts({ builds }).items.some(i => ['handedIn', 'shown', 'looked', 'fixed'].includes(i.key)));
+}
+// ── The four circles (src/logic/ikigai.js, P6) ──
+{
+  const none = I.ikigaiCircles();
+  check('circles: four, in order', show(none.circles.map(c => c.key)) === show(['love', 'goodAt', 'needs', 'paid']));
+  check('circles: nothing done means nothing in them', none.filled === 0 && none.circles.every(c => !c.items.length && c.empty));
+  const some = I.ikigaiCircles({ made: ['A web page', 'A web page', 'A beat'], tastes: 3, handedIn: ['My money sheet'], mastered: 4, values: ['Freedom'], shakiest: 'paid' });
+  check('circles: filled from what you did, no repeats', show(some.circles[0].items) === show(['A web page', 'A beat', '3 Finds tried']), show(some.circles[0].items));
+  check('circles: receipts in "good at"', show(some.circles[1].items) === show(['My money sheet', '4 parts mastered']), show(some.circles[1].items));
+  check('circles: the shakiest is where to start', some.start?.key === 'paid' && some.circles[3].shakiest);
+  check('circles: the count line', some.filled === 3 && some.line === '3 of 4 have something in them.', some.line);
+  check('circles: no shakiest starts at the first empty one', I.ikigaiCircles({ made: ['A beat'] }).start?.key === 'goodAt');
+}
 check('zeros are left out', !R.receipts({ builds: [{ receipt: { total: 3, mastered: 0, changed: 0 } }] }).items.some(i => i.key === 'mastered'));
 check('nothing yet is empty, not a row of zeros', R.receipts({}).empty && R.receipts().items.length === 0);
 check('junk inputs don\'t throw or go negative', R.receipts({ builds: [null, { receipt: { mastered: -3 } }], stepsDone: -2, tastes: 'x' }).mastered === 0 && R.receipts({ stepsDone: -2 }).stepsDone === 0);

@@ -4,9 +4,9 @@
 // back handling work as on any screen. App.js gives it a top-down slide;
 // it sits under the top bar, so the avatar that opened it closes it too.
 //
-// Until the ikigai, receipts and room arrive (P5/P6) it's the profile
-// (ProfileScreen, or GuestYou for a guest) inside You's frame: search on
-// top, your life areas and the old crest menu's rows underneath.
+// The profile (ProfileScreen, or GuestYou for a guest) inside You's frame:
+// search on top, the Dream, your four circles, receipts and shelf (P6), the
+// room (P5), then the ground and the old crest menu's rows underneath.
 //
 // Closes by: the chevron (top and bottom), the avatar, Esc on web, Android
 // back, a swipe up, or picking anything inside it.
@@ -20,7 +20,8 @@ import { useUserProgress } from '../../../context/UserProgressContext';
 import { goToScreen } from '../../logic/appRoutes';
 import { showWhatsNext } from '../../logic/useGuidedFirstGoal';
 import ProfileScreen from '../ProfileScreen';
-import { YouHeader, YouSearch, YouGround, YouFooter, YouReceipts } from './YouParts';
+import { YouHeader, YouSearch, YouGround, YouFooter, YouReceipts, YouShelf } from './YouParts';
+import IkigaiCircles from '../../components/IkigaiCircles';
 import Room, { RoomElsewhere } from '../../components/Room';
 import useRoomPlace from '../../logic/useRoomPlace';
 
@@ -86,11 +87,20 @@ export default function YouScreen() {
     room: roomPlace === 'you'
       ? <Room size={160} place="you" style={{ marginBottom: 12 }} />
       : <RoomElsewhere here="you" style={{ marginBottom: 12 }} />,
-    receipts: <YouReceipts userId={user?.id || null} onSeeAll={user ? () => leave(() => navigation.navigate('Stats')) : null} />,
+    // Your four circles, receipts, then your shelf (shake-up P6). Insights'
+    // anchor puts this block first.
+    receipts: (
+      <>
+        <IkigaiCircles onGo={(screen) => leave(() => goToScreen(navigation, screen))} />
+        <YouReceipts userId={user?.id || null} onSeeAll={user ? () => leave(() => navigation.navigate('Stats')) : null} />
+        <YouShelf onOpen={(screen, params) => leave(() => goToScreen(navigation, screen, params))} />
+      </>
+    ),
     receiptsFirst,
     bottom: (
       <>
-        <YouGround onOpenArea={(areaId) => leave(() => goToScreen(navigation, 'LifeAreaScreen', { areaId }))} />
+        <YouGround onOpenArea={(areaId) => leave(() => goToScreen(navigation, 'LifeAreaScreen', { areaId }))}
+          onOpenPath={() => leave(() => goToScreen(navigation, 'PathScreen'))} />
         <YouFooter signedIn={!!user} go={go} onClose={close} />
       </>
     ),
