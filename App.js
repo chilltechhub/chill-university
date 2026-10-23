@@ -95,6 +95,8 @@ import { needsSecondStep } from './src/api/mfa';
 import useFirstVisitTutorial from './src/logic/useFirstVisitTutorial';
 import useGuidedFirstGoal from './src/logic/useGuidedFirstGoal';
 import useWelcomeTour from './src/logic/useWelcomeTour';
+import useGuide from './src/logic/guide/useGuide';
+import AboutPageSheet from './src/components/AboutPageSheet';
 import { goToScreen, routeLabel } from './src/logic/appRoutes';
 import { installWebAlertShim } from './src/logic/webAlertShim';
 import { loadA11yPrefs, useA11yPrefs, READABLE_FONTS } from './src/logic/a11yPrefs';
@@ -330,6 +332,7 @@ function AppInner() {
   const [initialRoute, setInitialRoute] = React.useState(null);
   const [showTopBar, setShowTopBar] = React.useState(true);
   const [currentRouteName, setCurrentRouteName] = React.useState(null);
+  const [currentRouteParams, setCurrentRouteParams] = React.useState(null);
   const [resetLinkInvalid, setResetLinkInvalid] = React.useState(false);
 
   // Remote kill switch — flip app_config.maintenance_mode.enabled in
@@ -356,9 +359,25 @@ function AppInner() {
   // does, screens don't also teach themselves (src/logic/useGuidedFirstGoal.js).
   // Before either of those, a new account gets the welcome tour: how to get
   // around (src/logic/useWelcomeTour.js). Both wait for it.
-  const { holding: welcomeTourDue } = useWelcomeTour(currentRouteName);
-  const { guiding } = useGuidedFirstGoal(currentRouteName, { hold: welcomeTourDue });
+  //
+  // With the new tabs (shake-up P7) the guide is src/logic/guide/useGuide.js:
+  // the first-day walk, guided units and one mentor note per new page. The
+  // welcome tour and first-visit tutorials below only run with them off.
+  const [tabsV2] = useTabsV2();
+  const { holding: welcomeTourDue } = useWelcomeTour(currentRouteName, { enabled: !tabsV2 });
+  const [guidingNow, setGuidingNow] = React.useState(false);
   const { user: tutorialUser } = useUserProgress();
+  // A guest on an account-only screen sees a sign-in prompt, and a locked
+  // screen its lock card: neither is the page a note would describe.
+  const { accessFor: accessForGuide } = useAccess();
+  const canTeach = React.useCallback((name) => {
+    if (!tutorialUser && ACCOUNT_ONLY_SCREENS.has(name)) return false;
+    const feature = featureForScreen(name);
+    return !(feature && !accessForGuide(feature.id).available);
+  }, [tutorialUser, accessForGuide]);
+  const { holding: walkDue } = useGuide({ route: currentRouteName, params: currentRouteParams, enabled: tabsV2, guiding: guidingNow, canTeach });
+  const { guiding } = useGuidedFirstGoal(currentRouteName, { hold: welcomeTourDue || walkDue });
+  React.useEffect(() => { setGuidingNow(guiding); }, [guiding]);
   const teachScreen = useFirstVisitTutorial({ tourActive, startScreenTour, paused: guiding || welcomeTourDue, userId: tutorialUser?.id });
   // A guest on an account-only screen sees a sign-in prompt, not the screen
   // its tutorial describes ("Your rank" pointing at nothing), so those wait
@@ -368,6 +387,7 @@ function AppInner() {
   // describes ("Your stats" over a padlock), so it teaches once it's open.
   const { accessFor } = useAccess();
   const maybeTeachScreen = (name) => {
+    if (tabsV2) return; // the guide (useGuide) teaches with the new tabs
     if (!signedInUser && ACCOUNT_ONLY_SCREENS.has(name)) return;
     const feature = featureForScreen(name);
     if (feature && !accessFor(feature.id).available) return;
@@ -562,6 +582,7 @@ function AppInner() {
         const name = routeLabel(navigationRef.current?.getCurrentRoute()?.name);
         setShowTopBar(!NO_TOPBAR_ROUTES.has(name));
         setCurrentRouteName(name);
+        setCurrentRouteParams(navigationRef.current?.getCurrentRoute()?.params || null);
         registerNavigator(
           (routeName, params) => navigationRef.current?.navigate(routeName, params),
           (screen, params) => goToScreen(navigationRef.current, screen, params),
@@ -581,6 +602,7 @@ function AppInner() {
         const name = routeLabel(navigationRef.current?.getCurrentRoute()?.name);
         setShowTopBar(!NO_TOPBAR_ROUTES.has(name));
         setCurrentRouteName(name);
+        setCurrentRouteParams(navigationRef.current?.getCurrentRoute()?.params || null);
         noteRoute(name); // a screen's own tutorial ends when you leave it
         maybeTeachScreen(name);
       }}
@@ -662,6 +684,8 @@ function AppInner() {
         {showTopBar && <CommandPalette />}
       </SafeAreaView>
       <TourOverlay />
+      {/* "About this page" (shake-up P7), opened from You and the top bar. */}
+      <AboutPageSheet navigationRef={navigationRef} />
       <DrillToast />
       {/* Pet coins (not on Training, where you watch it eat them) and the
           XP real work earns. */}

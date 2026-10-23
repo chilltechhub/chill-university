@@ -1,4 +1,7 @@
 // src/logic/useFirstVisitTutorial.js
+// RETIRED with the new tabs (shake-up P7): mentor notes by surface (src/logic/guide/useGuide.js) replace per-screen tutorials. It still runs with the
+// new tabs off (the rollback) and stays for one release, then goes.
+//
 //
 // A short tutorial the first time you open each screen, and never again.
 //

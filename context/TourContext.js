@@ -16,6 +16,12 @@
 // the tour's first auto-run happens after a cold start rather than in the
 // same session onboarding finished in.
 //
+// With the new tabs (shake-up P7) the guide's front door is
+// src/logic/guide/useGuide.js, and startTour / startScreenTour are thin
+// wrappers over startLesson: startTour runs the first-day walk, and
+// startScreenTour a page's "Show me" (src/data/pageInfo.js). The old welcome
+// tour and per-screen tutorials only run with the new tabs off (the rollback).
+//
 // Cross-screen steps work by calling the real navigator (registered once
 // from AppInner, since that's where the NavigationContainer ref lives) —
 // advancing past a step for a different tab/screen navigates there first;
@@ -33,6 +39,10 @@ import { buildScreenTutorial } from '../src/logic/screenTutorials';
 import { peekSetting, SETTING_KEYS } from '../src/logic/useSetting';
 import { useAccess } from './AccessContext';
 import { getObjective } from '../src/data/objectives';
+import { firstDayWalk } from '../src/logic/guide/lessons/firstDayWalk';
+import { surfaceForRoute } from '../src/logic/guide/surfaces';
+import { getTodayView } from '../src/logic/guide/guideState';
+import { pageInfoFor } from '../src/data/pageInfo';
 
 const TourContext = createContext(null);
 const SEEN_KEY = '@cth_setting_tourSeen';
@@ -78,7 +88,7 @@ function buildSteps({ welcome = false, purpose = null, firstGoal = null, aimChos
   // Both ends: the opening line ("Two things before your first goal") was
   // also only true right after onboarding.
   return TOUR_STEPS.map((step, i) => (i === TOUR_STEPS.length - 1
-    ? { ...step, body: "That's it. Replay any time in **Settings**. For help on any page: tap **your picture** (top left) → **Screen Tutorial**." }
+    ? { ...step, body: "That's it. Replay any time in **Settings**. For help on any page: tap **your picture** (top left) → **About this page**." }
     : i === 0
       ? { ...step, body: "Two things on every screen. Tap **Next ›**, or **Skip** to leave." }
       : step));
@@ -196,6 +206,15 @@ export function TourProvider({ children }) {
   const start = useCallback((opts) => {
     endWith('replaced');
     onEndRef.current = typeof opts?.onEnd === 'function' ? opts.onEnd : null;
+    // The new tabs: the first-day walk, in whichever view Today is in.
+    if (isAliasGateOn('tabsV2')) {
+      const walk = firstDayWalk({ calm: peekSetting(SETTING_KEYS.HOME_VIEW, 'full') === 'calm' });
+      goToRef.current?.(walk[0].go, walk[0].goParams);
+      setScopedSteps(walk);
+      setActive(true);
+      setStepIndex(0);
+      return;
+    }
     setWelcomeRun(!!opts?.welcome);
     setAimChosen(opts?.aimChosen !== false);
     setScopedSteps(null); // the main tour always wins over a scoped one
@@ -212,6 +231,20 @@ export function TourProvider({ children }) {
   // `opts.onEnd(reason)` as for startLesson — useFirstVisitTutorial uses it
   // to un-mark a screen whose tutorial was knocked off before anyone saw it.
   const startScreenTour = useCallback((routeName, opts) => {
+    // The new tabs: the page's own "Show me", or nothing. The old tours
+    // taught the old app and aren't shown with the new one.
+    if (isAliasGateOn('tabsV2')) {
+      const calm = peekSetting(SETTING_KEYS.HOME_VIEW, 'full') === 'calm';
+      const show = pageInfoFor(surfaceForRoute(routeName, { calm, view: getTodayView() }), routeName)?.show || [];
+      if (!show.length) return;
+      endWith('replaced');
+      onEndRef.current = typeof opts?.onEnd === 'function' ? opts.onEnd : null;
+      screenTourRouteRef.current = routeName;
+      setScopedSteps(show);
+      setActive(true);
+      setStepIndex(0);
+      return;
+    }
     endWith('replaced');
     onEndRef.current = typeof opts?.onEnd === 'function' ? opts.onEnd : null;
     // Deliberately NOT clearing `targets` here (unlike start(), above): the

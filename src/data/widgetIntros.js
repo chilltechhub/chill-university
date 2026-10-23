@@ -1,4 +1,7 @@
 // src/data/widgetIntros.js
+// RETIRED with the new tabs (shake-up P7): Today's tray has every card, and the guide's notes explain Today. It still runs with the
+// new tabs off (the rollback) and stays for one release, then goes.
+//
 // What the guide says the first time a widget arrives on Home.
 //
 // Home starts with three cards and takes on the rest a couple per stage

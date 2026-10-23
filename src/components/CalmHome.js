@@ -277,8 +277,10 @@ export default function CalmHome({
     return { label: nextPick.label, title: nextPick.title, action: nextPick.action.label, icon: 'arrow-forward',
       onPress: () => onActPick?.(nextPick), done: canTick ? () => onDonePick?.(ref) : null };
   };
+  // calm-plan: the guide's "Your day" (first-day walk, Show me).
   const dayBlock = () => (
-    <View key="yourDay" style={{ backgroundColor: pal.glass, borderWidth: 1, borderColor: pal.glassEdge, borderRadius: 22, padding: s.lg, marginBottom: s.md }}>
+    <TourSpot key="yourDay" id="calm-plan" radius={22}>
+    <View style={{ backgroundColor: pal.glass, borderWidth: 1, borderColor: pal.glassEdge, borderRadius: 22, padding: s.lg, marginBottom: s.md }}>
       <TouchableOpacity onPress={onEditFocus} activeOpacity={0.8} accessibilityRole="button"
         accessibilityLabel={focus ? `Today's focus: ${focus}. Change it` : "Set today's focus"}>
         <Text style={{ ...eyebrow, color: pal.eyebrow }}>Today's focus</Text>
@@ -296,6 +298,7 @@ export default function CalmHome({
         </Text>
       </TouchableOpacity>
     </View>
+    </TourSpot>
   );
 
   if (v2) {

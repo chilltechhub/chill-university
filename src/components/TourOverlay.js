@@ -49,7 +49,10 @@ import { useTheme } from '../../context/ThemeContext';
 import { useTour } from '../../context/TourContext';
 import { useProfiles } from '../../context/ProfileAccountsContext';
 import { getGuide } from '../data/guides';
+import { useUserProgress } from '../../context/UserProgressContext';
+import { readEquippedLook } from '../logic/useCharacterLoadout';
 import PlayerCharacter from './PlayerCharacter';
+import PetCompanion from './PetCompanion';
 import RichText from './RichText';
 import { optionOrder } from '../logic/optionOrder';
 
@@ -73,7 +76,18 @@ export default function TourOverlay() {
   } = useTour();
   const { activeType } = useProfiles();
   const insets = useSafeAreaInsets();
-  const guide = getGuide(activeType);
+  // Your own character and pet (shake-up P7), read when a walkthrough starts
+  // so a change in the wardrobe shows next time.
+  const { level, points, rank, streakDays, gameplayStats } = useUserProgress();
+  const [look, setLook] = useState(null);
+  useEffect(() => {
+    if (!active) return undefined;
+    let alive = true;
+    readEquippedLook({ level, points, rank, streakDays, played: gameplayStats?.totalProblemsAttempted || 0 })
+      .then(l => { if (alive) setLook(l); }).catch(() => {});
+    return () => { alive = false; };
+  }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
+  const guide = getGuide(look, activeType);
 
   // Was Modal's onRequestClose. Hardware back should close the tour, not
   // navigate the screen out from under it.
@@ -385,6 +399,12 @@ export default function TourOverlay() {
               </View>
 
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.md }}>
+                {/* A note's "Show me": runs the page's spotlight in its place. */}
+                {!!currentStep.secondary && (
+                  <TouchableOpacity onPress={currentStep.secondary.run} accessibilityRole="button" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <Text style={{ fontSize: 13, color: c.text2, fontWeight: '800' }}>{currentStep.secondary.label}</Text>
+                  </TouchableOpacity>
+                )}
                 {stepIndex > 0 && (
                   <TouchableOpacity onPress={backStep} accessibilityRole="button" hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                     <Text style={{ fontSize: 12, color: c.text3, fontWeight: t.bold }}>Back</Text>
@@ -413,7 +433,10 @@ export default function TourOverlay() {
             </Svg>
           </View>
           <View style={{ height: guideSize, justifyContent: 'flex-end' }} pointerEvents="none">
-            <PlayerCharacter outfit={guide.outfit} size={guideSize} style={{ alignSelf: 'flex-start' }} />
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+              <PlayerCharacter outfit={guide.outfit} size={guideSize} />
+              {!!guide.pet && <PetCompanion pet={guide.pet} size={Math.round(guideSize * 0.45)} />}
+            </View>
           </View>
         </View>
       </View>

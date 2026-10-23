@@ -48,6 +48,8 @@ import Room from '../components/Room';
 import useRoomPlace from '../logic/useRoomPlace';
 // Today = the Planner as the dashboard (DASHBOARD_V2, shake-up P3).
 import useDashboardV2 from '../logic/useDashboardV2';
+import useTabsV2 from '../logic/useTabsV2';
+import { setTodayView } from '../logic/guide/guideState';
 import usePlanner, { PlannerSheets } from './today/usePlanner';
 import TodayControls from './today/TodayControls';
 import AddSheet from './today/AddSheet';
@@ -832,8 +834,14 @@ export default function HomeScreen() {
   // a control row, then one widget board with nothing pinned; Week and
   // Month replace the board. Off, it is the old Home exactly.
   const [dashboardV2] = useDashboardV2();
+  // With the new tabs the guide (src/logic/guide/useGuide.js) teaches Today:
+  // the Getting Started card, "New on Home" intros and the new-widget offer
+  // step aside (shake-up P7).
+  const [tabsV2] = useTabsV2();
   const route = useRoute();
   const planner = usePlanner({ route, navigation, calendarScope: true, enabled: dashboardV2 });
+  // The guide's notes tell Day from Week from Month (src/logic/guide/surfaces.js).
+  useEffect(() => { if (dashboardV2) setTodayView(planner.view); }, [dashboardV2, planner.view]);
   const [addOpen, setAddOpen] = useState(false);
   // The remote kill switch and the stage, both — see isGameVisible.
   const GAMES = useMemo(
@@ -916,10 +924,12 @@ export default function HomeScreen() {
   // the whole layout is written to Supabase once, on "Done" (exitWidgetEdit).
   const [widgetLayout,   setWidgetLayout]   = useState(() => layoutForPersona(activeType));
   const [editingWidgets, setEditingWidgets] = useState(false);
-  // Not while a walkthrough step is pointing at something: its highlights
-  // are on the full board. The small "Next: …" chip between steps is fine.
-  // A step marked keepCalm (the after-welcome tour) points at Calm's own cards.
-  const calm = homeView === 'calm' && !editingWidgets && !(tourActive && !tourStep?.compact && !tourStep?.keepCalm);
+  // Calm stays Calm (shake-up P7): the guide points at Calm's own cards.
+  // With the new tabs off (the rollback) the old rule stands: a walkthrough
+  // step pointing at the full board shows the full board, unless it's the
+  // small "Next: …" chip or marked keepCalm.
+  const calm = homeView === 'calm' && !editingWidgets
+    && (tabsV2 || !(tourActive && !tourStep?.compact && !tourStep?.keepCalm));
   // True once this profile has a saved arrangement (loaded, or saved from
   // Edit). Before the 'dashboard' stage it decides whether the board follows
   // the stage's starter order or the person's own.
@@ -1205,7 +1215,8 @@ export default function HomeScreen() {
     const openNow = opened?.homeWidgets || opened?.widgets || [];
     const persist = persistKnown;
     // First look at this profile: whatever is open already isn't news.
-    if (offeredRef.current === 'baseline') { persist(new Set(openNow)); return; }
+    // With the new tabs there is no offer: Today's tray has every card.
+    if (offeredRef.current === 'baseline' || tabsV2) { persist(new Set([...(offeredRef.current instanceof Set ? offeredRef.current : []), ...openNow])); return; }
     const known = offeredRef.current;
     const newlyOpen = openNow.filter(key => !known.has(key));
     if (!newlyOpen.length) return;
@@ -1222,7 +1233,7 @@ export default function HomeScreen() {
     const offered = new Set(fresh.map(w => w.key));
     persist(new Set([...known, ...newlyOpen.filter(k => !offered.has(k))]));
     if (fresh.length) setWidgetOffer(fresh);
-  }, [opened, boardLayout, widgetOffer.length, editingWidgets, offeredKey, persistKnown]);
+  }, [opened, boardLayout, widgetOffer.length, editingWidgets, offeredKey, persistKnown, tabsV2]);
 
   /* ── "New on Home" ──────────────────────────────────────────────────────
      Widgets arrive on Home a couple per stage (homeWidgetsAt), and each one
@@ -1252,7 +1263,7 @@ export default function HomeScreen() {
   }, [introKey]);
 
   useEffect(() => {
-    if (!introReady || !introducedRef.current || !homeFocused || tourActive || editingWidgets || calm) return undefined;
+    if (tabsV2 || !introReady || !introducedRef.current || !homeFocused || tourActive || editingWidgets || calm) return undefined;
     if (stageEvents?.length || progressEvents?.length || widgetOffer.length) return undefined;
     const shown = shownBoardLayout.filter(l => !l.hidden).map(l => l.key);
     const persist = (set) => {
@@ -1285,7 +1296,7 @@ export default function HomeScreen() {
       });
     }, 1400);
     return () => clearTimeout(timer);
-  }, [introReady, homeFocused, tourActive, editingWidgets, calm, stageEvents, progressEvents, widgetOffer.length, shownBoardLayout, introKey, startLesson, goalWidgets]);
+  }, [tabsV2, introReady, homeFocused, tourActive, editingWidgets, calm, stageEvents, progressEvents, widgetOffer.length, shownBoardLayout, introKey, startLesson, goalWidgets]);
 
   const closeWidgetOffer = (add) => {
     const keys = widgetOffer.map(w => w.key);
@@ -2753,7 +2764,7 @@ export default function HomeScreen() {
         {/* Not early on: the goal on the Compass card is the one thing to
             do, and a setup checklist beside it would be a second. It
             arrives with the 'dashboard' stage, when there's more to set up. */}
-        {!editingWidgets && can('dashboard') && <GettingStartedCard />}
+        {!editingWidgets && !tabsV2 && can('dashboard') && <GettingStartedCard />}
 
         {/* Right now: the one thing that matters at this minute, from
             today's schedule and quiet hours (RightNowCard.js). */}

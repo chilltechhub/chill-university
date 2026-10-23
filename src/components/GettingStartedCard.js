@@ -1,4 +1,7 @@
 // src/components/GettingStartedCard.js
+// RETIRED with the new tabs (shake-up P7): the first-day walk (src/logic/guide/useGuide.js) does its job. It still runs with the
+// new tabs off (the rollback) and stays for one release, then goes.
+//
 //
 // What replaced the back half of onboarding.
 //

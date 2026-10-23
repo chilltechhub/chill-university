@@ -18,6 +18,7 @@ import { useAccess } from '../../../context/AccessContext';
 import RichText from '../../components/RichText';
 import MapCard from '../../components/MapCard';
 import HandInMoment from '../../components/HandInMoment';
+import TourSpot from '../../components/TourSpot';
 import { UNIT_BY_ID } from '../../data/units';
 import { MAPS } from '../../data/maps';
 import { PATH_KITS } from '../../data/pathKits';
@@ -171,8 +172,8 @@ export default function UnitScreen() {
         {unit.beats.map((beat, i) => {
           const done = stepDone(beat.id);
           const map = beat.map ? MAPS[beat.map] : null;
-          return (
-            <View key={beat.id} style={card}>
+          const body = (
+            <View style={card}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm }}>
                 <Ionicons name={done ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={done ? accent.primary : c.text3} />
                 <Text style={{ flex: 1, fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>{beat.title}</Text>
@@ -201,10 +202,14 @@ export default function UnitScreen() {
               )}
             </View>
           );
+          // The first step's card is where the guided unit points.
+          return i === 0 ? <TourSpot key={beat.id} id="unit-beats">{body}</TourSpot> : <View key={beat.id}>{body}</View>;
         })}
 
-        {/* Do it: the deliverable */}
+        {/* Do it: the deliverable. Its title row is where the guided unit
+            says "then hand it in" (unit-handin). */}
         <View style={[card, { borderColor: accent.primary, borderWidth: 1 }]}>
+          <TourSpot id="unit-handin">
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm }}>
             <Ionicons name={handed ? 'checkmark-done-circle' : 'document-text-outline'} size={20} color={accent.primary} />
             <Text style={{ flex: 1, fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>Do it: {def.title}</Text>
@@ -212,6 +217,7 @@ export default function UnitScreen() {
               <Text style={{ fontSize: 11, fontWeight: t.bold, color: c.text2 }}>{statusLabel(d)}</Text>
             </View>
           </View>
+          </TourSpot>
 
           {!handed && (
             <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: s.sm }}>

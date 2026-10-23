@@ -259,9 +259,9 @@ export default function MakeItYoursScreen() {
 
         <Head>Tips and reminders</Head>
         <View style={card}>
-          <Row icon="school-outline" title="Tips on new screens"
-            value={tutorials !== false ? 'A short tip the **first time** you open a screen' : '**Off.** Replay them in Settings → Help'}
-            right={<Toggle value={tutorials !== false} onChange={setTutorials} label="Tips on new screens" />} />
+          <Row icon="school-outline" title="Page notes"
+            value={tutorials !== false ? 'A short note the **first time** you open a page' : '**Off.** Every page still has **About this page**, on You'}
+            right={<Toggle value={tutorials !== false} onChange={setTutorials} label="Page notes" />} />
           <Row icon="notifications-outline" title="Reminders" value="Daily nudge and **pet** nudge"
             onPress={() => navigation.navigate('Settings', { section: 'reminders' })} last />
         </View>

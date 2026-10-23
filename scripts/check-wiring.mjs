@@ -170,11 +170,12 @@ for (const [type, stages] of Object.entries(PATHS)) {
     }
   });
 }
-// Every widget is explained the first time it lands on Home, so every one
-// needs words (src/data/widgetIntros.js).
+// widgetIntros.js is retired with the new tabs (shake-up P7): the guide's
+// notes explain Today, so a new widget no longer needs an intro. Any intro
+// still written must be for a real widget.
 const { WIDGET_INTROS } = await load('src/data/widgetIntros.js');
-for (const key of widgetKeys) {
-  if (!WIDGET_INTROS[key]) problems.push(`widgetIntros.js: widget '${key}' has no intro, so it would arrive on Home unexplained`);
+for (const key of Object.keys(WIDGET_INTROS)) {
+  if (!widgetKeys.has(key)) problems.push(`widgetIntros.js: intro for '${key}', which isn't a widget`);
 }
 const { PERSONAS } = await load('src/data/personas.js');
 for (const p of PERSONAS) {

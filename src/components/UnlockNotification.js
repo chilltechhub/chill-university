@@ -19,6 +19,9 @@ import { useAccess } from '../../context/AccessContext';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { useTour } from '../../context/TourContext';
 import { buildScreenTutorial } from '../logic/screenTutorials';
+import { isAliasGateOn } from '../logic/routeAliases';
+import { pageInfoFor } from '../data/pageInfo';
+import { surfaceForRoute } from '../logic/guide/surfaces';
 import { GAME_REGISTRY } from '../services/gameRegistry';
 import { markScreensSeen } from '../logic/useFirstVisitTutorial';
 import { goToScreen } from '../logic/appRoutes';
@@ -103,8 +106,12 @@ export default function UnlockNotification() {
     // Marked seen here, since this is the screen's introduction: without it
     // the same basics would run again on the next visit.
     markScreensSeen([screen]);
-    const basics = buildScreenTutorial(screen, null, { firstVisit: true })
-      .filter(step => step.id || !/No specific walkthrough/.test(step.body));
+    // With the new tabs, the page's own Show me (src/data/pageInfo.js): the
+    // old screen tutorials taught the old app.
+    const basics = isAliasGateOn('tabsV2')
+      ? (pageInfoFor(surfaceForRoute(screen), screen)?.show || [])
+      : buildScreenTutorial(screen, null, { firstVisit: true })
+        .filter(step => step.id || !/No specific walkthrough/.test(step.body));
     const lead = what ? [{ title: `New · ${what.title}`, body: what.body }] : [];
     const steps = [...lead, ...basics];
     if (steps.length) setTimeout(() => startLesson(steps), 900);

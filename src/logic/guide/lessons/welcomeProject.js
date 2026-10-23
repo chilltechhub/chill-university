@@ -1,15 +1,24 @@
 // src/logic/guide/lessons/welcomeProject.js
-// The welcome's first lesson, in the builder (the founder's Descartes
-// onboarding, 2026-10-21): see it live, change the look, take it home.
-// Hand-written on TourContext's startLesson; P7 replaces it with the
-// version generated from unit data. The spots are in
-// src/components/ProjectWorkspace.js and PortfolioEditor.js.
+// The welcome's first lesson, in the builder: see it live, change one part,
+// take it home, then one quick check. Generated from the Studio kind's own
+// data since P7 (it was hand-written): the part it points at, what to try
+// and the check are that part's lesson (src/data/builds.js), so every kind
+// the welcome can make gets its own walk.
 //
-// The middle step is passthrough: it moves on when they pick an option
-// (the welcome calls completeAction), though Next is offered too. Skip
-// ends the tips, never the project.
+// The spots are in src/components/ProjectWorkspace.js and PortfolioEditor.js
+// (welcome-project-look is the first part's row). The second step is
+// passthrough: it moves on when they pick an option (the welcome calls
+// completeAction), though Next is offered too. Skip ends the tips, never the
+// project. WelcomeBuild passes the kind; the one import is pure.
 
-export function welcomeProjectLesson({ thing = 'project', page = false } = {}) {
+import { partQuiz } from './unitLesson';
+
+const plain = (s) => String(s || '').replace(/\*\*/g, '');
+
+export function welcomeProjectLesson({ kind = null } = {}) {
+  const thing = plain(kind?.label || 'project').replace(/^(a|an)\s+/i, '');
+  const part = kind?.parts?.[0] || null;
+  const quiz = partQuiz(part);
   return [
     {
       title: 'Live, from your answers',
@@ -18,8 +27,8 @@ export function welcomeProjectLesson({ thing = 'project', page = false } = {}) {
       skipLabel: 'Skip tips',
     },
     {
-      title: 'Make it yours',
-      body: page ? 'Pick a **palette**. Watch the page change.' : 'Pick any **option**. Watch it change.',
+      title: part ? `Change the ${plain(part.label).toLowerCase()}` : 'Make it yours',
+      body: part?.lesson?.tryIt ? `${plain(part.lesson.tryIt)} **Pick one.**` : 'Pick any **option**. Watch it change.',
       id: 'welcome-project-look',
       passthrough: true,
       allowNext: true,
@@ -29,6 +38,8 @@ export function welcomeProjectLesson({ thing = 'project', page = false } = {}) {
       title: 'Take it home',
       body: '**Code** shows the real file. **Copy**, **Download** or **Publish** it. It’s yours.',
       id: 'welcome-project-bar',
+      ...(quiz ? { skipLabel: 'Skip tips' } : {}),
     },
+    ...(quiz ? [{ title: 'Quick check', body: '', quiz, nextLabel: 'Done', hideSkip: true }] : []),
   ];
 }

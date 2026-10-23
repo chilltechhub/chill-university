@@ -84,7 +84,17 @@ const restoredKey = (uid) => `@cth_prefs_restored_${uid}`;
  * phone and listeners re-read them. After that, the phone's own writes are
  * what gets saved.
  */
-export async function startPrefsSync(uid) {
+export function startPrefsSync(uid) {
+  ready = restore(uid);
+  return ready;
+}
+
+// Resolves once this sign-in's restore is done (or there was none), so the
+// guide reads what's been seen on other devices before it shows a note.
+let ready = Promise.resolve();
+export const whenPrefsReady = () => ready;
+
+async function restore(uid) {
   userId = uid || null;
   if (!uid) return;
   try {

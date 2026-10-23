@@ -19,6 +19,7 @@ import LevelRing from '../components/LevelRing';
 import { getRank, getTierProgress } from '../logic/rankUtils';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import { resetSeenScreens } from '../logic/useFirstVisitTutorial';
+import { resetGuideSeen } from '../logic/guide/seenSet';
 import { syncReminders, cancelAllReminders, computeReminderState, syncPetReminder, cancelPetReminder } from '../logic/notificationScheduler';
 import usePetCare from '../logic/usePetCare';
 import { readEquippedPet } from '../logic/useCharacterLoadout';
@@ -678,24 +679,25 @@ export default function SettingsScreen() {
 
         {/* Help. The tips-on-new-screens switch is on Make it yours. */}
         <View {...markSection('help')}><SectionLabel label="Help" c={c} t={t} s={s} /></View>
-        <SettingRow icon="school-outline" iconColor={c.purple} label="Replay Tutorial" subtitle="Take the guided tour of the app's features again"
+        <SettingRow icon="school-outline" iconColor={c.purple} label="Show me around again" subtitle="The quick walk around Today"
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
           onPress={() => { navigation.navigate('MainTabs'); setTimeout(startTour, 300); }}
           c={c} t={t} s={s} r={r} />
-        <SettingRow icon="refresh-outline" iconColor={c.purple} label="Show All Tutorials Again"
-          subtitle="Forget which screens you've already seen a walkthrough for"
+        <SettingRow icon="refresh-outline" iconColor={c.purple} label="Show page notes again"
+          subtitle="Each page's note shows once more"
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
           onPress={() => {
             Alert.alert(
-              'Show all tutorials again?',
-              "Every screen will walk you through itself once more, the next time you open it.",
+              'Show page notes again?',
+              "Each page's note shows once more, the next time you open it.",
               [
                 { text: 'Cancel', style: 'cancel' },
                 {
                   text: 'Show again',
                   onPress: async () => {
                     await resetSeenScreens();
-                    Alert.alert('Done', "Screen tutorials will show again as you move around the app.");
+                    await resetGuideSeen(userId);
+                    Alert.alert('Done', 'Page notes will show again as you move around the app.');
                   },
                 },
               ],
