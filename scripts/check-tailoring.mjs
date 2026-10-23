@@ -238,6 +238,10 @@ check('WELCOME_V1 unset, fresh device → welcome', W.welcomeEnabled(null, false
 check('WELCOME_V1 unset, signed in here before → Login as before', W.welcomeEnabled(undefined, true) === false);
 check('WELCOME_V1 off is the rollback', W.welcomeEnabled(false, false) === false);
 check('WELCOME_V1 on wins', W.welcomeEnabled(true, true) === true);
+check('"Start here" on Login: the welcome on a phone that has had a sign-in', W.welcomeEnabled(null, true, true) === true);
+check('"Start here" never beats the rollback', W.welcomeEnabled(false, true, true) === false);
+check('"Start here" reopens a finished welcome, answers kept', JSON.stringify(W.startHerePatch({ done: true, guest: true, startPoint: 'working' })) === JSON.stringify({ done: false, guest: false, at: null }));
+check('"Start here" leaves a half-done welcome where it was', W.startHerePatch({ done: false, at: 'stage' }) === null && W.startHerePatch(null) === null);
 // "A page about you" starts with a line from their answers, within the
 // page's own limit, for every start and path.
 for (const sp of [...K.START_POINTS.map(p => p.key), null]) {
@@ -264,6 +268,10 @@ for (const [name, ctx, want] of [
   ['slow start, guest', { timedOut: true, welcome: { done: true, guest: true } }, 'MainTabs guest'],
   ['slow start, not a guest', { timedOut: true, welcome: { done: true } }, 'Login'],
   ['slow start, half-done welcome', { timedOut: true, welcome: { startPoint: 'ged' } }, 'Login'],
+  // "Start here" on a phone that has had a sign-in, then a relaunch.
+  ['Start here, closed halfway', { hasSession: false, welcomeOn: W.welcomeEnabled(null, true, true), welcome: W.normalizeWelcome({ ...W.startHerePatch({ done: true }), startPoint: 'working' }) }, 'Welcome'],
+  ['Start here, kept going as a guest', { hasSession: false, welcomeOn: W.welcomeEnabled(null, true, true), welcome: { done: true, guest: true } }, 'MainTabs guest'],
+  ['Start here, then someone signed in and out', { hasSession: false, welcomeOn: W.welcomeEnabled(null, true, false), welcome: { startPoint: 'working' } }, 'Login'],
 ]) check(`boot: ${name}`, boot(ctx) === want, `got ${boot(ctx)}, want ${want}`);
 
 if (problems.length) {

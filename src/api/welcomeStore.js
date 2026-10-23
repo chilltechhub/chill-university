@@ -10,11 +10,14 @@
 // Shapes and rules: src/logic/welcomeCards.js.
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { WELCOME_KEY, normalizeWelcome, welcomeEnabled } from '../logic/welcomeCards';
+import { WELCOME_KEY, normalizeWelcome, welcomeEnabled, startHerePatch } from '../logic/welcomeCards';
 import { readSetting, SETTING_KEYS } from '../logic/useSetting';
 
 // Set by LoginScreen the first time anyone signs in on this device.
 export const SIGNED_IN_BEFORE_KEY = '@cth_signed_in_before';
+// Set by "New here? Start here" on Login; cleared when someone signs in.
+// Device-only (not a synced pref).
+export const WELCOME_CHOSEN_KEY = '@cth_welcome_chosen';
 
 export async function loadWelcome() {
   try {
@@ -48,11 +51,24 @@ export function saveWelcome(patch) {
 
 /** WELCOME_V1: is the welcome what a signed-out person sees? */
 export async function isWelcomeOn() {
-  const [setting, before] = await Promise.all([
+  const [setting, before, chosen] = await Promise.all([
     readSetting(SETTING_KEYS.WELCOME_V1, null).catch(() => null),
     AsyncStorage.getItem(SIGNED_IN_BEFORE_KEY).catch(() => null),
+    AsyncStorage.getItem(WELCOME_CHOSEN_KEY).catch(() => null),
   ]);
-  return welcomeEnabled(setting, !!before);
+  return welcomeEnabled(setting, !!before, !!chosen);
+}
+
+/** "New here? Start here": the welcome is on for this device, from the top or where it was. */
+export async function chooseWelcome() {
+  await AsyncStorage.setItem(WELCOME_CHOSEN_KEY, '1');
+  const patch = startHerePatch(await loadWelcome());
+  if (patch) await saveWelcome(patch);
+}
+
+/** Someone signed in: a later sign-out opens on Login again. */
+export function forgetWelcomeChoice() {
+  return AsyncStorage.removeItem(WELCOME_CHOSEN_KEY).catch(() => {});
 }
 
 /**
