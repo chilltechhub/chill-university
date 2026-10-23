@@ -53,8 +53,8 @@ const PERSONALIZATION_KEY = '@cth_setting_tourPersonalization';
 // doesn't tell them they came for it.
 // `dashboardV2`: Today is the Planner (shake-up P3), so + Add stands in for
 // the FAB's step (mainTourSteps).
-function buildSteps({ welcome = false, purpose = null, firstGoal = null, aimChosen = true, dashboardV2 = false } = {}) {
-  const TOUR_STEPS = mainTourSteps(dashboardV2);
+function buildSteps({ welcome = false, purpose = null, firstGoal = null, aimChosen = true, dashboardV2 = false, tabsV2 = false } = {}) {
+  const TOUR_STEPS = mainTourSteps(dashboardV2, tabsV2);
   if (welcome) {
     const last = TOUR_STEPS.length - 1;
     return TOUR_STEPS.map((step, i) => {
@@ -148,9 +148,10 @@ export function TourProvider({ children }) {
   // Read on every render (the provider re-renders when a tour starts), so a
   // tour started right after DASHBOARD_V2 switched picks the right steps.
   const dashboardV2 = isAliasGateOn('dashboardV2');
+  const tabsV2 = isAliasGateOn('tabsV2');
   const steps = useMemo(
-    () => scopedSteps || buildSteps({ welcome: welcomeRun, purpose, firstGoal: getObjective(firstGoalId), aimChosen, dashboardV2 }),
-    [scopedSteps, welcomeRun, purpose, firstGoalId, aimChosen, dashboardV2]
+    () => scopedSteps || buildSteps({ welcome: welcomeRun, purpose, firstGoal: getObjective(firstGoalId), aimChosen, dashboardV2, tabsV2 }),
+    [scopedSteps, welcomeRun, purpose, firstGoalId, aimChosen, dashboardV2, tabsV2]
   );
 
   // Which route is on screen, so a step marked `stay` can skip navigating
@@ -199,7 +200,7 @@ export function TourProvider({ children }) {
     setAimChosen(opts?.aimChosen !== false);
     setScopedSteps(null); // the main tour always wins over a scoped one
     setActive(true);
-    const first = mainTourSteps(isAliasGateOn('dashboardV2'))[0];
+    const first = mainTourSteps(isAliasGateOn('dashboardV2'), isAliasGateOn('tabsV2'))[0];
     if (first?.go) goToRef.current?.(first.go, first.goParams);
     setStepIndex(0);
   }, [endWith]);
@@ -224,7 +225,7 @@ export function TourProvider({ children }) {
     // which is why real content steps silently fell back to an
     // unspotlighted card while only the synthetic Navigation step (which
     // doesn't read the registry at all) ever lit up.
-    setScopedSteps(buildScreenTutorial(routeName, personalization, { can, firstVisit: !!opts?.firstVisit, shows: showsTool, track: experienceMode }));
+    setScopedSteps(buildScreenTutorial(routeName, personalization, { can, firstVisit: !!opts?.firstVisit, shows: showsTool, track: experienceMode, tabsV2: isAliasGateOn('tabsV2') }));
     screenTourRouteRef.current = routeName;
     setActive(true);
     setStepIndex(0);

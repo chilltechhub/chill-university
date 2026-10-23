@@ -66,6 +66,11 @@ export const SETTING_KEYS = {
   // from Home's saved layout so switching DASHBOARD_V2 off brings Home back
   // exactly as it was.
   TODAY_LAYOUT: 'todayLayout',
+  // The tabs Today · Learn · Make, the new top bar and You (shake-up P4).
+  // true / false wins; unset follows DASHBOARD_V2, so the new app comes on
+  // as one piece. Off is the rollback: Library · Home · Learn, the old top
+  // bar and Profile (src/logic/useTabsV2.js).
+  TABS_V2: 'tabsV2',
   // Retired 2026-10-16: the Library's own hide list. Its eight tools are all
   // My features picks, so the Library no longer reads it.
   HIDDEN_LIBRARY_SECTIONS: 'hiddenLibrarySections',

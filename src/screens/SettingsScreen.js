@@ -299,7 +299,7 @@ export default function SettingsScreen() {
   const [petRemindOn, setPetRemindOn] = useSetting(SETTING_KEYS.PET_REMINDERS, true);
   // Plan state for the Plus row. Everything else Settings used to read from
   // here (stage, track, Labs, Educator Mode) is on Make it yours.
-  const { isPlus, plusOnSale } = useAccess();
+  const { isPlus, plusOnSale, isScreenVisible } = useAccess();
   const [userId, setUserId] = useState(null);
   const [showCrestModal, setShowCrestModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -607,12 +607,16 @@ export default function SettingsScreen() {
           onPress={() => navigation.navigate('Family')}
           c={c} t={t} s={s} r={r} />
         </TourSpot>
+        {/* Organizations is off until it's switched on (featureCatalog
+            place 'off'); its row waits with it (shake-up P4). */}
+        {isScreenVisible('Organization') && (
         <TourSpot id="settings-organization">
         <SettingRow icon="school-outline" iconColor={c.tealMid} label="Organization" subtitle="Manage or join a class, team, or group"
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
           onPress={() => navigation.navigate('Organization')}
           c={c} t={t} s={s} r={r} />
         </TourSpot>
+        )}
 
         {/* Moderation — only for accounts flagged is_admin. The RPCs behind
             this screen re-check that flag and raise NOT_AN_ADMIN, so hiding the

@@ -897,6 +897,15 @@ New check scripts this plan adds:
 - **Checks:** `check-search`, `check-tour-spots`, `check-syntax`.
 - **Rollback:** a `TABS_V2` setting restores the old order, the old TopBar and the Profile screen for one release.
 - **Risks:** habits change. `NO_TOPBAR_ROUTES`, `NO_FAB_ROUTES`, `WORKSHOP_SCREENS` sets. Web title formatter. The `RewardToast` `hideCoins` prop (App.js 584) stays (coins are kept).
+- **Built (2026-10-23, branch `feature/shakeup-p4`, off main after #82/#83).** Where the code settled something this plan left open:
+  - **`TABS_V2`** (`src/logic/useTabsV2.js`, rule `welcomeCards.tabsV2On`): set either way wins; **unset, it follows Today (`DASHBOARD_V2`)**, so new accounts and welcome guests get the whole new app and existing accounts keep theirs until they switch Today on. Make it yours has its own switch ("Tabs: Today · Learn · Make"). Off = old order, old top bar, old Profile.
+  - **Learn's root stays `GamesScreen.js`** in a Learn layout (My path, Today's Find, Find shelf, the pet stage, Make something, Missions, Classes, Practice, drills), because the pet that finds coins has to be mounted from launch. The Learn-only parts are `src/screens/learn/LearnParts.js`. **`Practice`** is the same file as a route on top (the games and their progress), gated by `training`. `goToScreen('Practice')` and search reach it.
+  - **Make** is one page (`MAKE_HUBS` in LibraryScreen.js): Make (Studio, Workshop, Showcase, Idea Garden), Saved (Vault, Capture Inbox, Bring stuff in), Tools (Savings, Debt). Missions sits in Learn. Every LibraryNav route stays; Calm Make leads with the Studio until projects open.
+  - **You** sits *under* the top bar (not over it): a `transparentModal` route sliding from the top, so the avatar that opens it closes it, and search stays one tap away. It frames ProfileScreen / GuestYou (`you` slots: header, search, life areas, footer). Picking a row leaves You first (`leave`: go, then drop You from the stack). The `Profile` route renders You with the new tabs; `Profile → You` is gated `tabsV2`.
+  - **`Stats → You` waits for P5** (gate `receipts`): until You has the receipts, Insights is the only place those numbers are.
+  - **Top bar**: avatar (initial), path chip + thin bar from `nextStep.pathChip` (the goal in flight until P6), search, bell. The ProfileSwitcher moved into You's footer. Guests have no Sign in button in the bar; it's in You.
+  - **Family** has no feature switch in the catalog, so only the Organization row hides while off (`settings-organization` step follows it).
+  - Tours: the tab-bar step says Today · Learn · Make (`TABBAR_V2_BODY`), Make has its own screen tutorial, Search finds the old names (Home, Library, Training, Profile) through subtitles.
 
 ### P5 · Cut the strings: progress rework + room
 

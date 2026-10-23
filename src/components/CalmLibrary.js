@@ -7,6 +7,7 @@
 //   Life       the area most overdue for a check-in · today's left · check-ins due
 //   Build      the project you touched last · active · finished this month
 //   Knowledge  what's waiting in the Inbox · Vault · Idea Garden
+//   Make       (new tabs) as Build, then everything Make holds as the list
 //
 // Every number comes from the rows the full Library already loads, plus two
 // counts of its own (Inbox, ideas): the Library only keeps the newest few.
@@ -90,7 +91,8 @@ export default function CalmLibrary({
         open: first ? () => onOpenArea?.(first.area, first.saved, first.rating) : undefined,
       },
     ];
-  } else if (tab === 'build') {
+  // Make (the new tabs, shake-up P4) leads with the project, like Build did.
+  } else if (tab === 'build' || tab === 'make') {
     const current = activeProjects.slice().sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))[0];
     head = current
       ? {
@@ -100,12 +102,20 @@ export default function CalmLibrary({
         onPress: () => onNavigate?.('ProjectDetail', { project: current }),
         pill: { label: 'Open', icon: 'arrow-forward' },
       }
-      : {
-        label: 'Build', title: 'Start something.',
-        sub: 'An idea with a first step is enough.',
-        onPress: () => onNavigate?.('ProjectsScreen', { autoOpen: true }),
-        pill: { label: 'Start a project', icon: 'add', solid: true },
-      };
+      : tab === 'make' && !canOpen('ProjectsScreen')
+        // Make, before projects open: the Studio makes the first thing with you.
+        ? {
+          label: 'Make', title: 'Make one thing today.',
+          sub: 'A page, a game, a beat or a business.',
+          onPress: () => onNavigate?.('StudioScreen'),
+          pill: { label: 'Make something', icon: 'color-wand-outline', solid: true },
+        }
+        : {
+          label: tab === 'make' ? 'Make' : 'Build', title: 'Start something.',
+          sub: 'An idea with a first step is enough.',
+          onPress: () => onNavigate?.('ProjectsScreen', { autoOpen: true }),
+          pill: { label: 'Start a project', icon: 'add', solid: true },
+        };
     const now = new Date();
     const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const thisMonth = trophies.filter(p => String(p.updated_at || '').startsWith(monthKey)).length;

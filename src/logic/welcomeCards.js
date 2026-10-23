@@ -120,6 +120,13 @@ export function dashboardV2On(setting, { signedIn = false, onboardedAt = null, w
   return signedIn ? !!onboardedAt : !!welcomeGuest;
 }
 
+// TABS_V2 (shake-up P4): the tabs Today · Learn · Make, the new top bar and
+// You. Set either way, it wins; unset, it follows Today (DASHBOARD_V2).
+export function tabsV2On(setting, dashboardV2) {
+  if (setting === true || setting === false) return setting;
+  return !!dashboardV2;
+}
+
 /**
  * Where the app opens (§7.2 Boot).
  *   hasSession           someone is signed in

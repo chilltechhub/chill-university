@@ -18,7 +18,8 @@ import { loadBuilds, onBuildsChange } from '../../api/buildService';
 import { buildTitle, kindOf } from '../../logic/builds';
 import { goToScreen } from '../../logic/appRoutes';
 
-export default function GuestYou() {
+// `you`: inside You (YouScreen.js), its header and what goes above and below.
+export default function GuestYou({ you = null } = {}) {
   const navigation = useNavigation();
   const { colors: c, typography: t, spacing: s, radius: r, accent } = useTheme();
   const [page, setPage] = useState(null); // their first project, any kind
@@ -34,8 +35,9 @@ export default function GuestYou() {
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg0 }}>
-      <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: 120, gap: s.lg }}>
-        <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>You</Text>
+      {you?.header}
+      <ScrollView contentContainerStyle={{ padding: s.lg, paddingTop: you ? s.sm : s.lg, paddingBottom: 120, gap: s.lg }}>
+        {you ? you.top : <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1 }}>You</Text>}
 
         <DreamCard userId={null} />
 
@@ -65,6 +67,7 @@ export default function GuestYou() {
             <Text style={{ fontSize: t.sm, color: c.text3 }}>I already have an account</Text>
           </TouchableOpacity>
         </View>
+        {you?.bottom}
       </ScrollView>
 
       <Modal visible={signUp} animationType="slide" onRequestClose={() => setSignUp(false)}>
