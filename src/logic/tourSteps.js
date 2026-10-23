@@ -1,4 +1,7 @@
 // src/logic/tourSteps.js
+// RETIRED with the new tabs (shake-up P7): the first-day walk (src/logic/guide/lessons/firstDayWalk.js) replaces this tour. It still runs with the
+// new tabs off (the rollback) and stays for one release, then goes.
+//
 // The welcome tour: "a quick look around", led by the guide.
 //
 // It runs once, right after onboarding and before the first goal (see

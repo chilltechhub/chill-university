@@ -1,4 +1,7 @@
 // src/logic/guide/lessons/appTour.js
+// RETIRED with the new tabs (shake-up P7): the first-day walk (firstDayWalk.js) replaces it. It still runs with the
+// new tabs off (the rollback) and stays for one release, then goes.
+//
 // After the welcome's project: a quick look around, ending on the next
 // mission. The founder (2026-10-21): "once the user completes the project
 // they should be introduced to a tutorial around the app and towards the

@@ -2,6 +2,11 @@
 //
 // The character who shows you around.
 //
+// Since the shake-up's P7 that's **your own character, with your pet beside
+// it** (getGuide with a look from useCharacterLoadout's readEquippedLook).
+// The persona guides below are the fallback only, for the moment before the
+// look has loaded.
+//
 // Tutorials used to be anonymous tooltips — a title, a paragraph, a Next
 // button. Attaching a face to them costs nothing (every outfit below is
 // already in the game) and turns "here is some text about this screen" into
@@ -46,12 +51,19 @@ export const GUIDES = {
   },
 };
 
-export function getGuide(personaKey) {
+/**
+ * Who's talking. `look` ({ outfit, pet }) is your own character: it's you
+ * showing yourself around, so the label is plain. Without one, the
+ * account type's guide.
+ */
+export function getGuide(look, personaKey) {
+  if (look?.outfit) return { name: 'Your guide', outfit: look.outfit, pet: look.pet || null };
   const guide = GUIDES[personaKey] || GUIDES[DEFAULT_PERSONA];
   return {
     ...guide,
     // Resolved here rather than stored, so a rename or retier in
     // characterOptions.js can't leave this file pointing at nothing.
     outfit: OUTFITS.find(o => o.id === guide.outfitId) || OUTFITS[0],
+    pet: null,
   };
 }

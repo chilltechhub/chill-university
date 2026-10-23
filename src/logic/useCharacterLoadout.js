@@ -48,6 +48,17 @@ export async function readEquippedPet(stats) {
   return petFor(saved?.petId, stats);
 }
 
+// The character and pet as equipped, for the guide (TourOverlay lives
+// outside every screen, like RewardToast). Before anything is picked: the
+// default outfit, and no pet before the first game.
+export async function readEquippedLook(stats) {
+  const saved = await cacheRead(KEY);
+  return {
+    outfit: OUTFITS.find(o => o.id === saved?.outfitId) || OUTFITS.find(o => o.id === DEFAULT_OUTFIT_ID) || OUTFITS[0],
+    pet: petFor(saved?.petId, stats),
+  };
+}
+
 export default function useCharacterLoadout(baseStats) {
   // Rounds played, for petsOpen. Callers pass level/points/rank/streak.
   const { gameplayStats } = useUserProgress();

@@ -105,6 +105,30 @@ const due = [{ title: 'Essay', date: '2026-10-24' }, { title: 'Form', date: '202
   }
   // Credits: every source a unit names is a real link with a licence.
   check('sources: https, a licence, a date', U.UNITS.flatMap(u => u.sources || []).every(x => /^https:\/\//.test(x.url) && x.license && /^\d{4}-\d{2}-\d{2}$/.test(x.reviewed)));
+  // Every unit step can tick: a signal of its own or a Done button's (the
+  // guide would wait forever on one that can't, plan P7 risks).
+  check('unit objectives: every step has a signal or an auto rule', U.UNIT_OBJECTIVES.every(o => o.steps.every(st => st.signal || st.auto)));
+  // Guided units (src/logic/guide/lessons/unitLesson.js, P7): generated from
+  // each unit's data, four steps the first time with a real quiz last, one
+  // note after that; a Build's quiz is its first part's own check.
+  {
+    const L = await import(asUrl(await text('src/logic/guide/lessons/unitLesson.js')));
+    const W = await import(asUrl((await text('src/logic/guide/lessons/welcomeProject.js')).replace("from './unitLesson'", `from "${asUrl(await text('src/logic/guide/lessons/unitLesson.js'))}"`)));
+    const kindsById = Object.fromEntries(B.BUILD_KINDS.map(k => [k.id, k]));
+    for (const u of U.UNITS) {
+      const kind = kindsById[u.deliverable?.buildKind] || null;
+      const walk = L.unitLesson(u, { first: true, kind });
+      const q = walk[walk.length - 1]?.quiz;
+      check(`guided unit ${u.id}: four steps, quiz last`, walk.length === 4 && !!q && q.options.length >= 2 && q.answerIndex >= 0 && q.answerIndex < q.options.length);
+      if (kind) check(`guided unit ${u.id}: the quiz is the Build's own check`, q.question === kind.parts[0].lesson.check.q);
+      const later = L.unitLesson(u, { first: false });
+      check(`guided unit ${u.id}: later, one note`, later.length === 1 && later[0].nonBlocking && later[0].title.includes(u.deliverable.title));
+    }
+    for (const k of B.BUILD_KINDS) {
+      const w = W.welcomeProjectLesson({ kind: k });
+      check(`welcome lesson ${k.id}: generated, the spots kept, quiz last`, w[0].id === 'welcome-project-preview' && w[1].id === 'welcome-project-look' && w[2].id === 'welcome-project-bar' && !!w[3]?.quiz);
+    }
+  }
   check('units: each one opens the Showcase when done', U.UNIT_OBJECTIVES.every(o => o.unlocks.includes('portfolio')));
   const ids = new Set(U.UNITS.map(u => u.id));
   check('units: ids are unique', ids.size === U.UNITS.length);

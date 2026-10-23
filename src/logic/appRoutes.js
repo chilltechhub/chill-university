@@ -12,7 +12,7 @@
 // Library screens — so it needs one resolver rather than a guess per site.
 //
 // Deliberately free of imports beyond one pure data catalog, for the same
-// reason src/data/screenHelp.js is: this is reached from components that
+// reason src/data/pageInfo.js is: this is reached from components that
 // LibraryScreen itself imports, and pulling LibraryScreen back in the other
 // direction would close a require cycle right through the provider tree.
 

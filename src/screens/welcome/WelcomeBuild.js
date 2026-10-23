@@ -58,7 +58,7 @@ export default function WelcomeBuild({ kindId, answers, onAnswer }) {
       onAnswer({ unit1Done: true, projectKind: kindId });
       const kind = BUILD_KIND_MAP[kindId];
       // TourSpots measure on layout; give the preview a moment to land.
-      if (fresh) setTimeout(() => startLesson(welcomeProjectLesson({ thing: kind.label.replace(/^(a|an)\s+/i, ''), page: kindId === 'page' })), 700);
+      if (fresh) setTimeout(() => startLesson(welcomeProjectLesson({ kind })), 700);
     });
     return () => {
       alive = false;

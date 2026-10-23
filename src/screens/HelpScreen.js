@@ -9,7 +9,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useTour } from '../../context/TourContext';
-import { SCREEN_HELP } from '../data/screenHelp';
+import { pageInfoFor, ROUTE_HELP } from '../data/pageInfo';
+import { surfaceForRoute } from '../logic/guide/surfaces';
 import { useAccess } from '../../context/AccessContext';
 import { SUPPORT_EMAIL } from '../config/legal';
 import RichText from '../components/RichText';
@@ -78,7 +79,7 @@ const FAQ = [
   },
   {
     q: 'I’m stuck or found a bug. What do I do?',
-    a: 'Email **' + SUPPORT_EMAIL + '** (Settings → Contact support) and say what you were doing. For help on any screen: tap **your picture** → **Screen Tutorial**.',
+    a: 'Email **' + SUPPORT_EMAIL + '** (Settings → Contact support) and say what you were doing. For help on any page: tap **your picture** → **About this page**.',
   },
 ];
 
@@ -95,7 +96,10 @@ export default function HelpScreen() {
   // Plus questions only once Plus can actually be bought.
   const { plusOnSale } = useAccess();
   const fromScreen = route.params?.fromScreen;
-  const screenInfo = fromScreen ? SCREEN_HELP[fromScreen] : null;
+  // What the page you came from is for (src/data/pageInfo.js, which the
+  // old per-screen help folded into).
+  const page = fromScreen ? pageInfoFor(surfaceForRoute(fromScreen), fromScreen) : null;
+  const screenInfo = page ? { title: page.title, body: page.what.replace(/\*\*/g, '') } : null;
   const [openIdx, setOpenIdx] = useState(screenInfo ? -1 : 0);
 
   const takeTour = () => {
@@ -131,13 +135,13 @@ export default function HelpScreen() {
         >
           <Ionicons name="school-outline" size={22} color={c.gold} />
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.text1 }}>Take the Guided Tour</Text>
-            <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>A minute-long walkthrough of the app's main features</Text>
+            <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.text1 }}>Show me around</Text>
+            <Text style={{ fontSize: t.xs, color: c.text3, marginTop: 2 }}>A quick walk around Today</Text>
           </View>
           <Ionicons name="chevron-forward" size={16} color={c.text4} />
         </TouchableOpacity>
 
-        {/* About this screen */}
+        {/* About this page */}
         {screenInfo && (
           <View style={{
             backgroundColor: c.tealLight, borderRadius: r.lg, padding: s.lg,
@@ -146,7 +150,7 @@ export default function HelpScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginBottom: s.sm }}>
               <Ionicons name="information-circle" size={18} color={c.teal} />
               <Text style={{ fontSize: t.xs, color: c.teal, fontWeight: t.bold, textTransform: 'uppercase', letterSpacing: 1 }}>
-                About this screen
+                About this page
               </Text>
             </View>
             <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1, marginBottom: 4 }}>{screenInfo.title}</Text>
@@ -194,4 +198,5 @@ export default function HelpScreen() {
   );
 }
 
-export { SCREEN_HELP };
+// The old per-screen help, now in src/data/pageInfo.js.
+export { ROUTE_HELP as SCREEN_HELP };

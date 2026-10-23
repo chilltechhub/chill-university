@@ -19,6 +19,7 @@ import { useCommandPalette } from '../../../context/CommandPaletteContext';
 import { useUserProgress } from '../../../context/UserProgressContext';
 import { goToScreen } from '../../logic/appRoutes';
 import { showWhatsNext } from '../../logic/useGuidedFirstGoal';
+import { openAboutPage } from '../../logic/guide/guideState';
 import ProfileScreen from '../ProfileScreen';
 import { YouHeader, YouSearch, YouGround, YouFooter, YouReceipts, YouShelf } from './YouParts';
 import IkigaiCircles from '../../components/IkigaiCircles';
@@ -34,7 +35,7 @@ export default function YouScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const { user } = useUserProgress();
-  const { startTour, startScreenTour } = useTour();
+  const { startTour } = useTour();
   const { openPalette } = useCommandPalette();
   // The page You was opened over (the avatar passes it), for "About this page".
   const from = route.params?.from || 'Home';
@@ -69,7 +70,8 @@ export default function YouScreen() {
     if (ROOT_ROWS[key]) { leave(() => navigation.navigate(ROOT_ROWS[key])); return; }
     if (key === 'help') { leave(() => navigation.navigate('Help', { fromScreen: from })); return; }
     if (key === 'next') { closeThen(showWhatsNext); return; }
-    if (key === 'about') { closeThen(() => startScreenTour(from)); return; }
+    // About this page (shake-up P7): the sheet for the page You was opened over.
+    if (key === 'about') { closeThen(() => openAboutPage(from, route.params?.fromParams || null)); return; }
     if (key === 'tour') closeThen(startTour);
   };
 

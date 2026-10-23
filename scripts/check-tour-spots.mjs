@@ -70,6 +70,14 @@ for (const f of [join(SRC, 'logic', 'screenTutorials.js'), join(SRC, 'logic', 't
   }
 }
 
+// "About this page" Show me steps (src/data/pageInfo.js) point at spots too.
+{
+  const f = join(SRC, 'data', 'pageInfo.js');
+  for (const m of decomment(readFileSync(f, 'utf8')).matchAll(/\bid:\s*['"]([^'"]+)['"]/g)) {
+    if (!referenced.has(m[1])) referenced.set(m[1], relative(ROOT, f));
+  }
+}
+
 // Guide lessons (src/logic/guide/lessons/, the shake-up's guide) name their
 // spots as `id:` like the screen tutorials.
 {
@@ -174,7 +182,7 @@ const refs = [];
 const DATA = [
   'src/data/firstGoalGuide.js', 'src/logic/tourSteps.js', 'src/logic/useGuidedFirstGoal.js',
   'src/data/objectives.js', 'src/data/units.js', 'src/data/featureCatalog.js', 'src/logic/openTarget.js',
-  'src/logic/searchIndex.js', 'src/data/experienceStages.js',
+  'src/logic/searchIndex.js', 'src/data/experienceStages.js', 'src/data/pageInfo.js',
 ];
 const guideDir = join(SRC, 'logic', 'guide');
 for (const f of walk(guideDir)) DATA.push(relative(ROOT, f).replace(/\\/g, '/'));
@@ -198,7 +206,7 @@ for (const f of files) {
     if (!keys) { console.log(`\nFAIL — couldn't read ${block} from screenTutorials.js`); process.exit(1); }
     keys.forEach(k => refs.push({ name: k, how: block, where: 'src/logic/screenTutorials.js' }));
   }
-  for (const k of objectKeys(read('src/data/screenHelp.js'), 'SCREEN_HELP') || []) refs.push({ name: k, how: 'SCREEN_HELP', where: 'src/data/screenHelp.js' });
+  for (const k of objectKeys(read('src/data/pageInfo.js'), 'ROUTE_HELP') || []) refs.push({ name: k, how: 'ROUTE_HELP', where: 'src/data/pageInfo.js' });
 }
 
 const routeProblems = [];
@@ -291,6 +299,49 @@ for (const [from, a] of Object.entries(ALIASES)) {
     if (!isRoute(route)) routeProblems.push(`surfaces: ROUTE_TO_SURFACE names '${route}', which isn't a route`);
     list.forEach(id => { if (!ids.has(id)) routeProblems.push(`surfaces: ROUTE_TO_SURFACE['${route}'] names unknown surface '${id}'`); });
   }
+  // Every surface has "About this page" and a mentor note (shake-up P7),
+  // short, with at most three of each kind of button, and none of the old
+  // app's words.
+  const { PAGES, ROUTE_HELP, pageInfoFor, pageWords } = await asModule('src/data/pageInfo.js');
+  const { NOTES } = await asModule('src/logic/guide/lessons/notes.js');
+  const OLD = /\b(points?|XP|level(?:s| up)?|streaks?|rank|leaderboard|Library|Home tab|Training tab|Screen Tutorial)\b/i;
+  for (const id of SURFACE_IDS) {
+    const page = PAGES[id];
+    if (!page) { routeProblems.push(`pageInfo: surface '${id}' has no page`); continue; }
+    if (!NOTES[id]) routeProblems.push(`notes: surface '${id}' has no mentor note`);
+    if (!page.what || !page.helps?.default) routeProblems.push(`pageInfo: '${id}' needs what and helps.default`);
+    if ((page.actions || []).length > 3 || (page.show || []).length > 3) routeProblems.push(`pageInfo: '${id}' has more than three actions or Show me steps`);
+    for (const p of ['like', 'next', 'money', 'career', 'ground']) {
+      const words = pageWords(pageInfoFor(id, null, { pathKey: p }));
+      if (words >= 60) routeProblems.push(`pageInfo: '${id}' runs ${words} words for path '${p}' (keep it under 60)`);
+    }
+    const copy = JSON.stringify([page.title, page.what, page.helps, (page.actions || []).map(a => a.label), (page.show || []).map(st => [st.title, st.body]), NOTES[id]]);
+    if (OLD.test(copy)) routeProblems.push(`pageInfo/notes: '${id}' says "${copy.match(OLD)[0]}", old app copy`);
+  }
+  for (const id of Object.keys(PAGES)) if (!ids.has(id)) routeProblems.push(`pageInfo: '${id}' isn't a surface`);
+  for (const id of Object.keys(NOTES)) if (!ids.has(id)) routeProblems.push(`notes: '${id}' isn't a surface`);
+  for (const [route, h] of Object.entries(ROUTE_HELP)) {
+    if (!h.title || !h.body) routeProblems.push(`pageInfo: ROUTE_HELP['${route}'] needs a title and body`);
+    if (OLD.test(`${h.title} ${h.body}`)) routeProblems.push(`pageInfo: ROUTE_HELP['${route}'] says "${`${h.title} ${h.body}`.match(OLD)[0]}", old app copy`);
+  }
+  const ged = pageInfoFor('learn.path', 'Training', { pathKey: 'next', startPoint: 'ged' });
+  if (!/practice tests/i.test(ged.helps)) routeProblems.push(`pageInfo: a GED start's Learn should talk about practice tests, got "${ged.helps}"`);
+  const shownOn = pageInfoFor('learn.path', 'PathScreen', {}).show.map(st => st.id);
+  if (shownOn.includes('learn-path')) routeProblems.push('pageInfo: Show me on My path lists a Learn-only spot');
+
+  // The first-day walk: four steps on Today, ending at your picture, both views.
+  {
+    const { firstDayWalk } = await asModule('src/logic/guide/lessons/firstDayWalk.js');
+    for (const calm of [false, true]) {
+      const walk = firstDayWalk({ calm });
+      const got = walk.map(st => st.id).join(' ');
+      const want = `${calm ? 'calm-next' : 'home-compass'} planner-add planner-views topbar-avatar`;
+      if (got !== want) routeProblems.push(`firstDayWalk(calm ${calm}): ${got}, want ${want}`);
+      if (walk.some(st => st.go && !isRoute(st.go))) routeProblems.push('firstDayWalk: a step goes to an unknown route');
+      if (OLD.test(JSON.stringify(walk))) routeProblems.push(`firstDayWalk: says "${JSON.stringify(walk).match(OLD)[0]}", old app copy`);
+    }
+  }
+
   // The v2 seed: old routes carry over, and an existing account is taught
   // nothing it already knew.
   const fresh = seedGuideSeen(['PlannerScreen'], { existingAccount: false });

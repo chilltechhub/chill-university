@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useUserProgress } from '../../context/UserProgressContext';
 import { useTheme } from '../../context/ThemeContext';
-import { useTour } from '../../context/TourContext';
+import { openAboutPage } from '../logic/guide/guideState';
 import { useCommandPalette } from '../../context/CommandPaletteContext';
 import ProfileSwitcher from './ProfileSwitcher';
 import TourSpot from './TourSpot';
@@ -25,7 +25,7 @@ import useProgressV2 from '../logic/useProgressV2';
 import { pathChip } from '../logic/nextStep';
 import { goToScreen } from '../logic/appRoutes';
 
-// Profile / Help / Screen Tutorial / Settings / Search — one tap-menu off
+// Profile / Help / About this page / Settings / Search — one tap-menu off
 // the crest instead of five separate rows. These used to live on the FAB's
 // speed dial; they moved here because they're "go somewhere" shortcuts, not
 // "create something" actions, and the crest is a root-level control that
@@ -43,7 +43,7 @@ function CrestMenu({ visible, onClose, onSelect, signedIn, c, t, s }) {
     // Your weeks in real life (StatsScreen.js). Needs an account to count.
     signedIn && { key: 'insights', label: 'Insights', icon: 'analytics-outline' },
     { key: 'help',     label: 'Help',           icon: 'help-circle-outline',   colorKey: 'purple' },
-    { key: 'tutorial', label: 'Screen Tutorial', icon: 'school-outline',       colorKey: 'teal' },
+    { key: 'tutorial', label: 'About this page', icon: 'information-circle-outline', colorKey: 'teal' },
     { key: 'yours',    label: 'Make it yours',  icon: 'options-outline',       colorKey: 'gold' },
     { key: 'settings', label: 'Settings',       icon: 'settings-outline',      colorKey: 'text3' },
     // The phone-side entry to the command palette — Cmd/Ctrl+K only exists
@@ -206,7 +206,6 @@ function TopBarV1({ currentScreen }) {
   const points = useSpendablePoints(user?.id, earned);
   const { colors, typography, spacing, shadows, accent, style: ui } = useTheme();
   const navigation = useNavigation();
-  const { startScreenTour } = useTour();
   const { openPalette } = useCommandPalette();
   const [showLogin, setShowLogin] = useState(false);
   const [showCrestMenu, setShowCrestMenu] = useState(false);
@@ -220,7 +219,8 @@ function TopBarV1({ currentScreen }) {
       case 'profile':  navigation.navigate('Profile'); break;
       case 'signin':   setShowLogin(true); break;
       case 'help':     navigation.navigate('Help', { fromScreen: currentScreen }); break;
-      case 'tutorial': startScreenTour(currentScreen); break;
+      // "About this page" replaced the Screen Tutorial (shake-up P7).
+      case 'tutorial': openAboutPage(currentScreen); break;
       case 'yours':    navigation.navigate('MakeItYours'); break;
       case 'settings': navigation.navigate('Settings'); break;
       case 'insights': navigation.navigate('Stats'); break;

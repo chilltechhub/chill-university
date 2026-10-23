@@ -1,4 +1,7 @@
 // src/logic/screenTutorials.js
+// RETIRED with the new tabs (shake-up P7): pages explain themselves through mentor notes and "About this page" (src/logic/guide/, src/data/pageInfo.js). It still runs with the
+// new tabs off (the rollback) and stays for one release, then goes.
+//
 // Content for the FAB's "Tutorial" action — a short, CURRENT-SCREEN-ONLY
 // walkthrough (see startScreenTour in context/TourContext.js). Distinct
 // from the full cross-app guided tour (tourSteps.js): this one never
@@ -12,7 +15,8 @@
 // understands the synthetic `navHint` flag and spotlights the bar without it
 // needing to be a real TourSpot. No other screen gets one.
 
-import { SCREEN_HELP } from '../data/screenHelp';
+// The per-screen help folded into pageInfo.js (shake-up P7).
+import { ROUTE_HELP as SCREEN_HELP } from '../data/pageInfo';
 import { EXAMPLES } from '../config/chilltech';
 import { TABBAR_V2_BODY } from './tourSteps';
 

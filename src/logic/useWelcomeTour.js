@@ -1,5 +1,10 @@
 // src/logic/useWelcomeTour.js
 //
+// RETIRED with the new tabs (shake-up P7): src/logic/guide/useGuide.js runs
+// the first-day walk instead, from the same queue (queueWelcomeTour below).
+// This hook still runs with the new tabs off (the rollback) and stays for
+// one release.
+//
 // Runs the welcome tour (src/logic/tourSteps.js) once, the first time a new
 // account lands on Home after onboarding, and holds everything else back
 // until it's over.
@@ -43,6 +48,8 @@ const SETTLE_MS = 1200;
 // brand-new account was before onboarding queued anything. Told directly,
 // same pattern as forgetSeenScreens.
 const queueListeners = new Set();
+/** The guide (useGuide) hears a queued walk the same way. */
+export function onWelcomeTourQueued(fn) { queueListeners.add(fn); return () => queueListeners.delete(fn); }
 
 /** Called by onboarding's finish(), or the welcome, before it leaves for Home. */
 // `aimChosen` false when onboarding was skipped before the "What did you
@@ -65,7 +72,7 @@ export async function welcomeTourDone(uid) {
  * Call once, from AppInner, with the current route name.
  * @returns {{ holding: boolean }} true until the tour is done (or not due)
  */
-export default function useWelcomeTour(routeName) {
+export default function useWelcomeTour(routeName, { enabled = true } = {}) {
   const { user } = useUserProgress();
   const { active: tourActive, startTour, startLesson } = useTour();
   const { activeObjective } = useAccess();
@@ -103,7 +110,7 @@ export default function useWelcomeTour(routeName) {
   }, [uid]);
 
   useEffect(() => {
-    if (!PENDING.has(state) || tourActive || routeName !== 'Home') return undefined;
+    if (!enabled || !PENDING.has(state) || tourActive || routeName !== 'Home') return undefined;
     let alive = true;
     const timer = setTimeout(async () => {
       if (state !== 'pending-project') {
@@ -114,7 +121,7 @@ export default function useWelcomeTour(routeName) {
       if (alive) startLesson(appTour({ project: made[0] ? buildTitle(made[0]) : null, mission, dashboardV2: isAliasGateOn('dashboardV2'), tabsV2: isAliasGateOn('tabsV2') }), { onEnd: finish });
     }, SETTLE_MS);
     return () => { alive = false; clearTimeout(timer); };
-  }, [state, tourActive, routeName, startTour, startLesson, finish, uid, mission]);
+  }, [enabled, state, tourActive, routeName, startTour, startLesson, finish, uid, mission]);
 
-  return { holding: state !== 'done' };
+  return { holding: enabled && state !== 'done' };
 }
