@@ -6,7 +6,7 @@ import { dateStr as toLocalDateStr, daysBetween, todayStr as localTodayStr } fro
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, RefreshControl, Modal, KeyboardAvoidingView,
-  Platform, FlatList, Alert, ActivityIndicator, Animated, Easing,
+  Platform, FlatList, Alert, Animated, Easing,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
@@ -50,6 +50,7 @@ import useRoomPlace from '../logic/useRoomPlace';
 import useDashboardV2 from '../logic/useDashboardV2';
 import useTabsV2 from '../logic/useTabsV2';
 import { setTodayView } from '../logic/guide/guideState';
+import { SCRIM, CATEGORY_COLOR } from '../ui';
 import usePlanner, { PlannerSheets } from './today/usePlanner';
 import TodayControls from './today/TodayControls';
 import AddSheet from './today/AddSheet';
@@ -152,12 +153,12 @@ const QUOTES = [
 // Same palette as CalendarModal's EVENT_TYPES/PLANNER_AREAS so an item looks
 // like the same thing whether you meet it here or in the full calendar.
 const ACTIVITY_TYPES = {
-  event:    { label: 'Event',    icon: 'calendar-outline',         color: '#2bb5a0' }, // style-ok: category palette, matches CalendarModal
-  reminder: { label: 'Reminder', icon: 'notifications-outline',    color: '#c9a84c' }, // style-ok: category palette, matches CalendarModal
-  note:     { label: 'Note',     icon: 'document-text-outline',    color: '#8b4fc4' }, // style-ok: category palette, matches CalendarModal
-  task:     { label: 'Task',     icon: 'checkmark-circle-outline', color: '#3ac860' }, // style-ok: category palette, matches CalendarModal
-  assignment: { label: 'Assignment', icon: 'school-outline',       color: '#c9a84c' }, // style-ok: category palette, matches CalendarModal
-  planner:  { label: 'Routine',  icon: 'repeat-outline',           color: '#2bb5a0' }, // style-ok: category palette, matches CalendarModal
+  event:    { label: 'Event',    icon: 'calendar-outline',         color: CATEGORY_COLOR.event },
+  reminder: { label: 'Reminder', icon: 'notifications-outline',    color: CATEGORY_COLOR.reminder },
+  note:     { label: 'Note',     icon: 'document-text-outline',    color: CATEGORY_COLOR.note },
+  task:     { label: 'Task',     icon: 'checkmark-circle-outline', color: CATEGORY_COLOR.task },
+  assignment: { label: 'Assignment', icon: 'school-outline',       color: CATEGORY_COLOR.assignment },
+  planner:  { label: 'Routine',  icon: 'repeat-outline',           color: CATEGORY_COLOR.planner },
 };
 // A planner item says how often it happens. "Routine" was on everything,
 // one-off plans ("Call the dentist") included.
@@ -300,7 +301,7 @@ function FocusModal({ visible, draft, setDraft, onSave, onClose, presets, onAddP
 
   return (
     <Modal visible={visible} transparent animationType="slide">
-      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: SCRIM.strong, justifyContent: 'flex-end' }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 48, maxHeight: '85%' }}>
           <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
@@ -383,7 +384,7 @@ function AffirmationModal({ visible, affirmations, onSave, onClose, c, t, s, r }
 
   return (
     <Modal visible={visible} transparent animationType="slide">
-      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: SCRIM.strong, justifyContent: 'flex-end' }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 48, maxHeight: '85%' }}>
           <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
@@ -457,7 +458,7 @@ function IdeaPreviewCard({ idea, visible, onClose, c, t, s, r }) {
 
   return (
     <Modal visible={visible} transparent animationType="slide">
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
+      <View style={{ flex: 1, backgroundColor: SCRIM.strong, justifyContent: 'flex-end' }}>
         <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: 48, maxHeight: '78%' }}>
           {/* Handle */}
           <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginTop: 12, marginBottom: s.lg }} />
@@ -2820,7 +2821,7 @@ export default function HomeScreen() {
           behind other screens, and this used to pop up over the Academy
           mid-guide when a goal elsewhere opened a widget. */}
       <Modal visible={widgetOffer.length > 0 && homeFocused && !tourActive && !calm} transparent animationType="fade" onRequestClose={() => closeWidgetOffer(false)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center', padding: s.xl }}>
+        <View style={{ flex: 1, backgroundColor: SCRIM.strong, alignItems: 'center', justifyContent: 'center', padding: s.xl }}>
           <View style={{ width: '100%', maxWidth: 380, backgroundColor: c.bg1, borderRadius: 20, padding: s.xl, borderWidth: ui.borderWidth, borderColor: c.border }}>
             <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: c.teal + '22', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: s.md }}>
               <Ionicons name="grid-outline" size={22} color={c.teal} />
@@ -2891,7 +2892,7 @@ export default function HomeScreen() {
 
       {/* ── Desk ticker chip, tapped open — NextUpCard's full detail ── */}
       <Modal visible={!!selectedDeskItem} transparent animationType="slide" onRequestClose={() => setSelectedDeskItem(null)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
+        <View style={{ flex: 1, backgroundColor: SCRIM.strong, justifyContent: 'flex-end' }}>
           <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 48 }}>
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
             {selectedDeskItem && (
@@ -2920,7 +2921,7 @@ export default function HomeScreen() {
 
       {/* ── Today's Activities row, tapped open — same detail-sheet pattern ── */}
       <Modal visible={!!selectedActivity} transparent animationType="slide" onRequestClose={closeActivitySheet}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
+        <View style={{ flex: 1, backgroundColor: SCRIM.strong, justifyContent: 'flex-end' }}>
           <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 48 }}>
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
             {selectedActivity && (
@@ -2940,7 +2941,7 @@ export default function HomeScreen() {
 
       {/* ── Set next action (from the desk's "Set next step →" CTA) ── */}
       <Modal visible={!!nextActionTarget} transparent animationType="slide" onRequestClose={() => setNextActionTarget(null)}>
-        <KeyboardAvoidingView style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView style={{ flex: 1, backgroundColor: SCRIM.strong, justifyContent: 'flex-end' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 48 }}>
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
             <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1, marginBottom: 4 }}>
@@ -3010,7 +3011,7 @@ export default function HomeScreen() {
 
       {/* ── Hold STUDY: pick a destination ── */}
       <Modal visible={showStudyMenu} transparent animationType="slide" onRequestClose={() => setShowStudyMenu(false)}>
-        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setShowStudyMenu(false)}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: SCRIM.strong, justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setShowStudyMenu(false)}>
           <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 44 }}>
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
             <Text style={{ fontSize: t.lg, fontFamily: ui.titleFont, fontWeight: t.bold, color: c.text1, marginBottom: s.md }}>Study</Text>
@@ -3027,7 +3028,7 @@ export default function HomeScreen() {
 
       {/* ── Hold PLAY: pick any game ── */}
       <Modal visible={showPlayMenu} transparent animationType="slide" onRequestClose={() => setShowPlayMenu(false)}>
-        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setShowPlayMenu(false)}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: SCRIM.strong, justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setShowPlayMenu(false)}>
           <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: s.xl, paddingBottom: 44, maxHeight: '75%' }}>
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
             <Text style={{ fontSize: t.lg, fontFamily: ui.titleFont, fontWeight: t.bold, color: c.text1, marginBottom: s.md }}>Play</Text>

@@ -3,7 +3,8 @@
 // PlannerScreen.js for the shake-up (docs/shake-up-plan-2026-10-21.md P1).
 
 import React, { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { BusyDot } from '../../ui';
 import { Ionicons } from '@expo/vector-icons';
 import { AREAS, completeInstance, skipInstance, rescheduleInstance } from '../../api/plannerService';
 import { timeRange } from '../../logic/plannerLayout';
@@ -70,8 +71,8 @@ export default function AgendaRow({ instance, onUpdate, onOpen, c, t, s, r }) {
           accessibilityLabel={done ? `Mark ${instance.title} not done` : `Mark ${instance.title} done`}
           hitSlop={8}
           style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: done ? area.color : c.border, backgroundColor: done ? area.color : 'transparent', alignItems: 'center', justifyContent: 'center' }}>
-          {saving ? <ActivityIndicator size="small" color={area.color} />
-            : done ? <Ionicons name="checkmark" size={12} color="#fff" /> : null}
+          {saving ? <BusyDot color={area.color} size={8} />
+            : done ? <Ionicons name="checkmark" size={12} color={c.onFill} /> : null}
         </TouchableOpacity>
 
         <View style={{ flex: 1 }}>
@@ -121,7 +122,7 @@ export default function AgendaRow({ instance, onUpdate, onOpen, c, t, s, r }) {
             onPress={() => { successHaptic(); handle(() => completeInstance(instance.id, true)); }} />
           <ActionBtn label="Move to today" icon="calendar-outline" color={c.text3}
             onPress={() => handle(() => rescheduleInstance(instance.id))} />
-          <ActionBtn label="Drop" icon="close-circle-outline" color="#e05858"
+          <ActionBtn label="Drop" icon="close-circle-outline" color={c.error}
             onPress={() => handle(() => skipInstance(instance.id))} />
         </View>
       )}

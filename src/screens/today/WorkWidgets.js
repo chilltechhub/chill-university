@@ -18,7 +18,8 @@ import WidgetCard from '../../components/widgets/WidgetCard';
 import useDeliverables from '../../logic/useDeliverables';
 import usePath from '../../logic/usePath';
 import { UNIT_BY_ID, unitsForPath } from '../../data/units';
-import { inFlight, statusLabel, aimForLabel, progressOf } from '../../logic/deliverables';
+import { inFlight, statusLabel, aimForLabel, deliverableStep } from '../../logic/deliverables';
+import { StepBar, StatusChip, DueChip, pathLook } from '../../ui';
 import { goToScreen } from '../../logic/appRoutes';
 import { todayStr } from '../../logic/dateUtils';
 import { shareText, milestoneText } from '../../logic/shareOut';
@@ -52,21 +53,21 @@ export function DeliverableWidget({ onPlan }) {
   }
 
   const handed = shown.status === 'handed' || shown.status === 'shown';
-  const pct = Math.round(progressOf(shown, unit) * 100);
+  const steps = deliverableStep(shown, unit);
   const aim = aimForLabel(shown, todayStr());
   return (
     <WidgetCard title={handed ? 'Handed in' : 'Your work'} icon={handed ? 'checkmark-done-outline' : 'document-text-outline'}
       action="My path →" onAction={() => goToScreen(navigation, 'PathScreen')}>
       <TouchableOpacity onPress={() => openUnit(shown.unitKey)} accessibilityRole="button" accessibilityLabel={`${shown.title}. ${statusLabel(shown)}. Open the unit`}>
         <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1 }}>{shown.title}</Text>
-        <Text style={{ fontSize: t.sm, color: c.text3, marginTop: 2 }}>
-          {[unit?.label, statusLabel(shown), aim].filter(Boolean).join(' · ')}
-        </Text>
+        {!!unit?.label && unit.label !== shown.title && <Text style={{ fontSize: t.sm, color: c.text3, marginTop: 2 }}>{unit.label}</Text>}
+        <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+          <StatusChip status={shown.status} label={statusLabel(shown)} />
+          <DueChip label={aim} />
+        </View>
       </TouchableOpacity>
       {!handed && (
-        <View style={{ height: 6, borderRadius: 3, backgroundColor: c.bg2, overflow: 'hidden', marginTop: s.sm }}>
-          <View style={{ height: 6, width: `${pct}%`, borderRadius: 3, backgroundColor: accent.primary }} />
-        </View>
+        <StepBar done={steps?.done || 0} total={steps?.total || 0} color={pathLook(c, unit?.path).color} style={{ marginTop: s.sm }} />
       )}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.md, marginTop: s.md }}>
         <TouchableOpacity onPress={() => openUnit(shown.unitKey)} accessibilityRole="button" accessibilityLabel={handed ? 'Open the unit' : 'Keep working on it'}

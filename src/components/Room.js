@@ -13,6 +13,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
+import { ON_ART } from '../ui';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useUserProgress } from '../../context/UserProgressContext';
@@ -59,7 +60,7 @@ export default function Room({ size = 160, calm = false, place = 'you', style })
     { label: 'Edit room', icon: 'brush-outline', onPress: () => setEditOpen(true) },
   ];
   const petName = petCare.nickname || pet?.name;
-  const chip = { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, backgroundColor: 'rgba(10,22,40,0.55)' };
+  const chip = { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, backgroundColor: ON_ART.chip };
 
   return (
     <View style={style}>
@@ -92,11 +93,11 @@ export default function Room({ size = 160, calm = false, place = 'you', style })
           )}
           <View style={{ position: 'absolute', top: 8, right: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <TouchableOpacity onPress={() => setEditOpen(true)} accessibilityRole="button" accessibilityLabel="Edit your room" hitSlop={6} style={chip}>
-              <Ionicons name="brush-outline" size={13} color="#fff" />
-              <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff' }}>Edit room</Text>
+              <Ionicons name="brush-outline" size={13} color={ON_ART.text} />
+              <Text style={{ fontSize: 11, fontWeight: '700', color: ON_ART.text }}>Edit room</Text>
             </TouchableOpacity>
             <View style={[chip, { paddingHorizontal: 2, paddingVertical: 0 }]}>
-              <MoreMenu items={menu} label={`Your room: show on ${PLACE_LABEL[other]}, hide or edit`} color="#fff" />
+              <MoreMenu items={menu} label={`Your room: show on ${PLACE_LABEL[other]}, hide or edit`} color={ON_ART.text} />
             </View>
           </View>
         </LandscapeBackground>

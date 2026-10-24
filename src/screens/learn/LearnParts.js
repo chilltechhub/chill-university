@@ -19,6 +19,7 @@ import { useAccess } from '../../../context/AccessContext';
 import { pathChip } from '../../logic/nextStep';
 import { goToScreen } from '../../logic/appRoutes';
 import TourSpot from '../../components/TourSpot';
+import { StepBar } from '../../ui';
 import usePath from '../../logic/usePath';
 import { PATH_KITS } from '../../data/pathKits';
 
@@ -47,11 +48,8 @@ export function MyPathCard() {
           <Text style={{ fontSize: t.sm, color: c.text2, marginTop: 2 }} numberOfLines={2}>Next: <Text style={{ fontWeight: t.bold, color: c.text1 }}>{step.label}</Text></Text>
         )}
         {chip.total > 0 && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginTop: s.sm }}>
-            <View style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: c.bg2, overflow: 'hidden' }}>
-              <View style={{ height: 6, width: `${chip.pct}%`, borderRadius: 3, backgroundColor: accent.primary }} />
-            </View>
-            <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: c.text3 }}>{chip.done} of {chip.total}</Text>
+          <View style={{ marginTop: s.sm }}>
+            <StepBar done={chip.done} total={chip.total} />
           </View>
         )}
         {chip.empty && (

@@ -1048,6 +1048,16 @@ New check scripts this plan adds:
 - **Work:** `src/ui/` primitives. Move the front screens onto them. Extend `check-style`.
 - **Accept:** 0 inline hex colours in the front files. Skeletons instead of spinners. `check-a11y` clean.
 - **Rollback:** per-screen revert; the kit is additive.
+- **Built (2026-10-24, branch `feature/shakeup-p9`, off main after #88).** Where the code settled something this plan left open:
+  - **The kit** is `src/ui/`: `tokens.js` (the only colour values the front screens use: the Calm palette, the scrim, labels on art, Today's activity colours; path, circle and status looks read theme keys) and `index.js` (`Panel`, `Card` with roles yours / progress / plain, `Headline`, `Chip`, `PathChip`, `StatusChip`, `DueChip`, `Segmented`, `StepBar`, `PrimaryAction`, `Sheet`, `EmptyState`, `Skeleton`, `BusyDot`, `CircleFill`, `Tap`). It builds on `src/components/ui` (Card, Button) instead of replacing it; `CalmKit.js` keeps its names and draws from the kit.
+  - **Path colours** are theme keys: What do I like? `arts`, What's next `science`, Money `finance`, Job to career `purple`, Ground fix `health`, each with its icon. They mark the path chip, the unit you're on, unit ticks, step bars and deliverable cards. Buttons stay on your accent.
+  - **Status in words** everywhere work shows (To do · Doing · Handed in · Shown · Reviewed); **step bars** count steps ("2 of 5") on My path, Learn's path card and Today's "Your work"; **aim-for dates** are a neutral `DueChip`.
+  - **Make board** cards show a thumbnail of the work (`WorkThumb.js`: the first words written, a checklist's ticks, or the Build's kind) on the path's colour.
+  - **The signature celebration**: the hand-in moment shows your four circles, and "Good at" fills a little (one piece of handed-in work in five).
+  - **Feel**: kit buttons press in; a light tap on ticks, segment changes and the one filled button; the success haptic on hand-in stays.
+  - **Skeletons, not spinners**, on every front screen: a `Skeleton` where content is coming, a `BusyDot` inside a control that's saving.
+  - **The front-screen rule** (`check-style.mjs` FRONT): 48 files (Today and its planner pieces, Calm, Learn, My path, units, Make, You, the welcome, the sheets and cards on them) have no raw hex or rgba colour and no spinner, with no exceptions allowed.
+  - **Not done:** web build titles for every new route were already set in P6–P8; the older screens off the front (Settings, the Library's tools, games) keep their own styling.
 
 ### P10 · Drag to reschedule (optional)
 

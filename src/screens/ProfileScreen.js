@@ -10,7 +10,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  ActivityIndicator, StyleSheet, Alert, Modal, FlatList, Image,
+  StyleSheet, Alert, Modal, FlatList, Image,
   KeyboardAvoidingView, Platform, Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -42,6 +42,7 @@ import { textOn } from '../logic/contrast';
 import { RANK_LABELS } from '../theme';
 import useSetting, { SETTING_KEYS } from '../logic/useSetting';
 import DreamCard from '../components/DreamCard';
+import { BusyDot, Skeleton, ON_ART, SCRIM } from '../ui';
 import useDashboardV2 from '../logic/useDashboardV2';
 
 
@@ -143,7 +144,7 @@ export default function ProfileScreen({ you = null } = {}) {
   if (loading || !loadoutReady) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={c.gold} size="large" />
+        <Skeleton lines={5} card style={{ width: '90%' }} />
       </View>
     );
   }
@@ -205,11 +206,11 @@ export default function ProfileScreen({ you = null } = {}) {
             <Text style={styles.heroSub}>Level {level} · {(RANK_LABELS[rank] || RANK_LABELS[20]).label}</Text>
           </View>
           <TouchableOpacity style={styles.customizeBtn} onPress={() => setWardrobeOpen(true)}>
-            <Ionicons name="color-palette-outline" size={15} color="#fff" />
+            <Ionicons name="color-palette-outline" size={15} color={ON_ART.text} />
             <Text style={styles.customizeBtnText}>Customize</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.customizeBtn, { top: 44 }]} onPress={() => setDecorOpen(true)} accessibilityRole="button" accessibilityLabel="Decorate your scene">
-            <Ionicons name="brush-outline" size={15} color="#fff" />
+            <Ionicons name="brush-outline" size={15} color={ON_ART.text} />
             <Text style={styles.customizeBtnText}>Decorate</Text>
           </TouchableOpacity>
         </LandscapeBackground>
@@ -285,7 +286,7 @@ export default function ProfileScreen({ you = null } = {}) {
           onPress={handleSave}
           disabled={!dirty || saving}
         >
-          {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save changes</Text>}
+          {saving ? <BusyDot color={c.onFill} /> : <Text style={styles.saveBtnText}>Save changes</Text>}
         </TouchableOpacity>
       </View>
       )}
@@ -345,18 +346,18 @@ const makeStyles = (c, t, s, r) => StyleSheet.create({
   hero: { marginBottom: s.lg, justifyContent: 'flex-end' },
   heroLabel: {
     position: 'absolute', left: 12, top: 10,
-    backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: 8,
+    backgroundColor: ON_ART.shade, borderRadius: 8,
     paddingHorizontal: 10, paddingVertical: 4,
   },
-  heroName: { color: '#fff', fontWeight: t.bold, fontSize: t.md },
-  heroSub: { color: '#fff', fontSize: t.xs, opacity: 0.9 },
+  heroName: { color: ON_ART.text, fontWeight: t.bold, fontSize: t.md },
+  heroSub: { color: ON_ART.text, fontSize: t.xs, opacity: 0.9 },
   customizeBtn: {
     position: 'absolute', right: 10, top: 10,
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: c.goldMid, borderRadius: r.md,
     paddingHorizontal: 10, paddingVertical: 6,
   },
-  customizeBtnText: { color: '#fff', fontWeight: t.semibold, fontSize: t.xs },
+  customizeBtnText: { color: ON_ART.text, fontWeight: t.semibold, fontSize: t.xs },
 
   statsRow: { flexDirection: 'row', marginBottom: s.lg, marginHorizontal: -3 },
 
@@ -375,7 +376,7 @@ const makeStyles = (c, t, s, r) => StyleSheet.create({
   badgeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: s.md },
 
   modalBackdrop: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.55)',
+    flex: 1, backgroundColor: SCRIM.strong,
     alignItems: 'center', justifyContent: 'flex-end',
   },
   wardrobeCard: {
@@ -394,7 +395,7 @@ const makeStyles = (c, t, s, r) => StyleSheet.create({
   },
   wardrobeTabBtnActive: { backgroundColor: c.goldMid, borderColor: c.goldMid },
   wardrobeTabText: { fontSize: t.xs, fontWeight: t.semibold, color: c.text3 },
-  wardrobeTabTextActive: { color: '#fff' },
+  wardrobeTabTextActive: { color: c.onFill },
 
   wardrobeOption: {
     flex: 1, margin: 4, alignItems: 'center', backgroundColor: c.bg0,
@@ -420,5 +421,5 @@ const makeStyles = (c, t, s, r) => StyleSheet.create({
     paddingVertical: s.md + 2, alignItems: 'center',
   },
   saveBtnDisabled: { opacity: 0.4 },
-  saveBtnText: { color: '#fff', fontWeight: t.bold, fontSize: t.md },
+  saveBtnText: { color: c.onFill, fontWeight: t.bold, fontSize: t.md },
 });

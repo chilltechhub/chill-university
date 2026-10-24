@@ -10,7 +10,7 @@
 // only silences the automatic notes.
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useTour } from '../../context/TourContext';
@@ -21,6 +21,7 @@ import { surfaceForRoute } from '../logic/guide/surfaces';
 import { pageInfoFor } from '../data/pageInfo';
 import { goToScreen } from '../logic/appRoutes';
 import { peekSetting, SETTING_KEYS } from '../logic/useSetting';
+import { Sheet, Button } from '../ui';
 
 export default function AboutPageSheet({ navigationRef }) {
   const { colors: c, typography: t, spacing: s, radius: r, accent } = useTheme();
@@ -41,21 +42,11 @@ export default function AboutPageSheet({ navigationRef }) {
   const label = (txt) => <Text style={{ fontSize: 11, fontWeight: '800', letterSpacing: 0.8, color: c.text3, marginTop: s.md, marginBottom: 4 }}>{txt}</Text>;
 
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={close}>
-      <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} activeOpacity={1} onPress={close} accessibilityRole="button" accessibilityLabel="Close About this page" />
-      <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 22, borderTopRightRadius: 22, maxHeight: '80%', paddingBottom: s.lg }}>
-        <ScrollView contentContainerStyle={{ padding: s.lg }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={{ flex: 1, fontSize: 11, fontWeight: '800', letterSpacing: 1.2, color: accent.primary }}>ABOUT THIS PAGE</Text>
-            <TouchableOpacity onPress={close} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close">
-              <Ionicons name="close" size={20} color={c.text3} />
-            </TouchableOpacity>
-          </View>
+    <Sheet visible onClose={close} eyebrow="ABOUT THIS PAGE" title={info?.title} maxHeight="80%">
           {!info ? (
             <Text style={{ fontSize: t.md, color: c.text2, marginTop: s.sm }}>Nothing written for this page yet. <Text style={{ fontWeight: t.bold }}>Help</Text> has the rest.</Text>
           ) : (
             <>
-              <Text style={{ fontSize: t.xl, fontWeight: t.bold, color: c.text1, marginTop: 2 }} accessibilityRole="header">{info.title}</Text>
               {label('WHAT THIS IS FOR')}
               <RichText style={{ fontSize: t.md, color: c.text2 }} boldStyle={{ color: c.text1 }}>{info.what}</RichText>
               {!!info.helps && (
@@ -83,18 +74,12 @@ export default function AboutPageSheet({ navigationRef }) {
           )}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.lg, marginTop: s.lg }}>
             {!!info?.show?.length && (
-              <TouchableOpacity onPress={showMe} accessibilityRole="button" accessibilityLabel="Show me around this page"
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: s.md, paddingVertical: 10, borderRadius: r.lg, backgroundColor: accent.primary }}>
-                <Ionicons name="eye-outline" size={16} color={accent.onPrimary} />
-                <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: accent.onPrimary }}>Show me</Text>
-              </TouchableOpacity>
+              <Button label="Show me" icon="eye-outline" size="sm" fullWidth={false} onPress={showMe} accessibilityLabel="Show me around this page" />
             )}
             <TouchableOpacity onPress={() => go({ screen: 'Help', params: { fromScreen: at.route } })} accessibilityRole="button" accessibilityLabel="Open Help">
               <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.text3 }}>Help</Text>
             </TouchableOpacity>
           </View>
-        </ScrollView>
-      </View>
-    </Modal>
+    </Sheet>
   );
 }

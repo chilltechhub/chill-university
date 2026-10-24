@@ -5,6 +5,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity,
   ScrollView, Modal, Dimensions,
 } from 'react-native';
+import { ON_ART } from '../ui';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
@@ -83,9 +84,8 @@ const TAB_LABEL = { Training: 'Games' };
 // Order matters here — it's the order the "Type" filter chips render in.
 const MECHANIC_FILTERS = ['All', 'quiz', 'matching', 'building', 'strategy', 'thinking', 'fun', 'racing', 'puzzle', 'survival', 'cards', 'sports'];
 
-const LEVEL_TINT = {
-  'K-2': '#3fcf9e', '3-5': '#8fd3ff', '6-8': '#e8b34a', '9-12': '#e05858',
-};
+// Grade bands, in theme colours (shake-up P9: no raw colours on Learn).
+const levelTint = (c) => ({ 'K-2': c.teal, '3-5': c.science, '6-8': c.gold, '9-12': c.error });
 
 // Ionicon fallback for SUBJECT_CONFIG's emoji-only `icon` field, used only
 // when the emoji toggle is off — doesn't touch SUBJECT_CONFIG itself since
@@ -304,10 +304,10 @@ export default function GamesScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Open your profile"
                 hitSlop={8}
-                style={{ position: 'absolute', top: s.xl + 8, right: s.lg + 8, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, backgroundColor: 'rgba(10,22,40,0.6)' }}
+                style={{ position: 'absolute', top: s.xl + 8, right: s.lg + 8, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, backgroundColor: ON_ART.chip }}
               >
-                <Ionicons name="person-circle-outline" size={15} color="#fff" />
-                <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff' }}>Profile</Text>
+                <Ionicons name="person-circle-outline" size={15} color={ON_ART.text} />
+                <Text style={{ fontSize: 11, fontWeight: '700', color: ON_ART.text }}>Profile</Text>
               </TouchableOpacity>
             )}
 
@@ -510,8 +510,8 @@ export default function GamesScreen() {
                     <View style={styles.gameCardTop}>
                       {showEmojis ? <Text style={styles.gameEmoji}>{game.emoji}</Text> : <Ionicons name="game-controller-outline" size={26} color={game.color} />}
                       {levelMeta ? (
-                        <View style={[styles.levelPill, { borderColor: LEVEL_TINT[savedLevel] }]}>
-                          <Text style={[styles.levelPillText, { color: LEVEL_TINT[savedLevel] }]}>
+                        <View style={[styles.levelPill, { borderColor: levelTint(c)[savedLevel] }]}>
+                          <Text style={[styles.levelPillText, { color: levelTint(c)[savedLevel] }]}>
                             {showEmojis ? `${levelMeta.emoji} ` : ''}{levelMeta.label}
                           </Text>
                         </View>
@@ -594,7 +594,7 @@ export default function GamesScreen() {
                     {showEmojis ? <Text style={styles.skillEmoji}>{game.emoji}</Text> : <Ionicons name="game-controller-outline" size={18} color={c.text3} style={{ marginBottom: 4 }} />}
                     <Text style={styles.skillTitle} numberOfLines={1}>{game.title}</Text>
                     {mechMeta && <Text style={styles.skillMechText}>{showEmojis ? `${mechMeta.emoji} ` : ''}{mechMeta.label}</Text>}
-                    <Text style={[styles.skillLevelText, { color: meta ? LEVEL_TINT[savedLevel] : c.text3 }]}>
+                    <Text style={[styles.skillLevelText, { color: meta ? levelTint(c)[savedLevel] : c.text3 }]}>
                       {meta ? `${showEmojis ? `${meta.emoji} ` : ''}${meta.label}` : 'Not started'}
                     </Text>
                   </TouchableOpacity>

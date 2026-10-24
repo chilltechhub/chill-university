@@ -20,6 +20,8 @@ import MapCard from '../../components/MapCard';
 import HandInMoment from '../../components/HandInMoment';
 import TourSpot from '../../components/TourSpot';
 import ShareWorkSheet from '../../components/ShareWorkSheet';
+import { Button, PathChip, StatusChip, DueChip, Chip, pathLook } from '../../ui';
+import { tapHaptic } from '../../logic/haptics';
 import { UNIT_BY_ID } from '../../data/units';
 import { MAPS } from '../../data/maps';
 import { PATH_KITS } from '../../data/pathKits';
@@ -124,17 +126,15 @@ export default function UnitScreen() {
   };
 
   const card = { padding: s.lg, borderRadius: r.lg, backgroundColor: c.bg1, borderWidth: 0.5, borderColor: c.border, marginBottom: s.md };
+  // The kit's buttons (src/ui, P9): one filled per card, the rest outlined.
   const button = (label, onPress, icon, { primary = true, disabled = false, a11y } = {}) => (
-    <TouchableOpacity onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityLabel={a11y || label} accessibilityState={{ disabled }}
-      style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, alignSelf: primary ? 'stretch' : 'flex-start',
-        paddingHorizontal: s.md, paddingVertical: primary ? 12 : 8, borderRadius: r.lg, marginTop: s.sm,
-        backgroundColor: primary ? (disabled ? c.bg2 : accent.primary) : 'transparent', borderWidth: primary ? 0 : 1, borderColor: accent.primary }}>
-      {!!icon && <Ionicons name={icon} size={16} color={primary ? (disabled ? c.text3 : accent.onPrimary) : accent.primary} />}
-      <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: primary ? (disabled ? c.text3 : accent.onPrimary) : accent.primary }}>{label}</Text>
-    </TouchableOpacity>
+    <Button key={label} label={label} icon={icon} variant={primary ? 'primary' : 'secondary'} size={primary ? 'md' : 'sm'} fullWidth={primary}
+      disabled={disabled} accessibilityLabel={a11y || label} style={{ marginTop: s.sm }}
+      onPress={() => { if (primary) tapHaptic?.(); onPress?.(); }} />
   );
+  // A tick gives a light tap (§9, "light haptics on tick").
   const tick = (on, onPress, label) => (
-    <TouchableOpacity key={label} onPress={onPress} accessibilityRole="checkbox" accessibilityState={{ checked: !!on }} accessibilityLabel={label}
+    <TouchableOpacity key={label} onPress={onPress && (() => { tapHaptic?.(); onPress(); })} accessibilityRole="checkbox" accessibilityState={{ checked: !!on }} accessibilityLabel={label}
       style={{ flexDirection: 'row', alignItems: 'flex-start', gap: s.sm, paddingVertical: 6 }}>
       <Ionicons name={on ? 'checkbox' : 'square-outline'} size={20} color={on ? accent.primary : c.text3} />
       <Text style={{ flex: 1, fontSize: t.sm, color: c.text1 }}>{label}</Text>
@@ -149,9 +149,7 @@ export default function UnitScreen() {
           <Ionicons name="chevron-back" size={18} color={accent.primary} />
           <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: accent.primary }}>My path</Text>
         </TouchableOpacity>
-        <Text style={{ fontSize: 11, fontWeight: '800', letterSpacing: 1.2, color: accent.primary }}>
-          {(kit?.label || '').toUpperCase()}{unit.path !== 'ground' ? ` · UNIT ${unit.n}` : ''}
-        </Text>
+        <PathChip pathKey={unit.path} label={`${kit?.label || ''}${unit.path !== 'ground' ? ` · Unit ${unit.n}` : ''}`} />
         <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1, marginTop: 2 }} accessibilityRole="header">{unit.label}</Text>
         <Text style={{ fontSize: t.md, color: c.text2, marginTop: 4 }}>{unit.promise}</Text>
         <RichText style={{ fontSize: t.sm, color: c.text3, marginTop: 4, marginBottom: s.md }} boldStyle={{ color: c.text2 }}>{unit.why}</RichText>
@@ -210,25 +208,22 @@ export default function UnitScreen() {
 
         {/* Do it: the deliverable. Its title row is where the guided unit
             says "then hand it in" (unit-handin). */}
-        <View style={[card, { borderColor: accent.primary, borderWidth: 1 }]}>
+        <View style={[card, { borderLeftWidth: 3, borderLeftColor: pathLook(c, unit.path).color }]}>
           <TourSpot id="unit-handin">
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm }}>
             <Ionicons name={handed ? 'checkmark-done-circle' : 'document-text-outline'} size={20} color={accent.primary} />
             <Text style={{ flex: 1, fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>Do it: {def.title}</Text>
-            <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: c.bg2 }}>
-              <Text style={{ fontSize: 11, fontWeight: t.bold, color: c.text2 }}>{statusLabel(d)}</Text>
-            </View>
+            <StatusChip status={d.status} label={statusLabel(d)} />
           </View>
           </TourSpot>
 
           {!handed && (
             <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: s.sm }}>
-              <Text style={{ fontSize: t.xs, color: c.text3 }}>{aimForLabel(d, todayStr()) || 'When do you want it by?'}</Text>
+              {aimForLabel(d, todayStr())
+                ? <DueChip label={aimForLabel(d, todayStr())} />
+                : <Text style={{ fontSize: t.xs, color: c.text3 }}>When do you want it by?</Text>}
               {[['This week', 6], ['Next week', 13]].map(([label, n]) => (
-                <TouchableOpacity key={label} onPress={() => update({ aimFor: plusDays(n) })} accessibilityRole="button" accessibilityLabel={`Aim for ${label.toLowerCase()}`}
-                  style={{ paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999, borderWidth: 1, borderColor: c.border }}>
-                  <Text style={{ fontSize: 11, fontWeight: t.bold, color: c.text2 }}>{label}</Text>
-                </TouchableOpacity>
+                <Chip key={label} label={label} onPress={() => update({ aimFor: plusDays(n) })} a11y={`Aim for ${label.toLowerCase()}`} />
               ))}
             </View>
           )}

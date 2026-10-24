@@ -105,7 +105,7 @@ export default function TimeView({ instances, date, onUpdate, onOpen, onAddAt, c
         {/* Current time line, only on today's page. Drawn under the items so
             it doesn't read as a line struck through a title; the dot in the
             hour gutter still marks the time. */}
-        {isToday && <CurrentTimeLine startHour={hStart} endHour={hEnd} />}
+        {isToday && <CurrentTimeLine startHour={hStart} endHour={hEnd} color={c.error} />}
 
         {/* Timed items, laid out in columns where they overlap */}
         <View pointerEvents="box-none" onLayout={(e) => setGridW(e.nativeEvent.layout.width)}
@@ -146,15 +146,15 @@ export default function TimeView({ instances, date, onUpdate, onOpen, onAddAt, c
   );
 }
 
-function CurrentTimeLine({ startHour, endHour }) {
+function CurrentTimeLine({ startHour, endHour, color }) {
   const now   = new Date();
   const hours = now.getHours() + now.getMinutes() / 60;
   const y     = (hours - startHour) * HOUR_H;
   if (y < 0 || y > (endHour - startHour) * HOUR_H) return null;
   return (
     <View pointerEvents="none" style={{ position: 'absolute', left: 50, right: 0, top: y - 5, flexDirection: 'row', alignItems: 'center' }}>
-      <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#e05858' }} />
-      <View style={{ flex: 1, height: 1.5, backgroundColor: '#e05858' }} />
+      <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color }} />
+      <View style={{ flex: 1, height: 1.5, backgroundColor: color }} />
     </View>
   );
 }

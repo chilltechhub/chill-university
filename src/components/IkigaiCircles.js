@@ -22,8 +22,7 @@ import { kindOf, receipt } from '../logic/builds';
 import { UNIT_BY_ID } from '../data/units';
 import { valueLabel } from './DreamSheet';
 import { CAREERS } from '../screens/library/careerexplore';
-
-const TINT = { love: '#E0607E', goodAt: '#4F9D69', needs: '#3D8BD9', paid: '#D9A23D' };
+import { circleLook } from '../ui';
 
 export default function IkigaiCircles({ onGo }) {
   const { colors: c, typography: t, spacing: s, radius: r } = useTheme();
@@ -63,7 +62,7 @@ export default function IkigaiCircles({ onGo }) {
         <Text style={{ fontSize: t.sm, color: c.text3, marginTop: 2, marginBottom: s.sm }}>{model.line}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm }}>
           {model.circles.map(circle => {
-            const tint = TINT[circle.key];
+            const tint = circleLook(c, circle.key).color;
             return (
               <View key={circle.key} accessible accessibilityLabel={`${circle.label}${circle.shakiest ? ', your shakiest' : ''}. ${circle.items.length ? circle.items.join(', ') : circle.empty}`}
                 style={{ flexGrow: 1, flexBasis: '46%', minWidth: 140, padding: s.md, borderRadius: r.xl, backgroundColor: tint + '14', borderWidth: circle.shakiest ? 1.5 : 0.5, borderColor: circle.shakiest ? tint : tint + '55' }}>

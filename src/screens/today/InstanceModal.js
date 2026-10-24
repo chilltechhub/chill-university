@@ -3,7 +3,8 @@
 // shake-up (docs/shake-up-plan-2026-10-21.md P1).
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, Modal, KeyboardAvoidingView, Platform, Alert, Switch } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, KeyboardAvoidingView, Platform, Alert, Switch } from 'react-native';
+import { BusyDot, Skeleton, SCRIM } from '../../ui';
 import { Ionicons } from '@expo/vector-icons';
 import TimePickerField from '../../components/TimePickerField';
 import { useUIPrefs } from '../../../context/UIPrefsContext';
@@ -284,7 +285,7 @@ export default function InstanceModal({ visible, instance, userId, date, initial
 
   return (
     <Modal visible={visible} transparent animationType="slide">
-      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' }}
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: SCRIM.strong, justifyContent: 'flex-end' }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 40, maxHeight: '90%' }}>
           <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginTop: 10, marginBottom: s.lg }} />
@@ -296,7 +297,7 @@ export default function InstanceModal({ visible, instance, userId, date, initial
             </Text>
             {isEdit && (
               <TouchableOpacity accessibilityLabel="Delete" accessibilityRole="button" onPress={deleteInstance} style={{ padding: s.sm, marginRight: s.sm }}>
-                <Ionicons name="trash-outline" size={18} color={c.error || '#e05858'} />
+                <Ionicons name="trash-outline" size={18} color={c.error} />
               </TouchableOpacity>
             )}
             <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={onClose} style={{ padding: s.sm }}>
@@ -474,7 +475,7 @@ export default function InstanceModal({ visible, instance, userId, date, initial
               )}
 
               {linkType === 'project' && !linkLabel && (
-                loadingProjects ? <ActivityIndicator color={areaColor} style={{ marginTop: s.sm }} /> :
+                loadingProjects ? <Skeleton lines={2} style={{ marginTop: s.sm }} /> :
                 !projects || projects.length === 0 ? (
                   <Text style={{ fontSize: t.xs, color: c.text3, marginTop: s.sm }}>No open projects in the Workshop yet.</Text>
                 ) : (
@@ -549,8 +550,8 @@ export default function InstanceModal({ visible, instance, userId, date, initial
             </>)}
 
             {!!saveError && (
-              <View accessibilityLiveRegion="polite" style={{ flexDirection: 'row', gap: 6, alignItems: 'flex-start', padding: s.sm, borderRadius: r.md, backgroundColor: '#e0585818' }}>
-                <Ionicons name="alert-circle-outline" size={15} color="#e05858" style={{ marginTop: 1 }} />
+              <View accessibilityLiveRegion="polite" style={{ flexDirection: 'row', gap: 6, alignItems: 'flex-start', padding: s.sm, borderRadius: r.md, backgroundColor: c.errorLight }}>
+                <Ionicons name="alert-circle-outline" size={15} color={c.error} style={{ marginTop: 1 }} />
                 <Text style={{ flex: 1, fontSize: t.xs, color: c.text1 }}>{saveError}</Text>
               </View>
             )}
@@ -559,8 +560,8 @@ export default function InstanceModal({ visible, instance, userId, date, initial
             <TouchableOpacity onPress={save} disabled={!title.trim() || saving}
               style={{ backgroundColor: areaColor, borderRadius: r.md, padding: s.lg, alignItems: 'center', opacity: (!title.trim() || saving) ? 0.5 : 1 }}>
               {saving
-                ? <ActivityIndicator color="#fff" size="small" />
-                : <Text style={{ color: '#fff', fontWeight: t.bold, fontSize: t.md }}>{isEdit ? 'Save Changes' : 'Add to Agenda'}</Text>
+                ? <BusyDot color={c.onFill} />
+                : <Text style={{ color: c.onFill, fontWeight: t.bold, fontSize: t.md }}>{isEdit ? 'Save Changes' : 'Add to Agenda'}</Text>
               }
             </TouchableOpacity>
           </ScrollView>

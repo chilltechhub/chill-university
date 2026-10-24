@@ -10,6 +10,7 @@
 
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, Pressable } from 'react-native';
+import { SCRIM } from '../../ui';
 import { Ionicons } from '@expo/vector-icons';
 import { useAccess } from '../../../context/AccessContext';
 import ReminderComposer from '../../components/ReminderComposer';
@@ -45,7 +46,7 @@ export default function AddSheet({ visible, onClose, guest, userId, onPlan, onId
   return (
     <>
       <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }} onPress={onClose}>
+        <Pressable style={{ flex: 1, backgroundColor: SCRIM.soft, justifyContent: 'flex-end' }} onPress={onClose}>
           <Pressable onPress={() => {}} style={{ backgroundColor: c.bg1, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: s.sm, paddingBottom: s.xxl }}>
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.sm }} />
             <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1, paddingHorizontal: s.xl, marginBottom: s.xs }}>Add to your day</Text>

@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
   RefreshControl,
   Modal,
   Animated,
@@ -44,6 +43,7 @@ import { Button } from '../../components/ui';
 import PlanDetailSheet from '../../components/PlanDetailSheet';
 import StudioCard from '../../components/StudioCard';
 import MakeBoard from '../../components/MakeBoard';
+import { SCRIM, Skeleton } from '../../ui';
 import useDashboardV2 from '../../logic/useDashboardV2';
 import useTabsV2 from '../../logic/useTabsV2';
 
@@ -354,7 +354,7 @@ function AddAreaModal({ visible, hidden, onAdd, onClose, c, t, s, r }) {
   const { showEmojis, showSubtext } = useUIPrefs();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+      <View style={{ flex: 1, backgroundColor: SCRIM.strong, justifyContent: 'flex-end' }}>
         <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: r.xl, borderTopRightRadius: r.xl, padding: s.xl, paddingBottom: 40, maxHeight: '75%' }}>
           <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.border, alignSelf: 'center', marginBottom: s.lg }} />
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: s.lg }}>
@@ -750,7 +750,7 @@ export default function LibraryScreen() {
   if (loading) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator size="large" color={c.gold} />
+        <Skeleton lines={6} card style={{ width: '90%' }} />
       </View>
     );
   }
@@ -1180,7 +1180,7 @@ export default function LibraryScreen() {
                   </TouchableOpacity>
                 </View>
                 {domainLoading ? (
-                  <ActivityIndicator color={c.gold} style={{ marginTop: 12 }} />
+                  <Skeleton lines={3} style={{ marginTop: 12 }} />
                 ) : domainContent.length === 0 ? (
                   <Text style={styles.domainEmptyText}>
                     Nothing tagged to {activeDomainLabel} yet — tag a task or note with it from where you create one.
@@ -1350,7 +1350,7 @@ const makeStyles = (c, t, s, r, ui, accent) =>
       borderWidth: ui.borderWidth,
       borderColor: c.border,
       paddingHorizontal: 4,
-      shadowColor: '#000', // style-ok: drop shadow is black in both modes
+      shadowColor: SCRIM.shadow,
       shadowOpacity: 0.18,
       shadowRadius: 14,
       shadowOffset: { width: 0, height: 6 },
@@ -1458,7 +1458,7 @@ const makeStyles = (c, t, s, r, ui, accent) =>
       minWidth: 14, height: 14, borderRadius: 7, paddingHorizontal: 3,
       alignItems: 'center', justifyContent: 'center',
     },
-    bubbleDotText: { fontSize: 8 /* a11y-ok: count badge */, fontFamily: ui.numberFont, fontWeight: '800', color: '#ffffff' }, // style-ok: white count on a coloured dot
+    bubbleDotText: { fontSize: 8 /* a11y-ok: count badge */, fontFamily: ui.numberFont, fontWeight: '800', color: c.onFill },
     areaEmoji: { fontSize: 16 },
     areaLabel: { fontSize: 11, fontWeight: '700', color: c.text1, textAlign: 'center', marginTop: 5 },
     domainHint: { fontSize: 12, color: c.text2, fontWeight: '600', textAlign: 'center', marginTop: 14, paddingHorizontal: 20 },
