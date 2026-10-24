@@ -129,6 +129,27 @@ const due = [{ title: 'Essay', date: '2026-10-24' }, { title: 'Form', date: '202
       check(`welcome lesson ${k.id}: generated, the spots kept, quiz last`, w[0].id === 'welcome-project-preview' && w[1].id === 'welcome-project-look' && w[2].id === 'welcome-project-bar' && !!w[3]?.quiz);
     }
   }
+  // Sharing (P8): the feedback shape, the Showcase item, the ask, the links.
+  {
+    const T0 = '2026-10-23T10:00:00.000Z';
+    const u = U.UNIT_BY_ID['unit-like-2'];
+    let fd = D.handIn(D.touch(D.newDeliverable(u, T0), { content: { 0: 'Archive.org', 1: 'A sketch class', 2: 'A beat' }, checks: [true, true, true] }, T0), T0);
+    fd = D.addFeedback(fd, { who: 'My aunt', said: 'More beats', change: 'Make two more' }, T0);
+    check('feedback: who, said, change, changed, at', ['who', 'said', 'change', 'changed', 'at'].every(k => k in fd.feedback[0]) && fd.feedback[0].changed === false);
+    fd = D.markChanged(fd, 0, true, T0);
+    const item = D.showcaseItem(fd, u, { pathLabel: 'What do I like?' });
+    check('showcase item: the answers, not the empty ones', item.answers.length === 3 && item.answers[0].q === u.deliverable.prompts[0]);
+    check('showcase item: feedback carried, changed ticked', item.feedback[0].changed === true && item.status === 'Reviewed');
+    check('handed-in work only, newest first', D.handedInWork([fd, D.newDeliverable(U.UNIT_BY_ID['unit-like-3'], T0)]).length === 1);
+    const ask = D.askFeedbackText(fd, u);
+    check('ask for feedback: three things from the self-check', u.deliverable.rubric.every(line => ask.includes(line)) && /What would you change\?/.test(ask));
+    check('feedback line: "2 people looked"', D.feedbackLine(D.addFeedback(fd, { who: 'Jo', said: 'Ok' }, T0)) === '2 people looked' && D.feedbackLine(D.newDeliverable(u, T0)) === null);
+    const L = await import(asUrl(await text('src/logic/shareLinks.js')));
+    const tok = 'a'.repeat(64);
+    check('share links: /s/<token> reads the token', L.tokenFromPath(`/s/${tok}`) === tok && L.tokenFromPath(`/s/${tok}/`) === tok);
+    check('share links: anything else is not a link', [null, '/s/', '/s/abc', `/s/${tok}x`, `/x/${tok}`, `/s/${'A'.repeat(64)}`].every(p => L.tokenFromPath(p) === null));
+    check('share links: the address', L.shareUrlFor('https://example.org/', tok) === `https://example.org/s/${tok}` && L.shareUrlFor(null, tok) === null && L.shareUrlFor('https://x.org', 'bad') === null);
+  }
   check('units: each one opens the Showcase when done', U.UNIT_OBJECTIVES.every(o => o.unlocks.includes('portfolio')));
   const ids = new Set(U.UNITS.map(u => u.id));
   check('units: ids are unique', ids.size === U.UNITS.length);

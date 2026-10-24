@@ -1358,3 +1358,110 @@ export function renderBuild(build, me = null) {
 }
 
 export const RENDERED_KINDS = Object.keys(RENDERERS);
+
+/* ── Your work, to share (shake-up P8, §4.5) ──────────────────────────── */
+// The Showcase as one offline page, one piece of work as its own page, and
+// a picture card. What you made comes first; no level, XP or streak
+// anywhere. Feedback notes are private: they're on the Showcase page only
+// when you say so (`feedback: true`), and never on a share link's page
+// unless you chose that when making it.
+//
+// An item is deliverables.js showcaseItem(): { title, unit, path, status,
+// at, kind, answers: [{ q, a }], checklist: [{ item, done }], build,
+// feedback: [{ who, said, change, changed }] }.
+
+const SHARE_STYLE = `body{font:16px/1.55 -apple-system,Segoe UI,Roboto,sans-serif;background:#f6f3ec;color:#1d2a26;padding:28px 18px}
+main{max-width:720px;margin:0 auto}
+h1{font-size:30px;line-height:1.2;margin-bottom:6px}
+.sub{color:#5b6b66;margin-bottom:22px}
+.card{background:#fff;border:1px solid #e3ddd0;border-radius:16px;padding:18px;margin-bottom:14px}
+.eyebrow{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#2f7d6b}
+h2{font-size:20px;margin:4px 0 6px}
+.meta{color:#6b7a75;font-size:14px;margin-bottom:8px}
+dl dt{font-weight:700;margin-top:10px}
+dl dd{margin:2px 0 0}
+ul{padding-left:20px}
+li{margin:3px 0}
+.tick{color:#2f7d6b;font-weight:800}
+.receipts{display:flex;flex-wrap:wrap;gap:18px;margin:6px 0 4px}
+.receipts b{display:block;font-size:26px;color:#2f7d6b}
+.fb{border-left:3px solid #2f7d6b;padding-left:10px;margin-top:8px}
+footer{color:#6b7a75;font-size:13px;margin-top:26px;text-align:center}`;
+
+const DAY = (iso) => {
+  const d = new Date(iso || '');
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+function itemBody(it, { feedback = false } = {}) {
+  const parts = [];
+  if (it.answers?.length) {
+    parts.push(`<dl>${it.answers.filter(x => x?.a).map(x => `<dt>${esc(x.q)}</dt><dd>${esc(x.a)}</dd>`).join('')}</dl>`);
+  }
+  if (it.checklist?.length) {
+    parts.push(`<ul>${it.checklist.map(x => `<li>${x.done ? '<span class="tick">✓</span> ' : ''}${esc(x.item)}</li>`).join('')}</ul>`);
+  }
+  if (it.build) parts.push(`<p>Made in the Studio: <b>${esc(it.build)}</b>.</p>`);
+  if (feedback && it.feedback?.length) {
+    parts.push(it.feedback.map(f => `<div class="fb"><b>${esc(f.who || 'Someone')}:</b> ${esc(f.said)}${f.change ? `<br>${f.changed ? '<span class="tick">✓ Changed:</span>' : 'To change:'} ${esc(f.change)}` : ''}</div>`).join(''));
+  }
+  return parts.join('');
+}
+
+function itemCard(it, opts) {
+  const meta = [it.unit, it.status, DAY(it.at)].filter(Boolean).map(esc).join(' · ');
+  return `<section class="card"><div class="eyebrow">${esc(it.path || 'My work')}</div><h2>${esc(it.title)}</h2>${meta ? `<div class="meta">${meta}</div>` : ''}${itemBody(it, opts)}</section>`;
+}
+
+/**
+ * The Showcase as one offline page.
+ *   name      whose work it is (optional)
+ *   items     showcaseItem()s, handed-in work only
+ *   receipts  [{ value, label }] (receipts.js items), optional
+ *   feedback  include the feedback notes (opt-in)
+ */
+export function renderShowcase({ name = '', items = [], receipts = [], feedback = false } = {}) {
+  const title = name ? `${name}: my work` : 'My work';
+  const rc = receipts.length
+    ? `<section class="card"><div class="eyebrow">Receipts</div><div class="receipts">${receipts.map(r => `<div><b>${esc(r.value)}</b>${esc(r.label)}</div>`).join('')}</div></section>`
+    : '';
+  const work = items.length
+    ? items.map(it => itemCard(it, { feedback })).join('')
+    : '<section class="card"><p>Nothing handed in yet.</p></section>';
+  const body = `<main><h1>${esc(title)}</h1><p class="sub">Things I made and handed in.</p>${work}${rc}<footer>Made with Deskartes</footer></main>`;
+  return shell(title, SHARE_STYLE, body);
+}
+
+/** One piece of work (not a Build: a Build's own file is renderBuild) as its own page. */
+export function renderDeliverable(item, { feedback = false } = {}) {
+  const body = `<main>${itemCard(item, { feedback })}<footer>Made with Deskartes</footer></main>`;
+  return shell(item?.title || 'My work', SHARE_STYLE, body);
+}
+
+/**
+ * A picture card: the title and one line, as an SVG image (1080 × 1080).
+ * Long titles wrap onto up to four lines.
+ */
+export function renderPictureCard({ title = 'My work', line = '', accent = '#2f7d6b' } = {}) {
+  const words = String(title).split(/\s+/).filter(Boolean);
+  const lines = [];
+  let cur = '';
+  for (const w of words) {
+    if ((cur + ' ' + w).trim().length > 18 && cur) { lines.push(cur); cur = w; } else cur = (cur + ' ' + w).trim();
+  }
+  if (cur) lines.push(cur);
+  const shown = lines.slice(0, 4);
+  if (lines.length > 4) shown[3] = `${shown[3].slice(0, 16)}…`;
+  const colour = /^#[0-9a-fA-F]{6}$/.test(accent) ? accent : '#2f7d6b';
+  const top = 540 - (shown.length * 96) / 2;
+  const tspans = shown.map((l, i) => `<tspan x="90" y="${Math.round(top + i * 96)}">${esc(l)}</tspan>`).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">
+<rect width="1080" height="1080" fill="#f6f3ec"/>
+<rect x="60" y="60" width="960" height="960" rx="56" fill="#ffffff" stroke="#e3ddd0" stroke-width="4"/>
+<rect x="90" y="120" width="140" height="14" rx="7" fill="${colour}"/>
+<text font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="84" font-weight="800" fill="#1d2a26">${tspans}</text>
+<text x="90" y="${Math.round(top + shown.length * 96 + 40)}" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="40" fill="#5b6b66">${esc(String(line).slice(0, 60))}</text>
+<text x="90" y="960" font-family="-apple-system, Segoe UI, Roboto, sans-serif" font-size="32" font-weight="700" fill="${colour}">Made with Deskartes</text>
+</svg>
+`;
+}

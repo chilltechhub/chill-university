@@ -348,21 +348,17 @@ export default function PortfolioScreen() {
   // the whole portfolio so it can be pasted into a resume, application, or
   // message to someone else.
   const sharePortfolio = async () => {
+    // The work leads (shake-up P8): what they made, then what they can
+    // do, then who they are. Never a score.
     const lines = [
-      // What they made, not a score (shake-up P5).
-      `${displayName} — ${totalProjects} project${totalProjects === 1 ? '' : 's'} · ${totalSkills} skill${totalSkills === 1 ? '' : 's'}`,
-      lifeStage ? lifeStage : null,
-      primaryGoal ? `Goal: ${primaryGoal}` : null,
-      '',
-      `Projects (${totalProjects})`,
+      `What I made (${totalProjects})`,
       ...data.projects.slice(0, 8).map(p => `- ${p.title}`),
-      '',
-      `Skills (${totalSkills})`,
-      ...data.skills.slice(0, 12).map(sk => `- ${sk.title}`),
     ];
+    if (totalSkills) lines.push('', `Skills (${totalSkills})`, ...data.skills.slice(0, 12).map(sk => `- ${sk.title}`));
     if (data.experience.length) {
       lines.push('', `Experience (${data.experience.length})`, ...data.experience.slice(0, 8).map(e => `- ${e.title}`));
     }
+    lines.push('', [displayName, lifeStage].filter(Boolean).join(' · ') || null, primaryGoal ? `Goal: ${primaryGoal}` : null);
     const text = lines.filter(l => l !== null).join('\n');
     await Clipboard.setStringAsync(text);
     Alert.alert('Copied', 'Your portfolio summary was copied — paste it into a resume, application, or message.');

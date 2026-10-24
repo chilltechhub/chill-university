@@ -40,8 +40,8 @@ export function receipts({ builds = [], stepsDone = 0, tastes = 0, work = null }
   out.items = [
     out.handedIn && { key: 'handedIn', value: out.handedIn, label: 'handed in' },
     out.shown && { key: 'shown', value: out.shown, label: 'shown' },
-    out.looked && { key: 'looked', value: out.looked, label: out.looked === 1 ? 'person gave feedback' : 'pieces of feedback' },
-    out.fixed && { key: 'fixed', value: out.fixed, label: out.fixed === 1 ? 'change from feedback' : 'changes from feedback' },
+    out.looked && { key: 'looked', value: out.looked, label: out.looked === 1 ? 'person looked' : 'people looked' },
+    out.fixed && { key: 'fixed', value: out.fixed, label: out.fixed === 1 ? 'thing you changed' : 'things you changed' },
     out.made && { key: 'made', value: out.made, label: out.made === 1 ? 'thing made' : 'things made' },
     out.mastered && { key: 'mastered', value: out.mastered, label: out.mastered === 1 ? 'part mastered' : 'parts mastered' },
     out.changed && { key: 'changed', value: out.changed, label: out.changed === 1 ? 'part made yours' : 'parts made yours' },
@@ -49,6 +49,10 @@ export function receipts({ builds = [], stepsDone = 0, tastes = 0, work = null }
     out.stepsDone && { key: 'steps', value: out.stepsDone, label: out.stepsDone === 1 ? 'step done' : 'steps done' },
   ].filter(Boolean);
   out.empty = out.items.length === 0;
+  // Then vs now (P8): what feedback changed. "I changed it" ticks count.
+  out.thenVsNow = out.fixed
+    ? `Then vs now: you changed ${out.fixed} ${out.fixed === 1 ? 'thing' : 'things'} after ${out.looked} ${out.looked === 1 ? 'person' : 'people'} looked.`
+    : null;
   return out;
 }
 

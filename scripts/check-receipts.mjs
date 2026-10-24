@@ -28,7 +28,10 @@ check('counts add up across Builds', r.made === 2 && r.mastered === 5 && r.chang
 check('items in order, plurals right', show(r.items.map(i => `${i.value} ${i.label}`)) === show(['2 things made', '5 parts mastered', '2 parts made yours', '1 Find tried', '7 steps done']), show(r.items));
 {
   const w = R.receipts({ builds, work: { handedIn: 2, shown: 1, looked: 1, changed: 0 } });
-  check('work handed in leads the receipts', show(w.items.slice(0, 3).map(i => `${i.value} ${i.label}`)) === show(['2 handed in', '1 shown', '1 person gave feedback']), show(w.items));
+  check('work handed in leads the receipts', show(w.items.slice(0, 3).map(i => `${i.value} ${i.label}`)) === show(['2 handed in', '1 shown', '1 person looked']), show(w.items));
+  const tv = R.receipts({ work: { handedIn: 1, looked: 3, changed: 2 } });
+  check('then vs now: the changes feedback led to', tv.thenVsNow === 'Then vs now: you changed 2 things after 3 people looked.', tv.thenVsNow);
+  check('then vs now: nothing changed, no line', R.receipts({ work: { handedIn: 1, looked: 3 } }).thenVsNow === null);
   check('no work yet adds nothing', !R.receipts({ builds }).items.some(i => ['handedIn', 'shown', 'looked', 'fixed'].includes(i.key)));
 }
 // ── The four circles (src/logic/ikigai.js, P6) ──

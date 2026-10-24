@@ -15,7 +15,7 @@ import { useAccess } from '../../context/AccessContext';
 import useDeliverables from '../logic/useDeliverables';
 import { UNIT_BY_ID } from '../data/units';
 import { deliverableForUnit } from '../api/deliverableService';
-import { BOARD, STATUS_LABEL, boardOf, statusLabel, aimForLabel } from '../logic/deliverables';
+import { BOARD, STATUS_LABEL, boardOf, statusLabel, aimForLabel, feedbackLine } from '../logic/deliverables';
 import { goToScreen } from '../logic/appRoutes';
 import { todayStr } from '../logic/dateUtils';
 import TourSpot from './TourSpot';
@@ -77,7 +77,7 @@ export default function MakeBoard() {
               <Ionicons name={open === 'shown' ? 'star' : open === 'handed' ? 'checkmark-done-circle' : 'document-text-outline'} size={20} color={accent.primary} />
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: t.md, fontWeight: t.semibold, color: c.text1 }} numberOfLines={1}>{d.title}</Text>
-                <Text style={{ fontSize: t.xs, color: c.text3 }} numberOfLines={1}>{[unit?.label !== d.title ? unit?.label : null, statusLabel(d) === 'Reviewed' ? 'Reviewed' : null, aim].filter(Boolean).join(' · ') || (unit?.path === 'ground' ? 'Ground fix' : `Unit ${unit?.n || ''}`)}</Text>
+                <Text style={{ fontSize: t.xs, color: c.text3 }} numberOfLines={1}>{[unit?.label !== d.title ? unit?.label : null, feedbackLine(d) || (statusLabel(d) === 'Reviewed' ? 'Reviewed' : null), aim].filter(Boolean).join(' · ') || (unit?.path === 'ground' ? 'Ground fix' : `Unit ${unit?.n || ''}`)}</Text>
               </View>
               <Ionicons name="chevron-forward" size={15} color={c.text3} />
             </TouchableOpacity>
