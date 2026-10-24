@@ -1395,20 +1395,24 @@ const DAY = (iso) => {
 
 function itemBody(it, { feedback = false } = {}) {
   const parts = [];
-  if (it.answers?.length) {
+  const list = (v) => (Array.isArray(v) ? v.filter(x => x && typeof x === 'object') : []);
+  it = { ...it, answers: list(it.answers), checklist: list(it.checklist), feedback: list(it.feedback) };
+  if (it.answers.length) {
     parts.push(`<dl>${it.answers.filter(x => x?.a).map(x => `<dt>${esc(x.q)}</dt><dd>${esc(x.a)}</dd>`).join('')}</dl>`);
   }
-  if (it.checklist?.length) {
+  if (it.checklist.length) {
     parts.push(`<ul>${it.checklist.map(x => `<li>${x.done ? '<span class="tick">✓</span> ' : ''}${esc(x.item)}</li>`).join('')}</ul>`);
   }
   if (it.build) parts.push(`<p>Made in the Studio: <b>${esc(it.build)}</b>.</p>`);
-  if (feedback && it.feedback?.length) {
+  if (feedback && it.feedback.length) {
     parts.push(it.feedback.map(f => `<div class="fb"><b>${esc(f.who || 'Someone')}:</b> ${esc(f.said)}${f.change ? `<br>${f.changed ? '<span class="tick">✓ Changed:</span>' : 'To change:'} ${esc(f.change)}` : ''}</div>`).join(''));
   }
   return parts.join('');
 }
 
 function itemCard(it, opts) {
+  const str = (v) => (typeof v === 'string' ? v : '');
+  it = { ...it, title: str(it.title) || 'My work', unit: str(it.unit), status: str(it.status), path: str(it.path) };
   const meta = [it.unit, it.status, DAY(it.at)].filter(Boolean).map(esc).join(' · ');
   return `<section class="card"><div class="eyebrow">${esc(it.path || 'My work')}</div><h2>${esc(it.title)}</h2>${meta ? `<div class="meta">${meta}</div>` : ''}${itemBody(it, opts)}</section>`;
 }
@@ -1421,6 +1425,10 @@ function itemCard(it, opts) {
  *   feedback  include the feedback notes (opt-in)
  */
 export function renderShowcase({ name = '', items = [], receipts = [], feedback = false } = {}) {
+  const obj = (v) => (Array.isArray(v) ? v.filter(x => x && typeof x === 'object') : []);
+  items = obj(items);
+  receipts = obj(receipts);
+  name = typeof name === 'string' ? name : '';
   const title = name ? `${name}: my work` : 'My work';
   const rc = receipts.length
     ? `<section class="card"><div class="eyebrow">Receipts</div><div class="receipts">${receipts.map(r => `<div><b>${esc(r.value)}</b>${esc(r.label)}</div>`).join('')}</div></section>`
@@ -1443,6 +1451,8 @@ export function renderDeliverable(item, { feedback = false } = {}) {
  * Long titles wrap onto up to four lines.
  */
 export function renderPictureCard({ title = 'My work', line = '', accent = '#2f7d6b' } = {}) {
+  title = typeof title === 'string' && title.trim() ? title : 'My work';
+  line = typeof line === 'string' ? line : '';
   const words = String(title).split(/\s+/).filter(Boolean);
   const lines = [];
   let cur = '';

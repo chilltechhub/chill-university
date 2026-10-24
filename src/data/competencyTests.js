@@ -197,62 +197,8 @@ const TESTS = {
     ],
   },
 
-  'work-mode': {
-    featureId: 'work-mode',
-    title: 'Deep work',
-    intro: 'Four questions about focus sessions that actually produce something.',
-    passMark: 3,
-    questions: [
-      {
-        id: 'q1',
-        prompt: 'Before starting a focus block, the single most important thing is:',
-        options: [
-          'Clearing every notification first',
-          'Knowing what the block should produce',
-          'Blocking out a long enough stretch of time',
-          'Having the right music or sound on',
-        ],
-        answer: 1,
-        explain: 'A defined output turns a block into work. Without it you get an hour of tidying with the phone face down.',
-      },
-      {
-        id: 'q2',
-        prompt: 'Twenty minutes in you remember an urgent, unrelated task. Do you:',
-        options: [
-          'Handle it — urgent is urgent',
-          'Write it down and keep going',
-          'End the session and restart later',
-          'Decide the session was a failure',
-        ],
-        answer: 1,
-        explain: 'Capturing it costs five seconds and stops your head chewing on it. Almost nothing is as urgent as it feels mid-session.',
-      },
-      {
-        id: 'q3',
-        prompt: 'Which is the better first focus block on a new project?',
-        options: [
-          'Three hours, to build real momentum',
-          '25 minutes on the smallest real piece',
-          'An hour of research and careful planning',
-          'However long it takes to finish something',
-        ],
-        answer: 1,
-        explain: 'Long first blocks mostly get abandoned. A small finished piece is the thing that makes a second block happen.',
-      },
-      {
-        id: 'q4',
-        prompt: 'A session ends with the goal unfinished. That session was:',
-        options: [
-          'Wasted, since the goal was not reached',
-          'Fine, if you noted where to pick it up',
-          'Fine regardless, since the time was spent',
-          'A sign that the goal was too hard to start',
-        ],
-        answer: 1,
-        explain: 'The cost of deep work is re-entry. A note saying where you were is what makes tomorrow cheap.',
-      },
-    ],
-  },
+  // 'work-mode' had a test bank until it became core (open for everyone):
+  // nothing to test out of, so the bank went (stress test 2026-10-24).
 
   'import-hub': {
     featureId: 'import-hub',

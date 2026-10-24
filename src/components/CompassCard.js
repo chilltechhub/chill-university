@@ -352,7 +352,7 @@ function WhatsNext({ live = false }) {
       </View>
       {!full && !!nextStage && (
         <RichText style={{ fontSize: t.xs, color: c.text3, marginTop: 4, lineHeight: 17 }} boldStyle={{ color: c.text1 }}>
-          {live ? '**Finish this goal**' : '**Finish a goal**'}{' or **gain a level** practicing in Learn to open it.'}
+          {live ? '**Finish this goal**' : '**Finish a goal**'}{' or **keep practising** in Learn to open it.'}
         </RichText>
       )}
       <TouchableOpacity

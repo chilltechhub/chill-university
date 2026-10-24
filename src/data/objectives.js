@@ -327,7 +327,8 @@ export const OBJECTIVES = [
       { id: 'mission', label: 'Finish a round in Practice',    hint: "Any game in **Practice**. **Ticks itself.**", screen: 'Practice', auto: { stat: 'practiced', value: 1 } },
       { id: 'done',    label: 'Tick off something you planned', hint: 'Tap the circle next to it in the Planner. **Ticks itself.**', screen: 'PlannerScreen', signal: 'planner-item-done', have: 'planner-done' },
     ],
-    unlocks: ['weekly-review', 'work-mode'],
+    // Work Mode is core (open to everyone), so it's no longer this goal's to open.
+    unlocks: ['weekly-review'],
     next: 'clear-the-inbox',
   },
 
@@ -361,7 +362,7 @@ export const OBJECTIVES = [
       { id: 'drill',  label: 'Finish three game rounds',          hint: 'Any game counts. **Ticks itself.**', screen: 'Training', signal: 'round-played', signalCount: 3 },
       { id: 'level',  label: 'Reach level 3',                     hint: 'Ticks itself as your level comes up.', auto: { stat: 'level', value: 3 } },
     ],
-    unlocks: ['import-hub', 'work-mode'],
+    unlocks: ['import-hub'],
     next: 'run-one-lesson',
   },
 

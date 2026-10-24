@@ -53,6 +53,10 @@ export default function UnitScreen() {
   const [busy, setBusy] = useState(false);
   // The next unit opens in place (setParams): start it at the top.
   const scrollRef = useRef(null);
+  // One action at a time: a double tap on Start, Hand it in or Finish ran
+  // it twice before the button could disable (stress test 2026-10-24; a ref,
+  // not `disabled`, which only lands after a re-render).
+  const working = useRef(false);
   useEffect(() => { scrollRef.current?.scrollTo?.({ y: 0, animated: false }); }, [route.params?.unitId]);
 
   useEffect(() => {
@@ -98,23 +102,28 @@ export default function UnitScreen() {
   const setContent = (i, v) => update({ content: { ...d.content, [i]: v } });
   const beatDone = (beat) => signalAction('unit-beat', { beat: `${unit.id}-${beat.id}` });
 
-  const startUnit = async () => {
+  const once = (fn) => async () => {
+    if (working.current) return;
+    working.current = true;
+    try { await fn(); } finally { working.current = false; }
+  };
+  const startUnit = once(async () => {
     setBusy(true);
     try { await startObjective(unit.id); } finally { setBusy(false); }
-  };
-  const handInNow = async () => {
+  });
+  const handInNow = once(async () => {
     const next = handIn(d);
     await save(next);
     signalAction('deliverable-handed-in', { unit: unit.id });
     recordAction('deliverable_handed_in', next.id);
     setMoment(true);
-  };
-  const showIt = async () => {
+  });
+  const showIt = once(async () => {
     const next = show(d);
     await save(next);
     recordAction('deliverable_shown', next.id);
-  };
-  const finishUnit = async () => {
+  });
+  const finishUnit = once(async () => {
     setBusy(true);
     try {
       await completeActiveObjective();
@@ -123,7 +132,7 @@ export default function UnitScreen() {
         navigation.setParams({ unitId: nextUnit.id });
       }
     } finally { setBusy(false); }
-  };
+  });
 
   const card = { padding: s.lg, borderRadius: r.lg, backgroundColor: c.bg1, borderWidth: 0.5, borderColor: c.border, marginBottom: s.md };
   // The kit's buttons (src/ui, P9): one filled per card, the rest outlined.

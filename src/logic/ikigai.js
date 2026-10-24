@@ -23,7 +23,7 @@ export const CIRCLES = [
     empty: 'Target one career that could fit.', go: { screen: 'CareerExplorationScreen', label: 'Career Explorer' } },
 ];
 
-const uniq = (list) => [...new Set((list || []).map(x => String(x || '').trim()).filter(Boolean))];
+const uniq = (list) => [...new Set((Array.isArray(list) ? list : []).map(x => (typeof x === 'string' ? x.trim() : '')).filter(Boolean))];
 
 /**
  * Inputs (all optional):

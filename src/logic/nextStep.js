@@ -83,7 +83,7 @@ export function nextStep({ now, deliverable, unit, objective, due, drill, firstG
       action: { type: 'open', label: 'Start', screen: objective.nextStep.screen, params: objective.nextStep.params },
     };
   }
-  const open = (due || []).filter(d => d?.title && d.date).sort((a, b) => a.date.localeCompare(b.date));
+  const open = (Array.isArray(due) ? due : []).filter(d => d?.title && typeof d.date === 'string').sort((a, b) => a.date.localeCompare(b.date));
   if (open.length) {
     const first = open[0];
     return { kind: 'due', label: dueWhen(first.date, today) || 'Due soon', title: first.title, action: { type: 'plan', label: 'Open', ref: first.ref } };

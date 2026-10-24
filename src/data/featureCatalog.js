@@ -234,7 +234,7 @@ export const FEATURES = [
     depth: 'core',
     purposes: ['build', 'learn', 'career'],
     unlockedBy: ['hold-the-line', 'learn-one-skill'],
-    testable: true,
+    testable: false,
     blurb: 'A stripped-back focus session against one project at a time.',
     why: 'Deep work needs something worth going deep on. Get a rhythm going, then this earns its place.',
   },

@@ -359,16 +359,19 @@ export default function AreaSectionScreen() {
     onLogged: row => setEntries(prev => [row, ...prev]),
   });
 
-  if (!config) return null;
-  const color = AREA_COLORS[config.areaId];
-
+  // Before the early return, so every render calls the same hooks
+  // (stress test 2026-10-24).
   useEffect(() => {
+    if (!config) return;
     setCategory(config.categories[0]);
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) { setUserId(user.id); load(user.id); }
       else setLoading(false);
     });
   }, []);
+
+  if (!config) return null;
+  const color = AREA_COLORS[config.areaId];
 
   const load = async (uid) => {
     setLoading(true);

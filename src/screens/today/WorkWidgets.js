@@ -56,7 +56,7 @@ export function DeliverableWidget({ onPlan }) {
   const steps = deliverableStep(shown, unit);
   const aim = aimForLabel(shown, todayStr());
   return (
-    <WidgetCard title={handed ? 'Handed in' : 'Your work'} icon={handed ? 'checkmark-done-outline' : 'document-text-outline'}
+    <WidgetCard title="Your work" icon={handed ? 'checkmark-done-outline' : 'document-text-outline'}
       action="My path →" onAction={() => goToScreen(navigation, 'PathScreen')}>
       <TouchableOpacity onPress={() => openUnit(shown.unitKey)} accessibilityRole="button" accessibilityLabel={`${shown.title}. ${statusLabel(shown)}. Open the unit`}>
         <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: c.text1 }}>{shown.title}</Text>

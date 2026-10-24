@@ -308,7 +308,7 @@ const CAREER = [
     beats: [
       { id: 'learn', title: 'Fit', says: 'Fit is **what you do all day**, who you do it with, and what it pays. Not just the title.' },
       { id: 'see', title: 'Career cards', says: 'Career Explorer shows careers with what they take.', go: { screen: 'CareerExplorationScreen', label: 'Open Career Explorer' } },
-      { id: 'practise', title: 'Look one up', says: 'Look up one career on **O*NET**: tasks, skills, outlook.', link: { label: 'Open O*NET', url: 'https://www.onetonline.org/' } },
+      { id: 'practise', title: 'Look one up', says: '**Look up one career** on O*NET: tasks, skills, outlook.', link: { label: 'Open O*NET', url: 'https://www.onetonline.org/' } },
     ],
     deliverable: { kind: 'reflection', title: 'Three that fit',
       prompts: ['Career 1, and the task that pulls me', 'Career 2, and why', 'Career 3, and why'],

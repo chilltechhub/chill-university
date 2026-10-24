@@ -26,7 +26,9 @@ export const ON_ART = { text: '#ffffff', chip: 'rgba(10,22,40,0.55)', shade: 'rg
 // ── Paths: one colour and one icon each (§9, "school cues") ───────────────
 // Theme keys, so both modes keep their contrast. Used on the path chip,
 // unit edges and deliverable cards. Buttons follow the person's accent.
-const PATH_COLOR = { like: 'arts', next: 'science', money: 'finance', career: 'purple', ground: 'health' };
+// Ground fix was 'health' (red), which read as a warning; What's next was
+// 'science', the same teal as the default accent (stress test 2026-10-24).
+const PATH_COLOR = { like: 'arts', next: 'tech', money: 'finance', career: 'purple', ground: 'science' };
 const PATH_ICON = { like: 'sparkles-outline', next: 'map-outline', money: 'wallet-outline', career: 'briefcase-outline', ground: 'leaf-outline' };
 
 /** { color, soft, icon } for a path, from the theme's colours `c`. */

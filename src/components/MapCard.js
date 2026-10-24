@@ -30,7 +30,7 @@ export default function MapCard({ card, starred = false, onStar, style }) {
           </TouchableOpacity>
         )}
       </View>
-      <Text style={{ fontSize: t.sm, color: c.text2, marginTop: 4 }}>{card.what}</Text>
+      <RichText style={{ fontSize: t.sm, color: c.text2, marginTop: 4 }} boldStyle={{ color: c.text1 }}>{card.what}</RichText>
       {row('Takes', card.takes)}
       {row('Costs', card.costs)}
       {row('Leads to', card.leadsTo)}

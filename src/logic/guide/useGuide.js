@@ -67,7 +67,7 @@ const isCalm = () => peekSetting(SETTING_KEYS.HOME_VIEW, 'full') === 'calm';
  * goals' walkthrough waits for it.
  */
 export default function useGuide({ route, params = null, enabled = false, guiding = false, canTeach = () => true }) {
-  const { active: tourActive, startLesson } = useTour();
+  const { active: tourActive, startLesson, endTour } = useTour();
   const { user, profile } = useUserProgress();
   const { activeObjective } = useAccess();
   const uid = user?.id || null;
@@ -79,6 +79,7 @@ export default function useGuide({ route, params = null, enabled = false, guidin
   const [view, setView] = useState(getTodayView());
   const timer = useRef(null);
   const armed = useRef(null);       // the surface a note is counting down for
+  const showingFor = useRef(null);  // the surface the note (or its Show me) on screen is about
 
   useEffect(() => onTodayView(setView), []);
 
@@ -178,6 +179,7 @@ export default function useGuide({ route, params = null, enabled = false, guidin
       const info = pageInfoFor(surface, route, {});
       let showing = false;
       const showMe = info?.show?.length ? () => { showing = true; startLesson(info.show); } : null;
+      showingFor.current = surface;
       startLesson([noteStep(surface, { showMe })], {
         onEnd: (reason) => {
           // Replaced by something else before anyone read it: another go later.
@@ -186,6 +188,18 @@ export default function useGuide({ route, params = null, enabled = false, guidin
       });
     }, SETTLE_MS);
   }, [enabled, surface, route, tourActive, guiding, walkDue, uid, startLesson, canTeach]);
+
+  // A note is about one page and one view: moving to another (Week to
+  // Month, Today to Learn) ends it, Show me included. A note started with
+  // startLesson isn't a screen tour, so nothing else ends it on a route
+  // change (stress test 2026-10-24: the week note sat over the month).
+  useEffect(() => {
+    if (!tourActive) { showingFor.current = null; return; }
+    if (showingFor.current && showingFor.current !== surface) {
+      showingFor.current = null;
+      endTour('left');
+    }
+  }, [surface, tourActive, endTour]);
 
   useEffect(() => () => clearTimeout(timer.current), []);
 

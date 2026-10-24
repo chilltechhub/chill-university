@@ -305,7 +305,7 @@ export function YouShelf({ onOpen }) {
             <Ionicons name={d.status === 'shown' ? 'star' : 'checkmark-done-circle'} size={18} color={accent.primary} />
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: t.md, fontWeight: t.semibold, color: c.text1 }} numberOfLines={1}>{d.title}</Text>
-              <Text style={{ fontSize: t.xs, color: c.text3 }} numberOfLines={1}>{[UNIT_BY_ID[d.unitKey]?.label, statusLabel(d), feedbackLine(d), shortDate(d.snapshotAt)].filter(Boolean).join(' · ')}</Text>
+              <Text style={{ fontSize: t.xs, color: c.text3 }} numberOfLines={1}>{[UNIT_BY_ID[d.unitKey]?.label !== d.title ? UNIT_BY_ID[d.unitKey]?.label : null, statusLabel(d), feedbackLine(d), shortDate(d.snapshotAt)].filter(Boolean).join(' · ')}</Text>
             </View>
           </TouchableOpacity>
         ))}

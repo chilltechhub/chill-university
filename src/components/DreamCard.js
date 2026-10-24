@@ -29,12 +29,14 @@ export default function DreamCard({ userId, variant = 'card', pal }) {
   const { dream, loading, empty, save } = useDream(userId);
   const [laterUntil, setLaterUntil] = useSetting(SETTING_KEYS.DREAM_LATER_UNTIL, null);
   const [open, setOpen] = useState(false);
+  // Saving it ticks "Write the Dream" (What's next, unit 2). Above the early
+  // return: below it, the first render had one hook fewer than the next
+  // (stress test 2026-10-24, "change in the order of Hooks").
+  const { signalAction } = useAccess();
 
   if (loading) return null;
   const snoozed = empty && laterUntil && Date.parse(laterUntil) > Date.now();
   const later = () => setLaterUntil(new Date(Date.now() + LATER_DAYS * 86400000).toISOString());
-  // Saving it ticks "Write the Dream" (What's next, unit 2).
-  const { signalAction } = useAccess();
   const saveAndSignal = async (patch) => { const res = await save(patch); signalAction('dream-saved'); return res; };
   const sheet = <DreamSheet visible={open} onClose={() => setOpen(false)} dream={dream} onSave={saveAndSignal} userId={userId} />;
 
