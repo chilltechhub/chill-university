@@ -15,7 +15,7 @@
 // tick "Include feedback notes", and never in a link unless you did.
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '../../context/ThemeContext';
@@ -32,6 +32,7 @@ import { shareFile } from '../logic/shareFile';
 import { shareText } from '../logic/shareOut';
 import { communityAccess } from '../logic/allowed';
 import { createShareLink, listShareLinks, revokeShareLink, shareUrl } from '../api/shareLinkService';
+import { Sheet, Skeleton, Button } from '../ui';
 
 const slug = (s) => String(s || 'my-work').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'my-work';
 
@@ -136,19 +137,8 @@ export default function ShareWorkSheet({ visible, onClose, target }) {
   );
 
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} activeOpacity={1} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" />
-      <View style={{ backgroundColor: c.bg1, borderTopLeftRadius: 22, borderTopRightRadius: 22, maxHeight: '85%' }}>
-        <ScrollView contentContainerStyle={{ padding: s.lg, paddingBottom: s.xl }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={{ flex: 1, fontSize: 11, fontWeight: '800', letterSpacing: 1.2, color: accent.primary }}>{isShowcase ? 'SHARE MY WORK' : 'SHARE'}</Text>
-            <TouchableOpacity onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close">
-              <Ionicons name="close" size={20} color={c.text3} />
-            </TouchableOpacity>
-          </View>
-          <Text style={{ fontSize: t.xl, fontWeight: t.bold, color: c.text1, marginTop: 2, marginBottom: s.sm }} accessibilityRole="header">{page?.title}</Text>
-
-          {!page ? <ActivityIndicator color={accent.primary} /> : (
+    <Sheet visible onClose={onClose} eyebrow={isShowcase ? 'SHARE MY WORK' : 'SHARE'} title={page?.title}>
+          {!page ? <Skeleton lines={4} /> : (
             <>
               {row('download-outline', 'Take it home', 'A file that opens anywhere, offline. Yours.', takeHome)}
               {row('image-outline', 'Picture card', 'An image with the title and one line.', pictureCard)}
@@ -173,11 +163,7 @@ export default function ShareWorkSheet({ visible, onClose, target }) {
                 ) : (
                   <>
                     <Text style={{ fontSize: t.sm, color: c.text3, marginTop: 2 }}>A read-only page, as it is now. <Text style={{ fontWeight: t.bold, color: c.text2 }}>Revoke</Text> it any time.</Text>
-                    <TouchableOpacity onPress={makeLink} disabled={busy} accessibilityRole="button" accessibilityLabel="Make a share link"
-                      style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: s.sm, paddingVertical: 10, borderRadius: r.lg, backgroundColor: accent.primary }}>
-                      {busy ? <ActivityIndicator color={accent.onPrimary} /> : <Ionicons name="link-outline" size={16} color={accent.onPrimary} />}
-                      <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: accent.onPrimary }}>Make a link</Text>
-                    </TouchableOpacity>
+                    <Button label="Make a link" icon="link-outline" size="sm" busy={busy} onPress={makeLink} accessibilityLabel="Make a share link" style={{ marginTop: s.sm }} />
                     {links.map(l => (
                       <View key={l.token} style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginTop: s.sm }}>
                         <Ionicons name="link" size={14} color={c.text3} />
@@ -198,8 +184,6 @@ export default function ShareWorkSheet({ visible, onClose, target }) {
               {!!note && <Text style={{ fontSize: t.sm, color: accent.primary, marginTop: s.md }}>{note}</Text>}
             </>
           )}
-        </ScrollView>
-      </View>
-    </Modal>
+    </Sheet>
   );
 }

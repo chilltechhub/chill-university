@@ -6,6 +6,7 @@
 
 import React from 'react';
 import { View, Text, TouchableOpacity, Modal } from 'react-native';
+import { SCRIM } from '../../ui';
 import SignInPrompt from '../../components/SignInPrompt';
 import { AREAS } from '../../api/plannerService';
 
@@ -50,7 +51,7 @@ export function plannerMenuItems({
 export function AreaFilterSheet({ visible, onClose, activeAreas, onToggle, c, t, s }) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity activeOpacity={1} onPress={onClose} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}>
+      <TouchableOpacity activeOpacity={1} onPress={onClose} style={{ flex: 1, backgroundColor: SCRIM.soft, justifyContent: 'flex-end' }}>
         <TouchableOpacity activeOpacity={1} style={{ backgroundColor: c.bg1, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: s.lg, paddingBottom: s.xxl }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: s.md }}>
             <Text style={{ flex: 1, fontSize: t.lg, fontWeight: t.bold, color: c.text1 }}>Show life areas</Text>
@@ -85,7 +86,7 @@ export function AreaFilterSheet({ visible, onClose, activeAreas, onToggle, c, t,
 export function GuestSignInSheet({ visible, onClose, icon, title, body, c, t, s }) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity activeOpacity={1} onPress={onClose} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}>
+      <TouchableOpacity activeOpacity={1} onPress={onClose} style={{ flex: 1, backgroundColor: SCRIM.soft, justifyContent: 'flex-end' }}>
         <TouchableOpacity activeOpacity={1} style={{ height: 360, backgroundColor: c.bg0, borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden' }}>
           <SignInPrompt icon={icon} title={title} body={body} />
           <TouchableOpacity onPress={onClose} accessibilityRole="button" accessibilityLabel="Not now"

@@ -3,77 +3,26 @@
 // CalmLibrary.js): the dark accent-tinted panel, its headline, its pill
 // buttons, its two cards, and the link back to the full view under it.
 
-import React, { useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import React from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { useTheme } from '../../context/ThemeContext';
-import { ACCENTS } from '../theme';
+// The palette and the panel live in the visual kit since P9 (src/ui): this
+// file keeps its names so every Calm screen reads the same as before.
+import { Panel, useCalmPalette, calmEyebrow } from '../ui';
 
-const INK = '#0b0f14';
-const rgb = (h) => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
-// w of b mixed into a.
-const mix = (a, b, w) => {
-  const A = rgb(a), B = rgb(b);
-  return '#' + A.map((x, i) => Math.round(x * (1 - w) + B[i] * w).toString(16).padStart(2, '0')).join('');
-};
+export { useCalmPalette, calmEyebrow };
 
 export const plural = (n, one, many) => (n === 1 ? one : many);
 export const ago = (iso) => {
   const d = Math.floor((Date.now() - Date.parse(iso)) / 86400000);
   return d <= 0 ? 'today' : d === 1 ? 'yesterday' : d < 14 ? `${d}d ago` : `${Math.floor(d / 7)}w ago`;
 };
-export const calmEyebrow = { fontSize: 12, fontWeight: '800', letterSpacing: 1.4, textTransform: 'uppercase' };
 
 // The panel is always dark, tinted by your accent, in light mode too.
-export function useCalmPalette() {
-  const { accentName } = useTheme();
-  const tint = (ACCENTS[accentName] || ACCENTS.teal).dark.primary;
-  return useMemo(() => ({
-    top: mix(tint, INK, 0.88),
-    bottom: mix(tint, INK, 0.7),
-    text: '#f1f5f4',
-    text2: 'rgba(241,245,244,0.72)',
-    eyebrow: mix(tint, '#ffffff', 0.35),
-    glass: 'rgba(255,255,255,0.07)',
-    glassEdge: 'rgba(255,255,255,0.14)',
-    fill: tint,
-    track: 'rgba(255,255,255,0.14)',
-    tile: mix(tint, '#ffffff', 0.93),
-    tileInk: mix(tint, INK, 0.82),
-    tileMuted: mix(tint, INK, 0.62),
-    warn: '#b3261e',
-  }), [tint]);
-}
-
-// `id` names the SVG gradient: on web those ids are page-wide, and Home and
-// the Library are both mounted at once.
+// `id` names the SVG gradient (page-wide on web).
 export function CalmPanel({ id, pal, children }) {
-  const { spacing: s } = useTheme();
-  // On iOS a "100%" Svg keeps the size it first drew at, so the gradient
-  // stopped short once the cards loaded and the panel grew. Size it from
-  // the panel's layout, with the bottom color behind it meanwhile.
-  const [size, setSize] = useState(null);
-  const onLayout = (e) => {
-    const { width, height } = e.nativeEvent.layout;
-    setSize(p => (p && p.width === width && p.height === height ? p : { width, height }));
-  };
-  return (
-    <View onLayout={onLayout} style={{ borderRadius: 28, overflow: 'hidden', backgroundColor: pal.bottom, padding: s.lg, paddingTop: s.lg + 2 }}>
-      {size && (
-        <Svg style={{ position: 'absolute', top: 0, left: 0 }} width={size.width} height={size.height}>
-          <Defs>
-            <LinearGradient id={id} x1="0" y1="0" x2="0.35" y2="1">
-              <Stop offset="0" stopColor={pal.top} />
-              <Stop offset="1" stopColor={pal.bottom} />
-            </LinearGradient>
-          </Defs>
-          <Rect x="0" y="0" width={size.width} height={size.height} fill={`url(#${id})`} />
-        </Svg>
-      )}
-      {children}
-    </View>
-  );
+  return <Panel id={id} pal={pal}>{children}</Panel>;
 }
 
 // Small label over one big line: the one thing that matters here.
@@ -96,8 +45,8 @@ export function CalmPill({ label, icon, onPress, pal, solid, a11y }) {
     <TouchableOpacity onPress={onPress} hitSlop={6} accessibilityRole="button" accessibilityLabel={a11y || label}
       style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999,
         backgroundColor: solid ? pal.fill : 'transparent', borderWidth: 1, borderColor: solid ? pal.fill : pal.glassEdge }}>
-      <Text style={{ fontSize: 13, fontWeight: '800', color: solid ? '#0d1119' : pal.text }}>{label}</Text>
-      <Ionicons name={icon} size={14} color={solid ? '#0d1119' : pal.text} />
+      <Text style={{ fontSize: 13, fontWeight: '800', color: solid ? pal.onFill : pal.text }}>{label}</Text>
+      <Ionicons name={icon} size={14} color={solid ? pal.onFill : pal.text} />
     </TouchableOpacity>
   );
 }

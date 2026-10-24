@@ -23,6 +23,7 @@ import { PATH_KITS } from '../../data/pathKits';
 import { deliverableForUnit } from '../../api/deliverableService';
 import { STATUS_LABEL } from '../../logic/deliverables';
 import TourSpot from '../../components/TourSpot';
+import { StepBar, StatusChip, PathChip, Chip, pathLook } from '../../ui';
 
 const PICKS = ['like', 'next', 'money', 'career'];
 
@@ -63,6 +64,9 @@ export default function PathScreen() {
   };
 
   const card = { padding: s.lg, borderRadius: r.lg, backgroundColor: c.bg1, borderWidth: 0.5, borderColor: c.border, marginBottom: s.md };
+  // The unit you're on carries the path's own colour as its edge (§9).
+  const look = pathLook(c, pathKey);
+  const onCard = { borderLeftWidth: 3, borderLeftColor: look.color };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.bg0 }} edges={['top']}>
@@ -72,7 +76,7 @@ export default function PathScreen() {
           <Ionicons name="chevron-back" size={18} color={accent.primary} />
           <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: accent.primary }}>Learn</Text>
         </TouchableOpacity>
-        <Text style={{ fontSize: 11, fontWeight: '800', letterSpacing: 1.2, color: accent.primary }}>MY PATH</Text>
+        <PathChip pathKey={pathKey} label="My path" />
         <Text style={{ fontSize: t.xxl, fontWeight: t.bold, color: c.text1, marginTop: 2 }} accessibilityRole="header">{kit.label}</Text>
         <Text style={{ fontSize: t.md, color: c.text2, marginTop: 4, marginBottom: s.md }}>{kit.blurb}</Text>
 
@@ -99,7 +103,7 @@ export default function PathScreen() {
         {current && (
           <TourSpot id="path-current" style={{ width: '100%' }}>
             <TouchableOpacity onPress={() => open(current)} accessibilityRole="button" accessibilityLabel={`Open ${current.label}`}
-              style={[card, { borderColor: accent.primary, borderWidth: 1 }]}>
+              style={[card, onCard]}>
               <Text style={{ fontSize: 11, fontWeight: '800', letterSpacing: 1, color: c.text3 }}>
                 {current.path === 'ground' ? 'GROUND FIX' : `UNIT ${units.indexOf(current) + 1} OF ${units.length}`}
               </Text>
@@ -120,10 +124,8 @@ export default function PathScreen() {
         )}
 
         {/* Every unit */}
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: s.sm, marginBottom: s.sm }}>
-          <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }}>The units</Text>
-          <Text style={{ fontSize: t.xs, color: c.text3 }}>{passed} of {units.length} done</Text>
-        </View>
+        <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1, marginTop: s.sm }}>The units</Text>
+        <StepBar done={passed} total={units.length} color={look.color} style={{ marginTop: 6, marginBottom: s.sm }} />
         <View style={{ borderRadius: r.lg, backgroundColor: c.bg1, borderWidth: 0.5, borderColor: c.border, overflow: 'hidden', marginBottom: s.lg }}>
           {units.map((u, i) => {
             const st = stateOf(u);
@@ -131,14 +133,14 @@ export default function PathScreen() {
             return (
               <TouchableOpacity key={u.id} onPress={() => open(u)} accessibilityRole="button" accessibilityLabel={`${u.label}. ${label(st, u)}`}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, paddingHorizontal: s.md, paddingVertical: 12, borderTopWidth: i ? 0.5 : 0, borderTopColor: c.border }}>
-                <View style={{ width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: ticked ? accent.primary : c.bg2 }}>
-                  {ticked ? <Ionicons name="checkmark" size={15} color={accent.onPrimary} /> : <Text style={{ fontSize: 12, fontWeight: t.bold, color: c.text2 }}>{i + 1}</Text>}
+                <View style={{ width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: ticked ? look.color : c.bg2 }}>
+                  {ticked ? <Ionicons name="checkmark" size={15} color={c.onFill} /> : <Text style={{ fontSize: 12, fontWeight: t.bold, color: c.text2 }}>{i + 1}</Text>}
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: t.md, fontWeight: t.semibold, color: c.text1 }}>{u.label}</Text>
                   <Text style={{ fontSize: t.xs, color: c.text3 }} numberOfLines={1}>{u.deliverable.title}</Text>
                 </View>
-                <Text style={{ fontSize: 11, fontWeight: t.bold, color: st === 'active' || u === current ? accent.primary : c.text3 }}>{label(st, u)}</Text>
+                <StatusChip status={ticked ? 'handed' : st === 'active' || st === 'doing' ? 'doing' : 'todo'} label={label(st, u)} />
               </TouchableOpacity>
             );
           })}
@@ -151,11 +153,8 @@ export default function PathScreen() {
           {PICKS.map(k => {
             const on = k === pathKey;
             return (
-              <TouchableOpacity key={k} onPress={() => setPath(k)} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={`${PATH_KITS[k].label}${on ? ', your path' : ''}`}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: s.md, paddingVertical: 9, borderRadius: r.lg, borderWidth: 1, borderColor: on ? accent.primary : c.border, backgroundColor: on ? accent.primary + '18' : c.bg1 }}>
-                <Ionicons name={PATH_KITS[k].icon} size={15} color={on ? accent.primary : c.text2} />
-                <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: on ? accent.primary : c.text1 }}>{PATH_KITS[k].label}</Text>
-              </TouchableOpacity>
+              <Chip key={k} label={PATH_KITS[k].label} icon={pathLook(c, k).icon} selected={on} color={pathLook(c, k).color}
+                onPress={() => setPath(k)} a11y={`${PATH_KITS[k].label}${on ? ', your path' : ''}`} />
             );
           })}
         </View>

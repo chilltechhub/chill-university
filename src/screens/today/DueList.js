@@ -3,7 +3,8 @@
 // (docs/shake-up-plan-2026-10-21.md P1).
 
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { BusyDot } from '../../ui';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { setDueItemDone } from '../../api/deadlinesService';
@@ -38,7 +39,7 @@ export default function DueList({ items, onChange, label = 'Due', c, t, s, r }) 
           ) : (
             <TouchableOpacity onPress={() => toggle(item)} accessibilityRole="checkbox" accessibilityState={{ checked: item.completed }}
               accessibilityLabel={`${item.title}, ${item.completed ? 'done' : 'not done'}`} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              {busy === item.key ? <ActivityIndicator size="small" color={c.gold} />
+              {busy === item.key ? <BusyDot color={c.gold} size={8} />
                 : <Ionicons name={item.completed ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={item.completed ? c.gold : c.text3} />}
             </TouchableOpacity>
           )}

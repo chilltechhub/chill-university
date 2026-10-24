@@ -1,7 +1,9 @@
 // src/components/MakeBoard.js
 // The Make board (docs/shake-up-plan-2026-10-21.md §4.3, P6): your work in
 // four columns, To do · Doing · Handed in · Shown. On a phone the columns
-// are tabs, each with its count; tap a card to open its unit.
+// are tabs, each with its count; tap a card to open its unit. Each card
+// (P9, the visual kit) shows a thumbnail of the work on its path's colour,
+// its status in words and its aim-for date, never red.
 //
 // To do also holds the unit you're on, before you've touched its work
 // (a deliverable is only saved once it's started).
@@ -20,6 +22,8 @@ import { goToScreen } from '../logic/appRoutes';
 import { todayStr } from '../logic/dateUtils';
 import TourSpot from './TourSpot';
 import RichText from './RichText';
+import WorkThumb from './WorkThumb';
+import { Segmented, StatusChip, DueChip, Tap, pathLook } from '../ui';
 
 const EMPTY = {
   todo: 'Nothing waiting. Pick a unit on **My path**.',
@@ -53,34 +57,28 @@ export default function MakeBoard() {
             <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: accent.primary }}>My path →</Text>
           </TouchableOpacity>
         </View>
-        <View style={{ flexDirection: 'row', gap: 6, marginBottom: s.sm }} accessibilityRole="tablist">
-          {BOARD.map(k => {
-            const on = k === open;
-            return (
-              <TouchableOpacity key={k} onPress={() => setCol(k)} accessibilityRole="tab" accessibilityState={{ selected: on }}
-                accessibilityLabel={`${STATUS_LABEL[k]}: ${board[k].length}`}
-                style={{ flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: r.md, borderWidth: 1,
-                  borderColor: on ? accent.primary : c.border, backgroundColor: on ? accent.primary + '18' : c.bg1 }}>
-                <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: on ? accent.primary : c.text1 }}>{board[k].length}</Text>
-                <Text style={{ fontSize: 11, fontWeight: t.bold, color: on ? accent.primary : c.text3 }} numberOfLines={1}>{STATUS_LABEL[k]}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        <Segmented style={{ marginBottom: s.sm }} value={open} onChange={setCol}
+          options={BOARD.map(k => ({ key: k, label: STATUS_LABEL[k], count: board[k].length }))} />
         {board[open].length ? board[open].slice(0, 6).map(d => {
           const unit = UNIT_BY_ID[d.unitKey];
           const aim = aimForLabel(d, todayStr());
+          const look = pathLook(c, unit?.path);
           return (
-            <TouchableOpacity key={d.id} onPress={() => goToScreen(navigation, 'UnitScreen', { unitId: d.unitKey })} accessibilityRole="button"
-              accessibilityLabel={`${d.title}. ${statusLabel(d)}${aim ? `. ${aim}` : ''}`}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, padding: s.md, marginBottom: 6, borderRadius: r.lg, backgroundColor: c.bg1, borderWidth: 0.5, borderColor: c.border }}>
-              <Ionicons name={open === 'shown' ? 'star' : open === 'handed' ? 'checkmark-done-circle' : 'document-text-outline'} size={20} color={accent.primary} />
-              <View style={{ flex: 1 }}>
+            <Tap key={d.id} onPress={() => goToScreen(navigation, 'UnitScreen', { unitId: d.unitKey })}
+              a11y={`${d.title}. ${statusLabel(d)}${aim ? `. ${aim}` : ''}${feedbackLine(d) ? `. ${feedbackLine(d)}` : ''}`}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: s.md, padding: s.md, marginBottom: 6, borderRadius: r.lg, backgroundColor: c.bg1,
+                borderWidth: 0.5, borderColor: c.border, borderLeftWidth: 3, borderLeftColor: look.color }}>
+              <WorkThumb deliverable={d} unit={unit} size={52} />
+              <View style={{ flex: 1, gap: 4 }}>
                 <Text style={{ fontSize: t.md, fontWeight: t.semibold, color: c.text1 }} numberOfLines={1}>{d.title}</Text>
-                <Text style={{ fontSize: t.xs, color: c.text3 }} numberOfLines={1}>{[unit?.label !== d.title ? unit?.label : null, feedbackLine(d) || (statusLabel(d) === 'Reviewed' ? 'Reviewed' : null), aim].filter(Boolean).join(' · ') || (unit?.path === 'ground' ? 'Ground fix' : `Unit ${unit?.n || ''}`)}</Text>
+                <Text style={{ fontSize: t.xs, color: c.text3 }} numberOfLines={1}>{[unit?.label !== d.title ? unit?.label : null, feedbackLine(d)].filter(Boolean).join(' · ') || (unit?.path === 'ground' ? 'Ground fix' : `Unit ${unit?.n || ''}`)}</Text>
+                <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+                  <StatusChip status={d.status} label={statusLabel(d)} />
+                  <DueChip label={aim} />
+                </View>
               </View>
               <Ionicons name="chevron-forward" size={15} color={c.text3} />
-            </TouchableOpacity>
+            </Tap>
           );
         }) : (
           <RichText style={{ fontSize: t.sm, color: c.text3, paddingVertical: s.sm }} boldStyle={{ color: c.text2 }}>{EMPTY[open]}</RichText>

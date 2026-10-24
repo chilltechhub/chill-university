@@ -3,7 +3,8 @@
 // of PlannerScreen.js for the shake-up (docs/shake-up-plan-2026-10-21.md P1).
 
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Animated } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Animated } from 'react-native';
+import { BusyDot, Skeleton, SCRIM } from '../../ui';
 import { Ionicons } from '@expo/vector-icons';
 import { AREAS, getPresetComponents, generateInstances } from '../../api/plannerService';
 import { PANEL_W } from './plannerShared';
@@ -62,10 +63,10 @@ export default function SidePanel({ visible, onClose, userId, onAdded, c, t, s, 
 
   return (
     <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 100 }}>
-      <Animated.View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: '#000', opacity: Animated.multiply(opacity, 0.5) }}>
+      <Animated.View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: SCRIM.strong, opacity }}>
         <TouchableOpacity style={{ flex: 1 }} onPress={onClose} activeOpacity={1} />
       </Animated.View>
-      <Animated.View style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: PANEL_W, backgroundColor: c.bg0, transform: [{ translateX: slideX }], shadowColor: '#000', shadowOffset: { width: -4, height: 0 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 20 }}>
+      <Animated.View style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: PANEL_W, backgroundColor: c.bg0, transform: [{ translateX: slideX }], shadowColor: SCRIM.shadow, shadowOffset: { width: -4, height: 0 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 20 }}>
         {/* Header */}
         <View style={{ backgroundColor: c.headerBg, padding: s.lg, borderBottomWidth: 0.5, borderBottomColor: c.border, flexDirection: 'row', alignItems: 'center', gap: s.md }}>
           <TouchableOpacity accessibilityLabel="Next" accessibilityRole="button" onPress={onClose} style={{ padding: 4 }}>
@@ -105,12 +106,12 @@ export default function SidePanel({ visible, onClose, userId, onAdded, c, t, s, 
                 <Text style={{ fontSize: t.lg, fontWeight: t.bold, color: areaColor }}>{areaObj?.label}</Text>
               </View>
 
-              {loading ? <ActivityIndicator color={areaColor} style={{ marginTop: s.xl }} /> : (
+              {loading ? <Skeleton lines={4} card style={{ marginTop: s.xl }} /> : (
                 <>
                   {components.length > 0 && scheduled.size < components.length && (
                     <TouchableOpacity onPress={scheduleAll}
                       style={{ backgroundColor: areaColor, borderRadius: r.md, padding: s.md, alignItems: 'center', marginBottom: s.lg }}>
-                      <Text style={{ color: '#fff', fontWeight: t.bold, fontSize: t.sm }}>Schedule all {components.length}</Text>
+                      <Text style={{ color: c.onFill, fontWeight: t.bold, fontSize: t.sm }}>Schedule all {components.length}</Text>
                     </TouchableOpacity>
                   )}
                   {scheduled.size === components.length && components.length > 0 && (
@@ -131,7 +132,7 @@ export default function SidePanel({ visible, onClose, userId, onAdded, c, t, s, 
                             <TouchableOpacity key={comp.id} onPress={() => schedule(comp)} disabled={done || isBusy}
                               style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, backgroundColor: c.bg1, borderRadius: r.md, padding: s.md, marginBottom: s.sm, borderWidth: 0.5, borderColor: done ? areaColor : c.border, borderLeftWidth: 3, borderLeftColor: areaColor, opacity: done ? 0.6 : 1 }}>
                               {isBusy
-                                ? <ActivityIndicator size="small" color={areaColor} style={{ width: 20 }} />
+                                ? <BusyDot color={areaColor} style={{ marginHorizontal: 5 }} />
                                 : <Ionicons name={done ? 'checkmark-circle' : 'add-circle-outline'} size={20} color={done ? areaColor : c.text4} />
                               }
                               <View style={{ flex: 1 }}>

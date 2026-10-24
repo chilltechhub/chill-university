@@ -9,10 +9,11 @@
 // sign-in, and shows no top bar or + button over it.
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, Platform, useWindowDimensions } from 'react-native';
+import { View, Text, Platform, useWindowDimensions } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import BuildPreview from '../components/BuildPreview';
+import { Skeleton } from '../ui';
 import { fetchSharedPage, tokenFromPath } from '../api/shareLinkService';
 
 export default function SharedScreen() {
@@ -35,7 +36,7 @@ export default function SharedScreen() {
   }, [page?.title]);
 
   if (page === undefined) {
-    return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.bg0 }}><ActivityIndicator color={c.teal} /></View>;
+    return <View style={{ flex: 1, padding: s.xl, backgroundColor: c.bg0 }}><Skeleton lines={6} card /></View>;
   }
   if (!page) {
     return (
@@ -46,7 +47,7 @@ export default function SharedScreen() {
     );
   }
   return (
-    <View style={{ flex: 1, backgroundColor: '#f6f3ec' }}>
+    <View style={{ flex: 1, backgroundColor: c.bg0 }}>
       <BuildPreview html={page.html} height={height} style={{ borderRadius: 0, borderWidth: 0 }} />
     </View>
   );
