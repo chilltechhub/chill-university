@@ -64,6 +64,9 @@ export default function MakeItYoursScreen() {
   // The tabs Today · Learn · Make and You (shake-up P4). They follow Today
   // until switched here on their own.
   const [tabsV2, setTabsV2] = useTabsV2();
+  // The tabs' names as the person sees them: Today · Learn · Make with the
+  // new tabs, Home · Training · Library without (stress test 2026-10-24).
+  const TAB = tabsV2 ? { home: 'Today', library: 'Make', training: 'Learn' } : { home: 'Home', library: 'Library', training: 'Training' };
   // Receipts, not a score, and where your room shows (shake-up P5).
   const [progressV2, setProgressV2] = useProgressV2();
   const [roomPlace, setRoomPlace] = useRoomPlace();
@@ -179,16 +182,16 @@ export default function MakeItYoursScreen() {
           )}
         </View>
 
-        <Head id="home">Home and Library</Head>
+        <Head id="home">{`${TAB.home} and ${TAB.library}`}</Head>
         <View style={card}>
           <Row icon="calendar-outline" title="Today as your planner"
-            value={dashboardV2 ? '**On.** Home is your day: the plan, the next step, your cards' : '**Off.** Home and the Planner as before'}
+            value={dashboardV2 ? `**On.** ${TAB.home} is your day: the plan, the next step, your cards` : '**Off.** Home and the Planner as before'}
             right={<Toggle value={!!dashboardV2} onChange={(v) => setDashboardV2(v)} label="Today as your planner" />} />
           <Row icon="albums-outline" title="Tabs: Today · Learn · Make"
             value={tabsV2 ? '**On.** Your picture (top left) opens **You**' : '**Off.** Library · Home · Learn, as before'}
             right={<Toggle value={!!tabsV2} onChange={(v) => setTabsV2(v)} label="Tabs: Today, Learn, Make" />} />
           <Row icon="receipt-outline" title="Receipts, not a score"
-            value={progressV2 ? '**On.** What you made and did, no level or points up top' : '**Off.** Level and points in the top bar, as before'}
+            value={progressV2 ? '**On.** What you made and did, up top' : '**Off.** Level and points in the top bar, as before'}
             right={<Toggle value={!!progressV2} onChange={(v) => setProgressV2(v)} label="Receipts, not a score" />} />
           {progressV2 && (
             <Row icon="checkmark-circle-outline" title="Days this week, in your receipts"
@@ -210,15 +213,15 @@ export default function MakeItYoursScreen() {
           {/* One setting with Today on (homeView means the app's view). */}
           {!dashboardV2 && (
             <>
-              <Row icon="library-outline" title="Library view"
+              <Row icon="library-outline" title={`${TAB.library} view`}
                 value={libraryView === 'calm' ? '**Calm.** One panel per page + a short list' : '**Full.** Every tool card'} />
-              <Segments label="Library view" value={libraryView === 'calm' ? 'calm' : 'full'}
+              <Segments label={`${TAB.library} view`} value={libraryView === 'calm' ? 'calm' : 'full'}
                 options={[['calm', 'Calm'], ['full', 'Full']]} onChange={setLibraryView} />
             </>
           )}
-          <Row icon="grid-outline" title="Home cards" value="**Add, hide or move** the cards on Home"
+          <Row icon="grid-outline" title={`${TAB.home} cards`} value={`**Add, hide or move** the cards on ${TAB.home}`}
             onPress={() => navigation.navigate('MainTabs', { screen: 'Home', params: { editWidgets: Date.now() } })} />
-          <Row icon="game-controller-outline" title="Study & Play buttons" value="On your profile card on Home"
+          <Row icon="game-controller-outline" title="Study & Play buttons" value={`On your profile card on ${TAB.home}`}
             right={<Toggle value={quickButtons !== false} onChange={setQuickButtons} label="Study and Play buttons" />} />
           <Row icon="checkmark-done-outline" title="Hide cards once they're done" value="They come back **tomorrow**"
             right={<Toggle value={hideDone} onChange={setHideDone} label="Hide cards once they're done" />} />
@@ -230,10 +233,10 @@ export default function MakeItYoursScreen() {
         <AppearancePicker />
         <TourSpot id="settings-background">
         <View style={card}>
-          <Row icon="image-outline" title="Scene behind Home" value="Your character's **landscape**, or plain"
-            right={<Toggle value={homeBg === 'player'} onChange={(v) => setHomeBg(v ? 'player' : 'plain')} label="Scene behind Home" />} />
-          <Row icon="image-outline" title="Scene behind the Library" value="Your character's **landscape**, or plain"
-            right={<Toggle value={libraryBg === 'player'} onChange={(v) => setLibraryBg(v ? 'player' : 'plain')} label="Scene behind the Library" />} />
+          <Row icon="image-outline" title={`Scene behind ${TAB.home}`} value="Your character's **landscape**, or plain"
+            right={<Toggle value={homeBg === 'player'} onChange={(v) => setHomeBg(v ? 'player' : 'plain')} label={`Scene behind ${TAB.home}`} />} />
+          <Row icon="image-outline" title={`Scene behind ${tabsV2 ? 'Make' : 'the Library'}`} value="Your character's **landscape**, or plain"
+            right={<Toggle value={libraryBg === 'player'} onChange={(v) => setLibraryBg(v ? 'player' : 'plain')} label={`Scene behind ${tabsV2 ? 'Make' : 'the Library'}`} />} />
           <Row icon="happy-outline" title="Emoji" value="Next to titles and labels"
             right={<Toggle value={showEmojis} onChange={setShowEmojis} label="Show emoji" />} />
           <Row icon="reader-outline" title="Subtitles" value="The line under a screen's title"
@@ -250,7 +253,7 @@ export default function MakeItYoursScreen() {
           <Row icon="color-wand-outline" title="Decorate" value="**Place, move and flip** things in your scene"
             onPress={() => navigation.navigate('Profile', { decorate: Date.now() })} />
           <Row icon="hand-left-outline" title="Tap your character to open Profile"
-            value={heroTap !== false ? 'On Training. **Off:** the tap makes them jump' : '**Off.** The tap makes them jump'}
+            value={heroTap !== false ? `On ${TAB.training}. **Off:** the tap makes them jump` : '**Off.** The tap makes them jump'}
             right={<Toggle value={heroTap !== false} onChange={setHeroTap} label="Tap your character to open Profile" />} last />
         </View>
 

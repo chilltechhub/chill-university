@@ -68,7 +68,7 @@ export function stageMeta(n, persona) {
 export function nextStageNeeds({ stage, persona, aim = null, exploring = false }) {
   if (stage >= MAX_STAGE) return null;
   const next = pathFor(persona)[stage];
-  const base = { next: stage + 1, label: next.label, blurb: next.blurb, text: 'Finish a goal or gain a level' };
+  const base = { next: stage + 1, label: next.label, blurb: next.blurb, text: 'Finish a goal or keep practising' };
   // No early return without an aim any more: CORE_OPENS opens the Planner
   // for everyone, so a stage named "The Planner and Life Areas" can be half
   // old news for any account.

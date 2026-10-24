@@ -14,7 +14,7 @@ export function firstDayWalk({ calm = false, project = null } = {}) {
       id: calm ? 'calm-next' : 'home-compass',
       go: 'Home',
       title: 'Your next step',
-      body: project
+      body: typeof project === 'string' && project.trim()
         ? `**${project}** is saved in Make. This is what comes next: **one thing at a time**.`
         : 'One thing at a time. **Tap it** when you are ready.',
       skipLabel: 'Skip',

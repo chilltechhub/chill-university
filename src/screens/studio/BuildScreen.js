@@ -64,6 +64,9 @@ export default function BuildScreen() {
   const kind = kindOf(build);
   const html = useMemo(() => (build ? renderBuild(build, me) : ''), [build, me]);
   const next = build ? nextPart(build) : null;
+  // Above the early return: the Build loads after the first render, so a
+  // hook below it changed the hook order (stress test 2026-10-24).
+  const [growing, setGrowing] = useState(false);
 
   if (!build || !kind) {
     return (
@@ -86,7 +89,6 @@ export default function BuildScreen() {
 
   // From "the app made it with me" to "I'm making it": one of their own
   // Workshop projects, with the kind's first real step as its next action.
-  const [growing, setGrowing] = useState(false);
   const grow = async () => {
     if (build.projectId) {
       if (await openTarget(navigation, { kind: 'project', id: build.projectId })) return;

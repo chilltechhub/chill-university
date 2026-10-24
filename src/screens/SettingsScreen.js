@@ -36,6 +36,7 @@ import { dobFromParts, dobProblem } from '../logic/dateUtils';
 import { confirmAsync } from '../logic/confirm';
 import { signOutAndClear, clearLocalUserData } from '../logic/localUserData';
 import TwoFactorSheet from '../components/TwoFactorSheet';
+import useTabsV2 from '../logic/useTabsV2';
 
 // Thin adapter: the existing call sites pass `label`, and c/t/s/r (ignored).
 function SettingRow({ label, ...rest }) {
@@ -335,6 +336,7 @@ export default function SettingsScreen() {
   const [savingDob, setSavingDob] = useState(false);
   const [exportingData, setExportingData] = useState(false);
   const { startTour } = useTour();
+  const [tabsV2] = useTabsV2();
   const { showEmojis } = useUIPrefs();
 
   useEffect(() => {
@@ -564,7 +566,7 @@ export default function SettingsScreen() {
         </View>
         <TourSpot id="settings-appearance">
         <SettingRow icon="color-palette-outline" iconColor={c.teal} label="Make it yours"
-          subtitle="Look, Home, Library, features, life areas and your character"
+          subtitle={tabsV2 ? 'Look, Today, Make, features, life areas and your character' : 'Look, Home, Library, features, life areas and your character'}
           alwaysShowSubtitle
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
           onPress={() => navigation.navigate('MakeItYours')}
@@ -588,13 +590,15 @@ export default function SettingsScreen() {
           c={c} t={t} s={s} r={r}
         />}
 
-        {/* Profile */}
+        {/* Profile: an account's (a guest has no profile, crest or family
+            to edit; stress test 2026-10-24). */}
+        {!!userId && <>
         <SectionLabel label="Profile" c={c} t={t} s={s} />
         <SettingRow icon="person-outline" iconColor={c.teal} label="Edit Profile" subtitle="Update your display name, bio, and avatar"
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
           onPress={() => navigation.navigate('Profile')}
           c={c} t={t} s={s} r={r} />
-        <SettingRow icon="color-palette-outline" iconColor={c.purple} label="Crest" subtitle="Crest color and role badge shown on Home & Portfolio"
+        <SettingRow icon="color-palette-outline" iconColor={c.purple} label="Crest" subtitle={tabsV2 ? 'Crest color and role badge shown on your Showcase' : 'Crest color and role badge shown on Home & Portfolio'}
           right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
           onPress={() => setShowCrestModal(true)}
           c={c} t={t} s={s} r={r} />
@@ -604,6 +608,7 @@ export default function SettingsScreen() {
           onPress={() => navigation.navigate('Family')}
           c={c} t={t} s={s} r={r} />
         </TourSpot>
+        </>}
         {/* Organizations is off until it's switched on (featureCatalog
             place 'off'); its row waits with it (shake-up P4). */}
         {isScreenVisible('Organization') && (
@@ -628,7 +633,7 @@ export default function SettingsScreen() {
 
         {/* Reminders (Make it yours links here: { section: 'reminders' }) */}
         <View {...markSection('reminders')}><SectionLabel label="Reminders" c={c} t={t} s={s} /></View>
-        <SettingRow icon="notifications-outline" iconColor={c.success} label="Daily Reminders" subtitle="Evening nudges for today's drills and your next step"
+        <SettingRow icon="notifications-outline" iconColor={c.success} label="Daily Reminders" subtitle={tabsV2 ? 'An evening nudge with your next step' : "Evening nudges for today's drills and your next step"}
           right={
             <Switch
               value={remindersEnabled}
@@ -723,6 +728,14 @@ export default function SettingsScreen() {
 
         {/* Sign out */}
         <View {...markSection('account')}><SectionLabel label="Account" c={c} t={t} s={s} /></View>
+        {/* A guest has no account to leave or delete: signing "out" only
+            wiped their settings and dropped them on Login. */}
+        {!userId ? (
+          <SettingRow icon="person-add-outline" iconColor={c.teal} label="Save my progress" subtitle="Make a free account. Your work comes with you."
+            right={<Ionicons name="chevron-forward" size={16} color={c.text4} />}
+            onPress={() => navigation.navigate('Login', { mode: 'signup' })}
+            c={c} t={t} s={s} r={r} />
+        ) : <>
         <TouchableOpacity onPress={signOut} disabled={signingOut}
           style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: s.sm, backgroundColor: c.error + '18', borderRadius: r.md, padding: s.lg, borderWidth: 1, borderColor: c.error + '44' }}>
           {signingOut
@@ -740,6 +753,7 @@ export default function SettingsScreen() {
           <Ionicons name="trash-outline" size={16} color={c.error} />
           <Text style={{ color: c.error, fontWeight: t.semibold, fontSize: t.xs }}>Delete Account</Text>
         </TouchableOpacity>
+        </>}
       </ScrollView>
 
       <CrestModal

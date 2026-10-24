@@ -86,6 +86,9 @@ const due = [{ title: 'Essay', date: '2026-10-24' }, { title: 'Form', date: '202
     const signals = [...u.beats.map(b => U.beatSignal(u, b)), U.handInSignal(u)];
     check(`unit ${u.id}: no two steps share a signal`, new Set(signals).size === signals.length, signals);
     check(`unit ${u.id}: every beat says something short`, u.beats.every(b => b.says && b.says.split(/\s+/).length <= 40));
+    // Bold is **pairs**: an odd count, or a star inside a bold run (O*NET),
+    // shows raw asterisks (stress test 2026-10-24).
+    check(`unit ${u.id}: bold marks pair up`, u.beats.every(b => (b.says.match(/\*\*/g) || []).length % 2 === 0 && !/\*\*[^*]*\*[^*]+\*\*/.test(b.says)));
     check(`unit ${u.id}: every source has a review date`, (u.sources || []).every(s => s.url && s.reviewed && s.license));
   }
   // Map cards: the same template every time, every fact sourced and dated
@@ -149,6 +152,15 @@ const due = [{ title: 'Essay', date: '2026-10-24' }, { title: 'Form', date: '202
     check('share links: /s/<token> reads the token', L.tokenFromPath(`/s/${tok}`) === tok && L.tokenFromPath(`/s/${tok}/`) === tok);
     check('share links: anything else is not a link', [null, '/s/', '/s/abc', `/s/${tok}x`, `/x/${tok}`, `/s/${'A'.repeat(64)}`].every(p => L.tokenFromPath(p) === null));
     check('share links: the address', L.shareUrlFor('https://example.org/', tok) === `https://example.org/s/${tok}` && L.shareUrlFor(null, tok) === null && L.shareUrlFor('https://x.org', 'bad') === null);
+  }
+  // Junk in, no crash and no "undefined" out (stress test 2026-10-24).
+  {
+    const ud = U.UNIT_BY_ID['unit-like-2'];
+    const label = (aimFor, today = '2026-10-24') => D.aimForLabel({ aimFor, status: 'doing' }, today);
+    check('aim-for: a date that is not a real day says nothing', [ '2026-13-45', '2026-00-10', 'x', 12, {}, null ].every(v => label(v) === null));
+    check('aim-for: a bad "today" still names the date', label('2026-11-03', undefined) === 'Aim: Nov 3');
+    check('status: no deliverable is To do', D.statusLabel(null) === 'To do' && D.statusLabel(undefined) === 'To do');
+    check('showcase item: junk feedback is dropped', D.showcaseItem({ ...D.newDeliverable(ud, '2026-10-24T00:00:00Z'), feedback: 'nope' }, ud).feedback.length === 0);
   }
   check('units: each one opens the Showcase when done', U.UNIT_OBJECTIVES.every(o => o.unlocks.includes('portfolio')));
   const ids = new Set(U.UNITS.map(u => u.id));

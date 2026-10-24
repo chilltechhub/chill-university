@@ -124,7 +124,8 @@ export function show(d, now = new Date().toISOString()) {
 
 /** The label a card shows: Reviewed once feedback has come in on handed-in work. */
 export function statusLabel(d) {
-  if ((d.status === 'handed' || d.status === 'shown') && d.feedback?.length) return 'Reviewed';
+  if (!d) return STATUS_LABEL.todo;
+  if ((d.status === 'handed' || d.status === 'shown') && Array.isArray(d.feedback) && d.feedback.length) return 'Reviewed';
   return STATUS_LABEL[d.status] || 'To do';
 }
 
@@ -134,12 +135,16 @@ export function statusLabel(d) {
  *   today  'YYYY-MM-DD'
  */
 export function aimForLabel(d, today) {
-  if (!d?.aimFor || d.status === 'handed' || d.status === 'shown') return null;
-  if (d.aimFor < today) return 'Still open';
-  if (d.aimFor === today) return 'Aim: today';
+  if (!d || typeof d.aimFor !== 'string' || d.status === 'handed' || d.status === 'shown') return null;
+  // A date that isn't a real day (a bad sync, an old build) says nothing
+  // rather than "Aim: undefined 45" (stress test 2026-10-24).
   const [y, m, day] = d.aimFor.split('-').map(Number);
+  if (!ISO.test(d.aimFor) || !(m >= 1 && m <= 12) || !(day >= 1 && day <= 31)) return null;
+  const now = typeof today === 'string' && ISO.test(today) ? today : null;
+  if (now && d.aimFor < now) return 'Still open';
+  if (now && d.aimFor === now) return 'Aim: today';
   const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `Aim: ${names[m - 1]} ${day}${y !== +today.slice(0, 4) ? `, ${y}` : ''}`;
+  return `Aim: ${names[m - 1]} ${day}${now && y !== +now.slice(0, 4) ? `, ${y}` : ''}`;
 }
 
 /** Feedback I got: { who, said, change }; `changed` is ticked later. */
@@ -243,6 +248,7 @@ export function progressOf(d, unit) {
  */
 export function showcaseItem(d, unit, { pathLabel = '', buildTitle = '' } = {}) {
   const def = unit?.deliverable || {};
+  const notes = Array.isArray(d?.feedback) ? d.feedback.filter(f => f && typeof f === 'object') : [];
   const answers = (def.prompts || []).map((q, i) => ({ q, a: typeof d?.content?.[i] === 'string' ? d.content[i].trim() : '' }));
   const checklist = (def.items || []).map((item, i) => ({ item, done: d?.content?.[i] === true }));
   return {
@@ -255,7 +261,7 @@ export function showcaseItem(d, unit, { pathLabel = '', buildTitle = '' } = {}) 
     answers: d?.kind === 'reflection' || d?.kind === 'test' ? answers.filter(x => x.a) : [],
     checklist: d?.kind === 'checklist' ? checklist : [],
     build: d?.kind === 'build' ? buildTitle || null : null,
-    feedback: (d?.feedback || []).map(f => ({ who: f.who, said: f.said, change: f.change, changed: !!f.changed })),
+    feedback: notes.map(f => ({ who: f.who || '', said: f.said || '', change: f.change || '', changed: !!f.changed })),
   };
 }
 

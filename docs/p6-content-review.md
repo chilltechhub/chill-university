@@ -251,7 +251,7 @@ Draft wording for every unit, map card and source in shake-up P6 (founder answer
 - **Fit:** Fit is **what you do all day**, who you do it with, and what it pays. Not just the title.
 - **Career cards:** Career Explorer shows careers with what they take.  
   _opens: Open Career Explorer (CareerExplorationScreen)_
-- **Look one up:** Look up one career on **O*NET**: tasks, skills, outlook.  
+- **Look one up:** **Look up one career** on O*NET: tasks, skills, outlook.  
   _link: [Open O*NET](https://www.onetonline.org/)_
 - **Do it: Three that fit** (reflection)
   - Asks: Career 1, and the task that pulls me · Career 2, and why · Career 3, and why

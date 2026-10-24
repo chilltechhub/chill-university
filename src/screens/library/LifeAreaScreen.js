@@ -315,10 +315,24 @@ export default function LifeAreaScreen() {
     setTimeout(() => setHubNote(null), 4000);
   };
 
+  // The screen's effects come before the no-area return below, so every
+  // render calls the same hooks (stress test 2026-10-24). With no area
+  // they do nothing.
+  useEffect(() => {
+    if (!area) return;
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) { setUserId(user.id); loadData(user.id); }
+      else setLoading(false);
+    });
+  }, []);
+
+  useFocusEffect(useCallback(() => {
+    if (area && userId) loadData(userId);
+  }, [userId]));
+
   // Opened without an area (Calm Library's Check-ins tile once nothing is
   // due, an old link): a pick list, not a blank screen. replace(), not
-  // setParams: this return sits above the screen's effects, so one mount
-  // can't go from no area to an area.
+  // setParams: one mount never goes from no area to an area.
   if (!area) {
     return (
       <ScrollView style={{ flex: 1, backgroundColor: c.bg0 }} contentContainerStyle={{ padding: s.lg, gap: s.sm }}>
@@ -345,17 +359,6 @@ export default function LifeAreaScreen() {
   // The area's colour, darkened (light theme) or lightened (dark) just enough
   // to read as text: Mental's pale blue was 2:1 on the light background.
   const color = readableOn(area.color, c.bg0);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) { setUserId(user.id); loadData(user.id); }
-      else setLoading(false);
-    });
-  }, []);
-
-  useFocusEffect(useCallback(() => {
-    if (userId) loadData(userId);
-  }, [userId]));
 
   const loadData = async (uid) => {
     setLoading(true);

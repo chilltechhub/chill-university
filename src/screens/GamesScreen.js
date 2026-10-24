@@ -230,13 +230,15 @@ export default function GamesScreen() {
         {practice && (
           <TouchableOpacity onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('TrainingHome'))}
             hitSlop={8} accessibilityRole="button" accessibilityLabel="Back to Learn"
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 2, alignSelf: 'flex-start', marginBottom: 4 }}>
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 2, alignSelf: 'flex-start', marginBottom: 4, marginLeft: s.lg }}>
             <Ionicons name="chevron-back" size={18} color={c.teal} />
             <Text style={{ fontSize: t.sm, fontWeight: t.bold, color: c.teal }}>Learn</Text>
           </TouchableOpacity>
         )}
-        <Text style={styles.eyebrow}>{practice ? 'PRACTICE' : 'LEARN'}</Text>
-        <Text style={styles.name}>{practice ? 'Games' : displayName}</Text>
+        {/* No name yet (a guest): the page's own name, not "LEARN / You"
+            (stress test 2026-10-24). */}
+        {(practice || displayName !== 'You') && <Text style={styles.eyebrow}>{practice ? 'PRACTICE' : 'LEARN'}</Text>}
+        <Text style={styles.name}>{practice ? 'Games' : displayName !== 'You' ? displayName : 'Learn'}</Text>
         {tabs.length > 1 && (
         <View style={styles.tabs}>
           {tabs.map(tab => (

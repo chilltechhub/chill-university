@@ -14,7 +14,7 @@
 // Feedback notes are private: they go in the Showcase file only when you
 // tick "Include feedback notes", and never in a link unless you did.
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -48,6 +48,7 @@ export default function ShareWorkSheet({ visible, onClose, target }) {
   const [links, setLinks] = useState([]);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState(null);
+  const making = useRef(false); // a double tap made two links (stress test 2026-10-24)
 
   const userId = user?.id || null;
   const { restricted, reason } = communityAccess(user ? profile : null);
@@ -112,9 +113,12 @@ export default function ShareWorkSheet({ visible, onClose, target }) {
     setNote(res === 'copied' ? 'File saved, and the message is copied. Send both.' : 'Sent. When they answer, add it under Feedback I got.');
   };
   const makeLink = async () => {
+    if (making.current) return;
+    making.current = true;
     setBusy(true);
     const res = await createShareLink({ kind: isShowcase ? 'showcase' : 'deliverable', targetId, title: page.title, html: page.html });
     setBusy(false);
+    making.current = false;
     if (res.error) { setNote(res.error); return; }
     setLinks(prev => [{ token: res.token, title: page.title, target_id: targetId, created_at: new Date().toISOString() }, ...prev]);
     if (res.url) { await Clipboard.setStringAsync(res.url).catch(() => {}); setNote('Link made and copied.'); } else setNote('Link made.');

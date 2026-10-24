@@ -74,7 +74,7 @@ export const ROUTE_TO_SURFACE = {
  */
 export function seedGuideSeen(oldSeen, { existingAccount = false } = {}) {
   const seen = new Set();
-  (oldSeen || []).forEach(route => (ROUTE_TO_SURFACE[route] || []).forEach(id => seen.add(id)));
+  (Array.isArray(oldSeen) ? oldSeen : []).forEach(route => (ROUTE_TO_SURFACE[route] || []).forEach(id => seen.add(id)));
   if (existingAccount) SURFACES.forEach(s => { if (s.before) seen.add(s.id); });
   return SURFACE_IDS.filter(id => seen.has(id));
 }
