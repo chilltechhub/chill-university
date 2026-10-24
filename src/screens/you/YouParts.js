@@ -27,7 +27,8 @@ import { getObjective } from '../../data/objectives';
 import { todayStr } from '../../logic/dateUtils';
 import useDeliverables from '../../logic/useDeliverables';
 import usePath from '../../logic/usePath';
-import { deliverableCounts, milestones, statusLabel } from '../../logic/deliverables';
+import { deliverableCounts, milestones, statusLabel, feedbackLine } from '../../logic/deliverables';
+import ShareWorkSheet from '../../components/ShareWorkSheet';
 import { UNIT_BY_ID } from '../../data/units';
 import { loadRatings, onRatingsChange } from '../../api/lifeAreaRatings';
 
@@ -222,6 +223,12 @@ export function YouReceipts({ userId, onSeeAll }) {
             ))}
           </View>
         )}
+        {!!rc.thenVsNow && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: s.sm, marginTop: s.md }}>
+            <Ionicons name="swap-horizontal-outline" size={15} color={accent.primary} />
+            <Text style={{ flex: 1, fontSize: t.sm, color: c.text2 }}>{rc.thenVsNow}</Text>
+          </View>
+        )}
         {!!firsts.length && (
           <View style={{ marginTop: s.md, gap: 4 }}>
             {firsts.map(m => (
@@ -269,6 +276,7 @@ export function YouShelf({ onOpen }) {
   const { colors: c, typography: t, spacing: s, radius: r, accent } = useTheme();
   const { list } = useDeliverables();
   const { accessFor } = useAccess();
+  const [sharing, setSharing] = useState(false);
   const done = list.filter(d => d.status === 'handed' || d.status === 'shown')
     .sort((a, b) => String(b.snapshotAt || '').localeCompare(String(a.snapshotAt || '')));
   if (!done.length) return null;
@@ -277,11 +285,17 @@ export function YouShelf({ onOpen }) {
     <View style={{ width: '100%', marginTop: s.md }}>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: s.sm }}>
         <Text style={{ fontSize: t.md, fontWeight: t.bold, color: c.text1 }} accessibilityRole="header">Your shelf</Text>
-        {showcase && (
-          <TouchableOpacity onPress={() => onOpen('PortfolioScreen')} accessibilityRole="button" accessibilityLabel="Open your Showcase">
-            <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: accent.primary }}>Showcase →</Text>
+        <View style={{ flexDirection: 'row', gap: s.md }}>
+          {/* The whole shelf as one offline page, a picture card or a link (shake-up P8) */}
+          <TouchableOpacity onPress={() => setSharing(true)} accessibilityRole="button" accessibilityLabel="Share my work">
+            <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: accent.primary }}>Share my work</Text>
           </TouchableOpacity>
-        )}
+          {showcase && (
+            <TouchableOpacity onPress={() => onOpen('PortfolioScreen')} accessibilityRole="button" accessibilityLabel="Open your Showcase">
+              <Text style={{ fontSize: t.xs, fontWeight: t.bold, color: accent.primary }}>Showcase →</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
       <View style={{ borderRadius: r.lg, backgroundColor: c.bg1, borderWidth: 0.5, borderColor: c.border, overflow: 'hidden' }}>
         {done.slice(0, 5).map((d, i) => (
@@ -291,11 +305,12 @@ export function YouShelf({ onOpen }) {
             <Ionicons name={d.status === 'shown' ? 'star' : 'checkmark-done-circle'} size={18} color={accent.primary} />
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: t.md, fontWeight: t.semibold, color: c.text1 }} numberOfLines={1}>{d.title}</Text>
-              <Text style={{ fontSize: t.xs, color: c.text3 }} numberOfLines={1}>{[UNIT_BY_ID[d.unitKey]?.label, statusLabel(d), shortDate(d.snapshotAt)].filter(Boolean).join(' · ')}</Text>
+              <Text style={{ fontSize: t.xs, color: c.text3 }} numberOfLines={1}>{[UNIT_BY_ID[d.unitKey]?.label, statusLabel(d), feedbackLine(d), shortDate(d.snapshotAt)].filter(Boolean).join(' · ')}</Text>
             </View>
           </TouchableOpacity>
         ))}
       </View>
+      <ShareWorkSheet visible={sharing} target={{ kind: 'showcase' }} onClose={() => setSharing(false)} />
     </View>
   );
 }

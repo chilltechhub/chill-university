@@ -35,8 +35,8 @@ const ROOT_SCREENS = new Set([
   'Notifications', 'AllProfiles',
   // You, the dropdown from the top bar (shake-up P4).
   'You',
-  // Sources and credits (shake-up P6).
-  'Credits',
+  // Sources and credits (shake-up P6), a share link's page (P8).
+  'Credits', 'Shared',
 ]);
 
 // Learn's own stack, on top of its first screen (TrainingNav.js): Practice

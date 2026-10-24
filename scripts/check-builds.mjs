@@ -282,6 +282,31 @@ for (const kind of D.BUILD_KINDS) {
   }
 }
 
+// ── Your work, to share (shake-up P8) ──────────────────────────────────
+{
+  const bad = '<script>alert(1)</script>';
+  const item = {
+    title: `My plan ${bad}`, unit: 'Pick a path', path: 'What do I like?', status: 'Handed in', at: T, kind: 'reflection',
+    answers: [{ q: 'Why this one', a: `Because ${bad}` }], checklist: [], build: null,
+    feedback: [{ who: 'My aunt', said: `Nice ${bad}`, change: 'Shorter', changed: true }],
+  };
+  const page = R.renderShowcase({ name: 'Sam', items: [item], receipts: [{ value: 2, label: 'handed in' }] });
+  check('showcase: a whole page', /^<!doctype html>/.test(page) && /<\/html>\s*$/.test(page));
+  check('showcase: what they typed is escaped', !page.includes('<script>alert(1)'));
+  check('showcase: no level, XP, points or streak', !/(level|xp|points?|streak|rank)/i.test(page.replace(/<style>[\s\S]*?<\/style>/, '')));
+  check('showcase: feedback notes stay private by default', !page.includes('My aunt'));
+  check('showcase: feedback notes when asked', R.renderShowcase({ items: [item], feedback: true }).includes('My aunt'));
+  check('showcase: loads nothing from the network', !/src=["']https?:/i.test(page) && !/<link/i.test(page) && !/@import|url\(http/i.test(page));
+  check('showcase: empty says so', R.renderShowcase({}).includes('Nothing handed in yet'));
+  const one = R.renderDeliverable(item);
+  check('one piece of work: a whole page, escaped, private notes', /^<!doctype html>/.test(one) && !one.includes('<script>alert(1)') && !one.includes('My aunt'));
+  const card = R.renderPictureCard({ title: `A very long title that wraps ${bad} onto lines`, line: `Handed in ${bad}` });
+  check('picture card: an SVG image', /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg"/.test(card) && /<\/svg>\s*$/.test(card));
+  check('picture card: escaped, no script', !/<script/i.test(card));
+  check('picture card: at most four title lines', (card.match(/<tspan /g) || []).length <= 4);
+  check('picture card: a bad colour falls back', !R.renderPictureCard({ accent: 'red;" onload="x' }).includes('onload'));
+}
+
 if (problems.length) {
   console.error(`check-builds: ${problems.length} of ${count} failed`);
   problems.forEach(p => console.error('  - ' + p));

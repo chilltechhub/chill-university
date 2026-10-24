@@ -231,3 +231,58 @@ export function progressOf(d, unit) {
   const checked = rubric.filter((_, i) => d.checks?.[i]).length;
   return (work + checked) / (1 + rubric.length);
 }
+
+/* ── Sharing your work (shake-up P8, §4.5) ──────────────────────────────── */
+
+/**
+ * One piece of handed-in work, shaped for buildRender.js renderShowcase /
+ * renderDeliverable. Pure: the caller passes what it knows.
+ *   unit        the unit (units.js), for its label, prompts and items
+ *   pathLabel   the path's name
+ *   buildTitle  the title of the Build it points at, for Build work
+ */
+export function showcaseItem(d, unit, { pathLabel = '', buildTitle = '' } = {}) {
+  const def = unit?.deliverable || {};
+  const answers = (def.prompts || []).map((q, i) => ({ q, a: typeof d?.content?.[i] === 'string' ? d.content[i].trim() : '' }));
+  const checklist = (def.items || []).map((item, i) => ({ item, done: d?.content?.[i] === true }));
+  return {
+    title: d?.title || def.title || 'My work',
+    unit: unit?.label || '',
+    path: pathLabel,
+    status: statusLabel(d || {}),
+    at: d?.snapshotAt || d?.updatedAt || null,
+    kind: d?.kind || def.kind || null,
+    answers: d?.kind === 'reflection' || d?.kind === 'test' ? answers.filter(x => x.a) : [],
+    checklist: d?.kind === 'checklist' ? checklist : [],
+    build: d?.kind === 'build' ? buildTitle || null : null,
+    feedback: (d?.feedback || []).map(f => ({ who: f.who, said: f.said, change: f.change, changed: !!f.changed })),
+  };
+}
+
+/** Handed-in work for the Showcase, newest first. */
+export function handedInWork(list = []) {
+  return list.filter(d => d && (d.status === 'handed' || d.status === 'shown'))
+    .sort((a, b) => String(b.snapshotAt || '').localeCompare(String(a.snapshotAt || '')));
+}
+
+/**
+ * "Ask for feedback": the message that goes with the work. Three things to
+ * look at, from the unit's own "what good looks like" lines.
+ */
+export function askFeedbackText(d, unit) {
+  const rubric = unit?.deliverable?.rubric || [];
+  const asks = rubric.slice(0, 3).map((line, i) => `${i + 1}. ${line}`);
+  return [
+    `I made "${d?.title || 'this'}". Could you look at it?`,
+    asks.length ? '\n3 things I\'d like you to look at:' : null,
+    ...asks,
+    '\nWhat would you change?',
+  ].filter(Boolean).join('\n');
+}
+
+/** "2 people looked": a card's feedback line, or null with none. */
+export function feedbackLine(d) {
+  const n = (d?.feedback || []).length;
+  if (!n) return null;
+  return n === 1 ? '1 person looked' : `${n} people looked`;
+}

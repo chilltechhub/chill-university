@@ -1,5 +1,6 @@
 // scripts/probe-security.browser.js
-// Security probes for docs/fix-plan.md Phase 1 (the profile lock-down).
+// Security probes for docs/fix-plan.md Phase 1 (the profile lock-down), and
+// the shake-up's share links (P8).
 //
 // Run it in the browser console of a signed-in web preview (dev build — it
 // finds the app's own Supabase client through Metro's module registry, so it
@@ -130,6 +131,30 @@
       }
       add('family codes are 6 characters', lens.length ? lens.every(n => n === 6) : null,
         lens.length ? `lengths: ${[...new Set(lens)].join(',')} over ${lens.length} codes` : 'could not generate');
+    }
+
+    // Share links (shake-up P8): only the server functions write; anyone
+    // reading needs the exact token; a minor can't make one.
+    {
+      const fake = 'f'.repeat(64);
+      const ins = await sb.from('share_links').insert({ token: fake, user_id: uid, target_kind: 'showcase', html: '<p>probe</p>' });
+      if (!ins.error) await sb.rpc('revoke_share_link', { p_token: fake });
+      add('share_links: direct insert', !!ins.error, ins.error ? `refused: ${ins.error.message}` : 'inserted (revoked again)');
+      const upd = await sb.from('share_links').update({ revoked_at: null }).eq('user_id', uid).select('token');
+      add('share_links: direct update (un-revoke)', !!upd.error || !(upd.data || []).length, upd.error ? `refused: ${upd.error.message}` : `${(upd.data || []).length} rows changed`);
+      const guess = await sb.rpc('get_share_link', { p_token: fake });
+      add('share_links: a guessed token shows nothing', !guess.error && !(guess.data || []).length, guess.error ? guess.error.message : `${(guess.data || []).length} rows`);
+      const minor = original.is_minor === true || !original.date_of_birth || (Date.now() - Date.parse(original.date_of_birth)) < 18 * 365.25 * 864e5;
+      const made = await sb.rpc('create_share_link', { p_kind: 'showcase', p_target: 'probe', p_title: 'probe', p_html: '<p>probe</p>' });
+      if (made.data) {
+        const back = await sb.rpc('get_share_link', { p_token: made.data });
+        await sb.rpc('revoke_share_link', { p_token: made.data });
+        const gone = await sb.rpc('get_share_link', { p_token: made.data });
+        add('share_links: an adult can make one, and revoke stops it', !minor && (back.data || []).length === 1 && !(gone.data || []).length,
+          `made; read ${(back.data || []).length} row; after revoke ${(gone.data || []).length}`);
+      } else {
+        add(minor ? 'share_links: a minor (or no birth date) is refused' : 'share_links: an adult can make one', minor, `refused: ${made.error?.message}`);
+      }
     }
 
     if (allowPublishProbe) {

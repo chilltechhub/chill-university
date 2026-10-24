@@ -65,6 +65,8 @@ import FloatingActionButton from './src/components/FloatingActionButton';
 import CommandPalette from './src/components/CommandPalette';
 import HelpScreen       from './src/screens/HelpScreen';
 import OpenSourceCreditsScreen from './src/screens/OpenSourceCreditsScreen';
+import SharedScreen from './src/screens/SharedScreen';
+import { tokenFromPath } from './src/api/shareLinkService';
 import MakeItYoursScreen from './src/screens/MakeItYoursScreen';
 import MyFeaturesScreen from './src/screens/MyFeaturesScreen';
 import ConnectedAppsScreen from './src/screens/ConnectedAppsScreen';
@@ -110,7 +112,7 @@ installWebAlertShim(); // web only: Alert.alert → the browser's dialogs
 // so this is both its first route and its gate.
 const GatedStats        = gatedScreen('insights', StatsScreen);
 // Screens the + button stays off (see where it's rendered below).
-const NO_FAB_ROUTES = new Set(['Play', 'PlayGame', 'Profile', 'You', 'WorkMode', 'Plus']);
+const NO_FAB_ROUTES = new Set(['Play', 'PlayGame', 'Profile', 'You', 'WorkMode', 'Plus', 'Shared']);
 // Work Mode from Home's Focus buttons. Inside the Library stack it had to be
 // reached by switching tabs first, which flashed the Library (setting off its
 // first-visit tutorial over the timer) and made closing land on whatever the
@@ -314,7 +316,8 @@ function MainTabs() {
 // (rank/points/sign-in) would just duplicate or clash with them.
 // Plus is a paywall you close with its own X; the HUD and FAB over it would
 // be buttons that lead away mid-decision.
-const NO_TOPBAR_ROUTES = new Set(['Welcome', 'Login', 'MultiStepOnboarding', 'ResetPassword', 'Plus']);
+// 'Shared': a share link's page (shake-up P8), shown to anyone, app chrome-free.
+const NO_TOPBAR_ROUTES = new Set(['Welcome', 'Login', 'MultiStepOnboarding', 'ResetPassword', 'Plus', 'Shared']);
 
 // Browser tab title on web. Screens without a title option used to show the
 // raw route name ("WorkModeScreen", "ClassesMain"); spell it out instead.
@@ -459,6 +462,15 @@ function AppInner() {
     // before the normal session check below ever runs:
     const hash = (Platform.OS === 'web' && typeof window !== 'undefined') ? window.location.hash : '';
     const clearHash = () => window.history.replaceState(null, '', window.location.pathname + window.location.search);
+
+    // 0. A share link (/s/<token>, shake-up P8): its read-only page, for
+    // anyone, before any welcome or sign-in.
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && tokenFromPath(window.location.pathname)) {
+      setInitialRoute('Shared');
+      setShowTopBar(false);
+      setCurrentRouteName('Shared');
+      return;
+    }
 
     // 1. An expired/already-used/invalid link. supabase-js's own URL
     // handling just silently drops this case rather than surfacing it —
@@ -650,6 +662,7 @@ function AppInner() {
           <Stack.Screen name="CohortRoster"        component={CohortRosterScreen} />
           <Stack.Screen name="Help"                component={HelpScreen} />
           <Stack.Screen name="Credits"             component={OpenSourceCreditsScreen} options={{ title: 'Sources and credits' }} />
+          <Stack.Screen name="Shared"              component={SharedScreen} options={{ title: 'Shared work' }} />
           <Stack.Screen name="MakeItYours"         component={MakeItYoursScreen} options={{ title: 'Make it yours' }} />
           <Stack.Screen name="MyFeatures"          component={MyFeaturesScreen} options={{ title: 'My features' }} />
           <Stack.Screen name="ConnectedApps"       component={ConnectedAppsScreen} options={{ title: 'Connected apps' }} />

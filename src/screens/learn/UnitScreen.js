@@ -19,6 +19,7 @@ import RichText from '../../components/RichText';
 import MapCard from '../../components/MapCard';
 import HandInMoment from '../../components/HandInMoment';
 import TourSpot from '../../components/TourSpot';
+import ShareWorkSheet from '../../components/ShareWorkSheet';
 import { UNIT_BY_ID } from '../../data/units';
 import { MAPS } from '../../data/maps';
 import { PATH_KITS } from '../../data/pathKits';
@@ -46,6 +47,7 @@ export default function UnitScreen() {
   const [text, setText] = useState({});
   const [fb, setFb] = useState({ who: '', said: '', change: '' });
   const [moment, setMoment] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [busy, setBusy] = useState(false);
   // The next unit opens in place (setParams): start it at the top.
   const scrollRef = useRef(null);
@@ -276,7 +278,13 @@ export default function UnitScreen() {
               {button('Hand it in', handInNow, 'checkmark-done', { disabled: !active || !canHandIn(d, unit) })}
             </>
           )}
-          {handed && d.status !== 'shown' && button('Show it on my Showcase', showIt, 'star-outline', { primary: false })}
+          {handed && (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: s.sm }}>
+              {d.status !== 'shown' && button('Show it on my Showcase', showIt, 'star-outline', { primary: false })}
+              {/* Take it home, a picture card, ask for feedback, a link (shake-up P8) */}
+              {button('Share it', () => setSharing(true), 'share-outline', { primary: false, a11y: 'Share it: take it home, ask for feedback or make a link' })}
+            </View>
+          )}
         </View>
 
         {/* Feedback I got (after hand-in) */}
@@ -315,6 +323,7 @@ export default function UnitScreen() {
         )}
       </ScrollView>
       <HandInMoment visible={moment} deliverable={d} onShow={async () => { await showIt(); }} onClose={() => setMoment(false)} />
+      <ShareWorkSheet visible={sharing} target={{ kind: 'deliverable', deliverable: d }} onClose={() => setSharing(false)} />
     </SafeAreaView>
   );
 }

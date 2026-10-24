@@ -40,7 +40,7 @@ import { buildTitle } from '../builds';
 
 // Onboarding and sign-in own their screens; the Wayfinder opens on its own
 // intro. Same list the first-visit tutorials kept.
-const NEVER = new Set(['Welcome', 'Login', 'MultiStepOnboarding', 'ResetPassword', 'WayfinderScreen']);
+const NEVER = new Set(['Welcome', 'Login', 'MultiStepOnboarding', 'ResetPassword', 'WayfinderScreen', 'Shared']);
 // TourSpots measure on layout: a note started the instant a route changes
 // has nothing to point at yet.
 const SETTLE_MS = 650;

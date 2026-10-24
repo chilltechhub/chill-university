@@ -24,6 +24,8 @@ const USER_TABLES = [
   'community_posts', 'organization_members',
   // Shake-up P6: Studio Builds, deliverables and every life-area rating.
   'builds', 'deliverables', 'life_area_ratings',
+  // Share links you made (shake-up P8): the page each one shows, and when.
+  'share_links',
 ];
 
 // Tables keyed on a parent row instead of the user.
